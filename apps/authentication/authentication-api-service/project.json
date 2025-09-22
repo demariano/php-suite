@@ -1,0 +1,38 @@
+{
+  "name": "authentication-api-service",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/authentication/authentication-api-service/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/authentication/authentication-api-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "authentication-api-service:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "authentication-api-service:build:development"
+        },
+        "production": {
+          "buildTarget": "authentication-api-service:build:production"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+.header {
+    @apply h-[3.25rem] border-b border-secondaryNeutral-100;
+
+    &__content {
+        @apply mx-auto px-10 flex items-center justify-between;
+        height: inherit;
+    }
+
+    &__home {
+        @apply flex items-center;
+        height: inherit;
+
+        img {
+            @apply py-2 object-cover;
+            height: inherit;
+        }
+    }
+
+    &__menu {
+        @apply flex;
+        height: inherit;
+
+        &-item {
+            @apply px-5 cursor-pointer flex-centered;
+
+            &.--selected {
+                @apply bg-primary-600 h-full;
+            }
+        }
+    }
+}

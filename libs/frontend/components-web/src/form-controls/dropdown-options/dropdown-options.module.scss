@@ -1,0 +1,22 @@
+.dropdown-options {
+    @apply relative;
+
+    &__content {
+        @apply rounded border border-secondaryNeutral-300 py-2 -ml-4 mt-4 absolute scrollbar-hide bg-secondaryNeutral-0 z-50;
+        // left: unset !important;
+        // top: 5rem !important;
+
+        &-option {
+            @apply py-3 px-4 flex text-base cursor-default items-center gap-2 min-w-[15rem];
+
+            &.-selected {
+                @apply bg-secondaryBlue-50;
+            }
+
+            &:hover,
+            &.-active {
+                @apply bg-secondaryNeutral-100;
+            }
+        }
+    }
+}

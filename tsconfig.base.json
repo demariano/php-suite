@@ -1,0 +1,52 @@
+{
+    "compileOnSave": false,
+    "compilerOptions": {
+        "rootDir": ".",
+        "sourceMap": true,
+        "declaration": false,
+        "moduleResolution": "node",
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "importHelpers": true,
+        "target": "es2015",
+        "module": "esnext",
+        "lib": ["es2020", "dom"],
+        "skipLibCheck": true,
+        "skipDefaultLibCheck": true,
+        "resolveJsonModule": true,
+        "esModuleInterop": true,
+        "baseUrl": ".",
+        "paths": {
+            "@auth-guard-lib": ["libs/backend/auth-guard-lib/src/index.ts"],
+            "@aws-cognito-lib": ["libs/backend/aws-services/aws-cognito-lib/src/index.ts"],
+            "@aws-s3-lib": ["libs/backend/aws-services/aws-s3-lib/src/index.ts"],
+            "@aws-secret-manager-lib": ["libs/backend/aws-services/aws-secret-manager-lib/src/index.ts"],
+            "@aws-ses-lib": ["libs/backend/aws-services/aws-ses-lib/src/index.ts"],
+            "@aws-sns-lib": ["libs/backend/aws-services/aws-sns-lib/src/index.ts"],
+            "@aws-sqs-lib": ["libs/backend/aws-services/aws-sqs-lib/src/index.ts"],
+            "@components-types/*": ["libs/frontend/components-web/src/types/*"],
+            "@components-web": ["libs/frontend/components-web/src/index.ts"],
+            "@components-web/*": ["libs/frontend/components-web/src/*"],
+            "@configuration-database-service": [
+                "libs/backend/database-services/configuration-database-service/src/index.ts"
+            ],
+            "@configuration-lib": ["libs/backend/configuration-lib/src/index.ts"],
+            "@data-access/*": ["libs/frontend/data-access/src/*"],
+            "@dto": ["libs/dto/src/index.ts"],
+            "@dynamo-db-lib": ["libs/backend/dynamo-db-lib/src/index.ts"],
+            "@email-template-database-service": [
+                "libs/backend/database-services/email-template-database-service/src/index.ts"
+            ],
+            "@message-queue-lib": ["libs/backend/message-queue-lib/src/index.ts"],
+            "@ui-config": ["libs/frontend/ui-config/src/index.ts"],
+            "@ui-config/*": ["libs/frontend/ui-config/src/*"],
+            "@user-database-service": ["libs/backend/database-services/user-database-service/src/index.ts"],
+            "@utils/*": ["libs/utils/src/*"],
+            "@web-app/*": ["apps/web-app/src/*"],
+            "@websocket-connection-database-service": [
+                "libs/backend/database-services/websocket-connection-database-service/src/index.ts"
+            ]
+        }
+    },
+    "exclude": ["node_modules", "tmp"]
+}

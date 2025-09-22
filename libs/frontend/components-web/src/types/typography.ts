@@ -1,0 +1,15 @@
+export type TypographyVariant =
+    | 'h1'
+    | 'h2'
+    | 'h3'
+    | 'h4'
+    | 'h5'
+    | 'h6'
+    | 'body1'
+    | 'body1-thicker'
+    | 'body1-link'
+    | 'body2'
+    | 'body2-thicker'
+    | 'body2-link'
+    | 'body2-caption'
+    | 'body2-caption-link';

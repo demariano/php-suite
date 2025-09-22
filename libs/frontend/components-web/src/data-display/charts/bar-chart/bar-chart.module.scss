@@ -1,0 +1,13 @@
+.bar-chart {
+    @apply mx-6 flex flex-col items-center;
+    transition: all 0.5s;
+
+    &__label {
+        font-size: 0.75rem;
+        fill: theme('colors.secondaryNeutral.700');
+    }
+
+    &__legend {
+        @apply self-end mr-4 gap-11;
+    }
+}

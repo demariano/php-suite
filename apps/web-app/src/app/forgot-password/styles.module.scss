@@ -1,0 +1,20 @@
+.forgot-password-layout {
+    @apply bg-cover bg-bottom h-screen w-screen;
+    // background-image: url('/assets/images/bg-forgot-pw.webp');
+
+    &__overlay {
+        @apply flex-centered;
+        // @apply bg-secondaryNeutral-950 bg-opacity-50 absolute top-0 left-0 flex-centered overflow-y-auto;
+        height: inherit;
+        width: inherit;
+    }
+
+    &__content {
+        @apply mb-5 flex-centered flex-col gap-7;
+        gap: 1.875rem;
+    }
+
+    &__form {
+        @apply w-96 space-y-9;
+    }
+}

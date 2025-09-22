@@ -1,0 +1,9 @@
+{
+  "name": "email-template-database-service",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/backend/database-services/email-template-database-service/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project email-template-database-service --web",
+  "targets": {}
+}

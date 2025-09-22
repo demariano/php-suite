@@ -1,0 +1,38 @@
+{
+    "name": "connect-service",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/websocket/connect-service/src",
+    "projectType": "application",
+    "tags": [],
+    "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/websocket/connect-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+        "serve": {
+            "executor": "@nx/js:node",
+            "defaultConfiguration": "development",
+            "dependsOn": ["build"],
+            "options": {
+                "buildTarget": "connect-service:build",
+                "runBuildTargetDependencies": false
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "connect-service:build:development"
+                },
+                "production": {
+                    "buildTarget": "connect-service:build:production"
+                }
+            }
+        }
+    }
+}

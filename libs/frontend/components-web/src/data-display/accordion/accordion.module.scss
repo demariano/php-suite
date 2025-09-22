@@ -1,0 +1,11 @@
+.accordion {
+    @apply border border-secondaryNeutral-100 rounded-md;
+
+    &__trigger {
+        @apply flex w-full justify-between items-center px-7 py-5 bg-secondaryNeutral-50;
+    }
+
+    &__panel {
+        @apply p-8 my-4;
+    }
+}

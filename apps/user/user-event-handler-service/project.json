@@ -1,0 +1,38 @@
+{
+    "name": "user-event-handler-service",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/user/user-event-handler-service/src",
+    "projectType": "application",
+    "tags": [],
+    "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/user/user-event-handler-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+        "serve": {
+            "executor": "@nx/js:node",
+            "defaultConfiguration": "development",
+            "dependsOn": ["build"],
+            "options": {
+                "buildTarget": "user-event-handler-service:build",
+                "runBuildTargetDependencies": false
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "user-event-handler-service:build:development"
+                },
+                "production": {
+                    "buildTarget": "user-event-handler-service:build:production"
+                }
+            }
+        }
+    }
+}

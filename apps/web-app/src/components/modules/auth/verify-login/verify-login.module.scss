@@ -1,0 +1,19 @@
+.verify-login {
+    @apply flex flex-col gap-10;
+
+    &__otp {
+        @apply flex flex-row gap-4 justify-center flex-wrap;
+
+        &-input {
+            @apply w-10 text-center;
+        }
+    }
+
+    &__error {
+        @apply text-primary-500 text-center;
+    }
+
+    &__resend {
+        @apply flex flex-row gap-1 items-center;
+    }
+}

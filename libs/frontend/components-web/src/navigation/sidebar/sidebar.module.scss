@@ -1,0 +1,19 @@
+.menu {
+    height: calc(100vh - 9.125rem);
+    display: flex;
+    justify-content: space-between;
+    flex-direction: column;
+    overflow-y: scroll;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    
+    &::-webkit-scrollbar {
+        display: none;
+    }
+    
+    .collapsedLabel {
+        @apply mt-2;
+        letter-spacing: 0.15px;
+        font-size: 0.5625rem !important;
+    }
+}

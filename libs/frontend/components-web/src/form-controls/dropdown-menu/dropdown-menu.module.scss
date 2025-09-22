@@ -1,0 +1,28 @@
+.dropdown-menu {
+    &__panel {
+        @apply rounded m-0 border-none absolute scrollbar-hide z-50 ml-3;
+        box-shadow: 0px 2px 10px 0px #86888440;
+
+        &-content {
+            @apply border-secondaryNeutral-300 rounded bg-secondaryNeutral-0 py-2 divide-y divide-secondaryNeutral-100;
+        }
+
+        &-option {
+            @apply py-3 px-4 flex text-base text-secondaryNeutral-900 items-center gap-3.5 min-w-[15rem];
+
+            &-icon {
+                @apply text-secondaryBlue-500;
+            }
+
+            &:hover,
+            &.-active {
+                @apply bg-secondaryNeutral-50;
+            }
+
+            &.-selected,
+            &:focus-within {
+                @apply bg-secondaryBlue-50;
+            }
+        }
+    }
+}

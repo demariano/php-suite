@@ -1,0 +1,38 @@
+{
+    "name": "configuration-api-service",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/configuration/configuration-api-service/src",
+    "projectType": "application",
+    "tags": [],
+    "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/configuration/configuration-api-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+        "serve": {
+            "executor": "@nx/js:node",
+            "defaultConfiguration": "development",
+            "dependsOn": ["build"],
+            "options": {
+                "buildTarget": "configuration-api-service:build",
+                "runBuildTargetDependencies": false
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "configuration-api-service:build:development"
+                },
+                "production": {
+                    "buildTarget": "configuration-api-service:build:production"
+                }
+            }
+        }
+    }
+}

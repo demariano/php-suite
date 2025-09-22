@@ -1,0 +1,29 @@
+.avatar {
+    @apply flex-centered bg-no-repeat bg-cover bg-center bg-primary-100 relative;
+    transition: ease 0.5s;
+
+    &--with-ring {
+        @apply inline-block p-[0.0625rem] border-2 border-secondaryGreen-200 relative;
+    }
+
+    &__badge {
+        @apply p-0.5 rounded-full bg-secondaryNeutral-0 absolute -top-1 -right-1;
+
+        &.-rounded {
+            &.sm {
+                top: -2px;
+                right: -2px;
+            }
+
+            &.md {
+                top: 2%;
+                right: 2%;
+            }
+
+            &.lg {
+                top: 6%;
+                right: 6%;
+            }
+        }
+    }
+}

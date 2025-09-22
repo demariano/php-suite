@@ -1,0 +1,38 @@
+{
+  "name": "file-api-service",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/misc/file-api-service/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/misc/file-api-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "file-api-service:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "file-api-service:build:development"
+        },
+        "production": {
+          "buildTarget": "file-api-service:build:production"
+        }
+      }
+    }
+  }
+}

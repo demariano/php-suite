@@ -1,0 +1,81 @@
+.h1,
+.h2,
+.h3,
+.h4,
+.h5,
+.h6 {
+    font-weight: 900;
+    letter-spacing: -0.03125rem;
+}
+
+.h1 {
+    font-size: 2.9375rem;
+    line-height: 2.375rem;
+}
+
+.h2 {
+    font-size: 2.25rem;
+    line-height: 2rem;
+}
+
+.h3 {
+    font-size: 1.75rem;
+    line-height: 1.5rem;
+}
+
+.h4 {
+    font-size: 1.25rem;
+    line-height: 1.125rem;
+}
+
+.h5 {
+    font-size: 1rem;
+    line-height: 0.9375rem;
+}
+
+.h6 {
+    font-size: 0.875rem;
+    line-height: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.085rem;
+}
+
+.body1 {
+    font-size: 1rem;
+    line-height: 1.5rem;
+
+    &-thicker {
+        font-weight: 700;
+        line-height: 1.25rem;
+        letter-spacing: -0.03125rem;
+    }
+
+    &-link {
+        line-height: 1.25rem;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+}
+
+.body2 {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+
+    &-thicker {
+        font-weight: 700;
+        line-height: 1.5rem;
+    }
+
+    &-link,
+    &-caption-link {
+        line-height: 1.5rem;
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    &-caption,
+    &-caption-link {
+        font-size: 0.75rem;
+        line-height: 1.25rem;
+    }
+}

@@ -1,0 +1,16 @@
+.tab {
+    @apply inline-flex flex-row gap-4 bg-secondaryNeutral-100 rounded-lg p-1 h-12;
+    user-select: none;
+
+    &__option {
+        @apply flex-1 py-2 px-2.5 text-center rounded-[0.4375rem] hover:cursor-pointer w-32 flex-centered;
+
+        &.--selected {
+            @apply bg-secondaryNeutral-0 font-bold transition-colors;
+        }
+
+        &-label {
+            @apply mt-0.5;
+        }
+    }
+}

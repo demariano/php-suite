@@ -1,0 +1,90 @@
+version: 0.2
+run-as: root
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 20
+
+  pre_build:
+    commands:
+      - set -e
+      - echo "Reading deployment configuration..."
+      - DEPLOY_TERRAFORM=$(jq -r '.deploy_terraform' deployment.config.json)
+      - DEPLOY_ALL_SERVICES=$(jq -r '.deploy_all_services' deployment.config.json)
+      - npm -v || exit 1
+      - |
+        if [ "$DEPLOY_TERRAFORM" = "true" ]; then
+          echo "Deploying Terraform..."
+          yum install -y unzip || exit 1
+          echo installing terraform
+          sudo yum install -y yum-utils shadow-utils || exit 1
+          sudo yum-config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo || exit 1
+          sudo yum -y install terraform || exit 1
+          terraform -v || exit 1
+          echo "Retrieving GitHub token from AWS Secrets Manager..."
+          GITHUB_TOKEN=$(aws secretsmanager get-secret-value --secret-id terraform_config --query 'SecretString' --output text | jq -r '.github_token') || exit 1
+          export TF_VAR_github_token=$GITHUB_TOKEN
+          echo "Executing terraform in terraform/${ENVIRONMENT} folder"
+          cd terraform/${ENVIRONMENT} && terraform init && terraform apply -auto-approve || exit 1
+          cd ../..
+        else
+          echo "Skipping Terraform deployment as deploy_terraform flag is set to false."
+        fi
+      - echo "Contents of deployment.config:"
+      - cat deployment.config.json || exit 1
+      - echo "Parsing deployment.config.json..."
+      - DEPLOYMENT_DATA=$(jq -c '.data' deployment.config.json) || exit 1
+      - |
+        if [ "$DEPLOY_ALL_SERVICES" = "true" ]; then
+          echo "DEPLOY_ALL_SERVICES is true. Setting all services to deploy."
+          DEPLOYMENT_DATA=$(echo "$DEPLOYMENT_DATA" | jq '[.[] | .deploy = true]') || exit 1
+        else
+          echo "DEPLOY_ALL_SERVICES is false. Keeping original deployment configuration."
+        fi
+
+  build:
+    commands:
+      - set -e
+      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com || exit 1
+      - |
+        # Debug statement - safely display JSON
+        echo "Parsed DEPLOYMENT_DATA:"
+        echo "$DEPLOYMENT_DATA" | jq -C '.' 2>/dev/null || echo "Raw data: $DEPLOYMENT_DATA"
+        # Check if any service is to be deployed
+        if echo "$DEPLOYMENT_DATA" | jq -e '.[] | select(.deploy == true)' > /dev/null; then
+          echo "At least one service is set to deploy. Running yarn install..."
+          yarn install || exit 1
+        fi
+        for row in $(echo "${DEPLOYMENT_DATA}" | jq -r '.[] | @base64'); do
+          _jq() {
+            echo ${row} | base64 --decode | jq -r ${1}
+          }
+          PARENT_FOLDER=$(_jq '.parent_folder')
+          SERVICE_NAME=$(_jq '.service_name')
+          DEPLOY=$(_jq '.deploy')
+          DOCKERFILE=$(_jq '.dockerfile')
+          echo "PARENT_FOLDER: $PARENT_FOLDER, SERVICE_NAME: $SERVICE_NAME, DEPLOY: $DEPLOY, DOCKERFILE: $DOCKERFILE"  # Debug statement
+          if [ "$DEPLOY" = "true" ]; then
+            echo "Building $SERVICE_NAME in $PARENT_FOLDER..."
+            BUILD_SCRIPTS=$(echo ${row} | base64 --decode | jq -r '.build_scripts[]')
+            while IFS= read -r script; do
+              # Replace placeholders with actual values, handling null or empty parent_folder
+              script=${script//\$\{PARENT_FOLDER\}/${PARENT_FOLDER:-"."}}
+              script=${script//\$\{SERVICE_NAME\}/$SERVICE_NAME}
+              script=${script//\$\{DOCKERFILE\}/$DOCKERFILE}
+              echo "Running script: $script"
+              eval "$script" || exit 1
+            done <<< "$BUILD_SCRIPTS"
+          else
+            echo "Skipping deployment for $SERVICE_NAME as deploy flag is set to false."
+          fi
+        done
+
+  post_build:
+    commands:
+      - set -e
+
+cache:
+  paths:
+    - node_modules

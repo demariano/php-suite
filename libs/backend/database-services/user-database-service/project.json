@@ -1,0 +1,9 @@
+{
+  "name": "user-database-service",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/backend/database-services/user-database-service/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project user-database-service --web",
+  "targets": {}
+}

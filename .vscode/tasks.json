@@ -1,0 +1,178 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Docker",
+      "type": "shell",
+      "command": "docker-compose up",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Local Stack",
+      "type": "shell",
+      "command": "bash run-local-stack-scripts.sh",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "User API Service",
+      "type": "shell",
+      "command": "npx nx serve user-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "User Event Handler Service",
+      "type": "shell",
+      "command": "npx nx serve user-event-handler-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Connect Service",
+      "type": "shell",
+      "command": "npx nx serve connect-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Client Message Processor Service",
+      "type": "shell",
+      "command": "npx nx serve client-message-processor-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Broadcast Message Service",
+      "type": "shell",
+      "command": "npx nx serve broadcast-message-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Environment Initializer API Service",
+      "type": "shell",
+      "command": "npx nx serve environment-initializer-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Email API Service",
+      "type": "shell",
+      "command": "npx nx serve email-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Email Template API Service",
+      "type": "shell",
+      "command": "npx nx serve email-template-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Configuration API Service",
+      "type": "shell",
+      "command": "npx nx serve configuration-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "All Services",
+      "dependsOn": [
+        "User API Service",
+        "User Event Handler Service",
+        "Connect Service",
+        "Client Message Processor Service",
+        "Broadcast Message Service",
+        "Environment Initializer API Service",
+        "Email API Service",
+        "Email Template API Service",
+        "Configuration API Service",
+        "Test Service",
+        "Test Service Sqs",
+        "Test Service",
+        "Disconnect Service"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test Service",
+      "type": "shell",
+      "command": "npx nx serve test-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test Service Sqs",
+      "type": "shell",
+      "command": "npx nx serve test-service-sqs",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Test Service",
+      "type": "shell",
+      "command": "npx nx serve test-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Disconnect Service",
+      "type": "shell",
+      "command": "npx nx serve disconnect-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

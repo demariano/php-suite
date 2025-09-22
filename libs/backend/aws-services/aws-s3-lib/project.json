@@ -1,0 +1,9 @@
+{
+  "name": "aws-s3-lib",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/backend/aws-services/aws-s3-lib/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project aws-s3-lib --web",
+  "targets": {}
+}

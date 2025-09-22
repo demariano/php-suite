@@ -1,0 +1,50 @@
+@use 'tailwindcss/base';
+@use 'tailwindcss/components';
+@use 'tailwindcss/utilities';
+
+@use './mixins';
+@use './calendar';
+
+@font-face {
+    font-family: 'Helvetica Neue';
+    src: url('/assets/fonts/HelveticaNeue/HelveticaNeueBlack.otf');
+    font-weight: 900;
+}
+
+@font-face {
+    font-family: 'Helvetica Neue';
+    src: url('/assets/fonts/HelveticaNeue/HelveticaNeueBold.otf');
+    font-weight: 700;
+}
+
+@font-face {
+    font-family: 'Helvetica Neue';
+    src: url('/assets/fonts/HelveticaNeue/HelveticaNeueRoman.otf');
+    font-weight: 400;
+}
+
+@layer base {
+    body {
+        font-family: 'Helvetica Neue', sans-serif;
+        // font-size: 1rem;
+        // letter-spacing: 0.15px;
+        font-display: optional;
+        transition: all 200ms;
+        color: theme('colors.secondaryNeutral.950');
+        background-color: theme('colors.secondaryNeutral.50');
+    }
+}
+
+@layer utilities {
+    .flex-centered {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .flex-spaced {
+        display: flex;
+        justify-content: space-between;
+    }
+}

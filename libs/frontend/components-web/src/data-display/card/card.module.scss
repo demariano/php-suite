@@ -1,0 +1,13 @@
+.card {
+    &__icon {
+        @apply w-9 h-9 flex items-center justify-center bg-secondaryBlue-50 text-secondaryBlue-400 rounded;
+    }
+
+    &__title {
+        @apply pb-1 leading-6 text-secondaryNeutral-700;
+    }
+
+    &__loader {
+        @apply h-4 w-24 rounded-full animate-shimmer mt-2;
+    }
+}

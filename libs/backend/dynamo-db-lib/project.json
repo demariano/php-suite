@@ -1,0 +1,9 @@
+{
+  "name": "dynamo-db-lib",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/backend/dynamo-db-lib/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project dynamo-db-lib --web",
+  "targets": {}
+}

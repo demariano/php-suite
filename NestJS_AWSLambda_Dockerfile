@@ -1,0 +1,10 @@
+FROM public.ecr.aws/lambda/nodejs:20 AS builder
+
+ARG PARENT_FOLDER
+ARG SERVICE_NAME
+
+COPY dist/$PARENT_FOLDER/$SERVICE_NAME/. ${LAMBDA_TASK_ROOT}
+
+EXPOSE 4006
+
+CMD ["main.handler"]

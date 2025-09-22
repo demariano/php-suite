@@ -1,0 +1,38 @@
+{
+  "name": "cognito-custom-message-service",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/misc/cognito-custom-message-service/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/misc/cognito-custom-message-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "cognito-custom-message-service:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "cognito-custom-message-service:build:development"
+        },
+        "production": {
+          "buildTarget": "cognito-custom-message-service:build:production"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+.checkbox {
+    @apply hover:cursor-pointer flex flex-row gap-3 items-center;
+    user-select: none;
+
+    &--checked {
+        @apply bg-secondaryBlue-400;
+    }
+}

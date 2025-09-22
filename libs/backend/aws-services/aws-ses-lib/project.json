@@ -1,0 +1,9 @@
+{
+  "name": "aws-ses-lib",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/backend/aws-services/aws-ses-lib/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project aws-ses-lib --web",
+  "targets": {}
+}

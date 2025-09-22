@@ -1,0 +1,9 @@
+{
+    "name": "websocket-connection-database-service",
+    "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "libs/backend/database-services/websocket-connection-database-service/src",
+    "projectType": "library",
+    "tags": [],
+    "// targets": "to see all targets run: nx show project websocket-connection-database-service --web",
+    "targets": {}
+}

@@ -1,0 +1,24 @@
+
+FROM public.ecr.aws/docker/library/node:20 AS builder
+RUN apt-get update && apt-get install -y libc6 python3 make g++
+ARG PARENT_FOLDER
+ARG SERVICE_NAME
+
+WORKDIR /build
+COPY dist/$PARENT_FOLDER/$SERVICE_NAME/. .
+RUN yarn install
+
+FROM public.ecr.aws/docker/library/node:20 AS runner
+WORKDIR /app
+
+ENV NODE_ENV production
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+COPY --from=builder ./build .
+
+
+EXPOSE 3000
+
+ENV PORT 3000
+
+CMD ["npm", "start"]

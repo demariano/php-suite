@@ -1,0 +1,62 @@
+.auth-action {
+    @apply w-screen h-screen flex;
+
+    &__wrapper {
+        @apply mx-auto max-w-7xl px-2 overflow-y-auto;
+    }
+
+    &__content {
+        @apply w-1/2 max-lg:w-full h-full px-10 m-auto flex-centered flex-col;
+
+        >img {
+            @apply mb-10;
+        }
+    }
+
+    &__title {
+        @apply space-y-8 mb-14 whitespace-break-spaces;
+        line-height: -0.03125rem;
+
+        &-header {
+            @apply leading-[4.5rem] text-[5.375rem] !important;
+
+            span {
+                @apply bg-primary-500;
+            }
+        }
+
+        &-instruction {
+            a {
+                @apply underline decoration-primary-500 cursor-pointer;
+                font-weight: 700;
+            }
+        }
+    }
+
+    &__form {
+        @apply w-full mb-5;
+    }
+
+    &__cover {
+        &-background {
+            @apply w-1/2 bg-cover bg-right bg-no-repeat flex-centered relative;
+        }
+
+        &-overlay {
+            @apply bg-secondaryNeutral-400 bg-opacity-15 absolute top-0 left-0 w-full h-screen;
+        }
+
+        &-logo {
+            @apply max-w-fit w-9/12 bg-contain;
+        }
+    }
+
+    &.--login,
+    &.--verify-login,
+    &.--registration,
+    &.--set-new-password {
+        .auth-action__cover-background {
+            background-image: url('/assets/images/bg-login.webp');
+        }
+    }
+}

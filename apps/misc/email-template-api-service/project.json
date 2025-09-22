@@ -1,0 +1,38 @@
+{
+  "name": "email-template-api-service",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/misc/email-template-api-service/src",
+  "projectType": "application",
+  "tags": [],
+  "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/misc/email-template-api-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+    "serve": {
+      "executor": "@nx/js:node",
+      "defaultConfiguration": "development",
+      "dependsOn": ["build"],
+      "options": {
+        "buildTarget": "email-template-api-service:build",
+        "runBuildTargetDependencies": false
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "email-template-api-service:build:development"
+        },
+        "production": {
+          "buildTarget": "email-template-api-service:build:production"
+        }
+      }
+    }
+  }
+}

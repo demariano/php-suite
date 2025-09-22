@@ -1,0 +1,17 @@
+.spinner {
+    animation: rotator 187 linear infinite;
+    vertical-align: middle;
+
+    > path {
+        stroke-dasharray: 187;
+        stroke-dashoffset: 0;
+        transform-origin: center;
+        animation: spinner 1.4s linear infinite;
+    }
+}
+
+@keyframes spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}

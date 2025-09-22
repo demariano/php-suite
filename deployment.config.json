@@ -1,0 +1,267 @@
+{
+  "deploy_terraform": false,
+  "deploy_all_services": true,
+  "data": [
+    {
+      "parent_folder": "apps",
+      "service_name": "web-app",
+      "deploy": true,
+      "dockerfile": "NextJS_ECS_Dockerfile",
+      "increment_version": false,
+      "build_scripts": [
+        "HUSKY=0 npx nx run web-app:build --skip-nx-cache",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws ecs update-service --cluster ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}-cluster --service ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --force-new-deployment"
+      ]
+    },
+    {
+      "parent_folder": "apps/user",
+      "service_name": "user-api-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for user-api-service...'",
+        "npx nx test user-api-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-user-api-service",
+        "npm run post-build-user-api-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/authentication",
+      "service_name": "authentication-api-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for authentication-api-service...'",
+        "npx nx test authentication-api-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-authentication-api-service",
+        "npm run post-build-authentication-api-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/misc",
+      "service_name": "cognito-custom-message-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for cognito-custom-message-service...'",
+        "npx nx test cognito-custom-message-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-cognito-custom-message-service",
+        "npm run post-build-cognito-custom-message-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/misc",
+      "service_name": "file-api-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for file-api-service...'",
+        "npx nx test file-api-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-file-api-service",
+        "npm run post-build-file-api-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/misc",
+      "service_name": "email-api-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for email-api-service...'",
+        "npx nx test email-api-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-email-api-service",
+        "npm run post-build-email-api-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/misc",
+      "service_name": "email-template-api-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for email-template-api-service...'",
+        "npx nx test email-template-api-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-email-template-api-service",
+        "npm run post-build-email-template-api-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/user",
+      "service_name": "user-event-handler-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for user-event-handler-service...'",
+        "npx nx test user-event-handler-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-user-event-handler-service",
+        "npm run post-build-user-event-handler-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/websocket",
+      "service_name": "connect-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for connect-service...'",
+        "npx nx test connect-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-connect-service",
+        "npm run post-build-connect-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/websocket",
+      "service_name": "broadcast-message-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for broadcast-message-service...'",
+        "npx nx test broadcast-message-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-broadcast-message-service",
+        "npm run post-build-broadcast-message-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/websocket",
+      "service_name": "client-message-processor-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for client-message-processor-service...'",
+        "npx nx test client-message-processor-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-client-message-processor-service",
+        "npm run post-build-client-message-processor-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/configuration",
+      "service_name": "configuration-api-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for configuration-api-service...'",
+        "npx nx test configuration-api-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-configuration-api-service",
+        "npm run post-build-configuration-api-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/misc",
+      "service_name": "environment-initializer-api-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for environment-initializer-api-service...'",
+        "npx nx test environment-initializer-api-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-environment-initializer-api-service",
+        "npm run post-build-environment-initializer-api-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    },
+    {
+      "parent_folder": "apps/websocket",
+      "service_name": "disconnect-service",
+      "deploy": false,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for disconnect-service...'",
+        "npx nx test disconnect-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-disconnect-service",
+        "npm run post-build-disconnect-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
+    }
+  ]
+}

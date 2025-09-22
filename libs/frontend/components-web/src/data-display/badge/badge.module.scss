@@ -1,0 +1,57 @@
+.badge {
+    font-size: 0.625rem;
+    line-height: 1rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.15px;
+    border: 1px solid;
+    @apply px-2 py-0.5;
+
+    &.--md {
+        font-size: 0.875rem;
+        line-height: 1.125rem;
+    }
+
+    &.--lg {
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
+
+    &--status {
+        @apply bg-secondaryGreen-400 h-2 w-2 rounded-full;
+
+        &.error {
+            @apply bg-primary-400;
+        }
+
+        &.neutral {
+            @apply bg-secondaryNeutral-500;
+        }
+
+        &.--md {
+            @apply h-3 w-3;
+        }
+
+        &.--lg {
+            @apply h-4 w-4;
+        }
+    }
+
+    &.success {
+        @apply bg-[#EEF7F2] text-[#438965] border-[#A1D1B8];
+    }
+
+    &.warning {
+        @apply bg-secondaryOrange-50 text-secondaryOrange-400 border-secondaryOrange-300;
+    }
+
+    &.danger {
+        @apply bg-primary-50 text-primary-500 border-primary-400;
+    }
+
+    &.neutral {
+        @apply bg-secondaryNeutral-50 text-secondaryNeutral-950 border-secondaryNeutral-300;
+    }
+}

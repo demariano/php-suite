@@ -1,0 +1,31 @@
+.toast {
+    @apply w-full max-w-[41rem] py-3 px-4 gap-2 flex rounded-lg drop-shadow-lg;
+
+    &__message {
+        flex: 1
+    }
+
+    &__close {
+        cursor: pointer;
+    }
+
+    &--info {
+        @apply bg-secondaryBlue-500;
+    }
+
+    &--error {
+        @apply bg-primary-400;
+    }
+
+    &--success {
+        @apply bg-secondaryGreen-400;
+    }
+
+    &--warning {
+        @apply bg-secondaryOrange-500;
+    }
+
+    &--neutral {
+        @apply bg-secondaryNeutral-100 border border-secondaryNeutral-400;
+    }
+}

@@ -1,0 +1,26 @@
+// ------------------------------------- //
+// mixins for media queries
+
+@mixin screen-lg {
+    @media (min-width: theme('screens.lg')) {
+        @content;
+    }
+}
+
+@mixin screen-md {
+    @media (min-width: theme('screens.md')) {
+        @content;
+    }
+}
+
+@mixin screen-sm {
+    @media (max-width: theme('screens.sm')) {
+        @content;
+    }
+}
+
+@mixin screen-except-sm {
+    @media not all and (max-width: 640px) {
+        @content;
+    }
+}

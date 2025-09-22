@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  localstack:
+    image: gresau/localstack-persist
+    container_name: localstack
+    ports:
+      - "4566:4566"  # LocalStack Gateway
+    environment:
+      - PERSIST_DEFAULT=0
+      - PERSIST_DYNAMODB=1
+      - PERSIST_S3=1
+      - DYNAMODB_SHARE_DB=1
+    volumes:
+      - "./my-localstack-data:/persisted-data"

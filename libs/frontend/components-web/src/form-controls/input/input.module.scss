@@ -1,0 +1,83 @@
+.input {
+    &-wrapper {
+        @apply relative grid gap-1.5;
+
+        .input {
+            @apply leading-6 text-secondaryNeutral-950 w-full border-none outline-none;
+
+            &::placeholder {
+                @apply text-secondaryNeutral-400;
+            }
+
+            &__icon {
+                @apply text-[#666666];
+            }
+
+            &-field {
+                @apply bg-secondaryNeutral-0;
+
+                &:has(> .input:focus-within) {
+                    @apply border-secondaryBlue-500 transition-all duration-300;
+                }
+            }
+
+            &[type='number'] {
+                -moz-appearance: textfield;
+            }
+
+            &::-webkit-outer-spin-button,
+            &::-webkit-inner-spin-button {
+                -webkit-appearance: none;
+                margin: 0;
+            }
+        }
+
+        .helper-text {
+            @apply text-secondaryNeutral-400 flex items-center gap-0.5;
+            user-select: none;
+        }
+
+        &.--textarea {
+            .input-field {
+                height: unset !important;
+                @apply items-start;
+            }
+
+            .input {
+                @apply py-0.5;
+            }
+
+            .input__icon {
+                @apply py-1;
+            }
+        }
+
+        &.input-error {
+
+            .input-field,
+            .input-field:has(> .input:focus-within) {
+                @apply border-primary-500 duration-300 transition-all;
+            }
+
+            .helper-text {
+                @apply text-primary-500;
+            }
+        }
+
+        &.input-disabled {
+
+            .input-field,
+            .input-field:has(> .input:focus-within) {
+                @apply bg-secondaryNeutral-50 border-secondaryNeutral-100;
+            }
+
+            input::placeholder {
+                @apply text-secondaryNeutral-700;
+            }
+        }
+    }
+
+    &-field {
+        @apply border border-secondaryNeutral-100 rounded-[0.3125rem] px-3.5 py-2 relative flex items-center h-11 gap-3.5 text-secondaryNeutral-500;
+    }
+}

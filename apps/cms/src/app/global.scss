@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+    font-family: 'Inter';
+    src: url('../../public/assets/fonts/Inter-Regular.ttf');
+    font-weight: 400;
+}
+
+@font-face {
+    font-family: 'Inter';
+    src: url('../../public/assets/fonts/Inter-Bold.ttf');
+    font-weight: 700;
+}
+
+@layer base {
+    body {
+        font-family: 'Inter', sans-serif;
+        font-size: 1rem;
+        letter-spacing: 0.15px;
+        font-display: optional;
+        transition: all 200ms;
+    }
+}
