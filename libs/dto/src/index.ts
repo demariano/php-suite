@@ -38,3 +38,18 @@ export * from './lib/configuration/configuration/update.configuration.dto';
 
 //initialize environment
 export * from './lib/initialization/initialization.dto';
+//ProductSchema
+export * from './lib/product/enums/status.enum';
+export * from './lib/product/product.category/create.product.category.dto';
+export * from './lib/product/product.category/product.category.dto';
+export * from './lib/product/product.class/create.product.class.dto';
+export * from './lib/product/product.class/product.class.dto';
+export * from './lib/product/product.deal/create.product.deal.dto';
+export * from './lib/product/product.deal/product.deal.dto';
+export * from './lib/product/product.price.type/create.product.price.type.dto';
+export * from './lib/product/product.price.type/product.price.type.dto';
+export * from './lib/product/product.unit/create.product.unit.dto';
+export * from './lib/product/product.unit/product.unit.dto';
+export * from './lib/product/product/create.product.dto';
+export * from './lib/product/product/product.dto';
+export * from './lib/product/product/product.filter.dto';

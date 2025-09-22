@@ -11,9 +11,11 @@ export * from './lib/utils/get.first.monday.util';
 
 export * from './lib/schema/ConfigurationSchema';
 export * from './lib/schema/EmailTemplateSchema';
+export * from './lib/schema/ProductSchema';
 export * from './lib/schema/UserSchema';
 export * from './lib/schema/WebSocketConnectionSchema';
 
 export * from './lib/utils/date.to.last.millisecond.iso.string.util';
 
 export * from './lib/utils/date.to.midnight.iso.string.util';
+

@@ -38,6 +38,7 @@
                 "libs/backend/database-services/email-template-database-service/src/index.ts"
             ],
             "@message-queue-lib": ["libs/backend/message-queue-lib/src/index.ts"],
+            "@product-database-service": ["libs/backend/database-services/product-database-service/src/index.ts"],
             "@ui-config": ["libs/frontend/ui-config/src/index.ts"],
             "@ui-config/*": ["libs/frontend/ui-config/src/*"],
             "@user-database-service": ["libs/backend/database-services/user-database-service/src/index.ts"],

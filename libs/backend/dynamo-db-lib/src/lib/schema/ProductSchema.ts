@@ -1,0 +1,130 @@
+import { Entity } from 'dynamodb-onetable';
+
+export const ProductSchema = {
+    version: '0.0.1',
+    indexes: {
+        primary: { hash: 'PK', sort: 'SK' },
+        GSI1: { hash: 'GSI1PK', sort: 'GSI1SK' },
+        GSI2: { hash: 'GSI2PK', sort: 'GSI2SK' },
+        GSI3: { hash: 'GSI3PK', sort: 'GSI3SK' },
+        GSI4: { hash: 'GSI4PK', sort: 'GSI4SK' },
+        GSI5: { hash: 'GSI5PK', sort: 'GSI5SK' },
+        GSI6: { hash: 'GSI6PK', sort: 'GSI6SK' },
+    },
+    models: {
+        Product: {
+            PK: { type: String, value: 'PRODUCT', hidden: false },
+            SK: { type: String, value: '${productId}', hidden: false },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL'],
+                required: false,
+            },
+            productId: { type: String, generate: 'ulid' },
+            productName: { type: String },
+            criticalLevel: { type: Number },
+            productCategoryId: { type: String },
+            productCategoryName: { type: String },
+            productClassId: { type: String },
+            productClassName: { type: String },
+            productDeals: { type: Array },
+            productUnitPrice: { type: Array },
+            GSI1PK: { type: String, value: 'PRODUCT', hidden: false },
+            GSI1SK: { type: String, value: '${productName}', hidden: false },
+            GSI2PK: { type: String, value: 'PRODUCT#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${productName}', hidden: false },
+            GSI3PK: { type: String, value: 'PRODUCT#${productCategoryId}', hidden: false },
+            GSI3SK: { type: String, value: '${productName}', hidden: false },
+            GSI4PK: { type: String, value: 'PRODUCT#${productClassId}', hidden: false },
+            GSI4SK: { type: String, value: '${productName}', hidden: false },
+        },
+        ProductCategory: {
+            PK: { type: String, value: 'PRODUCT_CATEGORY', hidden: false },
+            SK: { type: String, value: '${productCategoryId}', hidden: false },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL'],
+                required: false,
+            },
+            productCategoryId: { type: String, generate: 'ulid' },
+            productCategoryName: { type: String },
+            GSI1PK: { type: String, value: 'PRODUCT_CATEGORY', hidden: false },
+            GSI1SK: { type: String, value: '${productCategoryName}', hidden: false },
+            GSI2PK: { type: String, value: 'PRODUCT_CATEGORY#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${productCategoryName}', hidden: false },
+        },
+        ProductClass: {
+            PK: { type: String, value: 'PRODUCT_CLASS', hidden: false },
+            SK: { type: String, value: '${productClassId}', hidden: false },
+            productClassId: { type: String, generate: 'ulid' },
+            productClassName: { type: String },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL'],
+                required: false,
+            },
+            GSI1PK: { type: String, value: 'PRODUCT_CLASS', hidden: false },
+            GSI1SK: { type: String, value: '${productClassName}', hidden: false },
+            GSI2PK: { type: String, value: 'PRODUCT_CLASS#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${productClassName}', hidden: false },
+        },
+        ProductUnit: {
+            PK: { type: String, value: 'PRODUCT_UNIT', hidden: false },
+            SK: { type: String, value: '${productUnitId}', hidden: false },
+            productUnitId: { type: String, generate: 'ulid' },
+            productUnitName: { type: String },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL'],
+                required: false,
+            },
+            GSI1PK: { type: String, value: 'PRODUCT_UNIT', hidden: false },
+            GSI1SK: { type: String, value: '${productUnitName}', hidden: false },
+            GSI2PK: { type: String, value: 'PRODUCT_UNIT#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${productUnitName}', hidden: false },
+        },
+        ProductPriceType: {
+            PK: { type: String, value: 'PRODUCT_PRICE_TYPE', hidden: false },
+            SK: { type: String, value: '${productPriceTypeId}', hidden: false },
+            productPriceTypeId: { type: String, generate: 'ulid' },
+            productPriceTypeName: { type: String },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL'],
+                required: false,
+            },
+            GSI1PK: { type: String, value: 'PRODUCT_PRICE_TYPE', hidden: false },
+            GSI1SK: { type: String, value: '${productPriceTypeName}', hidden: false },
+            GSI2PK: { type: String, value: 'PRODUCT_PRICE_TYPE#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${status}', hidden: false },
+        },
+        ProductDeal: {
+            PK: { type: String, value: 'PRODUCT_DEAL', hidden: false },
+            SK: { type: String, value: '${productDealId}', hidden: false },
+            productDealId: { type: String, generate: 'ulid' },
+            productDealName: { type: String },
+            additionalQty: { type: Number },
+            minQty: { type: Number },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL'],
+                required: false,
+            },
+            GSI1PK: { type: String, value: 'PRODUCT_DEAL', hidden: false },
+            GSI1SK: { type: String, value: '${productDealName}', hidden: false },
+            GSI2PK: { type: String, value: 'PRODUCT_DEAL#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${productDealName}', hidden: false },
+        },
+    } as const,
+    params: {
+        isoDates: true,
+        timestamps: true,
+    },
+};
+
+export type ProductDataType = Entity<typeof ProductSchema.models.Product>;
+export type ProductCategoryDataType = Entity<typeof ProductSchema.models.ProductCategory>;
+export type ProductClassDataType = Entity<typeof ProductSchema.models.ProductClass>;
+export type ProductUnitDataType = Entity<typeof ProductSchema.models.ProductUnit>;
+export type ProductPriceTypeDataType = Entity<typeof ProductSchema.models.ProductPriceType>;
+export type ProductDealDataType = Entity<typeof ProductSchema.models.ProductDeal>;
