@@ -16,4 +16,9 @@ export class ProductDealDto {
     @ApiProperty({ enum: StatusEnum })
     status?: StatusEnum;
 
+    @ApiProperty()
+    activityLogs?: string[];
+
+    @ApiProperty()
+    forApprovalVersion?: Record<string, unknown>;
 }

@@ -234,7 +234,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         dto.productDeals = record.productDeals ? record.productDeals : [];
         dto.productUnitPrice = record.productUnitPrice ? record.productUnitPrice : [];
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
-
+        dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         return dto;
     }
 
@@ -269,6 +269,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
             GSI3SK: dto.productName,
             GSI4PK: `PRODUCT#${dto.productClassId}`,
             GSI4SK: dto.productName,
+            activityLogs: dto.activityLogs,
         };
         return productData;
     }

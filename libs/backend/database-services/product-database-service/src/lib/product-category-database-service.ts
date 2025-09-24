@@ -36,6 +36,7 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
             GSI1SK: productCategoryDto.productCategoryName,
             GSI2PK: `PRODUCT_CATEGORY`,
             GSI2SK: productCategoryDto.status,
+            activityLogs: productCategoryDto.activityLogs,
         };
 
         const productRecord: ProductCategoryDataType = await this.productCategoryTable.create(productCategoryData);
@@ -50,12 +51,49 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_CATEGORY`;
         productRecord.GSI1SK = record.productCategoryName;
-        productRecord.GSI2PK = `PRODUCT_CATEGORY#${record.status}`;
+        productRecord.GSI2PK = `PRODUCT_CATEGORY`;
+        productRecord.GSI2SK = record.status;
         productRecord.GSI2SK = record.productCategoryName;
+        productRecord.forApprovalVersion = record.forApprovalVersion;
 
         const updatedProductRecord: ProductCategoryDataType = await this.productCategoryTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
+    }
+
+    async findRecordContainingName(name: string): Promise<ProductCategoryDto[] | null> {
+        const productCategoryRecords = await this.productCategoryTable.find(
+            {
+                GSI1PK: 'PRODUCT_CATEGORY',
+            },
+            {
+                where: 'contains(${productCategoryName}, @{productCategoryName})',
+                substitutions: {
+                    productCategoryName: name,
+                },
+                index: 'GSI1',
+            }
+        );
+
+        return await this.convertToDtoList(productCategoryRecords);
+    }
+
+    async findRecordByName(name: string): Promise<ProductCategoryDto | null> {
+        const record = await this.productCategoryTable.get(
+            {
+                GSI1PK: `PRODUCT_CATEGORY`,
+                GSI1SK: `${name}`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        if (!record) {
+            return null;
+        }
+
+        return await this.convertToDto(record);
     }
 
     async findRecordById(id: string): Promise<ProductCategoryDto | null> {
@@ -93,10 +131,13 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
 
         const records = await this.productCategoryTable.find(
             {
-                GSI2PK: `PRODUCT_CATEGORY#${status}`,
+                GSI2PK: `PRODUCT_CATEGORY`,
+                GSI2SK: `${status}`,
             },
             dynamoDbOption
         );
+
+        console.log(`Records: ${JSON.stringify(records)}`);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -132,7 +173,8 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         dto.productCategoryId = record.productCategoryId ? record.productCategoryId : '';
         dto.productCategoryName = record.productCategoryName ? record.productCategoryName : '';
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
-
+        dto.activityLogs = record.activityLogs ? record.activityLogs : [];
+        dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         return dto;
     }
 
@@ -153,10 +195,12 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
             status: dto.status,
             productCategoryName: dto.productCategoryName,
             productCategoryId: dto.productCategoryId,
+            activityLogs: dto.activityLogs,
             GSI1PK: `PRODUCT_CATEGORY`,
             GSI1SK: dto.productCategoryName,
             GSI2PK: `PRODUCT_CATEGORY#${dto.status}`,
             GSI2SK: dto.productCategoryName,
+            forApprovalVersion: dto.forApprovalVersion,
         };
         return productCategoryData;
     }

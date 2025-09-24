@@ -126,7 +126,8 @@
         "Test Service",
         "Test Service Sqs",
         "Test Service",
-        "Disconnect Service"
+        "Disconnect Service",
+        "Product Api Service"
       ],
       "group": {
         "kind": "build",
@@ -168,6 +169,16 @@
       "label": "Disconnect Service",
       "type": "shell",
       "command": "npx nx serve disconnect-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Product Api Service",
+      "type": "shell",
+      "command": "npx nx serve product-api-service",
       "presentation": {
         "reveal": "always",
         "panel": "new"

@@ -32,7 +32,8 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         const productPriceTypeData: ProductPriceTypeDataType = {
             status: productPriceTypeDto.status,
             productPriceTypeName: productPriceTypeDto.productPriceTypeName,
-
+            activityLogs: productPriceTypeDto.activityLogs,
+            forApprovalVersion: productPriceTypeDto.forApprovalVersion,
             GSI1PK: `PRODUCT_PRICE_TYPE`,
             GSI1SK: productPriceTypeDto.productPriceTypeName,
             GSI2PK: `PRODUCT_PRICE_TYPE`,
@@ -51,9 +52,11 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_PRICE_TYPE`;
         productRecord.GSI1SK = record.productPriceTypeName;
-        productRecord.GSI2PK = `PRODUCT_PRICE_TYPE#${record.status}`;
+        productRecord.GSI2PK = `PRODUCT_PRICE_TYPE`;
+        productRecord.GSI2SK = record.status;
         productRecord.GSI2SK = record.productPriceTypeName;
-
+        productRecord.activityLogs = record.activityLogs;
+        productRecord.forApprovalVersion = record.forApprovalVersion;
         const updatedProductRecord: ProductPriceTypeDataType = await this.productPriceTypeTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
@@ -64,6 +67,41 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
             PK: `PRODUCT_PRICE_TYPE`,
             SK: `${id}`,
         });
+
+        if (!record) {
+            return null;
+        }
+
+        return await this.convertToDto(record);
+    }
+
+    async findRecordContainingName(name: string): Promise<ProductPriceTypeDto[] | null> {
+        const productPriceTypeRecords = await this.productPriceTypeTable.find(
+            {
+                GSI1PK: 'PRODUCT_PRICE_TYPE',
+            },
+            {
+                where: 'contains(${productPriceTypeName}, @{productPriceTypeName})',
+                substitutions: {
+                    productPriceTypeName: name,
+                },
+                index: 'GSI1',
+            }
+        );
+
+        return await this.convertToDtoList(productPriceTypeRecords);
+    }
+
+    async findRecordByName(name: string): Promise<ProductPriceTypeDto | null> {
+        const record = await this.productPriceTypeTable.get(
+            {
+                GSI1PK: `PRODUCT_PRICE_TYPE`,
+                GSI1SK: `${name}`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
 
         if (!record) {
             return null;
@@ -94,7 +132,8 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
 
         const records = await this.productPriceTypeTable.find(
             {
-                GSI2PK: `PRODUCT_PRICE_TYPE#${status}`,
+                GSI2PK: `PRODUCT_PRICE_TYPE`,
+                GSI2SK: `${status}`,
             },
             dynamoDbOption
         );
@@ -133,7 +172,8 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         dto.productPriceTypeId = record.productPriceTypeId ? record.productPriceTypeId : '';
         dto.productPriceTypeName = record.productPriceTypeName ? record.productPriceTypeName : '';
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
-
+        dto.activityLogs = record.activityLogs ? record.activityLogs : [];
+        dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         return dto;
     }
 
@@ -158,6 +198,8 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
             GSI1SK: dto.productPriceTypeName,
             GSI2PK: `PRODUCT_PRICE_TYPE#${dto.status}`,
             GSI2SK: dto.productPriceTypeName,
+            activityLogs: dto.activityLogs,
+            forApprovalVersion: dto.forApprovalVersion,
         };
         return productPriceTypeData;
     }

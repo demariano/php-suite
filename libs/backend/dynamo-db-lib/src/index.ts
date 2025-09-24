@@ -8,6 +8,7 @@ export * from './lib/utils/dynamodb.page.record.handler';
 export * from './lib/utils/expirty.data.util';
 
 export * from './lib/utils/get.first.monday.util';
+export * from './lib/utils/reduce.array.contents';
 
 export * from './lib/schema/ConfigurationSchema';
 export * from './lib/schema/EmailTemplateSchema';
@@ -18,4 +19,3 @@ export * from './lib/schema/WebSocketConnectionSchema';
 export * from './lib/utils/date.to.last.millisecond.iso.string.util';
 
 export * from './lib/utils/date.to.midnight.iso.string.util';
-

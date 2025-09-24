@@ -13,11 +13,9 @@ export class CognitoAuthGuard extends AuthGuard('jwt') {
         if (shouldBypass) {
             return {
                 username: 'admin@old.st',
-                roles: ['USER', 'ADMIN']
-
+                roles: (process.env['BYPASS_AUTH_ROLES'] || 'USER,ADMIN').split(',').map((role) => role.trim()),
             };
         }
-
 
         if (err || !user) {
             throw err || new UnauthorizedException();

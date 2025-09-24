@@ -20,4 +20,4 @@ aws --endpoint-url=http://localhost:4566 s3api put-bucket-policy \
     }' 
 
 # Set cors configuration
-aws --endpoint-url=http://localhost:4566 s3api put-bucket-cors --bucket nx-template2-dev-data --cors-configuration file://cors-config.json
+aws --endpoint-url=http://localhost:4566 s3api put-bucket-cors --bucket nx-template2-dev-data 

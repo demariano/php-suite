@@ -25,13 +25,17 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         const dynamoDbService = new DynamoDbLibService(configService);
         this.productDealTable = dynamoDbService
             .dynamoDbMainTable(DYNAMO_DB_PRODUCT_TABLE, ProductSchema)
-            .getModel('ProductUnit');
+            .getModel('ProductDeal');
     }
 
     async createRecord(productDealDto: CreateProductDealDto): Promise<ProductDealDto> {
         const productDealData: ProductDealDataType = {
             status: productDealDto.status,
             productDealName: productDealDto.productDealName,
+            additionalQty: productDealDto.additionalQty,
+            minQty: productDealDto.minQty,
+            activityLogs: productDealDto.activityLogs,
+            forApprovalVersion: productDealDto.forApprovalVersion,
 
             GSI1PK: `PRODUCT_DEAL`,
             GSI1SK: productDealDto.productDealName,
@@ -48,12 +52,16 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         const productRecord: ProductDealDataType = await this.convertToDataType(record);
 
         productRecord.productDealName = record.productDealName;
+        productRecord.additionalQty = record.additionalQty;
+        productRecord.minQty = record.minQty;
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_DEAL`;
         productRecord.GSI1SK = record.productDealName;
-        productRecord.GSI2PK = `PRODUCT_DEAL#${record.status}`;
+        productRecord.GSI2PK = `PRODUCT_DEAL`;
+        productRecord.GSI2SK = record.status;
         productRecord.GSI2SK = record.productDealName;
-
+        productRecord.activityLogs = record.activityLogs;
+        productRecord.forApprovalVersion = record.forApprovalVersion;
         const updatedProductRecord: ProductDealDataType = await this.productDealTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
@@ -64,6 +72,41 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
             PK: `PRODUCT_DEAL`,
             SK: `${id}`,
         });
+
+        if (!record) {
+            return null;
+        }
+
+        return await this.convertToDto(record);
+    }
+
+    async findRecordContainingName(name: string): Promise<ProductDealDto[] | null> {
+        const productDealRecords = await this.productDealTable.find(
+            {
+                GSI1PK: 'PRODUCT_DEAL',
+            },
+            {
+                where: 'contains(${productDealName}, @{productDealName})',
+                substitutions: {
+                    productDealName: name,
+                },
+                index: 'GSI1',
+            }
+        );
+
+        return await this.convertToDtoList(productDealRecords);
+    }
+
+    async findRecordByName(name: string): Promise<ProductDealDto | null> {
+        const record = await this.productDealTable.get(
+            {
+                GSI1PK: `PRODUCT_DEAL`,
+                GSI1SK: `${name}`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
 
         if (!record) {
             return null;
@@ -94,7 +137,8 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
 
         const records = await this.productDealTable.find(
             {
-                GSI2PK: `PRODUCT_DEAL#${status}`,
+                GSI2PK: `PRODUCT_DEAL`,
+                GSI2SK: `${status}`,
             },
             dynamoDbOption
         );
@@ -132,8 +176,11 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         const dto = new ProductDealDto();
         dto.productDealId = record.productDealId ? record.productDealId : '';
         dto.productDealName = record.productDealName ? record.productDealName : '';
+        dto.additionalQty = record.additionalQty ? record.additionalQty : 0;
+        dto.minQty = record.minQty ? record.minQty : 0;
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
-
+        dto.activityLogs = record.activityLogs ? record.activityLogs : [];
+        dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         return dto;
     }
 
@@ -154,10 +201,14 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
             status: dto.status,
             productDealName: dto.productDealName,
             productDealId: dto.productDealId,
+            additionalQty: dto.additionalQty,
+            minQty: dto.minQty,
             GSI1PK: `PRODUCT_DEAL`,
             GSI1SK: dto.productDealName,
             GSI2PK: `PRODUCT_DEAL#${dto.status}`,
             GSI2SK: dto.productDealName,
+            activityLogs: dto.activityLogs,
+            forApprovalVersion: dto.forApprovalVersion,
         };
         return productDealData;
     }

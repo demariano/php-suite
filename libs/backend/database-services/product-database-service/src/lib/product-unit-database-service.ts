@@ -32,6 +32,8 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         const productUnitData: ProductUnitDataType = {
             status: productUnitDto.status,
             productUnitName: productUnitDto.productUnitName,
+            activityLogs: productUnitDto.activityLogs,
+            forApprovalVersion: productUnitDto.forApprovalVersion,
 
             GSI1PK: `PRODUCT_UNIT`,
             GSI1SK: productUnitDto.productUnitName,
@@ -51,8 +53,10 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_UNIT`;
         productRecord.GSI1SK = record.productUnitName;
-        productRecord.GSI2PK = `PRODUCT_UNIT#${record.status}`;
-        productRecord.GSI2SK = record.productUnitName;
+        productRecord.GSI2PK = `PRODUCT_UNIT`;
+        productRecord.GSI2SK = record.status;
+        productRecord.activityLogs = record.activityLogs;
+        productRecord.forApprovalVersion = record.forApprovalVersion;
 
         const updatedProductRecord: ProductUnitDataType = await this.productUnitTable.update(productRecord);
 
@@ -64,6 +68,41 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
             PK: `PRODUCT_UNIT`,
             SK: `${id}`,
         });
+
+        if (!record) {
+            return null;
+        }
+
+        return await this.convertToDto(record);
+    }
+
+    async findRecordContainingName(name: string): Promise<ProductUnitDto[] | null> {
+        const productUnitRecords = await this.productUnitTable.find(
+            {
+                GSI1PK: 'PRODUCT_UNIT',
+            },
+            {
+                where: 'contains(${productUnitName}, @{productUnitName})',
+                substitutions: {
+                    productUnitName: name,
+                },
+                index: 'GSI1',
+            }
+        );
+
+        return await this.convertToDtoList(productUnitRecords);
+    }
+
+    async findRecordByName(name: string): Promise<ProductUnitDto | null> {
+        const record = await this.productUnitTable.get(
+            {
+                GSI1PK: `PRODUCT_UNIT`,
+                GSI1SK: `${name}`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
 
         if (!record) {
             return null;
@@ -94,7 +133,8 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
 
         const records = await this.productUnitTable.find(
             {
-                GSI2PK: `PRODUCT_UNIT#${status}`,
+                GSI2PK: `PRODUCT_UNIT`,
+                GSI2SK: `${status}`,
             },
             dynamoDbOption
         );
@@ -133,7 +173,8 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         dto.productUnitId = record.productUnitId ? record.productUnitId : '';
         dto.productUnitName = record.productUnitName ? record.productUnitName : '';
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
-
+        dto.activityLogs = record.activityLogs ? record.activityLogs : [];
+        dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         return dto;
     }
 
@@ -158,6 +199,8 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
             GSI1SK: dto.productUnitName,
             GSI2PK: `PRODUCT_UNIT#${dto.status}`,
             GSI2SK: dto.productUnitName,
+            activityLogs: dto.activityLogs,
+            forApprovalVersion: dto.forApprovalVersion,
         };
         return productUnitData;
     }

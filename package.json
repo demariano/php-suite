@@ -3,6 +3,8 @@
     "version": "0.0.0",
     "license": "MIT",
     "scripts": {
+    "build-product-api-service": "nx build product-api-service --skip-nx-cache --configuration=production",
+    "post-build-product-api-service": "nx build-serverless-files product-api-service",
     "build-disconnect-service": "nx build disconnect-service --skip-nx-cache --configuration=production",
     "post-build-disconnect-service": "nx build-serverless-files disconnect-service",
         "build-environment-initializer-api-service": "nx build environment-initializer-api-service --skip-nx-cache --configuration=production",

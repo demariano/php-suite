@@ -10,4 +10,9 @@ export class ProductCategoryDto {
     @ApiProperty()
     productCategoryName?: string;
 
+    @ApiProperty()
+    activityLogs?: string[];
+
+    @ApiProperty()
+    forApprovalVersion?: Record<string, unknown>;
 }

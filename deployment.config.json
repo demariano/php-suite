@@ -262,6 +262,25 @@
         "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
         "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
       ]
+    },
+    {
+      "parent_folder": "apps/product",
+      "service_name": "product-api-service",
+      "deploy": true,
+      "dockerfile": "NestJS_AWSLambda_Dockerfile",
+      "build_scripts": [
+        "echo 'Running tests for product-api-service...'",
+        "npx nx test product-api-service --ci --coverage --watch=false",
+        "echo 'Tests passed! Proceeding with build...'",
+        "npm run build-product-api-service",
+        "npm run post-build-product-api-service",
+        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
+        " cd ../../../..",
+        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
+        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
+        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
+      ]
     }
   ]
 }

@@ -32,6 +32,8 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         const productClassData: ProductClassDataType = {
             status: productClassDto.status,
             productClassName: productClassDto.productClassName,
+            activityLogs: productClassDto.activityLogs,
+            forApprovalVersion: productClassDto.forApprovalVersion,
 
             GSI1PK: `PRODUCT_CLASS`,
             GSI1SK: productClassDto.productClassName,
@@ -51,8 +53,10 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_CLASS`;
         productRecord.GSI1SK = record.productClassName;
-        productRecord.GSI2PK = `PRODUCT_CLASS#${record.status}`;
+        productRecord.GSI2PK = `PRODUCT_CLASS`;
+        productRecord.GSI2SK = record.status;
         productRecord.GSI2SK = record.productClassName;
+        productRecord.forApprovalVersion = record.forApprovalVersion;
 
         const updatedProductRecord: ProductClassDataType = await this.productClassTable.update(productRecord);
 
@@ -64,6 +68,41 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
             PK: `PRODUCT_CLASS`,
             SK: `${id}`,
         });
+
+        if (!record) {
+            return null;
+        }
+
+        return await this.convertToDto(record);
+    }
+
+    async findRecordContainingName(name: string): Promise<ProductClassDto[] | null> {
+        const productClassRecords = await this.productClassTable.find(
+            {
+                GSI1PK: 'PRODUCT_CLASS',
+            },
+            {
+                where: 'contains(${productClassName}, @{productClassName})',
+                substitutions: {
+                    productClassName: name,
+                },
+                index: 'GSI1',
+            }
+        );
+
+        return await this.convertToDtoList(productClassRecords);
+    }
+
+    async findRecordByName(name: string): Promise<ProductClassDto | null> {
+        const record = await this.productClassTable.get(
+            {
+                GSI1PK: `PRODUCT_CLASS`,
+                GSI1SK: `${name}`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
 
         if (!record) {
             return null;
@@ -94,7 +133,8 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
 
         const records = await this.productClassTable.find(
             {
-                GSI2PK: `PRODUCT_CLASS#${status}`,
+                GSI2PK: `PRODUCT_CLASS`,
+                GSI2SK: `${status}`,
             },
             dynamoDbOption
         );
@@ -133,7 +173,8 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         dto.productClassId = record.productClassId ? record.productClassId : '';
         dto.productClassName = record.productClassName ? record.productClassName : '';
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
-
+        dto.activityLogs = record.activityLogs ? record.activityLogs : [];
+        dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         return dto;
     }
 
@@ -158,6 +199,8 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
             GSI1SK: dto.productClassName,
             GSI2PK: `PRODUCT_CLASS#${dto.status}`,
             GSI2SK: dto.productClassName,
+            activityLogs: dto.activityLogs,
+            forApprovalVersion: dto.forApprovalVersion,
         };
         return productClassData;
     }

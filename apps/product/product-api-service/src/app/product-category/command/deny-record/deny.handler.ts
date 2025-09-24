@@ -1,0 +1,150 @@
+import { UserCognito } from '@auth-guard-lib';
+import { ErrorResponseDto, ProductCategoryDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
+import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { ProductCategoryDatabaseServiceAbstract } from '@product-database-service';
+import { DenyProductCategoryCommand } from './deny.command';
+
+// Constants
+const ACTIVITY_LOGS_LIMIT = 10;
+const HTTP_STATUS_OK = 200;
+
+@CommandHandler(DenyProductCategoryCommand)
+export class DenyProductCategoryHandler implements ICommandHandler<DenyProductCategoryCommand> {
+    protected readonly logger = new Logger(DenyProductCategoryHandler.name);
+
+    constructor(
+        @Inject('ProductCategoryDatabaseService')
+        private readonly productCategoryDatabaseService: ProductCategoryDatabaseServiceAbstract
+    ) {}
+
+    async execute(command: DenyProductCategoryCommand): Promise<ResponseDto<ProductCategoryDto | ErrorResponseDto>> {
+        this.logger.log(`Processing deny request for product category: ${command.productCategoryId}`);
+
+        try {
+            // Validate record exists
+            const existingRecord = await this.validateProductCategoryExists(command.productCategoryId);
+
+            // Check user authorization
+            this.validateUserAuthorization(command.user.roles);
+
+            // Process approval based on current status
+            return await this.processDeny(existingRecord, command.user);
+        } catch (error) {
+            return this.handleError(error, command.productCategoryId);
+        }
+    }
+
+    /**
+     * Validates that the product category record exists
+     */
+    private async validateProductCategoryExists(productCategoryId: string): Promise<ProductCategoryDto> {
+        const existingRecord = await this.productCategoryDatabaseService.findRecordById(productCategoryId);
+
+        if (!existingRecord) {
+            this.logger.warn(`Product category not found: ${productCategoryId}`);
+            throw new NotFoundException(`Product category record not found for id ${productCategoryId}`);
+        }
+
+        return existingRecord;
+    }
+
+    /**
+     * Validates that the user has authorization to approve
+     */
+    private validateUserAuthorization(userRoles?: string[]): void {
+        if (!userRoles || userRoles.length === 0) {
+            throw new ForbiddenException('User roles not found');
+        }
+
+        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+
+        if (!hasApprovalPermission) {
+            throw new ForbiddenException('Current user is not authorized to approve product category change request');
+        }
+    }
+
+    /**
+     * Processes the approval based on the current status of the record
+     */
+    private async processDeny(
+        existingRecord: ProductCategoryDto,
+        user: UserCognito
+    ): Promise<ResponseDto<ProductCategoryDto>> {
+        switch (existingRecord.status) {
+            case StatusEnum.FOR_APPROVAL:
+                return await this.denyProductCategory(existingRecord, user);
+            case StatusEnum.FOR_DELETION:
+                return await this.denyDeletion(existingRecord);
+            default:
+                throw new BadRequestException(`Cannot approve product category with status: ${existingRecord.status}`);
+        }
+    }
+
+    /**
+     * Approves a product category for approval
+     */
+    private async denyProductCategory(
+        existingRecord: ProductCategoryDto,
+        user: UserCognito
+    ): Promise<ResponseDto<ProductCategoryDto>> {
+        // Update status and add activity log
+        existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs.push(
+            `Product category denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        // Optimize activity logs
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.forApprovalVersion = {};
+
+        // Update record in database
+        const updatedRecord = await this.productCategoryDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product category approved successfully: ${existingRecord.productCategoryId}`);
+        return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deletion of a product category
+     */
+    private async denyDeletion(existingRecord: ProductCategoryDto): Promise<ResponseDto<ProductCategoryDto>> {
+        this.logger.log(`Product category deletion approved: ${existingRecord.productCategoryId}`);
+        existingRecord.status = StatusEnum.ACTIVE;
+        const updatedRecord = await this.productCategoryDatabaseService.updateRecord(existingRecord);
+        return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Centralized error handling
+     */
+    private handleError(error: unknown, productCategoryId: string): never {
+        this.logger.error(`Error processing approval request for ${productCategoryId}:`, error);
+
+        // Re-throw known exceptions
+        if (error instanceof NotFoundException || error instanceof ForbiddenException) {
+            throw error;
+        }
+
+        // Handle unknown errors
+        const errorMessage = this.extractErrorMessage(error);
+        throw new BadRequestException(errorMessage);
+    }
+
+    /**
+     * Extracts error message from various error types
+     */
+    private extractErrorMessage(error: unknown): string {
+        if (error instanceof Error) {
+            return error.message;
+        }
+
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+            const responseError = error as { response?: { body?: { errorMessage?: string } } };
+            return responseError.response?.body?.errorMessage || 'Unknown error occurred';
+        }
+
+        return 'An unexpected error occurred';
+    }
+}

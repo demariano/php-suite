@@ -1,7 +1,7 @@
 import { CreateProductDto, PageDto, ProductDto, ProductFilterDto } from '@dto';
 
 export abstract class ProductDatabaseServiceAbstract {
-    abstract createRecord(userDto: CreateProductDto): Promise<ProductDto>;
+    abstract createRecord(productDto: CreateProductDto): Promise<ProductDto>;
 
     abstract findProductRecordById(id: string): Promise<ProductDto | null>;
 

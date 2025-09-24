@@ -1,0 +1,132 @@
+import { ErrorResponseDto, ProductCategoryDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
+import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { ProductCategoryDatabaseServiceAbstract } from '@product-database-service';
+import { DeleteProductCategoryCommand } from './delete.command';
+
+// Constants
+const ACTIVITY_LOGS_LIMIT = 10;
+const HTTP_STATUS_OK = 200;
+
+@CommandHandler(DeleteProductCategoryCommand)
+export class DeleteProductCategoryHandler implements ICommandHandler<DeleteProductCategoryCommand> {
+    protected readonly logger = new Logger(DeleteProductCategoryHandler.name);
+
+    constructor(
+        @Inject('ProductCategoryDatabaseService')
+        private readonly productCategoryDatabaseService: ProductCategoryDatabaseServiceAbstract
+    ) {}
+
+    async execute(command: DeleteProductCategoryCommand): Promise<ResponseDto<ProductCategoryDto | ErrorResponseDto>> {
+        this.logger.log(
+            `Processing delete request for product category: ${command.productCategoryDto.productCategoryId}`
+        );
+
+        try {
+            // Validate record exists
+            await this.validateProductCategoryExists(command.productCategoryDto.productCategoryId);
+
+            // Check user authorization and determine action
+            const hasDeletePermission = this.hasDeletePermission(command.user.roles);
+
+            if (hasDeletePermission) {
+                return await this.performDirectDelete(command);
+            } else {
+                return await this.performSoftDelete(command);
+            }
+        } catch (error) {
+            return this.handleError(error, command.productCategoryDto.productCategoryId);
+        }
+    }
+
+    /**
+     * Validates that the product category record exists
+     */
+    private async validateProductCategoryExists(productCategoryId: string): Promise<void> {
+        const existingRecord = await this.productCategoryDatabaseService.findRecordById(productCategoryId);
+
+        if (!existingRecord) {
+            this.logger.warn(`Product category not found: ${productCategoryId}`);
+            throw new NotFoundException(`Product category record not found for id ${productCategoryId}`);
+        }
+    }
+
+    /**
+     * Checks if user has permission to directly delete records
+     */
+    private hasDeletePermission(userRoles?: string[]): boolean {
+        if (!userRoles || userRoles.length === 0) {
+            return false;
+        }
+
+        return userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+    }
+
+    /**
+     * Performs direct deletion for authorized users
+     */
+    private async performDirectDelete(command: DeleteProductCategoryCommand): Promise<ResponseDto<ProductCategoryDto>> {
+        await this.productCategoryDatabaseService.deleteRecord(command.productCategoryDto);
+
+        this.logger.log(`Product category deleted successfully: ${command.productCategoryDto.productCategoryId}`);
+        return new ResponseDto<ProductCategoryDto>(command.productCategoryDto, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Performs soft deletion by marking for deletion
+     */
+    private async performSoftDelete(command: DeleteProductCategoryCommand): Promise<ResponseDto<ProductCategoryDto>> {
+        // Update status and add activity log
+        command.productCategoryDto.status = StatusEnum.FOR_DELETION;
+        command.productCategoryDto.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product category marked for deletion by ${command.user.username}`
+        );
+
+        // Optimize activity logs
+        command.productCategoryDto.activityLogs = reduceArrayContents(
+            command.productCategoryDto.activityLogs,
+            ACTIVITY_LOGS_LIMIT
+        );
+
+        // Update record in database
+        const updatedRecord = await this.productCategoryDatabaseService.updateRecord(command.productCategoryDto);
+
+        this.logger.log(`Product category marked for deletion: ${command.productCategoryDto.productCategoryId}`);
+        return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Centralized error handling
+     */
+    private handleError(error: unknown, productCategoryId: string): never {
+        this.logger.error(`Error processing delete request for ${productCategoryId}:`, error);
+
+        // Re-throw known exceptions
+        if (error instanceof NotFoundException) {
+            throw error;
+        }
+
+        // Handle unknown errors
+        const errorMessage = this.extractErrorMessage(error);
+        throw new BadRequestException(errorMessage);
+    }
+
+    /**
+     * Extracts error message from various error types
+     */
+    private extractErrorMessage(error: unknown): string {
+        if (error instanceof Error) {
+            return error.message;
+        }
+
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+            const responseError = error as { response?: { body?: { errorMessage?: string } } };
+            return responseError.response?.body?.errorMessage || 'Unknown error occurred';
+        }
+
+        return 'An unexpected error occurred';
+    }
+}

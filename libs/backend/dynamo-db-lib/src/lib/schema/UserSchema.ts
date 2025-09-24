@@ -1,5 +1,4 @@
-import { Entity } from "dynamodb-onetable";
-
+import { Entity } from 'dynamodb-onetable';
 
 export const UserSchema = {
     version: '0.0.1',
@@ -11,7 +10,6 @@ export const UserSchema = {
         GSI4: { hash: 'GSI4PK' },
         GSI5: { hash: 'GSI5PK', sort: 'GSI5SK' },
         GSI6: { hash: 'GSI6PK', sort: 'GSI6SK' },
-      
     },
     models: {
         User: {
@@ -19,7 +17,7 @@ export const UserSchema = {
             SK: { type: String, value: '${userId}', hidden: false },
             userRole: {
                 type: String,
-                enum: ['USER', 'ADMIN'],
+                enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
                 required: false,
             },
             userStatus: {
@@ -40,7 +38,7 @@ export const UserSchema = {
             GSI6PK: { type: String, value: 'USER#', hidden: false },
             GSI6SK: { type: String, value: '${dateCreated}', hidden: false },
             dateCreated: { type: String },
-            eventLogId: { type: String }, //current event log reference id 
+            eventLogId: { type: String }, //current event log reference id
             firstName: { type: String },
             lastName: { type: String },
             data: {

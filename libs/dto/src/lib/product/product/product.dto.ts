@@ -31,4 +31,6 @@ export class ProductDto {
     @ApiProperty()
     productUnitPrice?: any;
 
+    @ApiProperty()
+    activityLogs?: string[];
 }

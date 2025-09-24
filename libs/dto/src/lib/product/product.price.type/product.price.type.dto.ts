@@ -10,4 +10,9 @@ export class ProductPriceTypeDto {
     @ApiProperty({ enum: StatusEnum })
     status?: StatusEnum;
 
+    @ApiProperty()
+    activityLogs?: string[];
+
+    @ApiProperty()
+    forApprovalVersion?: Record<string, unknown>;
 }

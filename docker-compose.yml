@@ -3,7 +3,7 @@ version: '3.8'
 services:
   localstack:
     image: localstack/localstack
-    container_name: localstack
+    container_name: localstack_php
     ports:
       - "4566:4566"  # LocalStack Gateway
     environment:
