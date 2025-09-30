@@ -2,12 +2,14 @@
 
 import { Button, Input, Tab, Typography } from '@components-web';
 import { useSecrets } from '@data-access/hooks/useSecrets';
-import useWebsocket from '@data-access/hooks/useWebSocket';
+// import useWebsocket from '@data-access/hooks/useWebSocket'; // DISABLED: WebSocket integration temporarily disabled
 import { useState } from 'react';
 
 const DashboardPage = () => {
     const [message, setMessage] = useState('test message');
-    const { sendMessage, isConnected } = useWebsocket();
+    // const { sendMessage, isConnected } = useWebsocket(); // DISABLED: WebSocket integration temporarily disabled
+    const sendMessage = () => {}; // Placeholder function
+    const isConnected = false; // Placeholder value
     const { getSecret } = useSecrets();
 
     const handleClick = async () => {
@@ -44,7 +46,7 @@ const DashboardPage = () => {
                     sendMessage(message);
                 }} label='Send WebSocket Message' />
             </div>
-            <Typography>WebSocket Connected: {isConnected ? '✅ Yes' : '❌ No'}</Typography>
+            <Typography>WebSocket Connected: {isConnected ? '✅ Yes' : '❌ No'} (DISABLED)</Typography>
 
             <Button onClick={handleClick} label='Get Secret' />
         </div>

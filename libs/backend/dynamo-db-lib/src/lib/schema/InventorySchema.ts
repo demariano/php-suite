@@ -1,0 +1,72 @@
+import { Entity } from 'dynamodb-onetable';
+
+export const InventorySchema = {
+    version: '0.0.1',
+    indexes: {
+        primary: { hash: 'PK', sort: 'SK' },
+        GSI1: { hash: 'GSI1PK', sort: 'GSI1SK' },
+        GSI2: { hash: 'GSI2PK', sort: 'GSI2SK' },
+        GSI3: { hash: 'GSI3PK', sort: 'GSI3SK' },
+        GSI4: { hash: 'GSI4PK', sort: 'GSI4SK' },
+        GSI5: { hash: 'GSI5PK', sort: 'GSI5SK' },
+        GSI6: { hash: 'GSI6PK', sort: 'GSI6SK' },
+    },
+    models: {
+        Stock: {
+            PK: { type: String, value: 'STOCK', hidden: false },
+            SK: { type: String, value: '${stockId}', hidden: false },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                required: false,
+            },
+            stockId: { type: String, generate: 'ulid' },
+            lotNo: { type: String, required: false },
+            productId: { type: String, required: false },
+            productName: { type: String, required: false },
+            quantity: { type: Number, required: false },
+            productUnitId: { type: String, required: false },
+            productUnitName: { type: String, required: false },
+            expirationDate: { type: String, required: false },
+            stockTypeId: { type: String, required: false },
+            stockTypeName: { type: String, required: false },
+            forApprovalVersion: { type: Object },
+            activityLogs: { type: Array },
+            changeReason: { type: String, required: false },
+            GSI1PK: { type: String, value: 'STOCK', hidden: false },
+            GSI1SK: { type: String, value: '${productName}', hidden: false },
+            GSI2PK: { type: String, value: 'STOCK#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${productName}', hidden: false },
+            GSI3PK: { type: String, value: 'STOCK#${status}', hidden: false },
+            GSI3SK: { type: String, value: '${productId}', hidden: false },
+            GSI4PK: { type: String, value: 'STOCK#${status}#${productUnitId}#${productId}', hidden: false },
+            GSI4SK: { type: String, value: '${lotNo}', hidden: false },
+            GSI5PK: { type: String, value: 'STOCK#${status}#${productUnitId}#${productId}', hidden: false },
+            GSI5SK: { type: String, value: '${expirationDate}', hidden: false },
+        },
+        StockType: {
+            PK: { type: String, value: 'STOCK_TYPE', hidden: false },
+            SK: { type: String, value: '${stockTypeId}', hidden: false },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                required: false,
+            },
+            stockTypeId: { type: String, generate: 'ulid' },
+            stockTypeName: { type: String, required: false },
+            activityLogs: { type: Array },
+            forApprovalVersion: { type: Object },
+            GSI1PK: { type: String, value: 'STOCK_TYPE', hidden: false },
+            GSI1SK: { type: String, value: '${stockTypeName}', hidden: false },
+            GSI2PK: { type: String, value: 'STOCK_TYPE#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${stockTypeName}', hidden: false },
+        },
+    } as const,
+    params: {
+        isoDates: true,
+        timestamps: true,
+    },
+};
+
+export type StockDataType = Entity<typeof InventorySchema.models.Stock>;
+export type StockTypeDataType = Entity<typeof InventorySchema.models.StockType>;

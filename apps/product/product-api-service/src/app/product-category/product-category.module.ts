@@ -13,6 +13,7 @@ import { UpdateProductCategoryHandler } from './command/update/update.handler';
 import { ProductCategoryController } from './product-category.controller';
 import { GetProductCategoryByIdHandler } from './queries/get.by.id/get.product.category.by.id.handler';
 import { GetProductCategoryByNameHandler } from './queries/get.by.name/get.product.category.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 
 @Module({
@@ -42,6 +43,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         DeleteProductCategoryHandler,
         ApproveProductCategoryHandler,
         DenyProductCategoryHandler,
+        GetRecordsByStatusPaginationHandler,
     ],
 })
 export class ProductCategoryModule {}

@@ -52,8 +52,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_PRICE_TYPE`;
         productRecord.GSI1SK = record.productPriceTypeName;
-        productRecord.GSI2PK = `PRODUCT_PRICE_TYPE`;
-        productRecord.GSI2SK = record.status;
+        productRecord.GSI2PK = `PRODUCT_PRICE_TYPE#${record.status}`;
         productRecord.GSI2SK = record.productPriceTypeName;
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
@@ -132,8 +131,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
 
         const records = await this.productPriceTypeTable.find(
             {
-                GSI2PK: `PRODUCT_PRICE_TYPE`,
-                GSI2SK: `${status}`,
+                GSI2PK: `PRODUCT_PRICE_TYPE#${status}`,
             },
             dynamoDbOption
         );
@@ -165,6 +163,24 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         this.logger.log(`Product Record hard deleted: ${JSON.stringify(productRecord)}`);
 
         return await this.convertToDto(productRecord);
+    }
+
+    async deleteAllRecords(): Promise<void> {
+        // Get all the records
+        const records = await this.productPriceTypeTable.find(
+            {
+                GSI1PK: `PRODUCT_PRICE_TYPE`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        // Delete each record
+        for (const record of records) {
+            await this.productPriceTypeTable.remove(record);
+            this.logger.log(`Product Price Type Record deleted: ${JSON.stringify(record)}`);
+        }
     }
 
     async convertToDto(record: ProductPriceTypeDataType): Promise<ProductPriceTypeDto> {

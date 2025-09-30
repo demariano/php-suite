@@ -20,6 +20,8 @@ export abstract class ProductClassDatabaseServiceAbstract {
 
     abstract deleteRecord(productClassDto: ProductClassDto): Promise<ProductClassDto>;
 
+    abstract deleteAllRecords(): Promise<void>;
+
     abstract convertToDto(record: ProductClassDto): Promise<ProductClassDto>;
 
     abstract convertToDtoList(records: ProductClassDto[]): Promise<ProductClassDto[]>;

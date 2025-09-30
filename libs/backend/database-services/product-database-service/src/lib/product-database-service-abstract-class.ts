@@ -1,4 +1,5 @@
 import { CreateProductDto, PageDto, ProductDto, ProductFilterDto } from '@dto';
+import { ProductDataType } from '@dynamo-db-lib';
 
 export abstract class ProductDatabaseServiceAbstract {
     abstract createRecord(productDto: CreateProductDto): Promise<ProductDto>;
@@ -6,6 +7,10 @@ export abstract class ProductDatabaseServiceAbstract {
     abstract findProductRecordById(id: string): Promise<ProductDto | null>;
 
     abstract updateProductRecord(productData: ProductDto): Promise<ProductDto>;
+
+    abstract findRecordByName(name: string): Promise<ProductDto | null>;
+
+    abstract findRecordContainingName(name: string): Promise<ProductDto[] | null>;
 
     abstract findProductRecordsPagination(
         limit: number,
@@ -23,7 +28,11 @@ export abstract class ProductDatabaseServiceAbstract {
 
     abstract deleteProductRecord(productDto: ProductDto): Promise<ProductDto>;
 
+    abstract deleteAllRecords(): Promise<void>;
+
     abstract convertToDto(record: ProductDto): Promise<ProductDto>;
 
     abstract convertToDtoList(records: ProductDto[]): Promise<ProductDto[]>;
+
+    abstract convertToDataType(dto: ProductDto): Promise<ProductDataType>;
 }

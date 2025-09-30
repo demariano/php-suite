@@ -1,0 +1,28 @@
+import { CreateCustomerTypeDto, CustomerTypeDto, PageDto } from '@dto';
+
+export abstract class CustomerTypeDatabaseServiceAbstract {
+    abstract createRecord(customerTypeDto: CreateCustomerTypeDto): Promise<CustomerTypeDto>;
+
+    abstract findRecordById(id: string): Promise<CustomerTypeDto | null>;
+
+    abstract findRecordContainingName(name: string): Promise<CustomerTypeDto[] | null>;
+
+    abstract findRecordByName(name: string): Promise<CustomerTypeDto | null>;
+
+    abstract updateRecord(customerTypeData: CustomerTypeDto): Promise<CustomerTypeDto>;
+
+    abstract findRecordsPagination(
+        limit: number,
+        status: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerTypeDto>>;
+
+    abstract deleteRecord(customerTypeDto: CustomerTypeDto): Promise<CustomerTypeDto>;
+
+    abstract convertToDto(record: CustomerTypeDto): Promise<CustomerTypeDto>;
+
+    abstract convertToDtoList(records: CustomerTypeDto[]): Promise<CustomerTypeDto[]>;
+
+    abstract deleteAllRecords(): Promise<void>;
+}

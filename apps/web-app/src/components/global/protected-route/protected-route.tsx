@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import Cookies from 'js-cookie';
 import { usePathname, useRouter } from 'next/navigation';
 import { ReactNode, useEffect, useState } from 'react';
-import useWebSocketLifecycle from '@data-access/hooks/useWebSocketLifecycle';
+// import useWebSocketLifecycle from '@data-access/hooks/useWebSocketLifecycle'; // DISABLED: WebSocket integration temporarily disabled
 import { useEnv } from '@data-access/hooks/useEnv';
 
 const ProtectedRoute = ({ children }: { children: ReactNode }) => {
@@ -13,13 +13,13 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
     const router = useRouter();
     const pathname = usePathname();
 
-    useWebSocketLifecycle({
-        autoConnect: true,
-        disconnectOnVisibilityChange: false,
-        reconnectOnVisibilityReturn: false,
-        disconnectOnNetworkChange: false,
-        sendPeriodicPingMessage: true,
-    });
+    // useWebSocketLifecycle({ // DISABLED: WebSocket integration temporarily disabled
+    //     autoConnect: true,
+    //     disconnectOnVisibilityChange: false,
+    //     reconnectOnVisibilityReturn: false,
+    //     disconnectOnNetworkChange: false,
+    //     sendPeriodicPingMessage: true,
+    // });
 
     const [isTransitioned, setIsTransitioned] = useState(false);
 

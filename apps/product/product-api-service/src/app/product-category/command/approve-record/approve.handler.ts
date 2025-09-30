@@ -74,6 +74,7 @@ export class ApproveProductCategoryHandler implements ICommandHandler<ApprovePro
     ): Promise<ResponseDto<ProductCategoryDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
+            case StatusEnum.NEW_RECORD:
                 return await this.approveProductCategory(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);

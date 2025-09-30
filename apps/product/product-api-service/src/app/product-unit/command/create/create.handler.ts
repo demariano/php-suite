@@ -5,7 +5,6 @@ import { ProductUnitDatabaseServiceAbstract } from '@product-database-service';
 import { CreateProductUnitCommand } from './create.command';
 
 // Constants
-const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreateProductUnitCommand)
@@ -78,13 +77,15 @@ export class CreateProductUnitHandler implements ICommandHandler<CreateProductUn
             );
         } else {
             // User needs approval - set to FOR_APPROVAL
-            command.productUnitDto.status = StatusEnum.FOR_APPROVAL;
+            command.productUnitDto.status = StatusEnum.NEW_RECORD;
             command.productUnitDto.activityLogs = [];
             command.productUnitDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
                 })}, Product unit created by ${command.user.username} for approval`
             );
+            command.productUnitDto.forApprovalVersion = {};
+            command.productUnitDto.forApprovalVersion.productUnitName = command.productUnitDto.productUnitName;
         }
     }
 

@@ -1,0 +1,9 @@
+{
+    "name": "stock-database-service",
+    "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "libs/backend/database-services/stock-database-service/src",
+    "projectType": "library",
+    "tags": [],
+    "// targets": "to see all targets run: nx show project stock-database-service --web",
+    "targets": {}
+}

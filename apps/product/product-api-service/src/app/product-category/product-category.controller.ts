@@ -10,6 +10,7 @@ import { DenyProductCategoryCommand } from './command/deny-record/deny.command';
 import { UpdateProductCategoryCommand } from './command/update/update.command';
 import { GetProductCategoryByIdQuery } from './queries/get.by.id/get.product.category.by.id.query';
 import { GetProductCategoryByNameQuery } from './queries/get.by.name/get.product.category.by.name.query';
+import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @Controller('product-categories')
@@ -163,6 +164,8 @@ export class ProductCategoryController {
             user.roles = [userRole];
         }
 
+        console.log('productDto', updateProductCategoryDto);
+        console.log('user', user);
         const command = new UpdateProductCategoryCommand(id, updateProductCategoryDto, user);
         return this.commandBus.execute(command);
     }
@@ -441,6 +444,95 @@ export class ProductCategoryController {
         example: 'cursor_abc123',
     })
     @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Paginated list of product categories',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        items: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/ProductCategoryDto' },
+                        },
+                        pagination: {
+                            type: 'object',
+                            properties: {
+                                nextCursor: { type: 'string', nullable: true },
+                                prevCursor: { type: 'string', nullable: true },
+                                hasMore: { type: 'boolean' },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid pagination parameters',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 400 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        errorMessage: { type: 'string', example: 'Limit must be between 1 and 100' },
+                    },
+                },
+            },
+        },
+    })
+    getRecordsPagination(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('userRole') userRole: string
+    ) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(new GetRecordsPaginationQuery(limit, direction, cursorPointer));
+    }
+
+    @Get('/status')
+    @ApiOperation({
+        summary: 'List product categories with pagination',
+        description:
+            'Retrieves a paginated list of product categories. Use cursor-based pagination for optimal performance.',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
         name: 'status',
         type: String,
         required: true,
@@ -498,7 +590,7 @@ export class ProductCategoryController {
             },
         },
     })
-    getRecordsPagination(
+    getRecordsPaginationByStatus(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
         @Query('cursorPointer') cursorPointer: string,
@@ -507,7 +599,7 @@ export class ProductCategoryController {
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetRecordsPaginationQuery(status, limit, direction, cursorPointer));
+        return this.queryBus.execute(new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer));
     }
 
     @Get(':id')

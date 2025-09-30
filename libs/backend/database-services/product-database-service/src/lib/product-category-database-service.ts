@@ -34,8 +34,8 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
 
             GSI1PK: `PRODUCT_CATEGORY`,
             GSI1SK: productCategoryDto.productCategoryName,
-            GSI2PK: `PRODUCT_CATEGORY`,
-            GSI2SK: productCategoryDto.status,
+            GSI2PK: `PRODUCT_CATEGORY#${productCategoryDto.status}`,
+            GSI2SK: productCategoryDto.productCategoryName,
             activityLogs: productCategoryDto.activityLogs,
         };
 
@@ -51,8 +51,7 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_CATEGORY`;
         productRecord.GSI1SK = record.productCategoryName;
-        productRecord.GSI2PK = `PRODUCT_CATEGORY`;
-        productRecord.GSI2SK = record.status;
+        productRecord.GSI2PK = `PRODUCT_CATEGORY#${record.status}`;
         productRecord.GSI2SK = record.productCategoryName;
         productRecord.forApprovalVersion = record.forApprovalVersion;
 
@@ -120,7 +119,7 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         return record;
     }
 
-    async findRecordsPagination(
+    async findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -131,13 +130,10 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
 
         const records = await this.productCategoryTable.find(
             {
-                GSI2PK: `PRODUCT_CATEGORY`,
-                GSI2SK: `${status}`,
+                GSI2PK: `PRODUCT_CATEGORY#${status}`,
             },
             dynamoDbOption
         );
-
-        console.log(`Records: ${JSON.stringify(records)}`);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -145,6 +141,40 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
             direction,
             'GSI2PK',
             'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductCategoryDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.productCategoryTable.find(
+            {
+                GSI1PK: `PRODUCT_CATEGORY`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(records.next),
@@ -166,6 +196,24 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         this.logger.log(`Product Record hard deleted: ${JSON.stringify(productRecord)}`);
 
         return await this.convertToDto(productRecord);
+    }
+
+    async deleteAllRecords(): Promise<void> {
+        // Get all the records
+        const records = await this.productCategoryTable.find(
+            {
+                GSI1PK: `PRODUCT_CATEGORY`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        // Delete each record
+        for (const record of records) {
+            await this.productCategoryTable.remove(record);
+            this.logger.log(`Product Category Record deleted: ${JSON.stringify(record)}`);
+        }
     }
 
     async convertToDto(record: ProductCategoryDataType): Promise<ProductCategoryDto> {

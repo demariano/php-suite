@@ -74,6 +74,8 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
                 return await this.denyProductUnit(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.denyDeletion(existingRecord);
+            case StatusEnum.NEW_RECORD:
+                return await this.deleteRecord(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve product unit with status: ${existingRecord.status}`);
         }
@@ -109,6 +111,15 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
         existingRecord.status = StatusEnum.ACTIVE;
         const updatedRecord = await this.productUnitDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<ProductUnitDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Deletes a product unit when it is a new record and it was denied
+     */
+    private async deleteRecord(existingRecord: ProductUnitDto): Promise<ResponseDto<ProductUnitDto>> {
+        this.logger.log(`Product unit deleted: ${existingRecord.productUnitId}`);
+        await this.productUnitDatabaseService.deleteRecord(existingRecord);
+        return new ResponseDto<ProductUnitDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**

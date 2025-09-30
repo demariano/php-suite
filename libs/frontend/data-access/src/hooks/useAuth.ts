@@ -38,9 +38,7 @@ const useAuth = () => {
 
     // Used for logging and setting new password for NEW_PASSWORD_REQUIRED
     const authenticationUser = async (
-        resp:
-            | AdminRespondToAuthChallengeCommandOutput
-            | AdminInitiateAuthCommandOutput,
+        resp: AdminRespondToAuthChallengeCommandOutput | AdminInitiateAuthCommandOutput,
         data: CognitoDto | CognitoVerifyMfaDto,
         shouldUpdate?: boolean
     ) => {
@@ -65,18 +63,9 @@ const useAuth = () => {
                 alertType: 'success',
             });
 
-            Cookies.set(
-                STORAGE_KEY.ACCESS_TOKEN,
-                resp.AuthenticationResult?.AccessToken as string
-            );
-            Cookies.set(
-                STORAGE_KEY.REFRESH_TOKEN,
-                resp.AuthenticationResult?.RefreshToken as string
-            );
-            Cookies.set(
-                STORAGE_KEY.ID_TOKEN,
-                resp.AuthenticationResult?.IdToken as string
-            );
+            Cookies.set(STORAGE_KEY.ACCESS_TOKEN, resp.AuthenticationResult?.AccessToken as string);
+            Cookies.set(STORAGE_KEY.REFRESH_TOKEN, resp.AuthenticationResult?.RefreshToken as string);
+            Cookies.set(STORAGE_KEY.ID_TOKEN, resp.AuthenticationResult?.IdToken as string);
 
             // const { email, firstName, lastName } = data;
             // let userDetails: ProfileData = {};
@@ -120,6 +109,7 @@ const useAuth = () => {
 
         updateAuthedUser({
             email: bypassEmail,
+            userRole: 'SUPER_ADMIN' as any,
         });
 
         Cookies.set(STORAGE_KEY.ACCESS_TOKEN, bypassToken);

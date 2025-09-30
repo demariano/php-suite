@@ -24,5 +24,7 @@ export const configuration = async () => {
         DYNAMO_DB_WEB_SOCKET_CONNECTION_TABLE: process.env['DYNAMO_DB_WEB_SOCKET_CONNECTION_TABLE'],
         S3_NX_TEMPLATE2_DEV_DATA: process.env['S3_NX_TEMPLATE2_DEV_DATA'],
         DYNAMO_DB_PRODUCT_TABLE: process.env['DYNAMO_DB_PRODUCT_TABLE'],
+        DYNAMO_DB_CUSTOMER_TABLE: process.env['DYNAMO_DB_CUSTOMER_TABLE'],
+        DYNAMO_DB_INVENTORY_TABLE: process.env['DYNAMO_DB_INVENTORY_TABLE'],
     };
 };

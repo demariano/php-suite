@@ -19,7 +19,7 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
     ) {}
 
     async execute(query: GetRecordsPaginationQuery): Promise<ResponseDto<PageDto<ProductCategoryDto>>> {
-        this.logger.log(`Processing pagination request for product categories with status: ${query.status}`);
+        this.logger.log(`Processing pagination request for product categories `);
 
         try {
             // Validate query parameters
@@ -31,7 +31,7 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
             this.logger.log(`Retrieved ${productCategoryRecords.data.length} product category records with pagination`);
             return new ResponseDto<PageDto<ProductCategoryDto>>(productCategoryRecords, HTTP_STATUS_OK);
         } catch (error) {
-            return this.handleError(error, query);
+            return this.handleError(error);
         }
     }
 
@@ -46,26 +46,22 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
         if (query.direction && !['ASC', 'DESC'].includes(query.direction.toUpperCase())) {
             throw new BadRequestException('Direction must be either ASC or DESC');
         }
-
-        if (query.status && typeof query.status !== 'string') {
-            throw new BadRequestException('Status must be a string');
-        }
     }
 
     /**
      * Fetches paginated product category records
      */
     private async fetchPaginatedRecords(query: GetRecordsPaginationQuery): Promise<PageDto<ProductCategoryDto>> {
-        const { limit, direction, cursorPointer, status } = query;
+        const { limit, direction, cursorPointer } = query;
 
-        return await this.productCategoryDatabaseService.findRecordsPagination(limit, status, direction, cursorPointer);
+        return await this.productCategoryDatabaseService.findRecordsByPagination(limit, direction, cursorPointer);
     }
 
     /**
      * Centralized error handling
      */
-    private handleError(error: unknown, query: GetRecordsPaginationQuery): never {
-        this.logger.error(`Error processing pagination request for status ${query.status}:`, error);
+    private handleError(error: unknown): never {
+        this.logger.error(`Error processing pagination request for product categories:`, error);
 
         // Re-throw known exceptions
         if (error instanceof BadRequestException) {

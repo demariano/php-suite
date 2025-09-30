@@ -5,7 +5,7 @@ import { ProductCategoryDatabaseServiceAbstract } from '@product-database-servic
 import { CreateProductCategoryCommand } from './create.command';
 
 // Constants
-const ACTIVITY_LOGS_LIMIT = 10;
+
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreateProductCategoryCommand)
@@ -80,13 +80,16 @@ export class CreateProductCategoryHandler implements ICommandHandler<CreateProdu
             );
         } else {
             // User needs approval - set to FOR_APPROVAL
-            command.productCategoryDto.status = StatusEnum.FOR_APPROVAL;
+            command.productCategoryDto.status = StatusEnum.NEW_RECORD;
             command.productCategoryDto.activityLogs = [];
             command.productCategoryDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
                 })}, Product category created by ${command.user.username} for approval`
             );
+            command.productCategoryDto.forApprovalVersion = {};
+            command.productCategoryDto.forApprovalVersion.productCategoryName =
+                command.productCategoryDto.productCategoryName;
         }
     }
 

@@ -37,8 +37,8 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
 
             GSI1PK: `PRODUCT_CLASS`,
             GSI1SK: productClassDto.productClassName,
-            GSI2PK: `PRODUCT_CLASS`,
-            GSI2SK: productClassDto.status,
+            GSI2PK: `PRODUCT_CLASS#${productClassDto.status}`,
+            GSI2SK: productClassDto.productClassName,
         };
 
         const productRecord: ProductClassDataType = await this.productClassTable.create(productClassData);
@@ -53,8 +53,7 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_CLASS`;
         productRecord.GSI1SK = record.productClassName;
-        productRecord.GSI2PK = `PRODUCT_CLASS`;
-        productRecord.GSI2SK = record.status;
+        productRecord.GSI2PK = `PRODUCT_CLASS#${record.status}`;
         productRecord.GSI2SK = record.productClassName;
         productRecord.forApprovalVersion = record.forApprovalVersion;
 
@@ -133,8 +132,7 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
 
         const records = await this.productClassTable.find(
             {
-                GSI2PK: `PRODUCT_CLASS`,
-                GSI2SK: `${status}`,
+                GSI2PK: `PRODUCT_CLASS#${status}`,
             },
             dynamoDbOption
         );
@@ -166,6 +164,24 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         this.logger.log(`Product Record hard deleted: ${JSON.stringify(productRecord)}`);
 
         return await this.convertToDto(productRecord);
+    }
+
+    async deleteAllRecords(): Promise<void> {
+        // Get all the records
+        const records = await this.productClassTable.find(
+            {
+                GSI1PK: `PRODUCT_CLASS`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        // Delete each record
+        for (const record of records) {
+            await this.productClassTable.remove(record);
+            this.logger.log(`Product Class Record deleted: ${JSON.stringify(record)}`);
+        }
     }
 
     async convertToDto(record: ProductClassDataType): Promise<ProductClassDto> {

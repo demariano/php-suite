@@ -77,6 +77,8 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
                 return await this.denyProductPriceType(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.denyDeletion(existingRecord);
+            case StatusEnum.NEW_RECORD:
+                return await this.deleteRecord(existingRecord);
             default:
                 throw new BadRequestException(
                     `Cannot approve product price type with status: ${existingRecord.status}`
@@ -116,6 +118,15 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
         existingRecord.status = StatusEnum.ACTIVE;
         const updatedRecord = await this.productPriceTypeDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<ProductPriceTypeDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Deletes a product price type when it is a new record and it was denied
+     */
+    private async deleteRecord(existingRecord: ProductPriceTypeDto): Promise<ResponseDto<ProductPriceTypeDto>> {
+        this.logger.log(`Product price type deleted: ${existingRecord.productPriceTypeId}`);
+        await this.productPriceTypeDatabaseService.deleteRecord(existingRecord);
+        return new ResponseDto<ProductPriceTypeDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**

@@ -127,7 +127,10 @@
         "Test Service Sqs",
         "Test Service",
         "Disconnect Service",
-        "Product Api Service"
+        "Product Api Service",
+        "Customer Api Service",
+        "Inventory Api Service",
+        "Stock Api Service"
       ],
       "group": {
         "kind": "build",
@@ -179,6 +182,46 @@
       "label": "Product Api Service",
       "type": "shell",
       "command": "npx nx serve product-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Customer Api Service",
+      "type": "shell",
+      "command": "npx nx serve customer-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Inventory Api Service",
+      "type": "shell",
+      "command": "npx nx serve inventory-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stock Api Service",
+      "type": "shell",
+      "command": "npx nx serve stock-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Web App",
+      "type": "shell",
+      "command": "npx nx serve web-app",
       "presentation": {
         "reveal": "always",
         "panel": "new"

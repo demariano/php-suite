@@ -11,14 +11,22 @@ export abstract class ProductCategoryDatabaseServiceAbstract {
 
     abstract updateRecord(productData: ProductCategoryDto): Promise<ProductCategoryDto>;
 
-    abstract findRecordsPagination(
+    abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<ProductCategoryDto>>;
 
+    abstract findRecordsByPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductCategoryDto>>;
+
     abstract deleteRecord(productCategoryDto: ProductCategoryDto): Promise<ProductCategoryDto>;
+
+    abstract deleteAllRecords(): Promise<void>;
 
     abstract convertToDto(record: ProductCategoryDto): Promise<ProductCategoryDto>;
 

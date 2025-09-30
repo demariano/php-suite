@@ -1,0 +1,9 @@
+{
+    "name": "customer-database-service",
+    "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "libs/backend/database-services/customer-database-service/src",
+    "projectType": "library",
+    "tags": [],
+    "// targets": "to see all targets run: nx show project customer-database-service --web",
+    "targets": {}
+}

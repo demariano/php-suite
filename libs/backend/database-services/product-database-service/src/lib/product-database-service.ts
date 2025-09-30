@@ -38,10 +38,13 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
             productClassName: productDto.productClassName,
             productDeals: productDto.productDeals,
             productUnitPrice: productDto.productUnitPrice,
+            activityLogs: productDto.activityLogs,
+            forApprovalVersion: productDto.forApprovalVersion,
+            changeReason: productDto.changeReason,
             GSI1PK: `PRODUCT`,
             GSI1SK: productDto.productName,
-            GSI2PK: `PRODUCT`,
-            GSI2SK: productDto.status,
+            GSI2PK: `PRODUCT#${productDto.status}`,
+            GSI2SK: productDto.productName,
             GSI3PK: `PRODUCT#${productDto.productCategoryId}`,
             GSI3SK: productDto.productName,
             GSI4PK: `PRODUCT#${productDto.productClassId}`,
@@ -55,23 +58,6 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
 
     async updateProductRecord(productData: ProductDto): Promise<ProductDto> {
         const productRecord: ProductDataType = await this.convertToDataType(productData);
-
-        productRecord.productName = productData.productName;
-        productRecord.criticalLevel = productData.criticalLevel;
-        productRecord.productCategoryId = productData.productCategoryId;
-        productRecord.productCategoryName = productData.productCategoryName;
-        productRecord.productClassId = productData.productClassId;
-        productRecord.productClassName = productData.productClassName;
-        productRecord.productDeals = productData.productDeals;
-        productRecord.productUnitPrice = productData.productUnitPrice;
-        productRecord.GSI1PK = `PRODUCT`;
-        productRecord.GSI1SK = productData.productName;
-        productRecord.GSI2PK = `PRODUCT`;
-        productRecord.GSI2SK = productData.status;
-        productRecord.GSI3PK = `PRODUCT#${productData.productCategoryId}`;
-        productRecord.GSI3SK = productData.productName;
-        productRecord.GSI4PK = `PRODUCT#${productData.productClassId}`;
-        productRecord.GSI4SK = productData.productName;
 
         const updatedProductRecord: ProductDataType = await this.productTable.update(productRecord);
 
@@ -100,6 +86,41 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         this.logger.log(`Product Record returned: ${JSON.stringify(productRecord)}`);
 
         return productRecord;
+    }
+
+    async findRecordByName(name: string): Promise<ProductDto | null> {
+        const record = await this.productTable.get(
+            {
+                GSI1PK: `PRODUCT`,
+                GSI1SK: `${name}`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        if (!record) {
+            return null;
+        }
+
+        return await this.convertToDto(record);
+    }
+
+    async findRecordContainingName(name: string): Promise<ProductDto[] | null> {
+        const productRecords = await this.productTable.find(
+            {
+                GSI1PK: 'PRODUCT',
+            },
+            {
+                where: 'contains(${productName}, @{productName})',
+                substitutions: {
+                    productName: name,
+                },
+                index: 'GSI1',
+            }
+        );
+
+        return await this.convertToDtoList(productRecords);
     }
 
     async findProductRecordsPagination(
@@ -222,6 +243,24 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         return await this.convertToDto(productRecord);
     }
 
+    async deleteAllRecords(): Promise<void> {
+        // Get all the records
+        const records = await this.productTable.find(
+            {
+                GSI1PK: `PRODUCT`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        // Delete each record
+        for (const record of records) {
+            await this.productTable.remove(record);
+            this.logger.log(`Product Record deleted: ${JSON.stringify(record)}`);
+        }
+    }
+
     async convertToDto(record: ProductDataType): Promise<ProductDto> {
         const dto = new ProductDto();
         dto.productId = record.productId ? record.productId : '';
@@ -235,6 +274,8 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         dto.productUnitPrice = record.productUnitPrice ? record.productUnitPrice : [];
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
+        dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = record.changeReason ? record.changeReason : '';
         return dto;
     }
 
@@ -252,6 +293,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
 
     async convertToDataType(dto: ProductDto): Promise<ProductDataType> {
         const productData: ProductDataType = {
+            productId: dto.productId, // Include productId for key construction
             status: dto.status,
             productName: dto.productName,
             criticalLevel: dto.criticalLevel,
@@ -270,6 +312,8 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
             GSI4PK: `PRODUCT#${dto.productClassId}`,
             GSI4SK: dto.productName,
             activityLogs: dto.activityLogs,
+            forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return productData;
     }

@@ -133,38 +133,16 @@ export class AppController {
         type: InitializeEnvironmentDto,
         description: 'Environment initialization configuration',
         examples: {
-            production: {
-                summary: 'Production environment setup',
+            standard: {
+                summary: 'Standard environment setup',
                 value: {
-                    environmentName: 'production',
-                    region: 'us-east-1',
-                    configurations: {
-                        databaseUrl: 'postgresql://prod-db:5432/app',
-                        cacheEnabled: true,
-                        logLevel: 'warn',
-                    },
-                    features: {
-                        enableMetrics: true,
-                        enableAuditLog: true,
-                        enableRateLimit: true,
-                    },
+                    defaultSenderEmail: 'notifications@company.com',
                 },
             },
-            staging: {
-                summary: 'Staging environment setup',
+            support: {
+                summary: 'Support environment setup',
                 value: {
-                    environmentName: 'staging',
-                    region: 'us-west-2',
-                    configurations: {
-                        databaseUrl: 'postgresql://staging-db:5432/app',
-                        cacheEnabled: false,
-                        logLevel: 'debug',
-                    },
-                    features: {
-                        enableMetrics: false,
-                        enableAuditLog: true,
-                        enableRateLimit: false,
-                    },
+                    defaultSenderEmail: 'support@company.com',
                 },
             },
         },
@@ -172,5 +150,32 @@ export class AppController {
     @UseGuards(ApiKeyHeaderGuard)
     initializeEnvironment(@Body() initializeEnvironmentDto: InitializeEnvironmentDto) {
         return this.appService.initializeEnvironment(initializeEnvironmentDto);
+    }
+
+    @Post('delete-all-records')
+    @ApiOperation({
+        summary: 'Delete all records',
+        description: 'Deletes all records from the database',
+    })
+    @ApiHeader({
+        name: 'X-API-KEY',
+        description: 'API key for service-to-service authentication',
+        required: true,
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'All records deleted successfully',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid API key',
+    })
+    @ApiResponse({
+        status: 401,
+        description: 'Unauthorized - Invalid API key',
+    })
+    @UseGuards(ApiKeyHeaderGuard)
+    deleteAllRecords() {
+        return this.appService.deleteAllRecords();
     }
 }

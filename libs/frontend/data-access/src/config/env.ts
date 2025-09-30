@@ -1,6 +1,7 @@
 export const ENV_KEYS = [
     'API_AUTHENTICATION_URL',
     'API_USER_URL',
+    'API_PRODUCT_URL',
     'BYPASS_AUTH',
     'LOCALSTACK_STATUS',
     'WEBSOCKET_URL',
@@ -10,6 +11,7 @@ export const ENV_KEYS = [
     'AWS_SECRET_ID',
     'S3_NX_TEMPLATE2_DEV_DATA',
     'NODE_ENV',
+    'BYPASS_AUTH',
 ] as const;
 
 export type EnvVariables = {

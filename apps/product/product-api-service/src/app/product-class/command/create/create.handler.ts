@@ -5,7 +5,7 @@ import { ProductClassDatabaseServiceAbstract } from '@product-database-service';
 import { CreateProductClassCommand } from './create.command';
 
 // Constants
-const ACTIVITY_LOGS_LIMIT = 10;
+
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreateProductClassCommand)
@@ -78,13 +78,15 @@ export class CreateProductClassHandler implements ICommandHandler<CreateProductC
             );
         } else {
             // User needs approval - set to FOR_APPROVAL
-            command.productClassDto.status = StatusEnum.FOR_APPROVAL;
+            command.productClassDto.status = StatusEnum.NEW_RECORD;
             command.productClassDto.activityLogs = [];
             command.productClassDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
                 })}, Product class created by ${command.user.username} for approval`
             );
+            command.productClassDto.forApprovalVersion = {};
+            command.productClassDto.forApprovalVersion.productClassName = command.productClassDto.productClassName;
         }
     }
 

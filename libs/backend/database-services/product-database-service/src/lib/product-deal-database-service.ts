@@ -57,8 +57,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_DEAL`;
         productRecord.GSI1SK = record.productDealName;
-        productRecord.GSI2PK = `PRODUCT_DEAL`;
-        productRecord.GSI2SK = record.status;
+        productRecord.GSI2PK = `PRODUCT_DEAL#${record.status}`;
         productRecord.GSI2SK = record.productDealName;
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
@@ -137,8 +136,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
 
         const records = await this.productDealTable.find(
             {
-                GSI2PK: `PRODUCT_DEAL`,
-                GSI2SK: `${status}`,
+                GSI2PK: `PRODUCT_DEAL#${status}`,
             },
             dynamoDbOption
         );
@@ -170,6 +168,24 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         this.logger.log(`Product Record hard deleted: ${JSON.stringify(productRecord)}`);
 
         return await this.convertToDto(productRecord);
+    }
+
+    async deleteAllRecords(): Promise<void> {
+        // Get all the records
+        const records = await this.productDealTable.find(
+            {
+                GSI1PK: `PRODUCT_DEAL`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        // Delete each record
+        for (const record of records) {
+            await this.productDealTable.remove(record);
+            this.logger.log(`Product Deal Record deleted: ${JSON.stringify(record)}`);
+        }
     }
 
     async convertToDto(record: ProductDealDataType): Promise<ProductDealDto> {

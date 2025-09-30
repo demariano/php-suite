@@ -82,13 +82,16 @@ export class CreateProductPriceTypeHandler implements ICommandHandler<CreateProd
             );
         } else {
             // User needs approval - set to FOR_APPROVAL
-            command.productPriceTypeDto.status = StatusEnum.FOR_APPROVAL;
+            command.productPriceTypeDto.status = StatusEnum.NEW_RECORD;
             command.productPriceTypeDto.activityLogs = [];
             command.productPriceTypeDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
                 })}, Product price type created by ${command.user.username} for approval`
             );
+            command.productPriceTypeDto.forApprovalVersion = {};
+            command.productPriceTypeDto.forApprovalVersion.productPriceTypeName =
+                command.productPriceTypeDto.productPriceTypeName;
         }
     }
 

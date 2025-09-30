@@ -39,7 +39,7 @@ export * from './lib/configuration/configuration/update.configuration.dto';
 //initialize environment
 export * from './lib/initialization/initialization.dto';
 //ProductSchema
-export * from './lib/product/enums/status.enum';
+export * from './lib/enums/status.enum';
 export * from './lib/product/product.category/create.product.category.dto';
 export * from './lib/product/product.category/product.category.dto';
 export * from './lib/product/product.class/create.product.class.dto';
@@ -51,5 +51,28 @@ export * from './lib/product/product.price.type/product.price.type.dto';
 export * from './lib/product/product.unit/create.product.unit.dto';
 export * from './lib/product/product.unit/product.unit.dto';
 export * from './lib/product/product/create.product.dto';
+export * from './lib/product/product/product.deal.details.dto';
 export * from './lib/product/product/product.dto';
 export * from './lib/product/product/product.filter.dto';
+export * from './lib/product/product/product.unit.price.dto';
+
+//CustomerSchema
+export * from './lib/customer/area/area.dto';
+export * from './lib/customer/area/create.area.dto';
+export * from './lib/customer/customer.classification/create.customer.classification.dto';
+export * from './lib/customer/customer.classification/customer.classification.dto';
+export * from './lib/customer/customer.type/create.customer.type.dto';
+export * from './lib/customer/customer.type/customer.type.dto';
+export * from './lib/customer/customer/create.customer.dto';
+export * from './lib/customer/customer/customer.dto';
+export * from './lib/customer/customer/customer.filter.dto';
+export * from './lib/customer/terms/create.terms.dto';
+export * from './lib/customer/terms/terms.dto';
+export * from './lib/customer/town/create.town.dto';
+export * from './lib/customer/town/town.dto';
+
+//StockSchema
+export * from './lib/stock/stock.type/create.stock.type.dto';
+export * from './lib/stock/stock.type/stock.type.dto';
+export * from './lib/stock/stock/create.stock.dto';
+export * from './lib/stock/stock/stock.dto';

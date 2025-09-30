@@ -3,6 +3,12 @@
     "version": "0.0.0",
     "license": "MIT",
     "scripts": {
+    "build-stock-api-service": "nx build stock-api-service --skip-nx-cache --configuration=production",
+    "post-build-stock-api-service": "nx build-serverless-files stock-api-service",
+    "build-inventory-api-service": "nx build inventory-api-service --skip-nx-cache --configuration=production",
+    "post-build-inventory-api-service": "nx build-serverless-files inventory-api-service",
+    "build-customer-api-service": "nx build customer-api-service --skip-nx-cache --configuration=production",
+    "post-build-customer-api-service": "nx build-serverless-files customer-api-service",
     "build-product-api-service": "nx build product-api-service --skip-nx-cache --configuration=production",
     "post-build-product-api-service": "nx build-serverless-files product-api-service",
     "build-disconnect-service": "nx build disconnect-service --skip-nx-cache --configuration=production",

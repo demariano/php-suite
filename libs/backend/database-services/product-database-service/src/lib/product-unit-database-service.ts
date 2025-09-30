@@ -37,8 +37,8 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
 
             GSI1PK: `PRODUCT_UNIT`,
             GSI1SK: productUnitDto.productUnitName,
-            GSI2PK: `PRODUCT_UNIT`,
-            GSI2SK: productUnitDto.status,
+            GSI2PK: `PRODUCT_UNIT#${productUnitDto.status}`,
+            GSI2SK: productUnitDto.productUnitName,
         };
 
         const productRecord: ProductUnitDataType = await this.productUnitTable.create(productUnitData);
@@ -53,8 +53,8 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         productRecord.status = record.status;
         productRecord.GSI1PK = `PRODUCT_UNIT`;
         productRecord.GSI1SK = record.productUnitName;
-        productRecord.GSI2PK = `PRODUCT_UNIT`;
-        productRecord.GSI2SK = record.status;
+        productRecord.GSI2PK = `PRODUCT_UNIT#${record.status}`;
+        productRecord.GSI2SK = record.productUnitName;
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
 
@@ -134,7 +134,6 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         const records = await this.productUnitTable.find(
             {
                 GSI2PK: `PRODUCT_UNIT`,
-                GSI2SK: `${status}`,
             },
             dynamoDbOption
         );
@@ -166,6 +165,24 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         this.logger.log(`Product Record hard deleted: ${JSON.stringify(productRecord)}`);
 
         return await this.convertToDto(productRecord);
+    }
+
+    async deleteAllRecords(): Promise<void> {
+        // Get all the records
+        const records = await this.productUnitTable.find(
+            {
+                GSI1PK: `PRODUCT_UNIT`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        // Delete each record
+        for (const record of records) {
+            await this.productUnitTable.remove(record);
+            this.logger.log(`Product Unit Record deleted: ${JSON.stringify(record)}`);
+        }
     }
 
     async convertToDto(record: ProductUnitDataType): Promise<ProductUnitDto> {

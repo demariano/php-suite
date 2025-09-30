@@ -74,6 +74,8 @@ export class DenyProductDealHandler implements ICommandHandler<DenyProductDealCo
                 return await this.denyProductDeal(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.denyDeletion(existingRecord);
+            case StatusEnum.NEW_RECORD:
+                return await this.deleteRecord(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve product deal with status: ${existingRecord.status}`);
         }
@@ -109,6 +111,15 @@ export class DenyProductDealHandler implements ICommandHandler<DenyProductDealCo
         existingRecord.status = StatusEnum.ACTIVE;
         const updatedRecord = await this.productDealDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<ProductDealDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Deletes a product deal when it is a new record and it was denied
+     */
+    private async deleteRecord(existingRecord: ProductDealDto): Promise<ResponseDto<ProductDealDto>> {
+        this.logger.log(`Product deal deleted: ${existingRecord.productDealId}`);
+        await this.productDealDatabaseService.deleteRecord(existingRecord);
+        return new ResponseDto<ProductDealDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**

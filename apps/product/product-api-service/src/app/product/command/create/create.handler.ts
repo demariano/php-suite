@@ -1,4 +1,5 @@
 import { ErrorResponseDto, ProductDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductDatabaseServiceAbstract } from '@product-database-service';

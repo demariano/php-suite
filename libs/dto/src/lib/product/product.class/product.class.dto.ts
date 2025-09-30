@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { StatusEnum } from '../enums/status.enum';
+import { StatusEnum } from '../../enums/status.enum';
 export class ProductClassDto {
     @ApiProperty()
     productClassId!: string;

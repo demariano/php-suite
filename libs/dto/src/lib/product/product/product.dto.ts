@@ -1,5 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { StatusEnum } from '../enums/status.enum';
+import { StatusEnum } from '../../enums/status.enum';
+import { ProductDealDetailsDto } from './product.deal.details.dto';
+import { ProductUnitPriceDto } from './product.unit.price.dto';
 export class ProductDto {
     @ApiProperty({ enum: StatusEnum })
     status?: StatusEnum;
@@ -25,12 +27,24 @@ export class ProductDto {
     @ApiProperty()
     productClassName?: string;
 
-    @ApiProperty()
-    productDeals?: any;
+    @ApiProperty({
+        type: [ProductDealDetailsDto],
+        isArray: true,
+    })
+    productDeals?: ProductDealDetailsDto[];
 
-    @ApiProperty()
-    productUnitPrice?: any;
+    @ApiProperty({
+        type: [ProductUnitPriceDto],
+        isArray: true,
+    })
+    productUnitPrice?: ProductUnitPriceDto[];
 
     @ApiProperty()
     activityLogs?: string[];
+
+    @ApiProperty()
+    forApprovalVersion?: Record<string, unknown>;
+
+    @ApiProperty()
+    changeReason?: string;
 }

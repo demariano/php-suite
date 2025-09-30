@@ -78,13 +78,17 @@ export class CreateProductDealHandler implements ICommandHandler<CreateProductDe
             );
         } else {
             // User needs approval - set to FOR_APPROVAL
-            command.productDealDto.status = StatusEnum.FOR_APPROVAL;
+            command.productDealDto.status = StatusEnum.NEW_RECORD;
             command.productDealDto.activityLogs = [];
             command.productDealDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
                 })}, Product deal created by ${command.user.username} for approval`
             );
+            command.productDealDto.forApprovalVersion = {};
+            command.productDealDto.forApprovalVersion.productDealName = command.productDealDto.productDealName;
+            command.productDealDto.forApprovalVersion.additionalQty = command.productDealDto.additionalQty;
+            command.productDealDto.forApprovalVersion.minQty = command.productDealDto.minQty;
         }
     }
 

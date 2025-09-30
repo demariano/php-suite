@@ -31,6 +31,8 @@
                 "libs/backend/database-services/configuration-database-service/src/index.ts"
             ],
             "@configuration-lib": ["libs/backend/configuration-lib/src/index.ts"],
+            "@customer-database-service": ["libs/backend/database-services/customer-database-service/src/index.ts"],
+            "@data-access": ["libs/frontend/data-access/src/index.ts"],
             "@data-access/*": ["libs/frontend/data-access/src/*"],
             "@dto": ["libs/dto/src/index.ts"],
             "@dynamo-db-lib": ["libs/backend/dynamo-db-lib/src/index.ts"],
@@ -39,6 +41,7 @@
             ],
             "@message-queue-lib": ["libs/backend/message-queue-lib/src/index.ts"],
             "@product-database-service": ["libs/backend/database-services/product-database-service/src/index.ts"],
+            "@inventory-database-service": ["libs/backend/database-services/inventory-database-service/src/index.ts"],
             "@ui-config": ["libs/frontend/ui-config/src/index.ts"],
             "@ui-config/*": ["libs/frontend/ui-config/src/*"],
             "@user-database-service": ["libs/backend/database-services/user-database-service/src/index.ts"],
