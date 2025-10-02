@@ -157,7 +157,7 @@ class ProductUnitApi extends AxiosConfig {
         return await this.axiosInstance.put(url, productUnit);
     };
 
-    public deleteProductUnit = async (id: string, userRole?: string): Promise<void> => {
+    public deleteProductUnit = async (unitObject: ProductUnitDto, userRole?: string): Promise<void> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -167,9 +167,12 @@ class ProductUnitApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/product-units/${id}?${queryString}` : `/product-units/${id}`;
+        const url = queryString
+            ? `/product-units/${unitObject.productUnitId}?${queryString}`
+            : `/product-units/${unitObject.productUnitId}`;
 
-        return await this.axiosInstance.delete(url);
+        // Send the entire unit object in the request body
+        return await this.axiosInstance.delete(url, { data: unitObject });
     };
 
     public approveProductUnit = async (id: string, userRole?: string): Promise<ProductUnitDto> => {

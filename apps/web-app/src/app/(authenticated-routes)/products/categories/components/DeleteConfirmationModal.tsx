@@ -1,6 +1,7 @@
 'use client';
 
 import { ProductCategoryDto } from '@data-access/index';
+import { useEffect } from 'react';
 
 interface DeleteConfirmationModalProps {
   show: boolean;
@@ -15,35 +16,130 @@ export default function DeleteConfirmationModal({
   onConfirm, 
   onCancel 
 }: DeleteConfirmationModalProps) {
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && show) {
+        onCancel();
+      }
+    };
+
+    if (show) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [show, onCancel]);
+
   if (!show || !category) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-2xl">
-        <div className="flex items-center mb-4">
-          <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mr-3">
-            <span className="text-xl text-red-600">⚠️</span>
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.4)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1001,
+      padding: '16px'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '24px',
+        width: '100%',
+        maxWidth: '400px',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          marginBottom: '16px'
+        }}>
+          <div style={{
+            width: '40px',
+            height: '40px',
+            backgroundColor: '#fef2f2',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: '12px'
+          }}>
+            <span style={{ fontSize: '20px', color: '#dc2626' }}>⚠️</span>
           </div>
-          <h3 className="text-lg font-semibold text-gray-800 m-0">
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#1f2937',
+            margin: 0
+          }}>
             Delete Category
           </h3>
         </div>
 
-        <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+        <p style={{
+          fontSize: '14px',
+          color: '#6b7280',
+          marginBottom: '24px',
+          lineHeight: '1.5'
+        }}>
           Are you sure you want to delete <strong>&quot;{category.productCategoryName}&quot;</strong>? 
           This action cannot be undone.
         </p>
 
-        <div className="flex justify-end gap-3">
+        <div style={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          gap: '12px'
+        }}>
           <button
             onClick={onCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            style={{
+              padding: '10px 20px',
+              backgroundColor: 'transparent',
+              color: '#6b7280',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f9fafb';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
-            className="px-5 py-2.5 bg-red-600 text-white border-none rounded-md cursor-pointer text-sm font-medium hover:bg-red-700 transition-colors duration-200"
+            style={{
+              padding: '10px 20px',
+              backgroundColor: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#b91c1c';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = '#dc2626';
+            }}
           >
             Delete
           </button>

@@ -178,7 +178,9 @@ export class AppService {
         const productData = new ProductDto();
         productData.productName = 'Product 1';
         productData.productCategoryId = productCategoryRecord1.productCategoryId;
+        productData.productCategoryName = productCategoryRecord1.productCategoryName;
         productData.productClassId = productClassRecord1.productClassId;
+        productData.productClassName = productClassRecord1.productClassName;
         productData.status = StatusEnum.ACTIVE;
 
         const productDealDetails1 = new ProductDealDetailsDto();
@@ -219,7 +221,9 @@ export class AppService {
         const productData2 = new ProductDto();
         productData2.productName = 'Product 2';
         productData2.productCategoryId = productCategoryRecord2.productCategoryId;
+        productData2.productCategoryName = productCategoryRecord2.productCategoryName;
         productData2.productClassId = productClassRecord2.productClassId;
+        productData2.productClassName = productClassRecord2.productClassName;
         productData2.status = StatusEnum.ACTIVE;
 
         const productDealDetails3 = new ProductDealDetailsDto();

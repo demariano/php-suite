@@ -574,6 +574,13 @@ export class ProductCategoryController {
         enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
         example: 'ADMIN',
     })
+    @ApiQuery({
+        name: 'name',
+        type: String,
+        required: false,
+        description: 'Filter by product category name',
+        example: 'Electronics',
+    })
     @ApiResponse({
         status: 200,
         description: 'Paginated list of product categories',
@@ -622,11 +629,14 @@ export class ProductCategoryController {
         @Query('direction') direction: string,
         @Query('cursorPointer') cursorPointer: string,
         @Query('status') status: string,
-        @Query('userRole') userRole: string
+        @Query('userRole') userRole: string,
+        @Query('name') name: string
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer));
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
+        );
     }
 
     @Get(':id')

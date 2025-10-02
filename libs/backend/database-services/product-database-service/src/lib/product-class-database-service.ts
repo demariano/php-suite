@@ -148,7 +148,8 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<ProductClassDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -156,6 +157,7 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         const records = await this.productClassTable.find(
             {
                 GSI2PK: `PRODUCT_CLASS#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );

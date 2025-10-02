@@ -20,7 +20,8 @@ export abstract class ProductDealDatabaseServiceAbstract {
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<ProductDealDto>>;
 
     abstract findRecordsByPagination(

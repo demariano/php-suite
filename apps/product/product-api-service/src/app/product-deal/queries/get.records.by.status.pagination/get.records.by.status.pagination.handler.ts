@@ -52,13 +52,14 @@ export class GetRecordsByStatusPaginationHandler implements IQueryHandler<GetRec
      * Fetches paginated product deal records
      */
     private async fetchPaginatedRecords(query: GetRecordsByStatusPaginationQuery): Promise<PageDto<ProductDealDto>> {
-        const { limit, direction, cursorPointer, status } = query;
+        const { limit, direction, cursorPointer, status, name } = query;
 
         return await this.productDealDatabaseService.findRecordsByStatusPagination(
             limit,
             status,
             direction,
-            cursorPointer
+            cursorPointer,
+            name
         );
     }
 

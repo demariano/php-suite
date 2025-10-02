@@ -9,8 +9,8 @@ class ProductDealApi extends AxiosConfig {
     public getProductDeals = async (
         limit = 10,
         status?: string,
-        direction?: 'next' | 'prev',
-        cursorPointer?: any,
+        direction?: string,
+        cursorPointer?: string,
         userRole?: string
     ): Promise<ProductDealsResponse> => {
         const params = new URLSearchParams({
@@ -40,9 +40,10 @@ class ProductDealApi extends AxiosConfig {
     public getProductDealsByStatus = async (
         limit = 10,
         status: string,
-        direction?: 'next' | 'prev',
-        cursorPointer?: any,
-        userRole?: string
+        direction?: string,
+        cursorPointer?: string,
+        userRole?: string,
+        name?: string
     ): Promise<ProductDealsResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -61,7 +62,11 @@ class ProductDealApi extends AxiosConfig {
             params.append('userRole', userRole);
         }
 
-        return await this.axiosInstance.get(`/product-deals/status/${status}?${params.toString()}`);
+        if (name) {
+            params.append('name', name);
+        }
+
+        return await this.axiosInstance.get(`/product-deals/status?${params.toString()}`);
     };
 
     public getProductDealById = async (id: string, userRole?: string): Promise<ProductDealDto> => {

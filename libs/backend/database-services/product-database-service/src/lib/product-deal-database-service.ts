@@ -39,8 +39,8 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
 
             GSI1PK: `PRODUCT_DEAL`,
             GSI1SK: productDealDto.productDealName,
-            GSI2PK: `PRODUCT_DEAL`,
-            GSI2SK: productDealDto.status,
+            GSI2PK: `PRODUCT_DEAL#${productDealDto.status}`,
+            GSI2SK: productDealDto.productDealName,
         };
 
         const productRecord: ProductDealDataType = await this.productDealTable.create(productDealData);
@@ -152,7 +152,8 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<ProductDealDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -160,6 +161,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         const records = await this.productDealTable.find(
             {
                 GSI2PK: `PRODUCT_DEAL#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );

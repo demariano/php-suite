@@ -23,7 +23,9 @@ export class DeleteProductDealHandler implements ICommandHandler<DeleteProductDe
 
         try {
             // Validate record exists
-            await this.validateProductDealExists(command.productDealDto.productDealId);
+            const existingRecord = await this.validateProductDealExists(command.productDealDto.productDealId);
+
+            command.productDealDto = existingRecord;
 
             // Check user authorization and determine action
             const hasDeletePermission = this.hasDeletePermission(command.user.roles);
@@ -41,13 +43,15 @@ export class DeleteProductDealHandler implements ICommandHandler<DeleteProductDe
     /**
      * Validates that the product deal record exists
      */
-    private async validateProductDealExists(productDealId: string): Promise<void> {
+    private async validateProductDealExists(productDealId: string): Promise<ProductDealDto> {
         const existingRecord = await this.productDealDatabaseService.findRecordById(productDealId);
 
         if (!existingRecord) {
             this.logger.warn(`Product deal not found: ${productDealId}`);
             throw new NotFoundException(`Product deal record not found for id ${productDealId}`);
         }
+
+        return existingRecord;
     }
 
     /**
@@ -77,6 +81,11 @@ export class DeleteProductDealHandler implements ICommandHandler<DeleteProductDe
     private async performSoftDelete(command: DeleteProductDealCommand): Promise<ResponseDto<ProductDealDto>> {
         // Update status and add activity log
         command.productDealDto.status = StatusEnum.FOR_DELETION;
+
+        if (!command.productDealDto.activityLogs) {
+            command.productDealDto.activityLogs = [];
+        }
+
         command.productDealDto.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',

@@ -44,9 +44,37 @@ export default function CategoryForm({
     <form onSubmit={handleSubmit}>
       {/* Success message */}
       {successMessage && (
-        <div className="bg-green-50 border border-green-200 rounded-md p-3 mb-4 flex items-center gap-2">
-          <span className="text-green-600 text-base">✓</span>
-          <span className="text-green-800 text-sm">
+        <div style={{
+          backgroundColor: '#dcfce7',
+          border: '2px solid #16a34a',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          animation: 'pulse 2s infinite'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            backgroundColor: '#16a34a',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}>
+            ✓
+          </div>
+          <span style={{
+            color: '#166534',
+            fontSize: '14px',
+            fontWeight: '600'
+          }}>
             {successMessage}
           </span>
         </div>
@@ -55,9 +83,37 @@ export default function CategoryForm({
       {/* Pending approval or deletion warning */}
       {!isCreateMode && selectedCategory && 
        (selectedCategory.status === StatusEnum.FOR_APPROVAL || selectedCategory.status === StatusEnum.NEW_RECORD || selectedCategory.status === StatusEnum.FOR_DELETION) && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-          <span className="text-yellow-600 text-base">⚠️</span>
-          <span className="text-yellow-800 text-sm">
+        <div style={{
+          backgroundColor: '#fef3c7',
+          border: '2px solid #f59e0b',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          animation: 'pulse 2s infinite'
+        }}>
+          <div style={{
+            width: '24px',
+            height: '24px',
+            backgroundColor: '#f59e0b',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '14px',
+            fontWeight: 'bold'
+          }}>
+            ⚠
+          </div>
+          <span style={{
+            color: '#92400e',
+            fontSize: '14px',
+            fontWeight: '600'
+          }}>
             {selectedCategory.status === StatusEnum.FOR_DELETION 
               ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
               : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
@@ -65,42 +121,140 @@ export default function CategoryForm({
         </div>
       )}
       
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Category Name
-        </label>
-        <input
-          type="text"
-          name="productCategoryName"
-          defaultValue={isCreateMode ? '' : selectedCategory?.productCategoryName || ''}
-          placeholder={isCreateMode ? 'Enter category name' : ''}
-          className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          required
-        />
-      </div>
-      
-      {!isCreateMode && selectedCategory && (
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Status
-          </label>
-          <div className="px-3 py-2.5 border border-gray-300 rounded-md text-sm bg-gray-50">
-            {selectedCategory.status || 'ACTIVE'}
+      {/* Record Fields Container */}
+      <div style={{
+        backgroundColor: '#f8fafc',
+        border: '2px solid #e2e8f0',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          marginBottom: '16px'
+        }}>
+          <div style={{
+            width: '20px',
+            height: '20px',
+            backgroundColor: '#3b82f6',
+            borderRadius: '4px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            fontSize: '12px',
+            fontWeight: 'bold'
+          }}>
+            📋
           </div>
+          <h3 style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#1f2937',
+            margin: 0
+          }}>
+            Record Details
+          </h3>
         </div>
-      )}
+
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{
+            display: 'block',
+            fontSize: '14px',
+            fontWeight: '600',
+            color: '#374151',
+            marginBottom: '8px'
+          }}>
+            Category Name
+          </label>
+          <input
+            type="text"
+            name="productCategoryName"
+            defaultValue={isCreateMode ? '' : selectedCategory?.productCategoryName || ''}
+            placeholder={isCreateMode ? 'Enter category name' : ''}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              border: '2px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              outline: 'none',
+              backgroundColor: 'white',
+              transition: 'all 0.2s ease'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#3b82f6';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#d1d5db';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+            required
+          />
+        </div>
+        
+        {!isCreateMode && selectedCategory && (
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Status
+            </label>
+            <div style={{
+              padding: '12px 16px',
+              border: '2px solid #d1d5db',
+              borderRadius: '8px',
+              fontSize: '14px',
+              backgroundColor: '#f9fafb',
+              color: '#6b7280',
+              fontWeight: '500'
+            }}>
+              {selectedCategory.status || 'ACTIVE'}
+            </div>
+          </div>
+        )}
+      </div>
 
       <div className="flex justify-between items-center mt-6">
         {!isCreateMode && (
           <button
             type="button"
-            onClick={onDelete}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete();
+            }}
             disabled={selectedCategory?.status !== StatusEnum.ACTIVE}
-            className={`px-5 py-2.5 border rounded-md text-sm font-medium transition-all duration-200 ${
-              selectedCategory?.status !== StatusEnum.ACTIVE
-                ? 'bg-transparent text-gray-400 border-gray-300 cursor-not-allowed opacity-50'
-                : 'bg-transparent text-red-600 border-red-600 cursor-pointer hover:bg-red-50'
-            }`}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: selectedCategory?.status !== StatusEnum.ACTIVE ? 'transparent' : '#dc2626',
+              color: selectedCategory?.status !== StatusEnum.ACTIVE ? '#9ca3af' : 'white',
+              border: selectedCategory?.status !== StatusEnum.ACTIVE ? '1px solid #d1d5db' : 'none',
+              borderRadius: '6px',
+              cursor: selectedCategory?.status !== StatusEnum.ACTIVE ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease',
+              opacity: selectedCategory?.status !== StatusEnum.ACTIVE ? 0.5 : 1
+            }}
+            onMouseEnter={(e) => {
+              if (selectedCategory?.status === StatusEnum.ACTIVE) {
+                e.currentTarget.style.backgroundColor = '#b91c1c';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (selectedCategory?.status === StatusEnum.ACTIVE) {
+                e.currentTarget.style.backgroundColor = '#dc2626';
+              }
+            }}
           >
             Delete
           </button>
@@ -117,11 +271,28 @@ export default function CategoryForm({
           <button
             type="submit"
             disabled={!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE}
-            className={`px-5 py-2.5 border-none rounded-md cursor-pointer text-sm font-medium transition-all duration-200 ${
-              (!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE)
-                ? 'bg-gray-400 text-white cursor-not-allowed opacity-70'
-                : 'bg-gray-800 text-white hover:bg-gray-900'
-            }`}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: (!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE) ? '#9ca3af' : '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: (!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'all 0.2s ease',
+              opacity: (!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE) ? 0.7 : 1
+            }}
+            onMouseEnter={(e) => {
+              if (isCreateMode || selectedCategory?.status === StatusEnum.ACTIVE) {
+                e.currentTarget.style.backgroundColor = '#2563eb';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (isCreateMode || selectedCategory?.status === StatusEnum.ACTIVE) {
+                e.currentTarget.style.backgroundColor = '#3b82f6';
+              }
+            }}
           >
             {isCreateMode ? 'Create Category' : 'Save Changes'}
           </button>

@@ -2,6 +2,7 @@
 import ProductCategoryApi from './product-category.api';
 import ProductClassApi from './product-class.api';
 import ProductDealApi from './product-deal.api';
+import ProductMainApi from './product-main.api';
 import ProductPriceTypeApi from './product-price-type.api';
 import ProductUnitApi from './product-unit.api';
 
@@ -61,16 +62,28 @@ const ProductApi = {
     deleteProductDeal: ProductDealApi.deleteProductDeal.bind(ProductDealApi),
     approveProductDeal: ProductDealApi.approveProductDeal.bind(ProductDealApi),
     denyProductDeal: ProductDealApi.denyProductDeal.bind(ProductDealApi),
+
+    // Main Product methods
+    getProducts: ProductMainApi.getProducts.bind(ProductMainApi),
+    getProductsByStatus: ProductMainApi.getProductsByStatus.bind(ProductMainApi),
+    getProductById: ProductMainApi.getProductById.bind(ProductMainApi),
+    getProductsByName: ProductMainApi.getProductsByName.bind(ProductMainApi),
+    createProduct: ProductMainApi.createProduct.bind(ProductMainApi),
+    updateProduct: ProductMainApi.updateProduct.bind(ProductMainApi),
+    deleteProduct: ProductMainApi.deleteProduct.bind(ProductMainApi),
+    approveProduct: ProductMainApi.approveProduct.bind(ProductMainApi),
+    denyProduct: ProductMainApi.denyProduct.bind(ProductMainApi),
 };
 
 export default ProductApi;
 
 // Also export individual APIs for direct usage
-export { ProductCategoryApi, ProductClassApi, ProductDealApi, ProductPriceTypeApi, ProductUnitApi };
+export { ProductCategoryApi, ProductClassApi, ProductDealApi, ProductMainApi, ProductPriceTypeApi, ProductUnitApi };
 
 // Re-export types for convenience
+export type { ProductDealsResponse } from '../types/product-deal.types';
 export type { PaginatedResponse, ProductCategoriesResponse } from './product-category.api';
 export type { ProductClassesResponse } from './product-class.api';
-export type { ProductDealsResponse } from './product-deal.api';
+export type { ProductsResponse } from './product-main.api';
 export type { ProductPriceTypesResponse } from './product-price-type.api';
 export type { ProductUnitsResponse } from './product-unit.api';

@@ -374,18 +374,11 @@ export class ProductController {
         example: 'next',
     })
     @ApiQuery({
-        name: 'status',
-        type: String,
-        required: true,
-        description: 'Filter by status',
-        example: 'ACTIVE',
-    })
-    @ApiQuery({
-        name: 'lastEvaluatedKey',
+        name: 'cursorPointer',
         type: String,
         required: false,
         description: 'Cursor for pagination',
-        example: 'eyJwcm9kdWN0SWQiOiJwcm9kXzEyMzQ1Njc4OSJ9',
+        example: 'cursor_abc123',
     })
     @ApiQuery({
         name: 'userRole',
@@ -413,18 +406,124 @@ export class ProductController {
     getRecordsPagination(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
-        @Query('status') status: string,
-        @Query('lastEvaluatedKey') lastEvaluatedKey: string,
+        @Query('cursorPointer') cursorPointer: string,
         @Query('userRole') userRole: string
     ) {
-        // Note: userRole is included for Swagger consistency but not used in query endpoints
-        if (status) {
-            const query = new GetRecordsByStatusPaginationQuery(status, limit, direction, lastEvaluatedKey);
-            return this.queryBus.execute(query);
-        } else {
-            const query = new GetProductRecordsPaginationQuery(limit, direction, lastEvaluatedKey);
-            return this.queryBus.execute(query);
-        }
+        const query = new GetProductRecordsPaginationQuery(limit, direction, cursorPointer);
+        return this.queryBus.execute(query);
+    }
+
+    @Get('/status')
+    @ApiOperation({
+        summary: 'List products with pagination',
+        description: 'Retrieves a paginated list of products. Use cursor-based pagination for optimal performance.',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: false,
+        description: 'Filter by product status',
+        enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiQuery({
+        name: 'name',
+        type: String,
+        required: false,
+        description: 'Filter by product name',
+        example: 'Electronics',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Paginated list of products',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        items: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/ProductDto' },
+                        },
+                        pagination: {
+                            type: 'object',
+                            properties: {
+                                nextCursor: { type: 'string', nullable: true },
+                                prevCursor: { type: 'string', nullable: true },
+                                hasMore: { type: 'boolean' },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid pagination parameters',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 400 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        errorMessage: { type: 'string', example: 'Limit must be between 1 and 100' },
+                    },
+                },
+            },
+        },
+    })
+    getRecordsPaginationByStatus(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('userRole') userRole: string,
+        @Query('name') name: string
+    ) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
+        );
     }
 
     @Get(':id')

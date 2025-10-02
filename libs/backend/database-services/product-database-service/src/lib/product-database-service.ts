@@ -57,7 +57,10 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
     }
 
     async updateProductRecord(productData: ProductDto): Promise<ProductDto> {
+        console.log('productDataDTO:', productData);
         const productRecord: ProductDataType = await this.convertToDataType(productData);
+
+        console.log('productRecord', productRecord);
 
         const updatedProductRecord: ProductDataType = await this.productTable.update(productRecord);
 
@@ -127,7 +130,8 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<ProductDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -135,6 +139,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         const productRecords = await this.productTable.find(
             {
                 GSI2PK: `PRODUCT#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );
@@ -172,6 +177,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
             },
             dynamoDbOption
         );
+        console.log('productRecords', productRecords);
 
         const pageRecordCursorPointers = pageRecordHandler(
             productRecords,
@@ -349,6 +355,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
         };
+
         return productData;
     }
 }

@@ -95,7 +95,7 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
             dynamoDbOption
         );
 
-        console.log('Records:', records);
+     
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -149,7 +149,8 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<ProductUnitDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -157,6 +158,7 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         const records = await this.productUnitTable.find(
             {
                 GSI2PK: `PRODUCT_UNIT#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );

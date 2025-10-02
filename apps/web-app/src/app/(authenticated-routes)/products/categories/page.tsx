@@ -1,6 +1,6 @@
 'use client';
 
-import { CreateProductCategoryDto, ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { CategoryHeader, CategoryModal, CategoryTable, DeleteConfirmationModal } from './components';
 
@@ -32,7 +32,7 @@ export default function ProductCategoriesPage() {
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch categories from API
-  const fetchCategories = async (direction?: 'next' | 'prev', cursor?: any) => {
+  const fetchCategories = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -48,18 +48,21 @@ export default function ProductCategoriesPage() {
       
       let response;
       
+      // Use custom page size if provided, otherwise use state page size
+      const currentPageSize = customPageSize ?? pageSize;
+      
       // If search term exists, use search API, otherwise use regular pagination API
       if (searchTerm && searchTerm.trim() !== '') {
         response = await ProductApi.getProductCategoriesByName(
           searchTerm.trim(),
-          pageSize,
+          currentPageSize,
           direction,
           serializedCursor,
           userRole
         );
       } else {
         response = await ProductApi.getProductCategories(
-          pageSize, 
+          currentPageSize, 
           undefined, // No status filter - show all records
           direction,
           serializedCursor, 
@@ -127,13 +130,23 @@ export default function ProductCategoriesPage() {
   ];
 
   const getStatusBadge = (status: StatusEnum) => {
-    const isActive = status === StatusEnum.ACTIVE;
+    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
+    
+    let colorClasses = "";
+    if (status === StatusEnum.ACTIVE) {
+      colorClasses = "!bg-green-100 !text-green-800";
+    } else if (status === StatusEnum.FOR_APPROVAL) {
+      colorClasses = "!bg-yellow-100 !text-yellow-800";
+    } else if (status === StatusEnum.FOR_DELETION) {
+      colorClasses = "!bg-red-100 !text-red-800";
+    } else if (status === StatusEnum.NEW_RECORD) {
+      colorClasses = "!bg-blue-100 !text-blue-800";
+    } else {
+      colorClasses = "!bg-gray-100 !text-gray-600";
+    }
+    
     return (
-      <span className={`px-2 py-1 rounded-md text-xs font-medium uppercase ${
-        isActive 
-          ? 'bg-green-100 text-green-800' 
-          : 'bg-gray-100 text-gray-600'
-      }`}>
+      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
         {status}
       </span>
     );
@@ -186,6 +199,7 @@ export default function ProductCategoriesPage() {
 
   const handleCloseModal = () => {
     setShowEditModal(false);
+    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
     setSelectedCategory(null);
     setIsCreateMode(false);
     setActiveTab('details');
@@ -244,28 +258,6 @@ export default function ProductCategoriesPage() {
     }
   };
 
-  const handleCreateCategory = async (newCategory: CreateProductCategoryDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await ProductApi.createProductCategory(newCategory, userRole);
-      
-      // Refetch the categories to get the most up-to-date data
-      await fetchCategories();
-      
-      handleCloseModal();
-    } catch (error) {
-      setError('Failed to create category. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleDeleteClick = () => {
     setShowDeleteConfirm(true);
@@ -301,6 +293,16 @@ export default function ProductCategoriesPage() {
 
   const handleDeleteCancel = () => {
     setShowDeleteConfirm(false);
+  };
+
+  // Handle page size change - reset pagination and fetch fresh data
+  const handlePageSizeChange = (newPageSize: number) => {
+    setPageSize(newPageSize);
+    setNextCursor(undefined);
+    setPrevCursor(undefined);
+    setCurrentCursor(undefined);
+    // Fetch with new page size and no cursor (like initial load)
+    fetchCategories(undefined, undefined, newPageSize);
   };
   
   const handleApproveRecord = async () => {
@@ -392,39 +394,49 @@ export default function ProductCategoriesPage() {
       </div>
 
       {/* Header */}
-      <CategoryHeader
-        searchTerm={searchTerm}
-        onSearchChange={(value) => {
-          setSearchTerm(value);
-          // Reset pagination when search term changes
-          setCurrentCursor(undefined);
-          setNextCursor(undefined);
-          setPrevCursor(undefined);
-        }}
-        onRefresh={() => {
-          setSearchTerm('');
-          setCurrentCursor(undefined);
-          setNextCursor(undefined);
-          setPrevCursor(undefined);
-          fetchCategories();
-        }}
-        onCreateClick={handleCreateClick}
-      />
+      <div 
+        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
+        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
+      >
+        <CategoryHeader
+          searchTerm={searchTerm}
+          onSearchChange={(value) => {
+            setSearchTerm(value);
+            // Reset pagination when search term changes
+            setCurrentCursor(undefined);
+            setNextCursor(undefined);
+            setPrevCursor(undefined);
+          }}
+          onRefresh={() => {
+            setSearchTerm('');
+            setCurrentCursor(undefined);
+            setNextCursor(undefined);
+            setPrevCursor(undefined);
+            fetchCategories();
+          }}
+          onCreateClick={handleCreateClick}
+        />
+      </div>
 
       {/* Table */}
-      <CategoryTable
-        isLoading={isLoading}
-        tableData={tableData}
-        headers={headers}
-        searchTerm={searchTerm}
-        onRowClick={handleRowClick}
-        pageSize={pageSize}
-        onPageSizeChange={setPageSize}
-        prevCursor={prevCursor}
-        nextCursor={nextCursor}
-        onPrevious={() => fetchCategories('prev', prevCursor)}
-        onNext={() => fetchCategories('next', nextCursor)}
-      />
+      <div 
+        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
+        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
+      >
+        <CategoryTable
+          isLoading={isLoading}
+          tableData={tableData}
+          headers={headers}
+          searchTerm={searchTerm}
+          onRowClick={handleRowClick}
+          pageSize={pageSize}
+          onPageSizeChange={handlePageSizeChange}
+          prevCursor={prevCursor}
+          nextCursor={nextCursor}
+          onPrevious={() => fetchCategories('prev', prevCursor)}
+          onNext={() => fetchCategories('next', nextCursor)}
+        />
+      </div>
 
       {/* Edit/Create Modal */}
       <CategoryModal

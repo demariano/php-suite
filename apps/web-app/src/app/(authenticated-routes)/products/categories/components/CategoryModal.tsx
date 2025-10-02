@@ -1,6 +1,7 @@
 'use client';
 
 import { ProductCategoryDto, StatusEnum } from '@data-access/index';
+import { useEffect } from 'react';
 import CategoryForm from './CategoryForm';
 
 interface CategoryModalProps {
@@ -34,32 +35,113 @@ export default function CategoryModal({
   onApprove,
   onDeny
 }: CategoryModalProps) {
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && show) {
+        onClose();
+      }
+    };
+
+    if (show) {
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [show, onClose]);
+
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-lg max-h-[90vh] overflow-auto shadow-2xl">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 m-0">
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '8px',
+        padding: '24px',
+        width: '500px',
+        maxWidth: '90vw',
+        maxHeight: '90vh',
+        overflow: 'auto',
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '24px'
+        }}>
+          <h2 style={{
+            fontSize: '20px',
+            fontWeight: '600',
+            color: '#1f2937',
+            margin: 0
+          }}>
             {isCreateMode ? 'Create Category' : 'Edit Category'}
           </h2>
           <button
             onClick={onClose}
-            className="bg-transparent border-none text-2xl cursor-pointer text-gray-500 p-1 hover:text-gray-700"
+            style={{
+              background: 'none',
+              border: 'none',
+              fontSize: '24px',
+              cursor: 'pointer',
+              color: '#6b7280',
+              padding: '4px'
+            }}
           >
             ×
           </button>
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-gray-200 mb-5">
+        <div style={{
+          display: 'flex',
+          borderBottom: '2px solid #e5e7eb',
+          marginBottom: '20px',
+          backgroundColor: '#f8fafc',
+          borderRadius: '8px 8px 0 0',
+          padding: '4px'
+        }}>
           <button
             onClick={() => onTabChange('details')}
-            className={`px-4 py-2.5 bg-transparent border-none cursor-pointer text-sm transition-colors duration-200 ${
-              activeTab === 'details' 
-                ? 'text-gray-800 font-semibold border-b-2 border-gray-800 -mb-px' 
-                : 'text-gray-500 font-normal hover:text-gray-700'
-            }`}
+            style={{
+              padding: '12px 20px',
+              backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
+              color: activeTab === 'details' ? '#1f2937' : '#6b7280',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: activeTab === 'details' ? '600' : '500',
+              transition: 'all 0.2s ease',
+              boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
+              marginRight: '4px'
+            }}
+            onMouseEnter={(e) => {
+              if (activeTab !== 'details') {
+                e.currentTarget.style.backgroundColor = '#f1f5f9';
+                e.currentTarget.style.color = '#374151';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (activeTab !== 'details') {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = '#6b7280';
+              }
+            }}
           >
             Details
           </button>
@@ -67,11 +149,31 @@ export default function CategoryModal({
           {!isCreateMode && selectedCategory && (
             <button
               onClick={() => onTabChange('approval')}
-              className={`px-4 py-2.5 bg-transparent border-none cursor-pointer text-sm transition-colors duration-200 ${
-                activeTab === 'approval' 
-                  ? 'text-gray-800 font-semibold border-b-2 border-gray-800 -mb-px' 
-                  : 'text-gray-500 font-normal hover:text-gray-700'
-              }`}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
+                color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: activeTab === 'approval' ? '600' : '500',
+                transition: 'all 0.2s ease',
+                boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
+                marginRight: '4px'
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== 'approval') {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#374151';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== 'approval') {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#6b7280';
+                }
+              }}
             >
               Approval Version
             </button>
@@ -80,11 +182,30 @@ export default function CategoryModal({
           {!isCreateMode && (
             <button
               onClick={() => onTabChange('logs')}
-              className={`px-4 py-2.5 bg-transparent border-none cursor-pointer text-sm transition-colors duration-200 ${
-                activeTab === 'logs' 
-                  ? 'text-gray-800 font-semibold border-b-2 border-gray-800 -mb-px' 
-                  : 'text-gray-500 font-normal hover:text-gray-700'
-              }`}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
+                color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: activeTab === 'logs' ? '600' : '500',
+                transition: 'all 0.2s ease',
+                boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== 'logs') {
+                  e.currentTarget.style.backgroundColor = '#f1f5f9';
+                  e.currentTarget.style.color = '#374151';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== 'logs') {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = '#6b7280';
+                }
+              }}
             >
               Activity Logs
             </button>
@@ -119,33 +240,102 @@ export default function CategoryModal({
                 )}
                 
                 {selectedCategory?.forApprovalVersion ? (
-                  <div>
+                  <div style={{
+                    backgroundColor: '#f8fafc',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '12px',
+                    padding: '20px',
+                    marginBottom: '24px',
+                    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: '16px'
+                    }}>
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: '#f59e0b',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        ⏳
+                      </div>
+                      <h3 style={{
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: '#1f2937',
+                        margin: 0
+                      }}>
+                        Pending Approval Details
+                      </h3>
+                    </div>
+
                     {/* Product Category Name */}
                     {selectedCategory.forApprovalVersion.productCategoryName !== undefined && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '8px'
+                        }}>
                           Category Name
                         </label>
                         <input
                           type="text"
                           value={String(selectedCategory.forApprovalVersion.productCategoryName)}
                           readOnly
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm outline-none bg-gray-50"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: '2px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            backgroundColor: '#f9fafb',
+                            color: '#6b7280',
+                            fontWeight: '500'
+                          }}
                         />
                       </div>
                     )}
                     
                     {/* Status */}
                     {selectedCategory.forApprovalVersion.status !== undefined && (
-                      <div className="mb-6">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '8px'
+                        }}>
                           Status
                         </label>
                         <input
                           type="text"
                           value={String(selectedCategory.forApprovalVersion.status)}
                           readOnly
-                          className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm outline-none bg-gray-50"
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: '2px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            backgroundColor: '#f9fafb',
+                            color: '#6b7280',
+                            fontWeight: '500'
+                          }}
                         />
                       </div>
                     )}
@@ -158,8 +348,14 @@ export default function CategoryModal({
                       }
                       
                       return (
-                        <div key={key} className="mb-6">
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <div key={key} style={{ marginBottom: '20px' }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#374151',
+                            marginBottom: '8px'
+                          }}>
                             {/* Convert camelCase to Title Case */}
                             {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
                           </label>
@@ -167,7 +363,17 @@ export default function CategoryModal({
                             type="text"
                             value={String(value)}
                             readOnly
-                            className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm outline-none bg-gray-50"
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: '2px solid #d1d5db',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              outline: 'none',
+                              backgroundColor: '#f9fafb',
+                              color: '#6b7280',
+                              fontWeight: '500'
+                            }}
                           />
                         </div>
                       );
@@ -183,12 +389,33 @@ export default function CategoryModal({
               <div className="flex justify-between mt-6">
                 {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
                 {isAdminUser && (selectedCategory?.status === StatusEnum.FOR_APPROVAL || selectedCategory?.status === StatusEnum.NEW_RECORD || selectedCategory?.status === StatusEnum.FOR_DELETION) && (
-                  <div className="flex gap-3">
+                  <div style={{ display: 'flex', gap: '12px' }}>
                     <button
                       type="button"
                       onClick={onDeny}
                       disabled={isLoading}
-                      className="px-5 py-2.5 bg-transparent text-red-600 border border-red-600 rounded-md cursor-pointer text-sm font-medium transition-all duration-200 hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: isLoading ? '#9ca3af' : '#dc2626',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s ease',
+                        opacity: isLoading ? 0.7 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.backgroundColor = '#b91c1c';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.backgroundColor = '#dc2626';
+                        }
+                      }}
                     >
                       {isLoading ? 'Processing...' : 'Deny Changes'}
                     </button>
@@ -196,7 +423,28 @@ export default function CategoryModal({
                       type="button"
                       onClick={onApprove}
                       disabled={isLoading}
-                      className="px-5 py-2.5 bg-green-600 text-white border-none rounded-md cursor-pointer text-sm font-medium transition-all duration-200 hover:bg-green-700 disabled:opacity-70 disabled:cursor-not-allowed"
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s ease',
+                        opacity: isLoading ? 0.7 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.backgroundColor = '#2563eb';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.backgroundColor = '#3b82f6';
+                        }
+                      }}
                     >
                       {isLoading ? 'Processing...' : 'Approve Changes'}
                     </button>

@@ -453,6 +453,13 @@ export class ProductDealController {
         enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
         example: 'ADMIN',
     })
+    @ApiQuery({
+        name: 'name',
+        type: String,
+        required: false,
+        description: 'Filter by product deal name',
+        example: 'Buy 2 Get 1 Free',
+    })
     @ApiResponse({
         status: 200,
         description: 'Paginated list of product deals',
@@ -501,9 +508,12 @@ export class ProductDealController {
         @Query('direction') direction: string,
         @Query('cursorPointer') cursorPointer: string,
         @Query('status') status: string,
-        @Query('userRole') userRole: string
+        @Query('userRole') userRole: string,
+        @Query('name') name: string
     ) {
-        return this.queryBus.execute(new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer));
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
+        );
     }
 
     @Get(':id')

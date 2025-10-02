@@ -14,24 +14,56 @@ export default function CategoryHeader({
   onCreateClick
 }: CategoryHeaderProps) {
   return (
-    <div className="mb-6">
-      <h1 className="text-3xl font-bold mb-6 text-gray-800">
+    <div style={{ marginBottom: '24px' }}>
+      <h1 style={{
+        fontSize: '32px',
+        fontWeight: '700',
+        marginBottom: '24px',
+        color: '#1f2937'
+      }}>
         Categories
       </h1>
 
       {/* Search and Actions */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex gap-3 items-center">
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px',
+        flexDirection: window.innerWidth < 640 ? 'column' : 'row',
+        gap: '16px'
+      }}>
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          flexDirection: window.innerWidth < 640 ? 'column' : 'row',
+          width: window.innerWidth < 640 ? '100%' : 'auto'
+        }}>
           {/* Search Input */}
-          <div className="relative">
+          <div style={{ position: 'relative', width: window.innerWidth < 640 ? '100%' : '288px' }}>
             <input
               type="text"
               placeholder="Search by name"
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="pl-9 pr-3 py-2.5 border border-gray-300 rounded-lg text-sm w-72 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm hover:shadow-md transition-shadow duration-200"
+              style={{
+                width: '100%',
+                padding: '10px 12px 10px 36px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none',
+                backgroundColor: 'white'
+              }}
             />
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+            <div style={{
+              position: 'absolute',
+              left: '12px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: '#6b7280'
+            }}>
               🔍
             </div>
           </div>
@@ -39,7 +71,28 @@ export default function CategoryHeader({
           {/* Refresh Button */}
           <button
             onClick={onRefresh}
-            className="px-3 py-2.5 bg-white text-gray-700 border border-gray-300 rounded-lg cursor-pointer text-lg flex items-center justify-center transition-all duration-200 hover:bg-gray-50 hover:border-gray-400 shadow-sm hover:shadow-md"
+            style={{
+              padding: '10px 16px',
+              backgroundColor: 'white',
+              color: '#374151',
+              border: '1px solid #d1d5db',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              width: window.innerWidth < 640 ? '100%' : 'auto'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f9fafb';
+              e.currentTarget.style.borderColor = '#9ca3af';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'white';
+              e.currentTarget.style.borderColor = '#d1d5db';
+            }}
             title="Refresh"
           >
             ↻
@@ -49,9 +102,31 @@ export default function CategoryHeader({
         {/* Add Category Button */}
         <button 
           onClick={onCreateClick}
-          className="px-4 py-2.5 bg-blue-600 text-white border-none rounded-lg cursor-pointer text-sm font-medium flex items-center gap-1.5 hover:bg-blue-700 transition-colors duration-200 shadow-sm hover:shadow-md"
+          style={{
+            padding: '10px 16px',
+            backgroundColor: '#e5e7eb',
+            color: '#1f2937',
+            border: '2px solid #9ca3af',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            transition: 'all 0.2s ease',
+            width: window.innerWidth < 640 ? '100%' : 'auto'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = '#d1d5db';
+            e.currentTarget.style.borderColor = '#6b7280';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = '#e5e7eb';
+            e.currentTarget.style.borderColor = '#9ca3af';
+          }}
         >
-          <span className="text-lg">+</span>
+          <span style={{ fontSize: '18px' }}>+</span>
           Add Category
         </button>
       </div>

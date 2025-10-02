@@ -7,6 +7,7 @@ export {
     ProductCategoryApi,
     ProductClassApi,
     ProductDealApi,
+    ProductMainApi,
     ProductPriceTypeApi,
     ProductUnitApi,
 } from './product.api';

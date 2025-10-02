@@ -36,8 +36,8 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
             forApprovalVersion: productPriceTypeDto.forApprovalVersion,
             GSI1PK: `PRODUCT_PRICE_TYPE`,
             GSI1SK: productPriceTypeDto.productPriceTypeName,
-            GSI2PK: `PRODUCT_PRICE_TYPE`,
-            GSI2SK: productPriceTypeDto.status,
+            GSI2PK: `PRODUCT_PRICE_TYPE#${productPriceTypeDto.status}`,
+            GSI2SK: productPriceTypeDto.productPriceTypeName,
         };
 
         const productRecord: ProductPriceTypeDataType = await this.productPriceTypeTable.create(productPriceTypeData);
@@ -147,7 +147,8 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<ProductPriceTypeDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -155,6 +156,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         const records = await this.productPriceTypeTable.find(
             {
                 GSI2PK: `PRODUCT_PRICE_TYPE#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );

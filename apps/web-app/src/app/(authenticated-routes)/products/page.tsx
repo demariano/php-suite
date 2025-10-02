@@ -1,12 +1,13 @@
+'use client';
+
+import { redirect } from 'next/navigation';
+import { useEffect } from 'react';
+
 export default function ProductsPage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-semibold mb-4 text-gray-800">
-        Products
-      </h1>
-      <p className="text-gray-500 text-base">
-        Manage your product catalog and inventory.
-      </p>
-    </div>
-  );
+  useEffect(() => {
+    // Redirect to the main products page
+    redirect('/products/product');
+  }, []);
+
+  return null;
 }

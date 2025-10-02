@@ -53,7 +53,8 @@ class ProductClassApi extends AxiosConfig {
         status: string,
         direction?: string,
         cursorPointer?: string,
-        userRole?: string
+        userRole?: string,
+        name?: string
     ): Promise<ProductClassesResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -72,6 +73,10 @@ class ProductClassApi extends AxiosConfig {
         // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
+        }
+
+        if (name) {
+            params.append('name', name);
         }
 
         return await this.axiosInstance.get(`/product-classes/status?${params.toString()}`);
@@ -157,7 +162,7 @@ class ProductClassApi extends AxiosConfig {
         return await this.axiosInstance.put(url, productClass);
     };
 
-    public deleteProductClass = async (id: string, userRole?: string): Promise<void> => {
+    public deleteProductClass = async (classObject: ProductClassDto, userRole?: string): Promise<void> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -167,9 +172,12 @@ class ProductClassApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/product-classes/${id}?${queryString}` : `/product-classes/${id}`;
+        const url = queryString
+            ? `/product-classes/${classObject.productClassId}?${queryString}`
+            : `/product-classes/${classObject.productClassId}`;
 
-        return await this.axiosInstance.delete(url);
+        // Send the entire class object in the request body
+        return await this.axiosInstance.delete(url, { data: classObject });
     };
 
     public approveProductClass = async (id: string, userRole?: string): Promise<ProductClassDto> => {
