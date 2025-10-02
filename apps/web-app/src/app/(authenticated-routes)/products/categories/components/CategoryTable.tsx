@@ -37,7 +37,7 @@ export default function CategoryTable({
         </div>
       ) : (
         <table className="w-full border-collapse">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-blue-50 border-b border-gray-200">
             <tr>
               {headers.map((header, index) => (
                 <th key={header.key} className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
