@@ -91,21 +91,44 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         }
     }
 
-    async findRecordContainingName(name: string): Promise<TermsDto[] | null> {
-        const termsRecords = await this.termsTable.find(
+    async findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<TermsDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.termsTable.find(
             {
-                GSI1PK: 'TERMS',
-            },
-            {
-                where: 'contains(${termsName}, @{termsName})',
-                substitutions: {
-                    termsName: name,
+                GSI1PK: `TERMS`,
+                GSI1SK: {
+                    begins: name,
                 },
-                index: 'GSI1',
-            }
+            },
+            dynamoDbOption
         );
 
-        return await this.convertToDtoList(termsRecords);
+        console.log('Records:', records);
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordByName(name: string): Promise<TermsDto | null> {
@@ -137,7 +160,7 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         return record;
     }
 
-    async findRecordsPagination(
+    async findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -159,6 +182,36 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
             direction,
             'GSI2PK',
             'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByPagination(limit: number, direction: string, cursorPointer: string): Promise<PageDto<TermsDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.termsTable.find(
+            {
+                GSI1PK: `TERMS`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(records.next),

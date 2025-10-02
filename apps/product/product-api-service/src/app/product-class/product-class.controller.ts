@@ -10,6 +10,7 @@ import { DenyProductClassCommand } from './command/deny-record/deny.command';
 import { UpdateProductClassCommand } from './command/update/update.command';
 import { GetProductClassByIdQuery } from './queries/get.by.id/get.product.class.by.id.query';
 import { GetProductClassByNameQuery } from './queries/get.by.name/get.product.class.by.name.query';
+import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetProductClassRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @Controller('product-classes')
@@ -176,11 +177,7 @@ export class ProductClassController {
         status: 404,
         description: 'Product class not found',
     })
-    deleteRecord(
-        @Param('id') id: string,
-        @Query('userRole') userRole: string,
-        @CurrentUser() user: UserCognito
-    ) {
+    deleteRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
@@ -223,11 +220,7 @@ export class ProductClassController {
         status: 404,
         description: 'Product class not found',
     })
-    approveRecord(
-        @Param('id') id: string,
-        @Query('userRole') userRole: string,
-        @CurrentUser() user: UserCognito
-    ) {
+    approveRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
@@ -268,11 +261,7 @@ export class ProductClassController {
         status: 404,
         description: 'Product class not found',
     })
-    denyRecord(
-        @Param('id') id: string,
-        @Query('userRole') userRole: string,
-        @CurrentUser() user: UserCognito
-    ) {
+    denyRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
@@ -285,12 +274,35 @@ export class ProductClassController {
     @Get('name/:name')
     @ApiOperation({
         summary: 'Get product classes by name',
-        description: 'Retrieves product classes that contain the specified name in their class name.',
+        description:
+            'Retrieves product classes that contain the specified name in their class name with pagination support.',
     })
     @ApiParam({
         name: 'name',
         description: 'Product class name to search for',
         example: 'electronics',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to return (1-100)',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination',
+        example: 'eyJwcm9kdWN0Q2xhc3NJZCI6ImNsYXNzXzEyMzQ1Njc4OSJ9',
     })
     @ApiQuery({
         name: 'userRole',
@@ -302,12 +314,34 @@ export class ProductClassController {
     })
     @ApiResponse({
         status: 200,
-        description: 'Product classes retrieved successfully',
-        type: [ProductClassDto],
+        description: 'Product classes retrieved successfully with pagination',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/ProductClassDto' },
+                        },
+                        nextCursorPointer: { type: 'string', nullable: true },
+                        prevCursorPointer: { type: 'string', nullable: true },
+                    },
+                },
+            },
+        },
     })
-    getByName(@Param('name') name: string, @Query('userRole') userRole: string) {
+    getByName(
+        @Param('name') name: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('userRole') userRole: string
+    ) {
         // Note: userRole is included for Swagger consistency but not used in query endpoints
-        const query = new GetProductClassByNameQuery(name);
+        const query = new GetProductClassByNameQuery(name, limit, direction, cursorPointer);
         return this.queryBus.execute(query);
     }
 
@@ -332,18 +366,10 @@ export class ProductClassController {
         example: 'next',
     })
     @ApiQuery({
-        name: 'status',
-        type: String,
-        required: true,
-        description: 'Filter by status',
-        example: 'ACTIVE',
-    })
-    @ApiQuery({
-        name: 'lastEvaluatedKey',
+        name: 'cursorPointer',
         type: String,
         required: false,
         description: 'Cursor for pagination',
-        example: 'eyJwcm9kdWN0Q2xhc3NJZCI6ImNsYXNzXzEyMzQ1Njc4OSJ9',
     })
     @ApiQuery({
         name: 'userRole',
@@ -371,13 +397,109 @@ export class ProductClassController {
     getRecordsPagination(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
-        @Query('status') status: string,
-        @Query('lastEvaluatedKey') lastEvaluatedKey: string,
+        @Query('cursorPointer') cursorPointer: string,
         @Query('userRole') userRole: string
     ) {
-        // Note: userRole is included for Swagger consistency but not used in query endpoints
-        const query = new GetProductClassRecordsPaginationQuery(limit, direction, status, lastEvaluatedKey);
+        const query = new GetProductClassRecordsPaginationQuery(limit, direction, cursorPointer);
+        console.log('query', query);
         return this.queryBus.execute(query);
+    }
+
+    @Get('/status')
+    @ApiOperation({
+        summary: 'List product classes with pagination',
+        description:
+            'Retrieves a paginated list of product classes. Use cursor-based pagination for optimal performance.',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: true,
+        description: 'Filter by product class status',
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Paginated list of product classes',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        items: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/ProductClassDto' },
+                        },
+                        pagination: {
+                            type: 'object',
+                            properties: {
+                                nextCursor: { type: 'string', nullable: true },
+                                prevCursor: { type: 'string', nullable: true },
+                                hasMore: { type: 'boolean' },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid pagination parameters',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 400 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        errorMessage: { type: 'string', example: 'Limit must be between 1 and 100' },
+                    },
+                },
+            },
+        },
+    })
+    getRecordsPaginationByStatus(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('userRole') userRole: string
+    ) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer));
     }
 
     @Get(':id')
@@ -408,8 +530,6 @@ export class ProductClassController {
         description: 'Product class not found',
     })
     getById(@Param('id') id: string, @Query('userRole') userRole: string) {
-        // Note: userRole is included for Swagger consistency but not used in query endpoints
-        const query = new GetProductClassByIdQuery(id);
-        return this.queryBus.execute(query);
+        return this.queryBus.execute(new GetProductClassByIdQuery(id));
     }
 }

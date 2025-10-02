@@ -43,10 +43,6 @@ export class GetRecordsByStatusPaginationHandler implements IQueryHandler<GetRec
             throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
         }
 
-        if (query.direction && !['ASC', 'DESC'].includes(query.direction.toUpperCase())) {
-            throw new BadRequestException('Direction must be either ASC or DESC');
-        }
-
         if (query.status && typeof query.status !== 'string') {
             throw new BadRequestException('Status must be a string');
         }

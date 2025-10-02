@@ -5,7 +5,12 @@ export abstract class TownDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<TownDto | null>;
 
-    abstract findRecordContainingName(name: string): Promise<TownDto[] | null>;
+    abstract findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<TownDto>>;
 
     abstract findRecordByName(name: string): Promise<TownDto | null>;
 
@@ -13,9 +18,15 @@ export abstract class TownDatabaseServiceAbstract {
 
     abstract findRecordByStatusAndAreaId(status: string, areaId: string): Promise<TownDto[] | null>;
 
-    abstract findRecordsPagination(
+    abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<TownDto>>;
+
+    abstract findRecordsByPagination(
+        limit: number,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<TownDto>>;

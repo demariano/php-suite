@@ -1,4 +1,4 @@
-import { ProductDealDto, ResponseDto } from '@dto';
+import { PageDto, ProductDealDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { ProductDealDatabaseServiceAbstract } from '@product-database-service';
@@ -18,7 +18,7 @@ export class GetProductDealByNameHandler implements IQueryHandler<GetProductDeal
         private readonly productDealDatabaseService: ProductDealDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetProductDealByNameQuery): Promise<ResponseDto<ProductDealDto[]>> {
+    async execute(query: GetProductDealByNameQuery): Promise<ResponseDto<PageDto<ProductDealDto>>> {
         this.logger.log(`Processing get product deal request for name: ${query.name}`);
 
         try {
@@ -26,12 +26,17 @@ export class GetProductDealByNameHandler implements IQueryHandler<GetProductDeal
             this.validateNameParameter(query.name);
 
             // Fetch and validate product deal record
-            const productDealRecords = await this.fetchProductDealByName(query.name);
+            const productDealRecords = await this.fetchProductDealByName(
+                query.name,
+                query.limit,
+                query.direction,
+                query.cursorPointer
+            );
 
             this.logger.log(
-                `Product deals retrieved successfully: ${productDealRecords.length} records found for name: ${query.name}`
+                `Product deals retrieved successfully: ${productDealRecords.data.length} records found for name: ${query.name}`
             );
-            return new ResponseDto<ProductDealDto[]>(productDealRecords, HTTP_STATUS_OK);
+            return new ResponseDto<PageDto<ProductDealDto>>(productDealRecords, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -57,12 +62,22 @@ export class GetProductDealByNameHandler implements IQueryHandler<GetProductDeal
     /**
      * Fetches product deal records by name
      */
-    private async fetchProductDealByName(name: string): Promise<ProductDealDto[]> {
-        const productDealRecords = await this.productDealDatabaseService.findRecordContainingName(name);
+    private async fetchProductDealByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductDealDto>> {
+        const productDealRecords = await this.productDealDatabaseService.findRecordContainingName(
+            limit,
+            name,
+            direction,
+            cursorPointer
+        );
 
-        if (!productDealRecords || productDealRecords.length === 0) {
+        if (!productDealRecords || productDealRecords.data.length === 0) {
             this.logger.warn(`No product deals found for name: ${name}`);
-            return [];
+            return new PageDto<ProductDealDto>([], null, null);
         }
 
         return productDealRecords;

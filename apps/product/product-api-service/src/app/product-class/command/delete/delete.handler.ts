@@ -23,7 +23,8 @@ export class DeleteProductClassHandler implements ICommandHandler<DeleteProductC
 
         try {
             // Validate record exists
-            await this.validateProductClassExists(command.productClassDto.productClassId);
+            const existingRecord = await this.validateProductClassExists(command.productClassDto.productClassId);
+            command.productClassDto = existingRecord;
 
             // Check user authorization and determine action
             const hasDeletePermission = this.hasDeletePermission(command.user.roles);
@@ -41,13 +42,15 @@ export class DeleteProductClassHandler implements ICommandHandler<DeleteProductC
     /**
      * Validates that the product class record exists
      */
-    private async validateProductClassExists(productClassId: string): Promise<void> {
+    private async validateProductClassExists(productClassId: string): Promise<ProductClassDto> {
         const existingRecord = await this.productClassDatabaseService.findRecordById(productClassId);
 
         if (!existingRecord) {
             this.logger.warn(`Product class not found: ${productClassId}`);
             throw new NotFoundException(`Product class record not found for id ${productClassId}`);
         }
+
+        return existingRecord;
     }
 
     /**
@@ -77,6 +80,10 @@ export class DeleteProductClassHandler implements ICommandHandler<DeleteProductC
     private async performSoftDelete(command: DeleteProductClassCommand): Promise<ResponseDto<ProductClassDto>> {
         // Update status and add activity log
         command.productClassDto.status = StatusEnum.FOR_DELETION;
+
+        if (!command.productClassDto.activityLogs) {
+            command.productClassDto.activityLogs = [];
+        }
         command.productClassDto.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',

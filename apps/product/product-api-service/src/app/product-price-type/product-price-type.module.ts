@@ -13,6 +13,7 @@ import { UpdateProductPriceTypeHandler } from './command/update/update.handler';
 import { ProductPriceTypeController } from './product-price-type.controller';
 import { GetProductPriceTypeByIdHandler } from './queries/get.by.id/get.product.price.type.by.id.handler';
 import { GetProductPriceTypeByNameHandler } from './queries/get.by.name/get.product.price.type.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetProductPriceTypeRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 
 @Module({
@@ -38,6 +39,7 @@ import { GetProductPriceTypeRecordsPaginationHandler } from './queries/get.recor
         GetProductPriceTypeByIdHandler,
         GetProductPriceTypeByNameHandler,
         GetProductPriceTypeRecordsPaginationHandler,
+        GetRecordsByStatusPaginationHandler,
         UpdateProductPriceTypeHandler,
         DeleteProductPriceTypeHandler,
         ApproveProductPriceTypeHandler,

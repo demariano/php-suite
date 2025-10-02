@@ -88,21 +88,44 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         }
     }
 
-    async findRecordContainingName(name: string): Promise<AreaDto[] | null> {
-        const areaRecords = await this.areaTable.find(
+    async findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<AreaDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.areaTable.find(
             {
-                GSI1PK: 'AREA',
-            },
-            {
-                where: 'contains(${areaName}, @{areaName})',
-                substitutions: {
-                    areaName: name,
+                GSI1PK: `AREA`,
+                GSI1SK: {
+                    begins: name,
                 },
-                index: 'GSI1',
-            }
+            },
+            dynamoDbOption
         );
 
-        return await this.convertToDtoList(areaRecords);
+        console.log('Records:', records);
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordByName(name: string): Promise<AreaDto | null> {
@@ -134,7 +157,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         return record;
     }
 
-    async findRecordsPagination(
+    async findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -156,6 +179,36 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             direction,
             'GSI2PK',
             'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByPagination(limit: number, direction: string, cursorPointer: string): Promise<PageDto<AreaDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.areaTable.find(
+            {
+                GSI1PK: `AREA`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(records.next),

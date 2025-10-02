@@ -27,7 +27,11 @@ export class DeleteProductPriceTypeHandler implements ICommandHandler<DeleteProd
 
         try {
             // Validate record exists
-            await this.validateProductPriceTypeExists(command.productPriceTypeDto.productPriceTypeId);
+            const existingRecord = await this.validateProductPriceTypeExists(
+                command.productPriceTypeDto.productPriceTypeId
+            );
+
+            command.productPriceTypeDto = existingRecord;
 
             // Check user authorization and determine action
             const hasDeletePermission = this.hasDeletePermission(command.user.roles);
@@ -45,13 +49,15 @@ export class DeleteProductPriceTypeHandler implements ICommandHandler<DeleteProd
     /**
      * Validates that the product price type record exists
      */
-    private async validateProductPriceTypeExists(productPriceTypeId: string): Promise<void> {
+    private async validateProductPriceTypeExists(productPriceTypeId: string): Promise<ProductPriceTypeDto> {
         const existingRecord = await this.productPriceTypeDatabaseService.findRecordById(productPriceTypeId);
 
         if (!existingRecord) {
             this.logger.warn(`Product price type not found: ${productPriceTypeId}`);
             throw new NotFoundException(`Product price type record not found for id ${productPriceTypeId}`);
         }
+
+        return existingRecord;
     }
 
     /**
@@ -83,6 +89,9 @@ export class DeleteProductPriceTypeHandler implements ICommandHandler<DeleteProd
     private async performSoftDelete(command: DeleteProductPriceTypeCommand): Promise<ResponseDto<ProductPriceTypeDto>> {
         // Update status and add activity log
         command.productPriceTypeDto.status = StatusEnum.FOR_DELETION;
+        if (!command.productPriceTypeDto.activityLogs) {
+            command.productPriceTypeDto.activityLogs = [];
+        }
         command.productPriceTypeDto.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',

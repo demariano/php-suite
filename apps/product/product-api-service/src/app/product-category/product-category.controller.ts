@@ -373,6 +373,27 @@ export class ProductCategoryController {
         example: 'Electronics',
     })
     @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
         name: 'userRole',
         type: String,
         required: false,
@@ -410,10 +431,16 @@ export class ProductCategoryController {
             },
         },
     })
-    getByName(@Param('name') name: string, @Query('userRole') userRole: string) {
+    getByName(
+        @Param('name') name: string,
+        @Query('userRole') userRole: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetProductCategoryByNameQuery(name));
+        return this.queryBus.execute(new GetProductCategoryByNameQuery(name, limit, direction, cursorPointer));
     }
 
     @Get()

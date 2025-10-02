@@ -1,5 +1,5 @@
 import { CustomerClassificationDatabaseServiceAbstract } from '@customer-database-service';
-import { CustomerClassificationDto, ResponseDto } from '@dto';
+import { CustomerClassificationDto, PageDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetCustomerClassificationByNameQuery } from './get.customer.classification.by.name.query';
@@ -18,7 +18,9 @@ export class GetCustomerClassificationByNameHandler implements IQueryHandler<Get
         private readonly customerClassificationDatabaseService: CustomerClassificationDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetCustomerClassificationByNameQuery): Promise<ResponseDto<CustomerClassificationDto[]>> {
+    async execute(
+        query: GetCustomerClassificationByNameQuery
+    ): Promise<ResponseDto<PageDto<CustomerClassificationDto>>> {
         this.logger.log(`Processing get customer classifications by name request: ${query.name}`);
 
         try {
@@ -26,10 +28,17 @@ export class GetCustomerClassificationByNameHandler implements IQueryHandler<Get
             this.validateNameParameter(query.name);
 
             // Fetch customer classifications by name
-            const customerClassifications = await this.fetchCustomerClassificationsByName(query.name);
+            const customerClassifications = await this.fetchCustomerClassificationsByName(
+                query.name,
+                query.limit,
+                query.direction,
+                query.cursorPointer
+            );
 
-            this.logger.log(`Customer classifications retrieved successfully: ${customerClassifications.length} found`);
-            return new ResponseDto<CustomerClassificationDto[]>(customerClassifications, HTTP_STATUS_OK);
+            this.logger.log(
+                `Customer classifications retrieved successfully: ${customerClassifications.data.length} found`
+            );
+            return new ResponseDto<PageDto<CustomerClassificationDto>>(customerClassifications, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -51,9 +60,24 @@ export class GetCustomerClassificationByNameHandler implements IQueryHandler<Get
     /**
      * Fetches customer classifications by name
      */
-    private async fetchCustomerClassificationsByName(name: string): Promise<CustomerClassificationDto[]> {
-        const customerClassifications = await this.customerClassificationDatabaseService.findRecordContainingName(name);
-        return customerClassifications || [];
+    private async fetchCustomerClassificationsByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerClassificationDto>> {
+        const customerClassifications = await this.customerClassificationDatabaseService.findRecordContainingName(
+            limit,
+            name,
+            direction,
+            cursorPointer
+        );
+
+        if (!customerClassifications || customerClassifications.data.length === 0) {
+            return new PageDto<CustomerClassificationDto>([], null, null);
+        }
+
+        return customerClassifications;
     }
 
     /**

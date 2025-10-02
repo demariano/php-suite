@@ -145,7 +145,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         }
     }
 
-    async findRecordsPagination(
+    async findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -167,6 +167,40 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             direction,
             'GSI2PK',
             'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.customerTable.find(
+            {
+                GSI1PK: `CUSTOMER`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(records.next),

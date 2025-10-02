@@ -74,21 +74,44 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         return await this.convertToDto(record);
     }
 
-    async findRecordContainingName(name: string): Promise<ProductPriceTypeDto[] | null> {
-        const productPriceTypeRecords = await this.productPriceTypeTable.find(
+    async findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductPriceTypeDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.productPriceTypeTable.find(
             {
-                GSI1PK: 'PRODUCT_PRICE_TYPE',
-            },
-            {
-                where: 'contains(${productPriceTypeName}, @{productPriceTypeName})',
-                substitutions: {
-                    productPriceTypeName: name,
+                GSI1PK: `PRODUCT_PRICE_TYPE`,
+                GSI1SK: {
+                    begins: name,
                 },
-                index: 'GSI1',
-            }
+            },
+            dynamoDbOption
         );
 
-        return await this.convertToDtoList(productPriceTypeRecords);
+        console.log('Records:', records);
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordByName(name: string): Promise<ProductPriceTypeDto | null> {
@@ -120,7 +143,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         return record;
     }
 
-    async findRecordsPagination(
+    async findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -142,6 +165,40 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
             direction,
             'GSI2PK',
             'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductPriceTypeDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.productPriceTypeTable.find(
+            {
+                GSI1PK: `PRODUCT_PRICE_TYPE`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(records.next),

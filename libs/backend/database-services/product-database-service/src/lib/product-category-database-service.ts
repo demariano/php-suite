@@ -60,21 +60,45 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         return await this.convertToDto(updatedProductRecord);
     }
 
-    async findRecordContainingName(name: string): Promise<ProductCategoryDto[] | null> {
-        const productCategoryRecords = await this.productCategoryTable.find(
+    async findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductCategoryDto>> {
+        limit = Number(limit);
+
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.productCategoryTable.find(
             {
-                GSI1PK: 'PRODUCT_CATEGORY',
-            },
-            {
-                where: 'contains(${productCategoryName}, @{productCategoryName})',
-                substitutions: {
-                    productCategoryName: name,
+                GSI1PK: `PRODUCT_CATEGORY`,
+                GSI1SK: {
+                    begins: name,
                 },
-                index: 'GSI1',
-            }
+            },
+            dynamoDbOption
         );
 
-        return await this.convertToDtoList(productCategoryRecords);
+        console.log('Records:', records);
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordByName(name: string): Promise<ProductCategoryDto | null> {
@@ -159,6 +183,9 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<ProductCategoryDto>> {
+        console.log('Direction:', direction);
+        console.log('Cursor Pointer:', cursorPointer);
+
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
 

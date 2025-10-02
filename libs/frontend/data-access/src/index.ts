@@ -16,7 +16,18 @@ export * from './state-management';
 
 // Export types
 export * from './types/product-category.types';
+export * from './types/product-class.types';
+export * from './types/product-deal.types';
+export * from './types/product-price-type.types';
+export * from './types/product-unit.types';
 export * from './types/responseError';
+
+// Export API types
+export type { PaginatedResponse, ProductCategoriesResponse } from './api/product-category.api';
+export type { ProductClassesResponse } from './api/product-class.api';
+export type { ProductDealsResponse } from './api/product-deal.api';
+export type { ProductPriceTypesResponse } from './api/product-price-type.api';
+export type { ProductUnitsResponse } from './api/product-unit.api';
 
 // Export config
 export * from './config/constants';

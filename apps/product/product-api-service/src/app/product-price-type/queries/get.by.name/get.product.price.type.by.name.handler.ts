@@ -1,4 +1,4 @@
-import { ProductPriceTypeDto, ResponseDto } from '@dto';
+import { PageDto, ProductPriceTypeDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { ProductPriceTypeDatabaseServiceAbstract } from '@product-database-service';
@@ -18,7 +18,7 @@ export class GetProductPriceTypeByNameHandler implements IQueryHandler<GetProduc
         private readonly productPriceTypeDatabaseService: ProductPriceTypeDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetProductPriceTypeByNameQuery): Promise<ResponseDto<ProductPriceTypeDto[]>> {
+    async execute(query: GetProductPriceTypeByNameQuery): Promise<ResponseDto<PageDto<ProductPriceTypeDto>>> {
         this.logger.log(`Processing get product price type request for name: ${query.name}`);
 
         try {
@@ -26,12 +26,17 @@ export class GetProductPriceTypeByNameHandler implements IQueryHandler<GetProduc
             this.validateNameParameter(query.name);
 
             // Fetch and validate product price type record
-            const productPriceTypeRecords = await this.fetchProductPriceTypeByName(query.name);
+            const productPriceTypeRecords = await this.fetchProductPriceTypeByName(
+                query.name,
+                query.limit,
+                query.direction,
+                query.cursorPointer
+            );
 
             this.logger.log(
-                `Product price types retrieved successfully: ${productPriceTypeRecords.length} records found for name: ${query.name}`
+                `Product price types retrieved successfully: ${productPriceTypeRecords.data.length} records found for name: ${query.name}`
             );
-            return new ResponseDto<ProductPriceTypeDto[]>(productPriceTypeRecords, HTTP_STATUS_OK);
+            return new ResponseDto<PageDto<ProductPriceTypeDto>>(productPriceTypeRecords, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -57,12 +62,22 @@ export class GetProductPriceTypeByNameHandler implements IQueryHandler<GetProduc
     /**
      * Fetches product price type records by name
      */
-    private async fetchProductPriceTypeByName(name: string): Promise<ProductPriceTypeDto[]> {
-        const productPriceTypeRecords = await this.productPriceTypeDatabaseService.findRecordContainingName(name);
+    private async fetchProductPriceTypeByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductPriceTypeDto>> {
+        const productPriceTypeRecords = await this.productPriceTypeDatabaseService.findRecordContainingName(
+            limit,
+            name,
+            direction,
+            cursorPointer
+        );
 
-        if (!productPriceTypeRecords || productPriceTypeRecords.length === 0) {
+        if (!productPriceTypeRecords || productPriceTypeRecords.data.length === 0) {
             this.logger.warn(`No product price types found for name: ${name}`);
-            return [];
+            return new PageDto<ProductPriceTypeDto>([], null, null);
         }
 
         return productPriceTypeRecords;

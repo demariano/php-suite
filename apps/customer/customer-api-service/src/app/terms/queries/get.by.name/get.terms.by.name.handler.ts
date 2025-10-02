@@ -1,5 +1,5 @@
 import { TermsDatabaseServiceAbstract } from '@customer-database-service';
-import { TermsDto, ResponseDto } from '@dto';
+import { PageDto, ResponseDto, TermsDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetTermsByNameQuery } from './get.terms.by.name.query';
@@ -18,7 +18,7 @@ export class GetTermsByNameHandler implements IQueryHandler<GetTermsByNameQuery>
         private readonly termsDatabaseService: TermsDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetTermsByNameQuery): Promise<ResponseDto<TermsDto[]>> {
+    async execute(query: GetTermsByNameQuery): Promise<ResponseDto<PageDto<TermsDto>>> {
         this.logger.log(`Processing get terms by name request: ${query.name}`);
 
         try {
@@ -26,10 +26,10 @@ export class GetTermsByNameHandler implements IQueryHandler<GetTermsByNameQuery>
             this.validateNameParameter(query.name);
 
             // Fetch terms by name
-            const terms = await this.fetchTermsByName(query.name);
+            const terms = await this.fetchTermsByName(query.name, query.limit, query.direction, query.cursorPointer);
 
-            this.logger.log(`Terms retrieved successfully: ${terms.length} found`);
-            return new ResponseDto<TermsDto[]>(terms, HTTP_STATUS_OK);
+            this.logger.log(`Terms retrieved successfully: ${terms.data.length} found`);
+            return new ResponseDto<PageDto<TermsDto>>(terms, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -51,9 +51,19 @@ export class GetTermsByNameHandler implements IQueryHandler<GetTermsByNameQuery>
     /**
      * Fetches terms by name
      */
-    private async fetchTermsByName(name: string): Promise<TermsDto[]> {
-        const terms = await this.termsDatabaseService.findRecordContainingName(name);
-        return terms || [];
+    private async fetchTermsByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<TermsDto>> {
+        const terms = await this.termsDatabaseService.findRecordContainingName(limit, name, direction, cursorPointer);
+
+        if (!terms || terms.data.length === 0) {
+            return new PageDto<TermsDto>([], null, null);
+        }
+
+        return terms;
     }
 
     /**

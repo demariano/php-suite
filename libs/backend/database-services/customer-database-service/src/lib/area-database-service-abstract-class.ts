@@ -5,15 +5,26 @@ export abstract class AreaDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<AreaDto | null>;
 
-    abstract findRecordContainingName(name: string): Promise<AreaDto[] | null>;
+    abstract findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<AreaDto>>;
 
     abstract findRecordByName(name: string): Promise<AreaDto | null>;
 
     abstract updateRecord(areaData: AreaDto): Promise<AreaDto>;
 
-    abstract findRecordsPagination(
+    abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<AreaDto>>;
+
+    abstract findRecordsByPagination(
+        limit: number,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<AreaDto>>;

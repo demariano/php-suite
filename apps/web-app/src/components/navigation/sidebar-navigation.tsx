@@ -35,13 +35,13 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
       sectionTitle: "Products",
       menuItems: [
         { 
-          label: "Products", 
+          label: "Producs", 
           route: "/products", 
           icon: Products,
           onClick: (route) => onNavigate?.(route),
           subItems: [
             {
-              label: "Products",
+              label: "Product",
               route: "/products",
               onClick: (route) => onNavigate?.(route)
             },

@@ -199,39 +199,72 @@ export class TermsController {
         return this.commandBus.execute(new DenyTermsCommand(id, user));
     }
 
-    @Get('search/:name')
+    @Get('name/:name')
     @ApiOperation({
         summary: 'Search terms by name',
-        description: 'Searches for terms containing the specified name',
+        description: 'Searches for terms containing the specified name with pagination support',
     })
     @ApiParam({
         name: 'name',
         description: 'Name to search for',
         example: 'Standard',
     })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of records per page',
+        required: true,
+        type: Number,
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        description: 'Pagination direction',
+        required: false,
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        description: 'Cursor pointer for pagination',
+        required: false,
+        type: String,
+        example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
+    })
     @ApiResponse({
         status: 200,
-        description: 'Terms found successfully',
+        description: 'Terms found successfully with pagination',
         schema: {
             type: 'object',
             properties: {
                 statusCode: { type: 'number', example: 200 },
-                data: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            termsId: { type: 'string', example: 'terms-123' },
-                            termsName: { type: 'string', example: 'Standard Terms' },
-                            status: { type: 'string', example: 'ACTIVE' },
+                body: {
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    termsId: { type: 'string', example: 'terms-123' },
+                                    termsName: { type: 'string', example: 'Standard Terms' },
+                                    status: { type: 'string', example: 'ACTIVE' },
+                                },
+                            },
                         },
+                        nextCursorPointer: { type: 'string', nullable: true },
+                        prevCursorPointer: { type: 'string', nullable: true },
                     },
                 },
             },
         },
     })
-    getByName(@Param('name') name: string) {
-        return this.queryBus.execute(new GetTermsByNameQuery(name));
+    getByName(
+        @Param('name') name: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
+        return this.queryBus.execute(new GetTermsByNameQuery(name, limit, direction, cursorPointer));
     }
 
     @Get()

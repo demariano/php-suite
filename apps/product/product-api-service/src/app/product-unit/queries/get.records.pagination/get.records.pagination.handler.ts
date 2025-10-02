@@ -19,7 +19,7 @@ export class GetProductUnitRecordsPaginationHandler implements IQueryHandler<Get
     ) {}
 
     async execute(query: GetProductUnitRecordsPaginationQuery): Promise<ResponseDto<PageDto<ProductUnitDto>>> {
-        this.logger.log(`Processing pagination request for product units with status: ${query.status}`);
+        this.logger.log(`Processing pagination request for product units`);
 
         try {
             // Validate query parameters
@@ -31,7 +31,7 @@ export class GetProductUnitRecordsPaginationHandler implements IQueryHandler<Get
             this.logger.log(`Retrieved ${productUnitRecords.data.length} product unit records with pagination`);
             return new ResponseDto<PageDto<ProductUnitDto>>(productUnitRecords, HTTP_STATUS_OK);
         } catch (error) {
-            return this.handleError(error, query);
+            return this.handleError(error);
         }
     }
 
@@ -42,30 +42,22 @@ export class GetProductUnitRecordsPaginationHandler implements IQueryHandler<Get
         if (!query.limit || query.limit < MIN_LIMIT || query.limit > MAX_LIMIT) {
             throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
         }
-
-        if (query.direction && !['ASC', 'DESC'].includes(query.direction.toUpperCase())) {
-            throw new BadRequestException('Direction must be either ASC or DESC');
-        }
-
-        if (query.status && typeof query.status !== 'string') {
-            throw new BadRequestException('Status must be a string');
-        }
     }
 
     /**
      * Fetches paginated product unit records
      */
     private async fetchPaginatedRecords(query: GetProductUnitRecordsPaginationQuery): Promise<PageDto<ProductUnitDto>> {
-        const { limit, direction, status, lastEvaluatedKey } = query;
+        const { limit, direction, cursorPointer } = query;
 
-        return await this.productUnitDatabaseService.findRecordsPagination(limit, status, direction, lastEvaluatedKey);
+        return await this.productUnitDatabaseService.findRecordsByPagination(limit, direction, cursorPointer);
     }
 
     /**
      * Centralized error handling
      */
-    private handleError(error: unknown, query: GetProductUnitRecordsPaginationQuery): never {
-        this.logger.error(`Error processing pagination request for status ${query.status}:`, error);
+    private handleError(error: unknown): never {
+        this.logger.error(`Error processing pagination request for product units:`, error);
 
         // Re-throw known exceptions
         if (error instanceof BadRequestException) {

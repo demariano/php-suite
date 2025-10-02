@@ -5,7 +5,12 @@ export abstract class ProductCategoryDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<ProductCategoryDto | null>;
 
-    abstract findRecordContainingName(name: string): Promise<ProductCategoryDto[] | null>;
+    abstract findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductCategoryDto>>;
 
     abstract findRecordByName(name: string): Promise<ProductCategoryDto | null>;
 

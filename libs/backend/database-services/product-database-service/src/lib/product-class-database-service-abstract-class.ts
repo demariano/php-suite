@@ -5,15 +5,26 @@ export abstract class ProductClassDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<ProductClassDto | null>;
 
-    abstract findRecordContainingName(name: string): Promise<ProductClassDto[] | null>;
+    abstract findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductClassDto>>;
 
     abstract findRecordByName(name: string): Promise<ProductClassDto | null>;
 
     abstract updateRecord(productData: ProductClassDto): Promise<ProductClassDto>;
 
-    abstract findRecordsPagination(
+    abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductClassDto>>;
+
+    abstract findRecordsByPagination(
+        limit: number,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<ProductClassDto>>;

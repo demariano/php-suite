@@ -42,10 +42,6 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
         if (!query.limit || query.limit < MIN_LIMIT || query.limit > MAX_LIMIT) {
             throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
         }
-
-        if (query.direction && !['ASC', 'DESC'].includes(query.direction.toUpperCase())) {
-            throw new BadRequestException('Direction must be either ASC or DESC');
-        }
     }
 
     /**

@@ -13,6 +13,7 @@ import { UpdateProductUnitHandler } from './command/update/update.handler';
 import { ProductUnitController } from './product-unit.controller';
 import { GetProductUnitByIdHandler } from './queries/get.by.id/get.product.unit.by.id.handler';
 import { GetProductUnitByNameHandler } from './queries/get.by.name/get.product.unit.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetProductUnitRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 
 @Module({
@@ -38,6 +39,7 @@ import { GetProductUnitRecordsPaginationHandler } from './queries/get.records.pa
         GetProductUnitByIdHandler,
         GetProductUnitByNameHandler,
         GetProductUnitRecordsPaginationHandler,
+        GetRecordsByStatusPaginationHandler,
         UpdateProductUnitHandler,
         DeleteProductUnitHandler,
         ApproveProductUnitHandler,

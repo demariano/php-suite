@@ -1,4 +1,4 @@
-import { ProductClassDto, ResponseDto } from '@dto';
+import { PageDto, ProductClassDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { ProductClassDatabaseServiceAbstract } from '@product-database-service';
@@ -18,7 +18,7 @@ export class GetProductClassByNameHandler implements IQueryHandler<GetProductCla
         private readonly productClassDatabaseService: ProductClassDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetProductClassByNameQuery): Promise<ResponseDto<ProductClassDto[]>> {
+    async execute(query: GetProductClassByNameQuery): Promise<ResponseDto<PageDto<ProductClassDto>>> {
         this.logger.log(`Processing get product class request for name: ${query.name}`);
 
         try {
@@ -26,12 +26,17 @@ export class GetProductClassByNameHandler implements IQueryHandler<GetProductCla
             this.validateNameParameter(query.name);
 
             // Fetch and validate product class record
-            const productClassRecords = await this.fetchProductClassByName(query.name);
+            const productClassRecords = await this.fetchProductClassByName(
+                query.name,
+                query.limit,
+                query.direction,
+                query.cursorPointer
+            );
 
             this.logger.log(
-                `Product classes retrieved successfully: ${productClassRecords.length} records found for name: ${query.name}`
+                `Product classes retrieved successfully: ${productClassRecords.data.length} records found for name: ${query.name}`
             );
-            return new ResponseDto<ProductClassDto[]>(productClassRecords, HTTP_STATUS_OK);
+            return new ResponseDto<PageDto<ProductClassDto>>(productClassRecords, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -57,12 +62,22 @@ export class GetProductClassByNameHandler implements IQueryHandler<GetProductCla
     /**
      * Fetches product class records by name
      */
-    private async fetchProductClassByName(name: string): Promise<ProductClassDto[]> {
-        const productClassRecords = await this.productClassDatabaseService.findRecordContainingName(name);
+    private async fetchProductClassByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductClassDto>> {
+        const productClassRecords = await this.productClassDatabaseService.findRecordContainingName(
+            limit,
+            name,
+            direction,
+            cursorPointer
+        );
 
-        if (!productClassRecords || productClassRecords.length === 0) {
+        if (!productClassRecords || productClassRecords.data.length === 0) {
             this.logger.warn(`No product classes found for name: ${name}`);
-            return [];
+            return new PageDto<ProductClassDto>([], null, null);
         }
 
         return productClassRecords;

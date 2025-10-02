@@ -19,7 +19,7 @@ export class GetProductClassRecordsPaginationHandler implements IQueryHandler<Ge
     ) {}
 
     async execute(query: GetProductClassRecordsPaginationQuery): Promise<ResponseDto<PageDto<ProductClassDto>>> {
-        this.logger.log(`Processing pagination request for product classes with status: ${query.status}`);
+        this.logger.log(`Processing pagination request for product classes`);
 
         try {
             // Validate query parameters
@@ -31,7 +31,7 @@ export class GetProductClassRecordsPaginationHandler implements IQueryHandler<Ge
             this.logger.log(`Retrieved ${productClassRecords.data.length} product class records with pagination`);
             return new ResponseDto<PageDto<ProductClassDto>>(productClassRecords, HTTP_STATUS_OK);
         } catch (error) {
-            return this.handleError(error, query);
+            return this.handleError(error);
         }
     }
 
@@ -42,30 +42,24 @@ export class GetProductClassRecordsPaginationHandler implements IQueryHandler<Ge
         if (!query.limit || query.limit < MIN_LIMIT || query.limit > MAX_LIMIT) {
             throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
         }
-
-        if (query.direction && !['next', 'prev'].includes(query.direction.toLowerCase())) {
-            throw new BadRequestException('Direction must be either next or prev');
-        }
-
-        if (query.status && typeof query.status !== 'string') {
-            throw new BadRequestException('Status must be a string');
-        }
     }
 
     /**
      * Fetches paginated product class records
      */
-    private async fetchPaginatedRecords(query: GetProductClassRecordsPaginationQuery): Promise<PageDto<ProductClassDto>> {
-        const { limit, direction, status, lastEvaluatedKey } = query;
+    private async fetchPaginatedRecords(
+        query: GetProductClassRecordsPaginationQuery
+    ): Promise<PageDto<ProductClassDto>> {
+        const { limit, direction, cursorPointer } = query;
 
-        return await this.productClassDatabaseService.findRecordsPagination(limit, status, direction, lastEvaluatedKey);
+        return await this.productClassDatabaseService.findRecordsByPagination(limit, direction, cursorPointer);
     }
 
     /**
      * Centralized error handling
      */
-    private handleError(error: unknown, query: GetProductClassRecordsPaginationQuery): never {
-        this.logger.error(`Error processing pagination request for status ${query.status}:`, error);
+    private handleError(error: unknown): never {
+        this.logger.error(`Error processing pagination request for product classes:`, error);
 
         // Re-throw known exceptions
         if (error instanceof BadRequestException) {

@@ -1,4 +1,4 @@
-import { ProductCategoryDto, ResponseDto } from '@dto';
+import { PageDto, ProductCategoryDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { ProductCategoryDatabaseServiceAbstract } from '@product-database-service';
@@ -18,7 +18,7 @@ export class GetProductCategoryByNameHandler implements IQueryHandler<GetProduct
         private readonly productCategoryDatabaseService: ProductCategoryDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetProductCategoryByNameQuery): Promise<ResponseDto<ProductCategoryDto[]>> {
+    async execute(query: GetProductCategoryByNameQuery): Promise<ResponseDto<PageDto<ProductCategoryDto>>> {
         this.logger.log(`Processing get product category request for name: ${query.name}`);
 
         try {
@@ -26,12 +26,17 @@ export class GetProductCategoryByNameHandler implements IQueryHandler<GetProduct
             this.validateNameParameter(query.name);
 
             // Fetch and validate product category record
-            const productCategoryRecords = await this.fetchProductCategoryByName(query.name);
+            const productCategoryRecords = await this.fetchProductCategoryByName(
+                query.name,
+                query.limit,
+                query.direction,
+                query.cursorPointer
+            );
 
             this.logger.log(
-                `Product categories retrieved successfully: ${productCategoryRecords.length} records found for name: ${query.name}`
+                `Product categories retrieved successfully: ${productCategoryRecords.data.length} records found for name: ${query.name}`
             );
-            return new ResponseDto<ProductCategoryDto[]>(productCategoryRecords, HTTP_STATUS_OK);
+            return new ResponseDto<PageDto<ProductCategoryDto>>(productCategoryRecords, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -57,12 +62,22 @@ export class GetProductCategoryByNameHandler implements IQueryHandler<GetProduct
     /**
      * Fetches product category records by name
      */
-    private async fetchProductCategoryByName(name: string): Promise<ProductCategoryDto[]> {
-        const productCategoryRecords = await this.productCategoryDatabaseService.findRecordContainingName(name);
+    private async fetchProductCategoryByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductCategoryDto>> {
+        const productCategoryRecords = await this.productCategoryDatabaseService.findRecordContainingName(
+            limit,
+            name,
+            direction,
+            cursorPointer
+        );
 
-        if (!productCategoryRecords || productCategoryRecords.length === 0) {
+        if (!productCategoryRecords || productCategoryRecords.data.length === 0) {
             this.logger.warn(`No product categories found for name: ${name}`);
-            return [];
+            return new PageDto<ProductCategoryDto>([], null, null);
         }
 
         return productCategoryRecords;

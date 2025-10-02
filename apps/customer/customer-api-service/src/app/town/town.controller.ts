@@ -49,8 +49,13 @@ export class TownController {
     }
 
     @Get('search/name')
-    async getTownByName(@Query('name') name: string) {
-        return await this.queryBus.execute(new GetTownByNameQuery(name));
+    async getTownByName(
+        @Query('name') name: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
+        return await this.queryBus.execute(new GetTownByNameQuery(name, limit, direction, cursorPointer));
     }
 
     @Get('pagination')

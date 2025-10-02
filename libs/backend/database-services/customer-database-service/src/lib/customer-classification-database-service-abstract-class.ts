@@ -7,15 +7,26 @@ export abstract class CustomerClassificationDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<CustomerClassificationDto | null>;
 
-    abstract findRecordContainingName(name: string): Promise<CustomerClassificationDto[] | null>;
+    abstract findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerClassificationDto>>;
 
     abstract findRecordByName(name: string): Promise<CustomerClassificationDto | null>;
 
     abstract updateRecord(customerClassificationData: CustomerClassificationDto): Promise<CustomerClassificationDto>;
 
-    abstract findRecordsPagination(
+    abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerClassificationDto>>;
+
+    abstract findRecordsByPagination(
+        limit: number,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<CustomerClassificationDto>>;

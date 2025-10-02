@@ -123,7 +123,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         return await this.convertToDtoList(productRecords);
     }
 
-    async findProductRecordsPagination(
+    async findProductRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -145,6 +145,40 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
             direction,
             'GSI2PK',
             'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(productRecords.next),
+            JSON.stringify(productRecords.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(productRecords),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findProductRecordsByPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const productRecords = await this.productTable.find(
+            {
+                GSI1PK: `PRODUCT`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            productRecords,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(productRecords.next),

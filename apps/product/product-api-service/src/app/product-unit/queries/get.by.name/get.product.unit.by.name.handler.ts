@@ -1,4 +1,4 @@
-import { ProductUnitDto, ResponseDto } from '@dto';
+import { PageDto, ProductUnitDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { ProductUnitDatabaseServiceAbstract } from '@product-database-service';
@@ -18,7 +18,7 @@ export class GetProductUnitByNameHandler implements IQueryHandler<GetProductUnit
         private readonly productUnitDatabaseService: ProductUnitDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetProductUnitByNameQuery): Promise<ResponseDto<ProductUnitDto[]>> {
+    async execute(query: GetProductUnitByNameQuery): Promise<ResponseDto<PageDto<ProductUnitDto>>> {
         this.logger.log(`Processing get product unit request for name: ${query.name}`);
 
         try {
@@ -26,12 +26,17 @@ export class GetProductUnitByNameHandler implements IQueryHandler<GetProductUnit
             this.validateNameParameter(query.name);
 
             // Fetch and validate product unit record
-            const productUnitRecords = await this.fetchProductUnitByName(query.name);
+            const productUnitRecords = await this.fetchProductUnitByName(
+                query.name,
+                query.limit,
+                query.direction,
+                query.cursorPointer
+            );
 
             this.logger.log(
-                `Product units retrieved successfully: ${productUnitRecords.length} records found for name: ${query.name}`
+                `Product units retrieved successfully: ${productUnitRecords.data.length} records found for name: ${query.name}`
             );
-            return new ResponseDto<ProductUnitDto[]>(productUnitRecords, HTTP_STATUS_OK);
+            return new ResponseDto<PageDto<ProductUnitDto>>(productUnitRecords, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -57,12 +62,22 @@ export class GetProductUnitByNameHandler implements IQueryHandler<GetProductUnit
     /**
      * Fetches product unit records by name
      */
-    private async fetchProductUnitByName(name: string): Promise<ProductUnitDto[]> {
-        const productUnitRecords = await this.productUnitDatabaseService.findRecordContainingName(name);
+    private async fetchProductUnitByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductUnitDto>> {
+        const productUnitRecords = await this.productUnitDatabaseService.findRecordContainingName(
+            limit,
+            name,
+            direction,
+            cursorPointer
+        );
 
-        if (!productUnitRecords || productUnitRecords.length === 0) {
+        if (!productUnitRecords || productUnitRecords.data.length === 0) {
             this.logger.warn(`No product units found for name: ${name}`);
-            return [];
+            return new PageDto<ProductUnitDto>([], null, null);
         }
 
         return productUnitRecords;

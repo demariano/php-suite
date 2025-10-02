@@ -77,21 +77,44 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
         return await this.convertToDto(record);
     }
 
-    async findRecordContainingName(name: string): Promise<CustomerClassificationDto[] | null> {
-        const customerClassificationRecords = await this.customerClassificationTable.find(
+    async findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerClassificationDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.customerClassificationTable.find(
             {
-                GSI1PK: 'CUSTOMER_CLASSIFICATION',
-            },
-            {
-                where: 'contains(${customerClassificationName}, @{customerClassificationName})',
-                substitutions: {
-                    customerClassificationName: name,
+                GSI1PK: `CUSTOMER_CLASSIFICATION`,
+                GSI1SK: {
+                    begins: name,
                 },
-                index: 'GSI1',
-            }
+            },
+            dynamoDbOption
         );
 
-        return await this.convertToDtoList(customerClassificationRecords);
+        console.log('Records:', records);
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async deleteAllRecords(): Promise<void> {
@@ -138,7 +161,7 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
         return record;
     }
 
-    async findRecordsPagination(
+    async findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -160,6 +183,40 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
             direction,
             'GSI2PK',
             'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerClassificationDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.customerClassificationTable.find(
+            {
+                GSI1PK: `CUSTOMER_CLASSIFICATION`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(records.next),

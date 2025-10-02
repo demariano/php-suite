@@ -1,0 +1,19 @@
+// Frontend-specific types for Product Class
+// These mirror the backend DTOs but without NestJS decorators
+
+import { StatusEnum } from './product-category.types';
+
+export interface ProductClassDto {
+    productClassId: string;
+    productClassName?: string;
+    status?: StatusEnum;
+    activityLogs?: string[];
+    forApprovalVersion?: Record<string, unknown>;
+}
+
+export interface CreateProductClassDto {
+    productClassName?: string;
+    status?: StatusEnum;
+    activityLogs?: string[];
+    forApprovalVersion?: Record<string, unknown>;
+}

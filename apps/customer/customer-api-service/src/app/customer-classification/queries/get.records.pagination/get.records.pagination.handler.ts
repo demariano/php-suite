@@ -8,8 +8,6 @@ import { GetRecordsPaginationQuery } from './get.records.pagination.query';
 const HTTP_STATUS_OK = 200;
 const MIN_LIMIT = 1;
 const MAX_LIMIT = 100;
-const VALID_DIRECTIONS = ['next', 'prev'];
-const VALID_STATUSES = ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'];
 
 @QueryHandler(GetRecordsPaginationQuery)
 export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPaginationQuery> {
@@ -49,16 +47,6 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
         if (!query.limit || query.limit < MIN_LIMIT || query.limit > MAX_LIMIT) {
             throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
         }
-
-        // Validate direction
-        if (query.direction && !VALID_DIRECTIONS.includes(query.direction)) {
-            throw new BadRequestException(`Direction must be one of: ${VALID_DIRECTIONS.join(', ')}`);
-        }
-
-        // Validate status
-        if (!query.status || !VALID_STATUSES.includes(query.status)) {
-            throw new BadRequestException(`Status must be one of: ${VALID_STATUSES.join(', ')}`);
-        }
     }
 
     /**
@@ -67,9 +55,8 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
     private async fetchCustomerClassificationsPagination(
         query: GetRecordsPaginationQuery
     ): Promise<PageDto<CustomerClassificationDto>> {
-        return await this.customerClassificationDatabaseService.findRecordsPagination(
+        return await this.customerClassificationDatabaseService.findRecordsByPagination(
             query.limit,
-            query.status,
             query.direction,
             query.cursorPointer
         );

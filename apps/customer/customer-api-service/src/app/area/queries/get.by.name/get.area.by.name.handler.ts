@@ -1,5 +1,5 @@
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
-import { AreaDto, ResponseDto } from '@dto';
+import { AreaDto, PageDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetAreaByNameQuery } from './get.area.by.name.query';
@@ -18,7 +18,7 @@ export class GetAreaByNameHandler implements IQueryHandler<GetAreaByNameQuery> {
         private readonly areaDatabaseService: AreaDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetAreaByNameQuery): Promise<ResponseDto<AreaDto[]>> {
+    async execute(query: GetAreaByNameQuery): Promise<ResponseDto<PageDto<AreaDto>>> {
         this.logger.log(`Processing get areas by name request: ${query.name}`);
 
         try {
@@ -26,10 +26,10 @@ export class GetAreaByNameHandler implements IQueryHandler<GetAreaByNameQuery> {
             this.validateNameParameter(query.name);
 
             // Fetch areas by name
-            const areas = await this.fetchAreasByName(query.name);
+            const areas = await this.fetchAreasByName(query.name, query.limit, query.direction, query.cursorPointer);
 
-            this.logger.log(`Areas retrieved successfully: ${areas.length} found`);
-            return new ResponseDto<AreaDto[]>(areas, HTTP_STATUS_OK);
+            this.logger.log(`Areas retrieved successfully: ${areas.data.length} found`);
+            return new ResponseDto<PageDto<AreaDto>>(areas, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -51,9 +51,19 @@ export class GetAreaByNameHandler implements IQueryHandler<GetAreaByNameQuery> {
     /**
      * Fetches areas by name
      */
-    private async fetchAreasByName(name: string): Promise<AreaDto[]> {
-        const areas = await this.areaDatabaseService.findRecordContainingName(name);
-        return areas || [];
+    private async fetchAreasByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<AreaDto>> {
+        const areas = await this.areaDatabaseService.findRecordContainingName(limit, name, direction, cursorPointer);
+
+        if (!areas || areas.data.length === 0) {
+            return new PageDto<AreaDto>([], null, null);
+        }
+
+        return areas;
     }
 
     /**

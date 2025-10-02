@@ -11,9 +11,15 @@ export abstract class CustomerDatabaseServiceAbstract {
 
     abstract updateRecord(customerData: CustomerDto): Promise<CustomerDto>;
 
-    abstract findRecordsPagination(
+    abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerDto>>;
+
+    abstract findRecordsByPagination(
+        limit: number,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<CustomerDto>>;

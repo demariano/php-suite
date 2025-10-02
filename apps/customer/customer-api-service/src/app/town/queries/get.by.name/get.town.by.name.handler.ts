@@ -1,5 +1,5 @@
 import { TownDatabaseServiceAbstract } from '@customer-database-service';
-import { ResponseDto, TownDto } from '@dto';
+import { PageDto, ResponseDto, TownDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetTownByNameQuery } from './get.town.by.name.query';
@@ -18,7 +18,7 @@ export class GetTownByNameHandler implements IQueryHandler<GetTownByNameQuery> {
         private readonly townDatabaseService: TownDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetTownByNameQuery): Promise<ResponseDto<TownDto[]>> {
+    async execute(query: GetTownByNameQuery): Promise<ResponseDto<PageDto<TownDto>>> {
         this.logger.log(`Processing get towns by name request: ${query.name}`);
 
         try {
@@ -26,10 +26,10 @@ export class GetTownByNameHandler implements IQueryHandler<GetTownByNameQuery> {
             this.validateNameParameter(query.name);
 
             // Fetch towns by name
-            const towns = await this.fetchTownsByName(query.name);
+            const towns = await this.fetchTownsByName(query.name, query.limit, query.direction, query.cursorPointer);
 
-            this.logger.log(`Towns retrieved successfully: ${towns.length} found`);
-            return new ResponseDto<TownDto[]>(towns, HTTP_STATUS_OK);
+            this.logger.log(`Towns retrieved successfully: ${towns.data.length} found`);
+            return new ResponseDto<PageDto<TownDto>>(towns, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -51,9 +51,19 @@ export class GetTownByNameHandler implements IQueryHandler<GetTownByNameQuery> {
     /**
      * Fetches towns by name
      */
-    private async fetchTownsByName(name: string): Promise<TownDto[]> {
-        const towns = await this.townDatabaseService.findRecordContainingName(name);
-        return towns || [];
+    private async fetchTownsByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<TownDto>> {
+        const towns = await this.townDatabaseService.findRecordContainingName(limit, name, direction, cursorPointer);
+
+        if (!towns || towns.data.length === 0) {
+            return new PageDto<TownDto>([], null, null);
+        }
+
+        return towns;
     }
 
     /**

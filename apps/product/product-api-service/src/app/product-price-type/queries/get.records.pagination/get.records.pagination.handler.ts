@@ -23,7 +23,7 @@ export class GetProductPriceTypeRecordsPaginationHandler
     async execute(
         query: GetProductPriceTypeRecordsPaginationQuery
     ): Promise<ResponseDto<PageDto<ProductPriceTypeDto>>> {
-        this.logger.log(`Processing pagination request for product price types with status: ${query.status}`);
+        this.logger.log(`Processing pagination request for product price types`);
 
         try {
             // Validate query parameters
@@ -37,7 +37,7 @@ export class GetProductPriceTypeRecordsPaginationHandler
             );
             return new ResponseDto<PageDto<ProductPriceTypeDto>>(productPriceTypeRecords, HTTP_STATUS_OK);
         } catch (error) {
-            return this.handleError(error, query);
+            return this.handleError(error);
         }
     }
 
@@ -48,14 +48,6 @@ export class GetProductPriceTypeRecordsPaginationHandler
         if (!query.limit || query.limit < MIN_LIMIT || query.limit > MAX_LIMIT) {
             throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
         }
-
-        if (query.direction && !['next', 'prev'].includes(query.direction.toLowerCase())) {
-            throw new BadRequestException('Direction must be either next or prev');
-        }
-
-        if (query.status && typeof query.status !== 'string') {
-            throw new BadRequestException('Status must be a string');
-        }
     }
 
     /**
@@ -64,21 +56,16 @@ export class GetProductPriceTypeRecordsPaginationHandler
     private async fetchPaginatedRecords(
         query: GetProductPriceTypeRecordsPaginationQuery
     ): Promise<PageDto<ProductPriceTypeDto>> {
-        const { limit, direction, status, lastEvaluatedKey } = query;
+        const { limit, direction, cursorPointer } = query;
 
-        return await this.productPriceTypeDatabaseService.findRecordsPagination(
-            limit,
-            status,
-            direction,
-            lastEvaluatedKey
-        );
+        return await this.productPriceTypeDatabaseService.findRecordsByPagination(limit, direction, cursorPointer);
     }
 
     /**
      * Centralized error handling
      */
-    private handleError(error: unknown, query: GetProductPriceTypeRecordsPaginationQuery): never {
-        this.logger.error(`Error processing pagination request for status ${query.status}:`, error);
+    private handleError(error: unknown): never {
+        this.logger.error(`Error processing pagination request for product price types:`, error);
 
         // Re-throw known exceptions
         if (error instanceof BadRequestException) {

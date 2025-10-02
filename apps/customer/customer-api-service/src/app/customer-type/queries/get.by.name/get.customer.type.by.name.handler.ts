@@ -1,5 +1,5 @@
 import { CustomerTypeDatabaseServiceAbstract } from '@customer-database-service';
-import { CustomerTypeDto, ResponseDto } from '@dto';
+import { CustomerTypeDto, PageDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetCustomerTypeByNameQuery } from './get.customer.type.by.name.query';
@@ -18,7 +18,7 @@ export class GetCustomerTypeByNameHandler implements IQueryHandler<GetCustomerTy
         private readonly customerTypeDatabaseService: CustomerTypeDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetCustomerTypeByNameQuery): Promise<ResponseDto<CustomerTypeDto[]>> {
+    async execute(query: GetCustomerTypeByNameQuery): Promise<ResponseDto<PageDto<CustomerTypeDto>>> {
         this.logger.log(`Processing get customer types by name request: ${query.name}`);
 
         try {
@@ -26,10 +26,15 @@ export class GetCustomerTypeByNameHandler implements IQueryHandler<GetCustomerTy
             this.validateNameParameter(query.name);
 
             // Fetch customer types by name
-            const customerTypes = await this.fetchCustomerTypesByName(query.name);
+            const customerTypes = await this.fetchCustomerTypesByName(
+                query.name,
+                query.limit,
+                query.direction,
+                query.cursorPointer
+            );
 
-            this.logger.log(`Customer types retrieved successfully: ${customerTypes.length} found`);
-            return new ResponseDto<CustomerTypeDto[]>(customerTypes, HTTP_STATUS_OK);
+            this.logger.log(`Customer types retrieved successfully: ${customerTypes.data.length} found`);
+            return new ResponseDto<PageDto<CustomerTypeDto>>(customerTypes, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -51,9 +56,24 @@ export class GetCustomerTypeByNameHandler implements IQueryHandler<GetCustomerTy
     /**
      * Fetches customer types by name
      */
-    private async fetchCustomerTypesByName(name: string): Promise<CustomerTypeDto[]> {
-        const customerTypes = await this.customerTypeDatabaseService.findRecordContainingName(name);
-        return customerTypes || [];
+    private async fetchCustomerTypesByName(
+        name: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerTypeDto>> {
+        const customerTypes = await this.customerTypeDatabaseService.findRecordContainingName(
+            limit,
+            name,
+            direction,
+            cursorPointer
+        );
+
+        if (!customerTypes || customerTypes.data.length === 0) {
+            return new PageDto<CustomerTypeDto>([], null, null);
+        }
+
+        return customerTypes;
     }
 
     /**

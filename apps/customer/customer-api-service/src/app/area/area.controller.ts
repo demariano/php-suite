@@ -332,23 +332,52 @@ export class AreaController {
     @Get('name/:name')
     @ApiOperation({
         summary: 'Get areas by name',
-        description: 'Retrieves area records by name. Returns array of matching areas.',
+        description:
+            'Retrieves area records by name with pagination support. Returns paginated array of matching areas.',
     })
     @ApiParam({
         name: 'name',
         description: 'Area name to search for',
         example: 'North',
     })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
     @ApiResponse({
         status: 200,
-        description: 'Areas found',
+        description: 'Areas found with pagination',
         schema: {
             type: 'object',
             properties: {
                 statusCode: { type: 'number', example: 200 },
                 body: {
-                    type: 'array',
-                    items: { $ref: '#/components/schemas/AreaDto' },
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/AreaDto' },
+                        },
+                        nextCursorPointer: { type: 'string', nullable: true },
+                        prevCursorPointer: { type: 'string', nullable: true },
+                    },
                 },
             },
         },
@@ -369,10 +398,15 @@ export class AreaController {
             },
         },
     })
-    getAreaByName(@Param('name') name: string) {
+    getAreaByName(
+        @Param('name') name: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetAreaByNameQuery(name));
+        return this.queryBus.execute(new GetAreaByNameQuery(name, limit, direction, cursorPointer));
     }
 
     @Get()

@@ -361,12 +361,34 @@ export class CustomerClassificationController {
     @Get('name/:name')
     @ApiOperation({
         summary: 'Get customer classifications by name',
-        description: 'Retrieves customer classification records by name. Returns array of matching classifications.',
+        description:
+            'Retrieves customer classification records by name with pagination support. Returns paginated array of matching classifications.',
     })
     @ApiParam({
         name: 'name',
         description: 'Customer classification name to search for',
         example: 'Premium',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
     })
     @ApiQuery({
         name: 'userRole',
@@ -378,14 +400,21 @@ export class CustomerClassificationController {
     })
     @ApiResponse({
         status: 200,
-        description: 'Customer classifications found',
+        description: 'Customer classifications found with pagination',
         schema: {
             type: 'object',
             properties: {
                 statusCode: { type: 'number', example: 200 },
                 body: {
-                    type: 'array',
-                    items: { $ref: '#/components/schemas/CustomerClassificationDto' },
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/CustomerClassificationDto' },
+                        },
+                        nextCursorPointer: { type: 'string', nullable: true },
+                        prevCursorPointer: { type: 'string', nullable: true },
+                    },
                 },
             },
         },
@@ -406,10 +435,15 @@ export class CustomerClassificationController {
             },
         },
     })
-    getByName(@Param('name') name: string) {
+    getByName(
+        @Param('name') name: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetCustomerClassificationByNameQuery(name));
+        return this.queryBus.execute(new GetCustomerClassificationByNameQuery(name, limit, direction, cursorPointer));
     }
 
     @Get()

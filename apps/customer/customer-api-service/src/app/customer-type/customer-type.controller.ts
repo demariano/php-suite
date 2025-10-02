@@ -201,41 +201,74 @@ export class CustomerTypeController {
         return this.commandBus.execute(new DenyCustomerTypeCommand(id, user));
     }
 
-    @Get('search/:name')
+    @Get('name/:name')
     @ApiOperation({
         summary: 'Search customer types by name',
-        description: 'Searches for customer types containing the specified name',
+        description: 'Searches for customer types containing the specified name with pagination support',
     })
     @ApiParam({
         name: 'name',
         description: 'Name to search for',
         example: 'Premium',
     })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of records per page',
+        required: true,
+        type: Number,
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        description: 'Pagination direction',
+        required: false,
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        description: 'Cursor pointer for pagination',
+        required: false,
+        type: String,
+        example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
+    })
     @ApiResponse({
         status: 200,
-        description: 'Customer types found successfully',
+        description: 'Customer types found successfully with pagination',
         schema: {
             type: 'object',
             properties: {
                 statusCode: { type: 'number', example: 200 },
-                data: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            customerTypeId: { type: 'string', example: 'cust-type-123' },
-                            customerTypeName: { type: 'string', example: 'Premium Customer' },
-                            status: { type: 'string', example: 'ACTIVE' },
+                body: {
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    customerTypeId: { type: 'string', example: 'cust-type-123' },
+                                    customerTypeName: { type: 'string', example: 'Premium Customer' },
+                                    status: { type: 'string', example: 'ACTIVE' },
+                                },
+                            },
                         },
+                        nextCursorPointer: { type: 'string', nullable: true },
+                        prevCursorPointer: { type: 'string', nullable: true },
                     },
                 },
             },
         },
     })
-    getByName(@Param('name') name: string) {
+    getByName(
+        @Param('name') name: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetCustomerTypeByNameQuery(name));
+        return this.queryBus.execute(new GetCustomerTypeByNameQuery(name, limit, direction, cursorPointer));
     }
 
     @Get()

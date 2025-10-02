@@ -10,6 +10,7 @@ import { DenyProductCommand } from './command/deny-record/deny.command';
 import { UpdateProductCommand } from './command/update/update.command';
 import { GetProductByIdQuery } from './queries/get.by.id/get.product.by.id.query';
 import { GetProductByNameQuery } from './queries/get.by.name/get.product.by.name.query';
+import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetProductRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @Controller('products')
@@ -417,8 +418,13 @@ export class ProductController {
         @Query('userRole') userRole: string
     ) {
         // Note: userRole is included for Swagger consistency but not used in query endpoints
-        const query = new GetProductRecordsPaginationQuery(limit, direction, status, lastEvaluatedKey);
-        return this.queryBus.execute(query);
+        if (status) {
+            const query = new GetRecordsByStatusPaginationQuery(status, limit, direction, lastEvaluatedKey);
+            return this.queryBus.execute(query);
+        } else {
+            const query = new GetProductRecordsPaginationQuery(limit, direction, lastEvaluatedKey);
+            return this.queryBus.execute(query);
+        }
     }
 
     @Get(':id')

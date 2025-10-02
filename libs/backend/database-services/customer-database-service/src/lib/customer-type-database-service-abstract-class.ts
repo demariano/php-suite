@@ -5,15 +5,26 @@ export abstract class CustomerTypeDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<CustomerTypeDto | null>;
 
-    abstract findRecordContainingName(name: string): Promise<CustomerTypeDto[] | null>;
+    abstract findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerTypeDto>>;
 
     abstract findRecordByName(name: string): Promise<CustomerTypeDto | null>;
 
     abstract updateRecord(customerTypeData: CustomerTypeDto): Promise<CustomerTypeDto>;
 
-    abstract findRecordsPagination(
+    abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerTypeDto>>;
+
+    abstract findRecordsByPagination(
+        limit: number,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<CustomerTypeDto>>;
