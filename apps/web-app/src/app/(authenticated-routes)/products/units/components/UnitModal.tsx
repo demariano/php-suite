@@ -461,8 +461,8 @@ export default function UnitModal({
                   </div>
                 )}
                 
-                {/* Close button */}
-                <div className={isAdminUser ? 'ml-auto' : ''}>
+                {/* Close button - moved to right side */}
+                <div>
                   <button
                     type="button"
                     onClick={onClose}

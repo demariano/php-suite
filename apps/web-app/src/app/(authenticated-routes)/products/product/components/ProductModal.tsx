@@ -146,7 +146,7 @@ export default function ProductModal({
             Details
           </button>
           
-          {!isCreateMode && selectedProduct && (
+          {!isCreateMode && selectedProduct && selectedProduct.status !== StatusEnum.ACTIVE && (
             <button
               onClick={() => onTabChange('approval')}
               style={{
@@ -237,6 +237,60 @@ export default function ProductModal({
                     <span className="text-yellow-800 text-sm">
                       These are the proposed changes awaiting approval
                     </span>
+                  </div>
+                )}
+
+                {/* Change Reason - Highlighted field */}
+                {selectedProduct?.changeReason && (
+                  <div style={{
+                    backgroundColor: '#fef3c7',
+                    border: '2px solid #f59e0b',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginBottom: '20px',
+                    boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: '#f59e0b',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        📝
+                      </div>
+                      <h4 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#92400e',
+                        margin: 0
+                      }}>
+                        Change Reason
+                      </h4>
+                    </div>
+                    <div style={{
+                      padding: '12px 16px',
+                      backgroundColor: 'white',
+                      border: '1px solid #f59e0b',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      color: '#92400e',
+                      lineHeight: '1.5',
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      {selectedProduct.changeReason}
+                    </div>
                   </div>
                 )}
                 
@@ -341,12 +395,213 @@ export default function ProductModal({
                       </div>
                     )}
                     
+                    {/* Product Deals */}
+                    {selectedProduct.forApprovalVersion.productDeals && selectedProduct.forApprovalVersion.productDeals.length > 0 && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <h4 style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#1f2937',
+                          marginBottom: '16px'
+                        }}>
+                          Product Deals
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          {selectedProduct.forApprovalVersion.productDeals.map((deal: any, index: number) => (
+                            <div key={index} style={{
+                              border: '2px solid #e2e8f0',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              backgroundColor: 'white'
+                            }}>
+                              <h5 style={{
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#1f2937',
+                                margin: '0 0 16px 0'
+                              }}>
+                                {deal.productDealName || 'Unnamed Deal'}
+                              </h5>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                  <label style={{
+                                    display: 'block',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#374151',
+                                    marginBottom: '4px'
+                                  }}>
+                                    Minimum Quantity
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={deal.minQty || 0}
+                                    readOnly
+                                    style={{
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      fontSize: '14px',
+                                      backgroundColor: '#f9fafb',
+                                      color: '#374151'
+                                    }}
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <label style={{
+                                    display: 'block',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#374151',
+                                    marginBottom: '4px'
+                                  }}>
+                                    Additional Quantity
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={deal.additionalQty || 0}
+                                    readOnly
+                                    style={{
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      fontSize: '14px',
+                                      backgroundColor: '#f9fafb',
+                                      color: '#374151'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Product Unit Price */}
+                    {selectedProduct.forApprovalVersion.productUnitPrice && selectedProduct.forApprovalVersion.productUnitPrice.length > 0 && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <h4 style={{
+                          fontSize: '16px',
+                          fontWeight: '600',
+                          color: '#1f2937',
+                          marginBottom: '16px'
+                        }}>
+                          Product Unit Prices
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                          {selectedProduct.forApprovalVersion.productUnitPrice.map((unitPrice: any, index: number) => (
+                            <div key={index} style={{
+                              border: '2px solid #e2e8f0',
+                              borderRadius: '8px',
+                              padding: '16px',
+                              backgroundColor: 'white'
+                            }}>
+                              <h5 style={{
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#1f2937',
+                                margin: '0 0 16px 0'
+                              }}>
+                                {unitPrice.productUnitName || 'Unnamed Unit'} - {unitPrice.productPriceTypeName || 'Unnamed Price Type'}
+                              </h5>
+                              
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                                <div>
+                                  <label style={{
+                                    display: 'block',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#374151',
+                                    marginBottom: '4px'
+                                  }}>
+                                    Unit Name
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={unitPrice.productUnitName || ''}
+                                    readOnly
+                                    style={{
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      fontSize: '14px',
+                                      backgroundColor: '#f9fafb',
+                                      color: '#374151'
+                                    }}
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <label style={{
+                                    display: 'block',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#374151',
+                                    marginBottom: '4px'
+                                  }}>
+                                    Cost
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={unitPrice.cost || 0}
+                                    readOnly
+                                    style={{
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      fontSize: '14px',
+                                      backgroundColor: '#f9fafb',
+                                      color: '#374151'
+                                    }}
+                                  />
+                                </div>
+                                
+                                <div>
+                                  <label style={{
+                                    display: 'block',
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: '#374151',
+                                    marginBottom: '4px'
+                                  }}>
+                                    Price
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={unitPrice.price || 0}
+                                    readOnly
+                                    style={{
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      border: '1px solid #d1d5db',
+                                      borderRadius: '6px',
+                                      fontSize: '14px',
+                                      backgroundColor: '#f9fafb',
+                                      color: '#374151'
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Other fields that might be in forApprovalVersion */}
                     {Object.entries(selectedProduct.forApprovalVersion).map(([key, value]) => {
                       // Skip the fields we've already handled
-                      if (key === 'productName' || key === 'status') {
+                      if (key === 'productName' || key === 'status' || key === 'productDeals' || key === 'productUnitPrice') {
                         return null;
                       }
+                      
                       
                       return (
                         <div key={key} style={{ marginBottom: '20px' }}>
@@ -452,8 +707,8 @@ export default function ProductModal({
                   </div>
                 )}
                 
-                {/* Close button */}
-                <div className={isAdminUser ? 'ml-auto' : ''}>
+                {/* Close button - moved to right side */}
+                <div>
                   <button
                     type="button"
                     onClick={onClose}

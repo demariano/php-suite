@@ -33,6 +33,7 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
             activityLogs: townDto.activityLogs,
             forApprovalVersion: townDto.forApprovalVersion,
             areaId: townDto.areaId,
+            areaName: townDto.areaName,
             GSI1PK: `TOWN`,
             GSI1SK: townDto.townName,
             GSI2PK: `TOWN#${townDto.status}`,
@@ -47,9 +48,12 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
     async updateRecord(record: TownDto): Promise<TownDto> {
         const townRecord: TownDataType = await this.convertToDataType(record);
 
+        console.log('Town Record:', townRecord);
+
         townRecord.townName = record.townName;
         townRecord.status = record.status;
         townRecord.areaId = record.areaId;
+        townRecord.areaName = record.areaName;
         townRecord.GSI1PK = `TOWN`;
         townRecord.GSI1SK = record.townName;
         townRecord.GSI2PK = `TOWN#${record.status}`;
@@ -163,7 +167,8 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<TownDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -171,6 +176,7 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
         const records = await this.townTable.find(
             {
                 GSI2PK: `TOWN#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );
@@ -224,7 +230,8 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
         );
     }
 
-    async findRecordByStatusAndAreaId(status: string, areaId: string): Promise<TownDto[] | null> {
+    async findRecordByStatusAndAreaId(areaId: string, status: string): Promise<TownDto[] | null> {
+        console.log('Finding town records by status and area ID:', status, areaId);
         const townRecords = await this.townTable.find(
             {
                 GSI3PK: `TOWN#${areaId}#${status}`,
@@ -233,6 +240,8 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
                 index: 'GSI3',
             }
         );
+
+        console.log('Town records found:', townRecords);
 
         return await this.convertToDtoList(townRecords);
     }
@@ -251,6 +260,8 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
         const dto = new TownDto();
         dto.townId = record.townId ? record.townId : '';
         dto.townName = record.townName ? record.townName : '';
+        dto.areaName = record.areaName ? record.areaName : '';
+        dto.areaId = record.areaId ? record.areaId : '';
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
@@ -273,6 +284,7 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
         const townData: TownDataType = {
             townId: dto.townId,
             areaId: dto.areaId,
+            areaName: dto.areaName,
             status: dto.status,
             townName: dto.townName,
             GSI1PK: `TOWN`,

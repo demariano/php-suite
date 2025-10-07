@@ -92,6 +92,7 @@ export class UpdateTownHandler implements ICommandHandler<UpdateTownCommand> {
             existingRecord.status = StatusEnum.ACTIVE;
             existingRecord.townName = command.townDto.townName;
             existingRecord.areaId = command.townDto.areaId;
+            existingRecord.areaName = command.townDto.areaName;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Town updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
@@ -107,6 +108,7 @@ export class UpdateTownHandler implements ICommandHandler<UpdateTownCommand> {
                 ...existingRecord.forApprovalVersion,
                 townName: command.townDto.townName,
                 areaId: command.townDto.areaId,
+                areaName: command.townDto.areaName,
             };
         }
     }

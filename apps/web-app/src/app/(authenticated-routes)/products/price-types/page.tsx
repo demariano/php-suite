@@ -238,14 +238,8 @@ export default function ProductPriceTypesPage() {
         // Update the selected price type with the latest data
         setSelectedPriceType(updatedRecord);
         
-        // For regular users, keep the modal open to show the updated record
-        // For admin users, close the modal
-        if (isAdminUser) {
-          handleCloseModal();
-        } else if (updatedRecord.status === StatusEnum.FOR_APPROVAL) {
-          // Show success message for regular users when changes are pending approval
-          setSuccessMessage('Your changes have been submitted for approval.');
-        }
+        // Close modal after successful update for all users
+        handleCloseModal();
       }
     } catch (error) {
       console.error('Error saving price type:', error);

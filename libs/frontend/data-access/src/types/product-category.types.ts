@@ -1,13 +1,7 @@
 // Frontend-specific types for Product Category
 // These mirror the backend DTOs but without NestJS decorators
 
-export enum StatusEnum {
-    ACTIVE = 'ACTIVE',
-    INACTIVE = 'INACTIVE',
-    FOR_APPROVAL = 'FOR_APPROVAL',
-    NEW_RECORD = 'NEW_RECORD',
-    FOR_DELETION = 'FOR_DELETION',
-}
+import { StatusEnum } from './status.enum';
 
 export interface ProductCategoryDto {
     productCategoryId: string;

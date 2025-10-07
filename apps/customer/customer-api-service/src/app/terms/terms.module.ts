@@ -10,10 +10,11 @@ import { CreateTermsHandler } from './command/create/create.handler';
 import { DeleteTermsHandler } from './command/delete/delete.handler';
 import { DenyTermsHandler } from './command/deny-record/deny.handler';
 import { UpdateTermsHandler } from './command/update/update.handler';
-import { TermsController } from './terms.controller';
 import { GetTermsByIdHandler } from './queries/get.by.id/get.terms.by.id.handler';
 import { GetTermsByNameHandler } from './queries/get.by.name/get.terms.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
+import { TermsController } from './terms.controller';
 
 @Module({
     imports: [
@@ -38,6 +39,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         GetTermsByIdHandler,
         GetTermsByNameHandler,
         GetRecordsPaginationHandler,
+        GetRecordsByStatusPaginationHandler,
         UpdateTermsHandler,
         DeleteTermsHandler,
         ApproveTermsHandler,

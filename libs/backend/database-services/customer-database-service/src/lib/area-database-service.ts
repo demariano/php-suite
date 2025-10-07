@@ -161,7 +161,8 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<AreaDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -169,6 +170,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         const records = await this.areaTable.find(
             {
                 GSI2PK: `AREA#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );

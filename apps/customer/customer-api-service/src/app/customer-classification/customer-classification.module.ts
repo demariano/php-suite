@@ -13,6 +13,7 @@ import { UpdateCustomerClassificationHandler } from './command/update/update.han
 import { CustomerClassificationController } from './customer-classification.controller';
 import { GetCustomerClassificationByIdHandler } from './queries/get.by.id/get.customer.classification.by.id.handler';
 import { GetCustomerClassificationByNameHandler } from './queries/get.by.name/get.customer.classification.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 
 @Module({
@@ -38,6 +39,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         GetCustomerClassificationByIdHandler,
         GetCustomerClassificationByNameHandler,
         GetRecordsPaginationHandler,
+        GetRecordsByStatusPaginationHandler,
         UpdateCustomerClassificationHandler,
         DeleteCustomerClassificationHandler,
         ApproveCustomerClassificationHandler,

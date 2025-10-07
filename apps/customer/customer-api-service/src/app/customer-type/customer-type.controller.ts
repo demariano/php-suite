@@ -10,6 +10,7 @@ import { DenyCustomerTypeCommand } from './command/deny-record/deny.command';
 import { UpdateCustomerTypeCommand } from './command/update/update.command';
 import { GetCustomerTypeByIdQuery } from './queries/get.by.id/get.customer.type.by.id.query';
 import { GetCustomerTypeByNameQuery } from './queries/get.by.name/get.customer.type.by.name.query';
+import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @ApiTags('Customer Type')
@@ -23,6 +24,14 @@ export class CustomerTypeController {
     @ApiOperation({
         summary: 'Create customer type',
         description: 'Creates a new customer type record',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 201,
@@ -54,7 +63,16 @@ export class CustomerTypeController {
             },
         },
     })
-    create(@Body() createCustomerTypeDto: CreateCustomerTypeDto, @CurrentUser() user: UserCognito) {
+    create(
+        @Body() createCustomerTypeDto: CreateCustomerTypeDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         return this.commandBus.execute(new CreateCustomerTypeCommand(createCustomerTypeDto, user));
     }
 
@@ -67,6 +85,14 @@ export class CustomerTypeController {
         name: 'id',
         description: 'Customer type ID',
         example: 'cust-type-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 200,
@@ -98,7 +124,17 @@ export class CustomerTypeController {
             },
         },
     })
-    update(@Param('id') id: string, @Body() customerTypeDto: CustomerTypeDto, @CurrentUser() user: UserCognito) {
+    update(
+        @Param('id') id: string,
+        @Body() customerTypeDto: CustomerTypeDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         return this.commandBus.execute(new UpdateCustomerTypeCommand(id, customerTypeDto, user));
     }
 
@@ -111,6 +147,14 @@ export class CustomerTypeController {
         name: 'id',
         description: 'Customer type ID',
         example: 'cust-type-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 200,
@@ -130,7 +174,12 @@ export class CustomerTypeController {
             },
         },
     })
-    delete(@Param('id') id: string, @CurrentUser() user: UserCognito) {
+    delete(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         const customerTypeDto = new CustomerTypeDto();
         return this.commandBus.execute(new DeleteCustomerTypeCommand(id, customerTypeDto, user));
     }
@@ -144,6 +193,14 @@ export class CustomerTypeController {
         name: 'id',
         description: 'Customer type ID',
         example: 'cust-type-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 200,
@@ -164,7 +221,12 @@ export class CustomerTypeController {
             },
         },
     })
-    approve(@Param('id') id: string, @CurrentUser() user: UserCognito) {
+    approve(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         return this.commandBus.execute(new ApproveCustomerTypeCommand(id, user));
     }
 
@@ -177,6 +239,14 @@ export class CustomerTypeController {
         name: 'id',
         description: 'Customer type ID',
         example: 'cust-type-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 200,
@@ -197,7 +267,12 @@ export class CustomerTypeController {
             },
         },
     })
-    deny(@Param('id') id: string, @CurrentUser() user: UserCognito) {
+    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         return this.commandBus.execute(new DenyCustomerTypeCommand(id, user));
     }
 
@@ -297,13 +372,6 @@ export class CustomerTypeController {
         type: String,
         example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
     })
-    @ApiQuery({
-        name: 'status',
-        description: 'Filter by status',
-        required: true,
-        enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
-        example: 'ACTIVE',
-    })
     @ApiResponse({
         status: 200,
         description: 'Customer types retrieved successfully',
@@ -343,12 +411,48 @@ export class CustomerTypeController {
     getRecordsPagination(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string,
-        @Query('status') status: string
+        @Query('cursorPointer') cursorPointer: string
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetRecordsPaginationQuery(status, limit, direction, cursorPointer));
+        return this.queryBus.execute(new GetRecordsPaginationQuery(limit, direction, cursorPointer));
+    }
+
+    @Get('/status')
+    @ApiOperation({
+        summary: 'List customer types with pagination by status',
+        description:
+            'Retrieves a paginated list of customer types filtered by status. Use cursor-based pagination for optimal performance.',
+    })
+    @ApiQuery({ name: 'limit', description: 'Number of records per page', required: true, type: Number, example: 10 })
+    @ApiQuery({
+        name: 'direction',
+        description: 'Pagination direction',
+        required: false,
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({ name: 'cursorPointer', description: 'Cursor pointer for pagination', required: false, type: String })
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: true,
+        description: 'Filter by status',
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+    })
+    @ApiQuery({ name: 'name', type: String, required: false, description: 'Filter by name', example: 'Premium' })
+    @ApiResponse({ status: 200, description: 'Customer types retrieved successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request - Invalid pagination parameters' })
+    getRecordsPaginationByStatus(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('name') name: string
+    ) {
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
+        );
     }
 
     @Get(':id')

@@ -1,8 +1,8 @@
-import { CurrentUser, UserCognito } from '@auth-guard-lib';
+import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreateTermsDto, TermsDto } from '@dto';
-import { Body, Controller, Delete, Get, Param, Post, Put, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveTermsCommand } from './command/approve-record/approve.command';
 import { CreateTermsCommand } from './command/create/create.command';
 import { DeleteTermsCommand } from './command/delete/delete.command';
@@ -10,10 +10,13 @@ import { DenyTermsCommand } from './command/deny-record/deny.command';
 import { UpdateTermsCommand } from './command/update/update.command';
 import { GetTermsByIdQuery } from './queries/get.by.id/get.terms.by.id.query';
 import { GetTermsByNameQuery } from './queries/get.by.name/get.terms.by.name.query';
+import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @ApiTags('Terms')
 @Controller('terms')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(CognitoAuthGuard)
 export class TermsController {
     constructor(private readonly commandBus: CommandBus, private readonly queryBus: QueryBus) {}
 
@@ -21,6 +24,14 @@ export class TermsController {
     @ApiOperation({
         summary: 'Create terms',
         description: 'Creates a new terms record',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 201,
@@ -52,7 +63,16 @@ export class TermsController {
             },
         },
     })
-    create(@Body() createTermsDto: CreateTermsDto, @CurrentUser() user: UserCognito) {
+    create(
+        @Body() createTermsDto: CreateTermsDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         return this.commandBus.execute(new CreateTermsCommand(createTermsDto, user));
     }
 
@@ -65,6 +85,14 @@ export class TermsController {
         name: 'id',
         description: 'Terms ID',
         example: 'terms-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 200,
@@ -96,7 +124,17 @@ export class TermsController {
             },
         },
     })
-    update(@Param('id') id: string, @Body() termsDto: TermsDto, @CurrentUser() user: UserCognito) {
+    update(
+        @Param('id') id: string,
+        @Body() termsDto: TermsDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         return this.commandBus.execute(new UpdateTermsCommand(id, termsDto, user));
     }
 
@@ -109,6 +147,14 @@ export class TermsController {
         name: 'id',
         description: 'Terms ID',
         example: 'terms-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 200,
@@ -128,7 +174,12 @@ export class TermsController {
             },
         },
     })
-    delete(@Param('id') id: string, @CurrentUser() user: UserCognito) {
+    delete(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         const termsDto = new TermsDto();
         return this.commandBus.execute(new DeleteTermsCommand(id, termsDto, user));
     }
@@ -142,6 +193,14 @@ export class TermsController {
         name: 'id',
         description: 'Terms ID',
         example: 'terms-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 200,
@@ -162,7 +221,12 @@ export class TermsController {
             },
         },
     })
-    approve(@Param('id') id: string, @CurrentUser() user: UserCognito) {
+    approve(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         return this.commandBus.execute(new ApproveTermsCommand(id, user));
     }
 
@@ -175,6 +239,14 @@ export class TermsController {
         name: 'id',
         description: 'Terms ID',
         example: 'terms-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
     })
     @ApiResponse({
         status: 200,
@@ -195,7 +267,12 @@ export class TermsController {
             },
         },
     })
-    deny(@Param('id') id: string, @CurrentUser() user: UserCognito) {
+    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
         return this.commandBus.execute(new DenyTermsCommand(id, user));
     }
 
@@ -293,13 +370,6 @@ export class TermsController {
         type: String,
         example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
     })
-    @ApiQuery({
-        name: 'status',
-        description: 'Filter by status',
-        required: true,
-        enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
-        example: 'ACTIVE',
-    })
     @ApiResponse({
         status: 200,
         description: 'Terms retrieved successfully',
@@ -339,10 +409,45 @@ export class TermsController {
     getRecordsPagination(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string,
-        @Query('status') status: string
+        @Query('cursorPointer') cursorPointer: string
     ) {
-        return this.queryBus.execute(new GetRecordsPaginationQuery(status, limit, direction, cursorPointer));
+        return this.queryBus.execute(new GetRecordsPaginationQuery(limit, direction, cursorPointer));
+    }
+
+    @Get('/status')
+    @ApiOperation({
+        summary: 'List terms with pagination by status',
+        description: 'Retrieves a paginated list of terms filtered by status',
+    })
+    @ApiQuery({ name: 'limit', description: 'Number of records per page', required: true, type: Number, example: 10 })
+    @ApiQuery({
+        name: 'direction',
+        description: 'Pagination direction',
+        required: false,
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({ name: 'cursorPointer', description: 'Cursor pointer for pagination', required: false, type: String })
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: true,
+        description: 'Filter by status',
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+    })
+    @ApiQuery({ name: 'name', type: String, required: false, description: 'Filter by name', example: 'Standard' })
+    @ApiResponse({ status: 200, description: 'Terms retrieved successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request - Invalid pagination parameters' })
+    getRecordsPaginationByStatus(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('name') name: string
+    ) {
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
+        );
     }
 
     @Get(':id')

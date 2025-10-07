@@ -131,6 +131,7 @@ export const CustomerSchema = {
             SK: { type: String, value: '${townId}', hidden: false },
             townId: { type: String, generate: 'ulid' },
             areaId: { type: String, required: false },
+            areaName: { type: String, required: false },
             townName: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },

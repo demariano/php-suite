@@ -19,9 +19,7 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
     ) {}
 
     async execute(query: GetRecordsPaginationQuery): Promise<ResponseDto<PageDto<CustomerClassificationDto>>> {
-        this.logger.log(
-            `Processing get customer classifications pagination request - Status: ${query.status}, Limit: ${query.limit}`
-        );
+        this.logger.log(`Processing get customer classifications pagination request `);
 
         try {
             // Validate parameters

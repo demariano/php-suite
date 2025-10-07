@@ -53,7 +53,8 @@ class ProductUnitApi extends AxiosConfig {
         status: string,
         direction?: string,
         cursorPointer?: string,
-        userRole?: string
+        userRole?: string,
+        name?: string
     ): Promise<ProductUnitsResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -72,6 +73,10 @@ class ProductUnitApi extends AxiosConfig {
         // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
+        }
+
+        if (name) {
+            params.append('name', name);
         }
 
         return await this.axiosInstance.get(`/product-units/status?${params.toString()}`);

@@ -149,7 +149,8 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<CustomerDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -157,6 +158,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         const records = await this.customerTable.find(
             {
                 GSI2PK: `CUSTOMER#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );

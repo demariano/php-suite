@@ -12,6 +12,7 @@ export default function ProductCategoriesPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
+  const { setFlashNotification } = useSessionStore();
   
   // Check if user is admin or super admin
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
@@ -218,16 +219,20 @@ export default function ProductCategoriesPage() {
       
       if (isCreateMode) {
         // Create new category
-        const newCategory = await ProductApi.createProductCategory({
+        await ProductApi.createProductCategory({
           productCategoryName: updatedCategory.productCategoryName,
           status: updatedCategory.status
         }, userRole);
         
-        // Refetch the categories to get the most up-to-date data
-        await fetchCategories();
+        setFlashNotification({
+          title: 'Success!',
+          message: 'Product Category created successfully!',
+          alertType: 'success'
+        });
         
-        // Close modal after creation
+        // Close modal and refresh list for new records
         handleCloseModal();
+        await fetchCategories();
       } else {
         // Update existing category
         const updatedRecord = await ProductApi.updateProductCategory(updatedCategory.productCategoryId, {
@@ -236,22 +241,23 @@ export default function ProductCategoriesPage() {
           status: updatedCategory.status
         }, userRole);
         
-        // Refetch the categories to get the most up-to-date data
+        setFlashNotification({
+          title: 'Success!',
+          message: 'Product Category updated successfully!',
+          alertType: 'success'
+        });
+        
+        // Close modal and refresh list after successful update
+        handleCloseModal();
         await fetchCategories();
-        
-        // Update the selected category with the latest data
-        setSelectedCategory(updatedRecord);
-        
-        // For regular users, keep the modal open to show the updated record
-        // For admin users, close the modal
-        if (isAdminUser) {
-          handleCloseModal();
-        } else if (updatedRecord.status === StatusEnum.FOR_APPROVAL) {
-          // Show success message for regular users when changes are pending approval
-          setSuccessMessage('Your changes have been submitted for approval.');
-        }
       }
     } catch (error) {
+      console.error('Error saving category:', error);
+      setFlashNotification({
+        title: 'Error!',
+        message: 'Failed to save category. Please try again.',
+        alertType: 'error'
+      });
       setError('Failed to save category. Please try again.');
     } finally {
       setIsLoading(false);
@@ -279,12 +285,22 @@ export default function ProductCategoriesPage() {
       
       await ProductApi.deleteProductCategory(selectedCategory, userRole);
       
-      // Refetch the categories to get the most up-to-date data
-      await fetchCategories();
+      setFlashNotification({
+        title: 'Success!',
+        message: 'Product Category deleted successfully!',
+        alertType: 'success'
+      });
       
       setShowDeleteConfirm(false);
       handleCloseModal();
+      await fetchCategories();
     } catch (error) {
+      console.error('Error deleting category:', error);
+      setFlashNotification({
+        title: 'Error!',
+        message: 'Failed to delete category. Please try again.',
+        alertType: 'error'
+      });
       setError('Failed to delete category. Please try again.');
     } finally {
       setIsLoading(false);
@@ -318,12 +334,22 @@ export default function ProductCategoriesPage() {
       // Call the API to approve the record
       await ProductApi.approveProductCategory(selectedCategory.productCategoryId, userRole);
       
-      // Refresh the categories list - use await to ensure it completes before closing modal
-      await fetchCategories();
+      setFlashNotification({
+        title: 'Success!',
+        message: 'Product Category approved successfully!',
+        alertType: 'success'
+      });
       
-      // Close the modal
+      // Close the modal and refresh the list
       handleCloseModal();
-    } catch (err) {
+      await fetchCategories();
+    } catch (error) {
+      console.error('Error approving category:', error);
+      setFlashNotification({
+        title: 'Error!',
+        message: 'Failed to approve category. Please try again.',
+        alertType: 'error'
+      });
       setError('Failed to approve category. Please try again.');
     } finally {
       setIsLoading(false);
@@ -343,12 +369,22 @@ export default function ProductCategoriesPage() {
       // Call the API to deny the record
       await ProductApi.denyProductCategory(selectedCategory.productCategoryId, userRole);
       
-      // Refresh the categories list - use await to ensure it completes before closing modal
-      await fetchCategories();
+      setFlashNotification({
+        title: 'Success!',
+        message: 'Product Category denied successfully!',
+        alertType: 'success'
+      });
       
-      // Close the modal
+      // Close the modal and refresh the list
       handleCloseModal();
-    } catch (err) {
+      await fetchCategories();
+    } catch (error) {
+      console.error('Error denying category:', error);
+      setFlashNotification({
+        title: 'Error!',
+        message: 'Failed to deny category. Please try again.',
+        alertType: 'error'
+      });
       setError('Failed to deny category. Please try again.');
     } finally {
       setIsLoading(false);

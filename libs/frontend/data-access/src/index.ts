@@ -15,19 +15,31 @@ export * from './local-state-management';
 export * from './state-management';
 
 // Export types
+export * from './types/area.types';
+export * from './types/customer-classification.types';
+export * from './types/customer-type.types';
 export * from './types/product-category.types';
 export * from './types/product-class.types';
 export * from './types/product-deal.types';
 export * from './types/product-price-type.types';
 export * from './types/product-unit.types';
+export * from './types/product.types';
 export * from './types/responseError';
+export * from './types/status.enum';
+export * from './types/terms.types';
+export * from './types/town.types';
 
 // Export API types
+export type { AreasResponse } from './api/area.api';
+export type { CustomerClassificationsResponse } from './api/customer-classification.api';
+export type { CustomerTypesResponse } from './api/customer-type.api';
 export type { PaginatedResponse, ProductCategoriesResponse } from './api/product-category.api';
 export type { ProductClassesResponse } from './api/product-class.api';
-export type { ProductDealsResponse } from './api/product-deal.api';
 export type { ProductPriceTypesResponse } from './api/product-price-type.api';
 export type { ProductUnitsResponse } from './api/product-unit.api';
+export type { TermsResponse } from './api/terms.api';
+export type { TownsResponse } from './api/town.api';
+export type { ProductDealsResponse } from './types/product-deal.types';
 
 // Export config
 export * from './config/constants';

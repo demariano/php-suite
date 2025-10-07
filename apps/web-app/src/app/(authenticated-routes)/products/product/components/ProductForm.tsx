@@ -3,6 +3,7 @@
 import { ProductDto, StatusEnum } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import ProductSearchableSelectionModal from '../../../search-modals/ProductSearchableSelectionModal';
+import ProductUnitPriceSelectionModal from '../../../search-modals/ProductUnitPriceSelectionModal';
 import SelectionField from './SelectionField';
 
 // Types for inner tabs
@@ -48,6 +49,7 @@ export default function ProductForm({
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [showClassModal, setShowClassModal] = useState(false);
   const [showDealModal, setShowDealModal] = useState(false);
+  const [showUnitPriceModal, setShowUnitPriceModal] = useState(false);
   const [userHasMadeSelections, setUserHasMadeSelections] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   
@@ -55,6 +57,13 @@ export default function ProductForm({
   const [activeInnerTab, setActiveInnerTab] = useState<InnerTabType>('record-details');
   const [productDeals, setProductDeals] = useState<ProductDealDetailsDto[]>([]);
   const [productUnitPrices, setProductUnitPrices] = useState<ProductUnitPriceDto[]>([]);
+  
+  // Form state for controlled inputs
+  const [formData, setFormData] = useState({
+    productName: '',
+    criticalLevel: '0',
+    changeReason: ''
+  });
 
   // Set initial values when editing (only when user hasn't made selections)
   useEffect(() => {
@@ -78,14 +87,19 @@ export default function ProductForm({
       if (selectedProduct.productUnitPrice) {
         setProductUnitPrices(selectedProduct.productUnitPrice);
       }
+      // Initialize form data
+      setFormData({
+        productName: selectedProduct.productName || '',
+        criticalLevel: selectedProduct.criticalLevel?.toString() || '0',
+        changeReason: selectedProduct.changeReason || ''
+      });
     }
   }, [isCreateMode, selectedProduct, userHasMadeSelections]);
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const productName = formData.get('productName') as string;
-    const criticalLevel = formData.get('criticalLevel') as string;
-    const changeReason = formData.get('changeReason') as string;
+    const productName = formData.productName;
+    const criticalLevel = formData.criticalLevel;
+    const changeReason = formData.changeReason;
     
     // Validate required fields
     const errors: string[] = [];
@@ -218,11 +232,6 @@ export default function ProductForm({
     setProductDeals([...productDeals, newDeal]);
   };
 
-  const updateProductDeal = (index: number, field: keyof ProductDealDetailsDto, value: string | number) => {
-    const updatedDeals = [...productDeals];
-    updatedDeals[index] = { ...updatedDeals[index], [field]: value };
-    setProductDeals(updatedDeals);
-  };
 
   const removeProductDeal = (index: number) => {
     setProductDeals(productDeals.filter((_, i) => i !== index));
@@ -230,11 +239,28 @@ export default function ProductForm({
 
   // Product Unit Price management
   const addProductUnitPrice = () => {
+    setShowUnitPriceModal(true);
+  };
+
+  const handleUnitPriceSelect = (productUnitId: string, productUnitName: string, productPriceTypeId: string, productPriceTypeName: string) => {
+    // Check if this combination already exists
+    const existingCombination = productUnitPrices.find(price => 
+      price.productUnitId === productUnitId && price.productPriceTypeId === productPriceTypeId
+    );
+    
+    if (existingCombination) {
+      setValidationErrors(['This product unit and price type combination has already been added. Please select a different combination.']);
+      return;
+    }
+
+    // Clear any existing validation errors
+    setValidationErrors([]);
+
     const newUnitPrice: ProductUnitPriceDto = {
-      productUnitId: `temp_${Date.now()}`,
-      productUnitName: '',
-      productPriceTypeId: `temp_${Date.now()}`,
-      productPriceTypeName: '',
+      productUnitId,
+      productUnitName,
+      productPriceTypeId,
+      productPriceTypeName,
       cost: 0,
       price: 0
     };
@@ -483,8 +509,10 @@ export default function ProductForm({
               <input
                 type="text"
                 name="productName"
-                defaultValue={isCreateMode ? '' : selectedProduct?.productName || ''}
+                value={formData.productName}
+                onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
                 placeholder={isCreateMode ? 'Enter product name' : ''}
+                disabled={!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE}
                 style={{
                   width: '100%',
                   padding: '12px 16px',
@@ -492,12 +520,16 @@ export default function ProductForm({
                   borderRadius: '8px',
                   fontSize: '14px',
                   outline: 'none',
-                  backgroundColor: 'white',
-                  transition: 'all 0.2s ease'
+                  backgroundColor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+                  color: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
+                  transition: 'all 0.2s ease',
+                  cursor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
                 }}
                 onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  if (isCreateMode || selectedProduct?.status === StatusEnum.ACTIVE) {
+                    e.currentTarget.style.borderColor = '#3b82f6';
+                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  }
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = '#d1d5db';
@@ -536,9 +568,11 @@ export default function ProductForm({
           <input
             type="number"
             name="criticalLevel"
-            defaultValue={isCreateMode ? '0' : selectedProduct?.criticalLevel || '0'}
+            value={formData.criticalLevel}
+            onChange={(e) => setFormData(prev => ({ ...prev, criticalLevel: e.target.value }))}
             placeholder={isCreateMode ? 'Enter critical level' : ''}
             min="0"
+            disabled={!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE}
             style={{
               width: '100%',
               padding: '12px 16px',
@@ -546,12 +580,16 @@ export default function ProductForm({
               borderRadius: '8px',
               fontSize: '14px',
               outline: 'none',
-              backgroundColor: 'white',
-              transition: 'all 0.2s ease'
+              backgroundColor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+              color: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
+              transition: 'all 0.2s ease',
+              cursor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#3b82f6';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              if (isCreateMode || selectedProduct?.status === StatusEnum.ACTIVE) {
+                e.currentTarget.style.borderColor = '#3b82f6';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              }
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = '#d1d5db';
@@ -599,9 +637,11 @@ export default function ProductForm({
                 </label>
                 <textarea
                   name="changeReason"
-                  defaultValue={selectedProduct?.changeReason || ''}
+                  value={formData.changeReason}
+                  onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
                   placeholder="Please explain the reason for this change..."
                   rows={3}
+                  disabled={!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -609,14 +649,18 @@ export default function ProductForm({
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
-                    backgroundColor: 'white',
+                    backgroundColor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+                    color: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
                     transition: 'all 0.2s ease',
                     resize: 'vertical',
-                    minHeight: '80px'
+                    minHeight: '80px',
+                    cursor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
                   }}
                   onFocus={(e) => {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    if (isCreateMode || selectedProduct?.status === StatusEnum.ACTIVE) {
+                      e.currentTarget.style.borderColor = '#3b82f6';
+                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    }
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = '#d1d5db';
@@ -901,7 +945,34 @@ export default function ProductForm({
                       </button>
                     </div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                      <div>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '4px'
+                        }}>
+                          Unit Name
+                        </label>
+                        <input
+                          type="text"
+                          value={unitPrice.productUnitName || ''}
+                          readOnly
+                          style={{
+                            width: '100%',
+                            padding: '8px 12px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            backgroundColor: '#f9fafb',
+                            color: '#374151',
+                            cursor: 'not-allowed'
+                          }}
+                        />
+                      </div>
+                      
                       <div>
                         <label style={{
                           display: 'block',
@@ -1067,6 +1138,12 @@ export default function ProductForm({
        selectedValue={null}
        onSelect={handleDealSelect}
        onClose={() => setShowDealModal(false)}
+     />
+
+     <ProductUnitPriceSelectionModal
+       show={showUnitPriceModal}
+       onSelect={handleUnitPriceSelect}
+       onClose={() => setShowUnitPriceModal(false)}
      />
    </>
  );

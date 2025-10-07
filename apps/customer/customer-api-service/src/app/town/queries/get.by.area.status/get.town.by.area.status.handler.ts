@@ -10,8 +10,8 @@ const MIN_NAME_LENGTH = 1;
 const MAX_NAME_LENGTH = 255;
 
 @QueryHandler(GetTownByAreaStatusQuery)
-export class GetTownByNameHandler implements IQueryHandler<GetTownByAreaStatusQuery> {
-    private readonly logger = new Logger(GetTownByNameHandler.name);
+export class GetTownByAreaStatusHandler implements IQueryHandler<GetTownByAreaStatusQuery> {
+    private readonly logger = new Logger(GetTownByAreaStatusHandler.name);
 
     constructor(
         @Inject('TownDatabaseService')

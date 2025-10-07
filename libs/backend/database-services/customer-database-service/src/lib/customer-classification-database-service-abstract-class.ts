@@ -22,7 +22,8 @@ export abstract class CustomerClassificationDatabaseServiceAbstract {
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<CustomerClassificationDto>>;
 
     abstract findRecordsByPagination(

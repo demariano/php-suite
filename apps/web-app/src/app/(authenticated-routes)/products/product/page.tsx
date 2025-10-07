@@ -228,7 +228,9 @@ export default function ProductsMainPage() {
           productClassId: updatedProduct.productClassId,
           productClassName: updatedProduct.productClassName,
           criticalLevel: updatedProduct.criticalLevel,
-          status: updatedProduct.status
+          productDeals: updatedProduct.productDeals,
+          productUnitPrice: updatedProduct.productUnitPrice,
+          changeReason: updatedProduct.changeReason
         }, userRole);
         
         // Refetch the products to get the most up-to-date data
@@ -248,7 +250,8 @@ export default function ProductsMainPage() {
           criticalLevel: updatedProduct.criticalLevel,
           productDeals: updatedProduct.productDeals,
           productUnitPrice: updatedProduct.productUnitPrice,
-          status: updatedProduct.status
+          status: updatedProduct.status,
+          changeReason: updatedProduct.changeReason
         }, userRole);
         
         // Refetch the products to get the most up-to-date data
@@ -257,14 +260,8 @@ export default function ProductsMainPage() {
         // Update the selected product with the latest data
         setSelectedProduct(updatedRecord);
         
-        // For regular users, keep the modal open to show the updated record
-        // For admin users, close the modal
-        if (isAdminUser) {
-          handleCloseModal();
-        } else if (updatedRecord.status === StatusEnum.FOR_APPROVAL) {
-          // Show success message for regular users when changes are pending approval
-          setSuccessMessage('Your changes have been submitted for approval.');
-        }
+        // Close modal after successful update for all users
+        handleCloseModal();
       }
     } catch (error) {
       setError('Failed to save product. Please try again.');

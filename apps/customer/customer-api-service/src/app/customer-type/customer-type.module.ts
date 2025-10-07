@@ -13,6 +13,7 @@ import { UpdateCustomerTypeHandler } from './command/update/update.handler';
 import { CustomerTypeController } from './customer-type.controller';
 import { GetCustomerTypeByIdHandler } from './queries/get.by.id/get.customer.type.by.id.handler';
 import { GetCustomerTypeByNameHandler } from './queries/get.by.name/get.customer.type.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 
 @Module({
@@ -38,6 +39,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         GetCustomerTypeByIdHandler,
         GetCustomerTypeByNameHandler,
         GetRecordsPaginationHandler,
+        GetRecordsByStatusPaginationHandler,
         UpdateCustomerTypeHandler,
         DeleteCustomerTypeHandler,
         ApproveCustomerTypeHandler,

@@ -19,9 +19,7 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
     ) {}
 
     async execute(query: GetRecordsPaginationQuery): Promise<ResponseDto<PageDto<CustomerTypeDto>>> {
-        this.logger.log(
-            `Processing get customer types pagination request - Status: ${query.status}, Limit: ${query.limit}`
-        );
+        this.logger.log(`Processing get customer types pagination request `);
 
         try {
             // Validate parameters
@@ -51,9 +49,8 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
      * Fetches customer types with pagination
      */
     private async fetchCustomerTypesPagination(query: GetRecordsPaginationQuery): Promise<PageDto<CustomerTypeDto>> {
-        return await this.customerTypeDatabaseService.findRecordsPagination(
+        return await this.customerTypeDatabaseService.findRecordsByPagination(
             query.limit,
-            query.status,
             query.direction,
             query.cursorPointer
         );

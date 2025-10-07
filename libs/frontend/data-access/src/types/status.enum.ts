@@ -1,0 +1,7 @@
+export enum StatusEnum {
+    ACTIVE = 'ACTIVE',
+    INACTIVE = 'INACTIVE',
+    FOR_APPROVAL = 'FOR_APPROVAL',
+    NEW_RECORD = 'NEW_RECORD',
+    FOR_DELETION = 'FOR_DELETION',
+}

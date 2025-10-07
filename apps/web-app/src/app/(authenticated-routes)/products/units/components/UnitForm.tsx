@@ -175,6 +175,7 @@ export default function UnitForm({
             name="productUnitName"
             defaultValue={isCreateMode ? '' : selectedUnit?.productUnitName || ''}
             placeholder={isCreateMode ? 'Enter unit name' : ''}
+            disabled={!isCreateMode && selectedUnit?.status !== StatusEnum.ACTIVE}
             style={{
               width: '100%',
               padding: '12px 16px',
@@ -182,12 +183,16 @@ export default function UnitForm({
               borderRadius: '8px',
               fontSize: '14px',
               outline: 'none',
-              backgroundColor: 'white',
-              transition: 'all 0.2s ease'
+              backgroundColor: (!isCreateMode && selectedUnit?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+              color: (!isCreateMode && selectedUnit?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
+              transition: 'all 0.2s ease',
+              cursor: (!isCreateMode && selectedUnit?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#3b82f6';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              if (isCreateMode || selectedUnit?.status === StatusEnum.ACTIVE) {
+                e.currentTarget.style.borderColor = '#3b82f6';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              }
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = '#d1d5db';

@@ -181,6 +181,7 @@ export default function DealForm({
             name="productDealName"
             defaultValue={isCreateMode ? '' : selectedDeal?.productDealName || ''}
             placeholder={isCreateMode ? 'Enter deal name' : ''}
+            disabled={!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE}
             style={{
               width: '100%',
               padding: '12px 16px',
@@ -188,12 +189,16 @@ export default function DealForm({
               borderRadius: '8px',
               fontSize: '14px',
               outline: 'none',
-              backgroundColor: 'white',
-              transition: 'all 0.2s ease'
+              backgroundColor: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+              color: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
+              transition: 'all 0.2s ease',
+              cursor: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#3b82f6';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              if (isCreateMode || selectedDeal?.status === StatusEnum.ACTIVE) {
+                e.currentTarget.style.borderColor = '#3b82f6';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              }
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = '#d1d5db';
@@ -220,6 +225,7 @@ export default function DealForm({
               min="0"
               defaultValue={isCreateMode ? '' : selectedDeal?.minQty?.toString() || ''}
               placeholder={isCreateMode ? 'Enter minimum quantity' : ''}
+              disabled={!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE}
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -227,12 +233,16 @@ export default function DealForm({
                 borderRadius: '8px',
                 fontSize: '14px',
                 outline: 'none',
-                backgroundColor: 'white',
-                transition: 'all 0.2s ease'
+                backgroundColor: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+                color: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
+                transition: 'all 0.2s ease',
+                cursor: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                if (isCreateMode || selectedDeal?.status === StatusEnum.ACTIVE) {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = '#d1d5db';
@@ -258,6 +268,7 @@ export default function DealForm({
               min="0"
               defaultValue={isCreateMode ? '' : selectedDeal?.additionalQty?.toString() || ''}
               placeholder={isCreateMode ? 'Enter additional quantity' : ''}
+              disabled={!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE}
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -265,12 +276,16 @@ export default function DealForm({
                 borderRadius: '8px',
                 fontSize: '14px',
                 outline: 'none',
-                backgroundColor: 'white',
-                transition: 'all 0.2s ease'
+                backgroundColor: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+                color: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
+                transition: 'all 0.2s ease',
+                cursor: (!isCreateMode && selectedDeal?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
               }}
               onFocus={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                if (isCreateMode || selectedDeal?.status === StatusEnum.ACTIVE) {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = '#d1d5db';

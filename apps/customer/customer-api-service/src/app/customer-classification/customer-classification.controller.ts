@@ -10,6 +10,7 @@ import { DenyCustomerClassificationCommand } from './command/deny-record/deny.co
 import { UpdateCustomerClassificationCommand } from './command/update/update.command';
 import { GetCustomerClassificationByIdQuery } from './queries/get.by.id/get.customer.classification.by.id.query';
 import { GetCustomerClassificationByNameQuery } from './queries/get.by.name/get.customer.classification.by.name.query';
+import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @Controller('customer-classifications')
@@ -474,13 +475,6 @@ export class CustomerClassificationController {
         example: 'cursor_abc123',
     })
     @ApiQuery({
-        name: 'status',
-        type: String,
-        required: true,
-        description: 'Filter by customer classification status',
-        enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
-    })
-    @ApiQuery({
         name: 'userRole',
         type: String,
         required: false,
@@ -534,12 +528,66 @@ export class CustomerClassificationController {
     getRecordsPagination(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string,
-        @Query('status') status: string
+        @Query('cursorPointer') cursorPointer: string
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetRecordsPaginationQuery(status, limit, direction, cursorPointer));
+        return this.queryBus.execute(new GetRecordsPaginationQuery(limit, direction, cursorPointer));
+    }
+
+    @Get('/status')
+    @ApiOperation({
+        summary: 'List customer classifications with pagination by status',
+        description:
+            'Retrieves a paginated list of customer classifications filtered by status. Use cursor-based pagination for optimal performance.',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: true,
+        description: 'Filter by customer classification status',
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+    })
+    @ApiQuery({
+        name: 'name',
+        type: String,
+        required: false,
+        description: 'Filter by classification name',
+        example: 'Premium',
+    })
+    @ApiResponse({ status: 200, description: 'Paginated list of customer classifications' })
+    @ApiResponse({ status: 400, description: 'Bad request - Invalid pagination parameters' })
+    getRecordsPaginationByStatus(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('name') name: string
+    ) {
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
+        );
     }
 
     @Get(':id')

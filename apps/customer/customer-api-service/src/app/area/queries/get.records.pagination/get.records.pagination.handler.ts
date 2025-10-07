@@ -19,7 +19,7 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
     ) {}
 
     async execute(query: GetRecordsPaginationQuery): Promise<ResponseDto<PageDto<AreaDto>>> {
-        this.logger.log(`Processing get areas pagination request - Status: ${query.status}, Limit: ${query.limit}`);
+        this.logger.log(`Processing get areas pagination request`);
 
         try {
             // Validate parameters
@@ -49,9 +49,8 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
      * Fetches areas with pagination
      */
     private async fetchAreasPagination(query: GetRecordsPaginationQuery): Promise<PageDto<AreaDto>> {
-        return await this.areaDatabaseService.findRecordsPagination(
+        return await this.areaDatabaseService.findRecordsByPagination(
             query.limit,
-            query.status,
             query.direction,
             query.cursorPointer
         );

@@ -1,4 +1,8 @@
-import { CustomerDatabaseServiceModule } from '@customer-database-service';
+import { AuthGuardLibModule } from '@auth-guard-lib';
+import { ConfigurationLibModule } from '@configuration-lib';
+import { AreaDatabaseService, CustomerDatabaseServiceModule } from '@customer-database-service';
+import { DynamoDbLibModule } from '@dynamo-db-lib';
+import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue-lib';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { AreaController } from './area.controller';
@@ -9,15 +13,39 @@ import { DenyAreaHandler } from './command/deny-record/deny.handler';
 import { UpdateAreaHandler } from './command/update/update.handler';
 import { GetAreaByIdHandler } from './queries/get.by.id/get.area.by.id.handler';
 import { GetAreaByNameHandler } from './queries/get.by.name/get.area.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 
 const commandHandlers = [CreateAreaHandler, UpdateAreaHandler, DeleteAreaHandler, ApproveAreaHandler, DenyAreaHandler];
 
-const queryHandlers = [GetAreaByIdHandler, GetAreaByNameHandler, GetRecordsPaginationHandler];
+const queryHandlers = [
+    GetAreaByIdHandler,
+    GetAreaByNameHandler,
+    GetRecordsPaginationHandler,
+    GetRecordsByStatusPaginationHandler,
+];
 
 @Module({
-    imports: [CqrsModule, CustomerDatabaseServiceModule],
+    imports: [
+        CqrsModule,
+        DynamoDbLibModule,
+        ConfigurationLibModule,
+        AuthGuardLibModule,
+        MessageQueueLibModule,
+        CustomerDatabaseServiceModule,
+    ],
     controllers: [AreaController],
-    providers: [...commandHandlers, ...queryHandlers],
+    providers: [
+        ...commandHandlers,
+        ...queryHandlers,
+        {
+            provide: 'MessageQueueAwsLibService',
+            useClass: MessageQueueAwsLibService,
+        },
+        {
+            provide: 'AreaDatabaseService',
+            useClass: AreaDatabaseService,
+        },
+    ],
 })
 export class AreaModule {}

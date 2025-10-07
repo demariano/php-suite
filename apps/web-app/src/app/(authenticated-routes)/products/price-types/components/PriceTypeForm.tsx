@@ -175,6 +175,7 @@ export default function PriceTypeForm({
             name="productPriceTypeName"
             defaultValue={isCreateMode ? '' : selectedPriceType?.productPriceTypeName || ''}
             placeholder={isCreateMode ? 'Enter price type name' : ''}
+            disabled={!isCreateMode && selectedPriceType?.status !== StatusEnum.ACTIVE}
             style={{
               width: '100%',
               padding: '12px 16px',
@@ -182,12 +183,16 @@ export default function PriceTypeForm({
               borderRadius: '8px',
               fontSize: '14px',
               outline: 'none',
-              backgroundColor: 'white',
-              transition: 'all 0.2s ease'
+              backgroundColor: (!isCreateMode && selectedPriceType?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+              color: (!isCreateMode && selectedPriceType?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
+              transition: 'all 0.2s ease',
+              cursor: (!isCreateMode && selectedPriceType?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
             }}
             onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#3b82f6';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              if (isCreateMode || selectedPriceType?.status === StatusEnum.ACTIVE) {
+                e.currentTarget.style.borderColor = '#3b82f6';
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+              }
             }}
             onBlur={(e) => {
               e.currentTarget.style.borderColor = '#d1d5db';

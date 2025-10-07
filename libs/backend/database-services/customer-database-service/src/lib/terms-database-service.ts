@@ -164,7 +164,8 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<TermsDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -172,6 +173,7 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         const records = await this.termsTable.find(
             {
                 GSI2PK: `TERMS#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );

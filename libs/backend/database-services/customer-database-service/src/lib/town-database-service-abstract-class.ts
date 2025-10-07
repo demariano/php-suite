@@ -22,7 +22,8 @@ export abstract class TownDatabaseServiceAbstract {
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<TownDto>>;
 
     abstract findRecordsByPagination(

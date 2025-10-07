@@ -10,6 +10,7 @@ import { DenyAreaCommand } from './command/deny-record/deny.command';
 import { UpdateAreaCommand } from './command/update/update.command';
 import { GetAreaByIdQuery } from './queries/get.by.id/get.area.by.id.query';
 import { GetAreaByNameQuery } from './queries/get.by.name/get.area.by.name.query';
+import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @Controller('area')
@@ -435,13 +436,6 @@ export class AreaController {
         description: 'Cursor for pagination - null for first page',
         example: 'cursor_abc123',
     })
-    @ApiQuery({
-        name: 'status',
-        type: String,
-        required: true,
-        description: 'Filter by area status',
-        enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
-    })
     @ApiResponse({
         status: 200,
         description: 'Paginated list of areas',
@@ -488,12 +482,109 @@ export class AreaController {
     getAreasPagination(
         @Query('limit') limit: number,
         @Query('direction') direction?: string,
-        @Query('cursorPointer') cursorPointer?: string,
-        @Query('status') status: string
+        @Query('cursorPointer') cursorPointer?: string
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetRecordsPaginationQuery(status, limit, direction, cursorPointer));
+        return this.queryBus.execute(new GetRecordsPaginationQuery(limit, direction, cursorPointer));
+    }
+
+    @Get('/status')
+    @ApiOperation({
+        summary: 'List areas with pagination by status',
+        description:
+            'Retrieves a paginated list of areas filtered by status. Use cursor-based pagination for optimal performance.',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: true,
+        description: 'Filter by area status',
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+    })
+    @ApiQuery({
+        name: 'name',
+        type: String,
+        required: false,
+        description: 'Filter by area name',
+        example: 'North',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Paginated list of areas',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        items: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/AreaDto' },
+                        },
+                        pagination: {
+                            type: 'object',
+                            properties: {
+                                nextCursor: { type: 'string', nullable: true },
+                                prevCursor: { type: 'string', nullable: true },
+                                hasMore: { type: 'boolean' },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid pagination parameters',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 400 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        errorMessage: { type: 'string', example: 'Limit must be between 1 and 100' },
+                    },
+                },
+            },
+        },
+    })
+    getAreasPaginationByStatus(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('name') name: string
+    ) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
+        );
     }
 
     @Get(':id')

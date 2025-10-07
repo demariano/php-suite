@@ -12,6 +12,7 @@ export const ENV_KEYS = [
     'S3_NX_TEMPLATE2_DEV_DATA',
     'NODE_ENV',
     'BYPASS_AUTH',
+    'API_CUSTOMER_URL',
 ] as const;
 
 export type EnvVariables = {

@@ -9,6 +9,9 @@ export class TownDto {
     areaId?: string;
 
     @ApiProperty()
+    areaName?: string;
+
+    @ApiProperty()
     townName?: string;
 
     @ApiProperty({ enum: StatusEnum })

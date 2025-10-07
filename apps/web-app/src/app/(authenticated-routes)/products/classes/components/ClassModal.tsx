@@ -471,8 +471,8 @@ export default function ClassModal({
                   </div>
                 )}
                 
-                {/* Close button */}
-                <div style={{ marginLeft: isAdminUser ? 'auto' : '' }}>
+                {/* Close button - moved to right side */}
+                <div>
                   <button
                     type="button"
                     onClick={onClose}

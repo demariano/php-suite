@@ -56,6 +56,7 @@ export class CreateCustomerTypeHandler implements ICommandHandler<CreateCustomer
      * Checks if user has permission to approve updates directly
      */
     private hasApprovalPermission(userRoles?: string[]): boolean {
+        console.log('userRoles', userRoles);
         if (!userRoles || userRoles.length === 0) {
             return false;
         }
@@ -67,6 +68,7 @@ export class CreateCustomerTypeHandler implements ICommandHandler<CreateCustomer
      * Updates customer type status and activity logs based on user permissions
      */
     private updateCustomerTypeStatus(command: CreateCustomerTypeCommand, hasApprovalPermission: boolean): void {
+        console.log('hasApprovalPermission', hasApprovalPermission);
         if (hasApprovalPermission) {
             // User can approve directly - set to ACTIVE
             command.customerTypeDto.status = StatusEnum.ACTIVE;

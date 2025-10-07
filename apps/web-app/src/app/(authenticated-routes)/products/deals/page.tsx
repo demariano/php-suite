@@ -217,14 +217,8 @@ export default function ProductDealsPage() {
         // Update the selected deal with the latest data
         setSelectedDeal(updatedRecord);
         
-        // For regular users, keep the modal open to show the updated record
-        // For admin users, close the modal
-        if (isAdminUser) {
-          handleCloseModal();
-        } else if (updatedRecord.status === StatusEnum.FOR_APPROVAL) {
-          // Show success message for regular users when changes are pending approval
-          setSuccessMessage('Your changes have been submitted for approval.');
-        }
+        // Close modal after successful update for all users
+        handleCloseModal();
       }
     } catch {
       setError('Failed to save deal. Please try again.');

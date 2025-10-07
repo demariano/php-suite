@@ -22,6 +22,8 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
         this.logger.log(`Processing update request for product: ${command.productDto.productId}`);
 
         try {
+            console.log('command', command);
+
             // Validate record exists
             const existingRecord = await this.validateProductExists(command.productDto.productId);
 
@@ -33,6 +35,8 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
 
             // Optimize activity logs
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            console.log('existingRecord', existingRecord);
 
             // Update record in database
             const updatedRecord = await this.productDatabaseService.updateProductRecord(existingRecord);

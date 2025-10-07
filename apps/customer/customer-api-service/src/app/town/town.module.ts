@@ -10,8 +10,10 @@ import { CreateTownHandler } from './command/create/create.handler';
 import { DeleteTownHandler } from './command/delete/delete.handler';
 import { DenyTownHandler } from './command/deny-record/deny.handler';
 import { UpdateTownHandler } from './command/update/update.handler';
+import { GetTownByAreaStatusHandler } from './queries/get.by.area.status/get.town.by.area.status.handler';
 import { GetTownByIdHandler } from './queries/get.by.id/get.town.by.id.handler';
 import { GetTownByNameHandler } from './queries/get.by.name/get.town.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 import { TownController } from './town.controller';
 
@@ -42,6 +44,8 @@ import { TownController } from './town.controller';
         DeleteTownHandler,
         ApproveTownHandler,
         DenyTownHandler,
+        GetRecordsByStatusPaginationHandler,
+        GetTownByAreaStatusHandler,
     ],
 })
 export class TownModule {}

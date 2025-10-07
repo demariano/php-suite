@@ -219,14 +219,8 @@ export default function ProductUnitsPage() {
         // Update the selected unit with the latest data
         setSelectedUnit(updatedRecord);
         
-        // For regular users, keep the modal open to show the updated record
-        // For admin users, close the modal
-        if (isAdminUser) {
-          handleCloseModal();
-        } else if (updatedRecord.status === StatusEnum.FOR_APPROVAL) {
-          // Show success message for regular users when changes are pending approval
-          setSuccessMessage('Your changes have been submitted for approval.');
-        }
+        // Close modal after successful update for all users
+        handleCloseModal();
       }
     } catch (error) {
       setError('Failed to save unit. Please try again.');
