@@ -39,9 +39,10 @@
             "@email-template-database-service": [
                 "libs/backend/database-services/email-template-database-service/src/index.ts"
             ],
+            "@inventory-database-service": ["libs/backend/database-services/inventory-database-service/src/index.ts"],
+            "@invoicing-database-service": ["libs/backend/database-services/invoicing-database-service/src/index.ts"],
             "@message-queue-lib": ["libs/backend/message-queue-lib/src/index.ts"],
             "@product-database-service": ["libs/backend/database-services/product-database-service/src/index.ts"],
-            "@inventory-database-service": ["libs/backend/database-services/inventory-database-service/src/index.ts"],
             "@ui-config": ["libs/frontend/ui-config/src/index.ts"],
             "@ui-config/*": ["libs/frontend/ui-config/src/*"],
             "@user-database-service": ["libs/backend/database-services/user-database-service/src/index.ts"],

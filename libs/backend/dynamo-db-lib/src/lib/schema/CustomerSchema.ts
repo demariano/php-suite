@@ -31,7 +31,7 @@ export const CustomerSchema = {
             townId: { type: String, required: false },
             townName: { type: String, required: false },
             creditLimit: { type: Number, required: false },
-            customerCreditLimit: { type: Number, required: false },
+            customerCredit: { type: Number, required: false },
             tinNumber: { type: String, required: false },
             areaId: { type: String, required: false },
             areaName: { type: String, required: false },

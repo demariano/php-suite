@@ -21,11 +21,7 @@ export class AxiosConfig {
             },
         });
         this.initializeBaseURL(baseURLEnvVar);
-        this.addInterceptor(
-            this.axiosInstance,
-            withAuthorization,
-            shouldRedirectUnauthorized
-        );
+        this.addInterceptor(this.axiosInstance, withAuthorization, shouldRedirectUnauthorized);
     }
 
     private async initializeBaseURL(envVar: keyof EnvVariables | null) {
@@ -56,35 +52,75 @@ export class AxiosConfig {
         // });
 
         if (withAuthorization) {
-            instance.interceptors.request.use(async (config) => {
-                const accessToken = await this.getAccessTokenAsync();
+            instance.interceptors.request.use(
+                async (config) => {
+                    const accessToken = await this.getAccessTokenAsync();
 
-                config.headers.Authorization = `Bearer ${accessToken}`;
-                config.headers['sessionId'] = Cookies.get(STORAGE_KEY.SESSION_ID) || '';
+                    config.headers.Authorization = `Bearer ${accessToken}`;
+                    config.headers['sessionId'] = Cookies.get(STORAGE_KEY.SESSION_ID) || '';
 
-                return config;
-            }, async (error) => {
-                return await Promise.reject(error);
-            });
+                    return config;
+                },
+                async (error) => {
+                    return await Promise.reject(error);
+                }
+            );
         }
 
-        instance.interceptors.response.use(function (response) {
-            if ([200, 201].includes(response.status)) {
-                return { ...response.data.body, statusCode: response.data.statusCode };
-            } else {
-                const error: ResponseError = { ...new Error(response.statusText), response };
+        instance.interceptors.response.use(
+            function (response) {
+                if ([200, 201].includes(response.status)) {
+                    // Handle different response structures
+                    let data;
+                    let nextCursorPointer;
+                    let prevCursorPointer;
 
-                throw error;
-            }
-        }, function (error) {
-            if (shouldRedirectUnauthorized) {
-                if (error?.response?.status === 401) {
-                    window.location.href = '/auth/login';
+                    if (response.data.body && Array.isArray(response.data.body)) {
+                        // Towns format: body is directly an array
+                        data = response.data.body;
+                        nextCursorPointer = response.data.nextCursorPointer;
+                        prevCursorPointer = response.data.prevCursorPointer;
+                    } else if (response.data.body && response.data.body.data) {
+                        // Other paginated endpoints format: body.data contains the array
+                        data = response.data.body.data;
+                        nextCursorPointer = response.data.body.nextCursorPointer;
+                        prevCursorPointer = response.data.body.prevCursorPointer;
+                    } else if (
+                        response.data.body &&
+                        typeof response.data.body === 'object' &&
+                        !Array.isArray(response.data.body)
+                    ) {
+                        // Single object response (like getCustomerById): return the object directly
+                        return response.data.body;
+                    } else {
+                        // Fallback to original structure
+                        data = response.data.body;
+                        nextCursorPointer = response.data.nextCursorPointer;
+                        prevCursorPointer = response.data.prevCursorPointer;
+                    }
+
+                    return {
+                        data: data,
+                        statusCode: response.data.statusCode,
+                        nextCursorPointer: nextCursorPointer,
+                        prevCursorPointer: prevCursorPointer,
+                    };
+                } else {
+                    const error: ResponseError = { ...new Error(response.statusText), response };
+
+                    throw error;
                 }
-            }
+            },
+            function (error) {
+                if (shouldRedirectUnauthorized) {
+                    if (error?.response?.status === 401) {
+                        window.location.href = '/auth/login';
+                    }
+                }
 
-            return Promise.reject(error);
-        });
+                return Promise.reject(error);
+            }
+        );
     }
 
     protected async getAccessTokenAsync(): Promise<string> {

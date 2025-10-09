@@ -41,7 +41,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             townId: customerDto.townId,
             townName: customerDto.townName,
             creditLimit: customerDto.creditLimit,
-            customerCreditLimit: customerDto.customerCreditLimit,
+            customerCredit: customerDto.customerCredit,
             tinNumber: customerDto.tinNumber,
             areaId: customerDto.areaId,
             areaName: customerDto.areaName,
@@ -367,7 +367,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         dto.townId = record.townId ? record.townId : '';
         dto.townName = record.townName ? record.townName : '';
         dto.creditLimit = record.creditLimit ? record.creditLimit : 0;
-        dto.customerCreditLimit = record.customerCreditLimit ? record.customerCreditLimit : 0;
+        dto.customerCredit = record.customerCredit ? record.customerCredit : 0;
         dto.tinNumber = record.tinNumber ? record.tinNumber : '';
         dto.areaId = record.areaId ? record.areaId : '';
         dto.areaName = record.areaName ? record.areaName : '';
@@ -410,7 +410,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             townId: dto.townId,
             townName: dto.townName,
             creditLimit: dto.creditLimit,
-            customerCreditLimit: dto.customerCreditLimit,
+            customerCredit: dto.customerCredit,
             tinNumber: dto.tinNumber,
             areaId: dto.areaId,
             areaName: dto.areaName,

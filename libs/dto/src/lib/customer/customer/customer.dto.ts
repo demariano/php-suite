@@ -38,7 +38,7 @@ export class CustomerDto {
     creditLimit?: number;
 
     @ApiProperty()
-    customerCreditLimit?: number;
+    customerCredit?: number;
 
     @ApiProperty()
     tinNumber?: string;

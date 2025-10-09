@@ -14,6 +14,7 @@ export * from './lib/schema/ConfigurationSchema';
 export * from './lib/schema/CustomerSchema';
 export * from './lib/schema/EmailTemplateSchema';
 export * from './lib/schema/InventorySchema';
+export * from './lib/schema/InvoicingSchema';
 export * from './lib/schema/ProductSchema';
 export * from './lib/schema/UserSchema';
 export * from './lib/schema/WebSocketConnectionSchema';

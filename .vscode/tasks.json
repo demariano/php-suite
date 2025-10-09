@@ -130,7 +130,8 @@
         "Product Api Service",
         "Customer Api Service",
         "Inventory Api Service",
-        "Stock Api Service"
+        "Stock Api Service",
+        "Invoicing Api Service"
       ],
       "group": {
         "kind": "build",
@@ -222,6 +223,16 @@
       "label": "Web App",
       "type": "shell",
       "command": "npx nx serve web-app",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Invoicing Api Service",
+      "type": "shell",
+      "command": "npx nx serve invoicing-api-service",
       "presentation": {
         "reveal": "always",
         "panel": "new"

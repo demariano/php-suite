@@ -1,12 +1,36 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+
 export default function CustomersPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect directly to the customer management page
+    router.replace('/customers/customer');
+  }, [router]);
+
   return (
-    <div style={{ padding: '24px' }}>
-      <h1 style={{ fontSize: '24px', fontWeight: '600', marginBottom: '16px', color: '#1f2937' }}>
-        Customers
-      </h1>
-      <p style={{ color: '#6b7280', fontSize: '16px' }}>
-        Manage your customer database and relationships.
-      </p>
+    <div style={{ 
+      padding: '24px', 
+      display: 'flex', 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      minHeight: '200px' 
+    }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ 
+          fontSize: '24px', 
+          marginBottom: '16px',
+          color: '#6b7280'
+        }}>
+          🔄
+        </div>
+        <p style={{ color: '#6b7280', fontSize: '16px' }}>
+          Redirecting to customer management...
+        </p>
+      </div>
     </div>
   );
 }

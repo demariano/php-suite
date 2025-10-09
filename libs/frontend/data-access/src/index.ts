@@ -18,6 +18,7 @@ export * from './state-management';
 export * from './types/area.types';
 export * from './types/customer-classification.types';
 export * from './types/customer-type.types';
+export * from './types/customer.types';
 export * from './types/product-category.types';
 export * from './types/product-class.types';
 export * from './types/product-deal.types';
@@ -32,6 +33,7 @@ export * from './types/town.types';
 // Export API types
 export type { AreasResponse } from './api/area.api';
 export type { CustomerClassificationsResponse } from './api/customer-classification.api';
+export type { CustomersResponse } from './api/customer-main.api';
 export type { CustomerTypesResponse } from './api/customer-type.api';
 export type { PaginatedResponse, ProductCategoriesResponse } from './api/product-category.api';
 export type { ProductClassesResponse } from './api/product-class.api';

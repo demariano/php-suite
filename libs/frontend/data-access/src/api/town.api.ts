@@ -174,6 +174,18 @@ class TownApi extends AxiosConfig {
             : `/town/area/${areaId}/status/${status}`;
         return await this.axiosInstance.get(url);
     };
+
+    public getTownsByArea = async (areaId: string, userRole?: string): Promise<TownsResponse> => {
+        const params = new URLSearchParams();
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+        const queryString = params.toString();
+        const url = queryString
+            ? `/town/area/${areaId}/status/ACTIVE?${queryString}`
+            : `/town/area/${areaId}/status/ACTIVE`;
+        return await this.axiosInstance.get(url);
+    };
 }
 
 export default new TownApi();

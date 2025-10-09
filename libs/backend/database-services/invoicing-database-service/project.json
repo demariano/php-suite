@@ -1,0 +1,9 @@
+{
+    "name": "invoicing-database-service",
+    "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "libs/backend/database-services/invoicing-database-service/src",
+    "projectType": "library",
+    "tags": [],
+    "// targets": "to see all targets run: nx show project invoicing-database-service --web",
+    "targets": {}
+}

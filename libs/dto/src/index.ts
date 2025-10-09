@@ -76,3 +76,7 @@ export * from './lib/stock/stock.type/create.stock.type.dto';
 export * from './lib/stock/stock.type/stock.type.dto';
 export * from './lib/stock/stock/create.stock.dto';
 export * from './lib/stock/stock/stock.dto';
+
+//SalesSchema
+export * from './lib/sales/sales.type/create.sales.type.dto';
+export * from './lib/sales/sales.type/sales.type.dto';
