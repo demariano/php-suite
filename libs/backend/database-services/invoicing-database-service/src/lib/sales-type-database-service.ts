@@ -69,6 +69,8 @@ export class SalesTypeDatabaseService implements SalesTypeDatabaseServiceAbstrac
         salesTypeRecord.taxable = record.taxable;
         salesTypeRecord.forApprovalVersion = record.forApprovalVersion;
 
+        console.log('Sales Type Record to update:', salesTypeRecord);
+
         const updatedSalesTypeRecord: SalesTypeDataType = await this.salesTypeTable.update(salesTypeRecord);
 
         return await this.convertToDto(updatedSalesTypeRecord);
@@ -245,6 +247,8 @@ export class SalesTypeDatabaseService implements SalesTypeDatabaseServiceAbstrac
 
     async deleteRecord(dto: SalesTypeDto): Promise<SalesTypeDto> {
         const salesTypeRecord: SalesTypeDataType = await this.convertToDataType(dto);
+
+        console.log('Sales Type Record to delete:', salesTypeRecord);
 
         await this.salesTypeTable.remove(salesTypeRecord);
 

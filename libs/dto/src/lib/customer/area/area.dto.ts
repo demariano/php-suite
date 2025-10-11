@@ -20,4 +20,10 @@ export class AreaDto {
 
     @ApiProperty()
     forApprovalVersion?: Record<string, unknown>;
+
+    @ApiProperty()
+    territoryManagerId?: string;
+
+    @ApiProperty()
+    territoryManagerName?: string;
 }

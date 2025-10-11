@@ -26,6 +26,9 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
             // Validate that area name doesn't already exist (if changed)
             await this.validateAreaNameUnique(command.areaDto.areaName, command.recordId);
 
+            // Validate territory manager fields
+            this.validateTerritoryManagerFields(command.areaDto);
+
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
@@ -69,6 +72,16 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
     }
 
     /**
+     * Validates that territory manager fields are provided
+     */
+    private validateTerritoryManagerFields(areaDto: AreaDto): void {
+        if (!areaDto.territoryManagerId || !areaDto.territoryManagerName) {
+            this.logger.warn('Territory Manager is required');
+            throw new BadRequestException('Territory Manager is required');
+        }
+    }
+
+    /**
      * Checks if user has permission to approve updates directly
      */
     private hasApprovalPermission(userRoles?: string[]): boolean {
@@ -92,6 +105,8 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
             existingRecord.status = StatusEnum.ACTIVE;
             existingRecord.areaName = command.areaDto.areaName;
             existingRecord.towns = command.areaDto.towns;
+            existingRecord.territoryManagerId = command.areaDto.territoryManagerId;
+            existingRecord.territoryManagerName = command.areaDto.territoryManagerName;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Area updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
@@ -107,6 +122,8 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
                 ...existingRecord.forApprovalVersion,
                 areaName: command.areaDto.areaName,
                 towns: command.areaDto.towns,
+                territoryManagerId: command.areaDto.territoryManagerId,
+                territoryManagerName: command.areaDto.territoryManagerName,
             };
         }
     }

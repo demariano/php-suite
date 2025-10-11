@@ -1,7 +1,7 @@
 // Frontend-specific types for Area
 // These mirror the backend DTOs but without NestJS decorators
 
-import { StatusEnum } from './product-category.types';
+import { StatusEnum } from './status.enum';
 import { TownDto } from './town.types';
 
 export interface AreaDto {
@@ -11,6 +11,8 @@ export interface AreaDto {
     towns?: TownDto[];
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    territoryManagerId?: string;
+    territoryManagerName?: string;
 }
 
 export interface CreateAreaDto {
@@ -18,4 +20,6 @@ export interface CreateAreaDto {
     status?: StatusEnum;
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    territoryManagerId?: string;
+    territoryManagerName?: string;
 }

@@ -32,10 +32,14 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             areaName: areaDto.areaName,
             activityLogs: areaDto.activityLogs,
             forApprovalVersion: areaDto.forApprovalVersion,
+            territoryManagerId: areaDto.territoryManagerId,
+            territoryManagerName: areaDto.territoryManagerName,
             GSI1PK: `AREA`,
             GSI1SK: areaDto.areaName,
             GSI2PK: `AREA#${areaDto.status}`,
             GSI2SK: areaDto.areaName,
+            GSI3PK: `AREA`,
+            GSI3SK: areaDto.territoryManagerId,
         };
 
         const areaRecord: AreaDataType = await this.areaTable.create(areaData);
@@ -52,7 +56,11 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         areaRecord.GSI1SK = record.areaName;
         areaRecord.GSI2PK = `AREA#${record.status}`;
         areaRecord.GSI2SK = record.areaName;
+        areaRecord.GSI3PK = `AREA`;
+        areaRecord.GSI3SK = record.territoryManagerId;
         areaRecord.forApprovalVersion = record.forApprovalVersion;
+        areaRecord.territoryManagerId = record.territoryManagerId;
+        areaRecord.territoryManagerName = record.territoryManagerName;
 
         const updatedAreaRecord: AreaDataType = await this.areaTable.update(areaRecord);
 
@@ -241,6 +249,8 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.territoryManagerId = record.territoryManagerId ? record.territoryManagerId : '';
+        dto.territoryManagerName = record.territoryManagerName ? record.territoryManagerName : '';
         return dto;
     }
 
@@ -265,9 +275,25 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             GSI1SK: dto.areaName,
             GSI2PK: `AREA#${dto.status}`,
             GSI2SK: dto.areaName,
+            GSI3PK: `AREA`,
+            GSI3SK: dto.territoryManagerId,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            territoryManagerId: dto.territoryManagerId,
+            territoryManagerName: dto.territoryManagerName,
         };
         return areaData;
+    }
+
+    async findRecordsByTerritoryManagerId(territoryManagerId: string): Promise<AreaDto[]> {
+        const records = await this.areaTable.find(
+            {
+                GSI3PK: 'AREA',
+                GSI3SK: territoryManagerId,
+            },
+            { index: 'GSI3' }
+        );
+
+        return await this.convertToDtoList(records);
     }
 }

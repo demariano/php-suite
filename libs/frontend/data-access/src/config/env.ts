@@ -13,6 +13,7 @@ export const ENV_KEYS = [
     'NODE_ENV',
     'BYPASS_AUTH',
     'API_CUSTOMER_URL',
+    'API_INVOICING_URL',
 ] as const;
 
 export type EnvVariables = {

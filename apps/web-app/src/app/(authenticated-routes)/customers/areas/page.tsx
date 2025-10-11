@@ -221,6 +221,8 @@ export default function CustomerAreasPage() {
         // Create new area
         await AreaApi.createArea({
           areaName: updatedArea.areaName,
+          territoryManagerId: updatedArea.territoryManagerId,
+          territoryManagerName: updatedArea.territoryManagerName,
           status: updatedArea.status
         }, userRole);
         
@@ -238,6 +240,8 @@ export default function CustomerAreasPage() {
         const updatedRecord = await AreaApi.updateArea(updatedArea.areaId, {
           areaId: updatedArea.areaId,
           areaName: updatedArea.areaName,
+          territoryManagerId: updatedArea.territoryManagerId,
+          territoryManagerName: updatedArea.territoryManagerName,
           status: updatedArea.status
         }, userRole);
         

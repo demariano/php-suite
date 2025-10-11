@@ -13,6 +13,7 @@ import { DenyAreaHandler } from './command/deny-record/deny.handler';
 import { UpdateAreaHandler } from './command/update/update.handler';
 import { GetAreaByIdHandler } from './queries/get.by.id/get.area.by.id.handler';
 import { GetAreaByNameHandler } from './queries/get.by.name/get.area.by.name.handler';
+import { GetAreasByTerritoryManagerIdHandler } from './queries/get.by.territory.manager.id/get.areas.by.territory.manager.id.handler';
 import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 
@@ -21,6 +22,7 @@ const commandHandlers = [CreateAreaHandler, UpdateAreaHandler, DeleteAreaHandler
 const queryHandlers = [
     GetAreaByIdHandler,
     GetAreaByNameHandler,
+    GetAreasByTerritoryManagerIdHandler,
     GetRecordsPaginationHandler,
     GetRecordsByStatusPaginationHandler,
 ];

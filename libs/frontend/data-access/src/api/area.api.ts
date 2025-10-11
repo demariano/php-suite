@@ -162,6 +162,18 @@ class AreaApi extends AxiosConfig {
         const url = queryString ? `/area/${id}/deny?${queryString}` : `/area/${id}/deny`;
         return await this.axiosInstance.post(url);
     };
+
+    public getAreasByTerritoryManagerId = async (territoryManagerId: string, userRole?: string): Promise<AreaDto[]> => {
+        const params = new URLSearchParams();
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+        const queryString = params.toString();
+        const url = queryString
+            ? `/area/territory-manager/${territoryManagerId}?${queryString}`
+            : `/area/territory-manager/${territoryManagerId}`;
+        return await this.axiosInstance.get(url);
+    };
 }
 
 export default new AreaApi();

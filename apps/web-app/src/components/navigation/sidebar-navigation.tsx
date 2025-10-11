@@ -147,7 +147,19 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
           label: "Invoicing", 
           route: "/invoicing", 
           icon: File,
-          onClick: (route) => onNavigate?.(route)
+          onClick: (route) => onNavigate?.(route),
+          subItems: [
+            {
+              label: "Sales Type",
+              route: "/invoicing/sales-type",
+              onClick: (route) => onNavigate?.(route)
+            },
+            {
+              label: "Territory Manager",
+              route: "/invoicing/territory-manager",
+              onClick: (route) => onNavigate?.(route)
+            }
+          ]
         }
       ]
     },

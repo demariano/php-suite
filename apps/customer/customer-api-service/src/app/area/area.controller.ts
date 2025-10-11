@@ -10,6 +10,7 @@ import { DenyAreaCommand } from './command/deny-record/deny.command';
 import { UpdateAreaCommand } from './command/update/update.command';
 import { GetAreaByIdQuery } from './queries/get.by.id/get.area.by.id.query';
 import { GetAreaByNameQuery } from './queries/get.by.name/get.area.by.name.query';
+import { GetAreasByTerritoryManagerIdQuery } from './queries/get.by.territory.manager.id/get.areas.by.territory.manager.id.query';
 import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
@@ -585,6 +586,53 @@ export class AreaController {
         return this.queryBus.execute(
             new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
         );
+    }
+
+    @Get('territory-manager/:territoryManagerId')
+    @ApiOperation({
+        summary: 'Get areas by territory manager ID',
+        description:
+            'Retrieves all areas assigned to a specific territory manager. Returns a non-paginated array of areas.',
+    })
+    @ApiParam({
+        name: 'territoryManagerId',
+        description: 'Territory manager identifier',
+        example: 'tm_123456789',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Areas found for territory manager',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/AreaDto' },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'No areas found for territory manager',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 404 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        errorMessage: { type: 'string', example: 'No areas found for territory manager' },
+                    },
+                },
+            },
+        },
+    })
+    getAreasByTerritoryManagerId(@Param('territoryManagerId') territoryManagerId: string) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(new GetAreasByTerritoryManagerIdQuery(territoryManagerId));
     }
 
     @Get(':id')

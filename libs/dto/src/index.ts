@@ -80,3 +80,5 @@ export * from './lib/stock/stock/stock.dto';
 //SalesSchema
 export * from './lib/sales/sales.type/create.sales.type.dto';
 export * from './lib/sales/sales.type/sales.type.dto';
+export * from './lib/sales/territory.manager/create.territory.manager.dto';
+export * from './lib/sales/territory.manager/territory.manager.dto';

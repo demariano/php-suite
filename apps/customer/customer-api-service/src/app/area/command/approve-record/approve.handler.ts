@@ -98,6 +98,8 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.areaName = forApprovalVersion.areaName as string;
         existingRecord.towns = forApprovalVersion.towns as TownDto[];
+        existingRecord.territoryManagerId = forApprovalVersion.territoryManagerId as string;
+        existingRecord.territoryManagerName = forApprovalVersion.territoryManagerName as string;
         existingRecord.forApprovalVersion = {};
 
         // Update record in database

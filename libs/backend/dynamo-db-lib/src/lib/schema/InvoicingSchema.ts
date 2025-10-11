@@ -31,6 +31,24 @@ export const InvoicingSchema = {
             GSI2PK: { type: String, value: 'SALES_TYPE#${status}', hidden: false },
             GSI2SK: { type: String, value: '${salesTypeName}', hidden: false },
         },
+        TerritoryManager: {
+            PK: { type: String, value: 'TerritoryManager', hidden: false },
+            SK: { type: String, value: '${territoryManagerId}', hidden: false },
+            territoryManagerId: { type: String, generate: 'ulid' },
+            territoryManagerName: { type: String },
+            activityLogs: { type: Array },
+            forApprovalVersion: { type: Object },
+            contactNo: { type: String, required: false },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                required: false,
+            },
+            GSI1PK: { type: String, value: 'TerritoryManager', hidden: false },
+            GSI1SK: { type: String, value: '${territoryManagerName}', hidden: false },
+            GSI2PK: { type: String, value: 'TerritoryManager#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${territoryManagerName}', hidden: false },
+        },
     } as const,
     params: {
         isoDates: true,
@@ -39,3 +57,4 @@ export const InvoicingSchema = {
 };
 
 export type SalesTypeDataType = Entity<typeof InvoicingSchema.models.SalesType>;
+export type TerritoryManagerDataType = Entity<typeof InvoicingSchema.models.TerritoryManager>;

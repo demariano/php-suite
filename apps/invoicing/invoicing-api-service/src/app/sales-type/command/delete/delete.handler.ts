@@ -20,20 +20,20 @@ export class DeleteSalesTypeHandler implements ICommandHandler<DeleteSalesTypeCo
         this.logger.log(`Processing delete request for sales type: ${command.salesTypeId}`);
 
         try {
-            // Fetch existing record
+            // Fetch and validate existing sales type record
             const existingRecord = await this.fetchExistingSalesType(command.salesTypeId);
 
-            // Check user authorization and determine status
+            // Check user authorization
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
             this.updateSalesTypeStatus(command, existingRecord, hasApprovalPermission);
 
-            // Update record in database
-            const updatedRecord = await this.salesTypeDatabaseService.updateRecord(command.salesTypeDto);
+            // Delete or mark for deletion based on permissions
+            const deletedRecord = await this.performDeletion(command, hasApprovalPermission);
 
-            this.logger.log(`Sales type marked for deletion successfully: ${updatedRecord.salesTypeId}`);
-            return new ResponseDto<SalesTypeDto>(updatedRecord, HTTP_STATUS_OK);
+            this.logger.log(`Sales type deleted successfully: ${deletedRecord.salesTypeId}`);
+            return new ResponseDto<SalesTypeDto>(deletedRecord, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, command.salesTypeId);
         }
@@ -73,29 +73,39 @@ export class DeleteSalesTypeHandler implements ICommandHandler<DeleteSalesTypeCo
         existingRecord: SalesTypeDto,
         hasApprovalPermission: boolean
     ): void {
-        console.log('hasApprovalPermission', hasApprovalPermission);
+        // Set the ID
+        command.salesTypeDto.salesTypeId = command.salesTypeId;
+
         if (hasApprovalPermission) {
-            // User can approve directly - set to FOR_DELETION
+            // User can delete directly - set to FOR_DELETION for hard delete
             command.salesTypeDto.status = StatusEnum.FOR_DELETION;
-            command.salesTypeDto.salesTypeName = existingRecord.salesTypeName;
-            command.salesTypeDto.activityLogs = existingRecord.activityLogs || [];
-            command.salesTypeDto.activityLogs.push(
-                `Date: ${new Date().toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila',
-                })}, Sales type deleted by ${command.user.username}, status set to ${StatusEnum.FOR_DELETION}`
-            );
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Sales type deleted by ${command.user.username}`;
+            command.salesTypeDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         } else {
-            // User needs approval - set to FOR_APPROVAL
-            command.salesTypeDto.status = StatusEnum.FOR_APPROVAL;
-            command.salesTypeDto.salesTypeName = existingRecord.salesTypeName;
-            command.salesTypeDto.activityLogs = existingRecord.activityLogs || [];
-            command.salesTypeDto.activityLogs.push(
-                `Date: ${new Date().toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila',
-                })}, Sales type deletion requested by ${command.user.username} for approval`
-            );
-            command.salesTypeDto.forApprovalVersion = {};
-            command.salesTypeDto.forApprovalVersion.salesTypeName = existingRecord.salesTypeName;
+            // User needs approval - set to FOR_DELETION for soft delete
+            command.salesTypeDto.status = StatusEnum.FOR_DELETION;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Sales type marked for deletion by ${command.user.username}`;
+            command.salesTypeDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        }
+    }
+
+    /**
+     * Performs the actual deletion based on user permissions
+     */
+    private async performDeletion(
+        command: DeleteSalesTypeCommand,
+        hasApprovalPermission: boolean
+    ): Promise<SalesTypeDto> {
+        if (hasApprovalPermission) {
+            // Hard delete
+            return await this.salesTypeDatabaseService.deleteRecord(command.salesTypeDto);
+        } else {
+            // Soft delete (mark for deletion)
+            return await this.salesTypeDatabaseService.updateRecord(command.salesTypeDto);
         }
     }
 

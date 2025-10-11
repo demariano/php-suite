@@ -28,6 +28,7 @@ export * from './types/product.types';
 export * from './types/responseError';
 export * from './types/status.enum';
 export * from './types/terms.types';
+export * from './types/territory-manager.types';
 export * from './types/town.types';
 
 // Export API types

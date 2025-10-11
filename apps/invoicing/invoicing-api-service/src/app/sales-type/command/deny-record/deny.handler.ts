@@ -1,10 +1,12 @@
 import { ErrorResponseDto, ResponseDto, SalesTypeDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { SalesTypeDatabaseServiceAbstract } from '@invoicing-database-service';
-import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { DenySalesTypeCommand } from './deny.command';
 
 // Constants
+const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_OK = 200;
 
 @CommandHandler(DenySalesTypeCommand)
@@ -17,100 +19,117 @@ export class DenySalesTypeHandler implements ICommandHandler<DenySalesTypeComman
     ) {}
 
     async execute(command: DenySalesTypeCommand): Promise<ResponseDto<SalesTypeDto | ErrorResponseDto>> {
-        this.logger.log(`Processing deny request for sales type: ${command.salesTypeId}`);
+        this.logger.log(`Processing denial request for sales type: ${command.salesTypeId}`);
 
         try {
+            // Validate record exists
+            const existingRecord = await this.validateSalesTypeExists(command.salesTypeId);
+
             // Check user authorization
-            this.validateUserPermission(command.user.roles);
+            this.validateUserAuthorization(command.user.roles);
 
-            // Fetch existing record
-            const existingRecord = await this.fetchExistingSalesType(command.salesTypeId);
-
-            // Validate that record is in a state that can be denied
-            this.validateRecordCanBeDenied(existingRecord);
-
-            // Update record with denied status
-            const updatedRecord = await this.updateRecordWithDenial(command, existingRecord);
-
-            this.logger.log(`Sales type denied successfully: ${updatedRecord.salesTypeId}`);
-            return new ResponseDto<SalesTypeDto>(updatedRecord, HTTP_STATUS_OK);
+            // Process denial based on current status
+            return await this.processDenial(existingRecord, command.user);
         } catch (error) {
             return this.handleError(error, command.salesTypeId);
         }
     }
 
     /**
-     * Validates that user has permission to deny
+     * Validates that the sales type record exists
      */
-    private validateUserPermission(userRoles?: string[]): void {
-        if (!userRoles || userRoles.length === 0) {
-            throw new BadRequestException('User does not have permission to deny');
-        }
-
-        const hasPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
-        if (!hasPermission) {
-            throw new BadRequestException('User does not have permission to deny');
-        }
-    }
-
-    /**
-     * Fetches and validates an existing sales type record
-     */
-    private async fetchExistingSalesType(salesTypeId: string): Promise<SalesTypeDto> {
-        const existingRecord = await this.salesTypeDatabaseService.findRecordById(salesTypeId);
+    private async validateSalesTypeExists(recordId: string): Promise<SalesTypeDto> {
+        const existingRecord = await this.salesTypeDatabaseService.findRecordById(recordId);
 
         if (!existingRecord) {
-            this.logger.warn(`Sales type not found for ID: ${salesTypeId}`);
-            throw new NotFoundException(`Sales type not found for ID: ${salesTypeId}`);
+            this.logger.warn(`Sales type not found: ${recordId}`);
+            throw new NotFoundException(`Sales type record not found for id ${recordId}`);
         }
 
         return existingRecord;
     }
 
     /**
-     * Validates that the record is in a state that can be denied
+     * Validates that the user has authorization to deny
      */
-    private validateRecordCanBeDenied(record: SalesTypeDto): void {
-        if (record.status !== StatusEnum.FOR_APPROVAL && record.status !== StatusEnum.NEW_RECORD) {
-            throw new BadRequestException('Sales type is not in a state that can be denied');
+    private validateUserAuthorization(userRoles?: string[]): void {
+        if (!userRoles || userRoles.length === 0) {
+            throw new ForbiddenException('User roles not found');
+        }
+
+        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+
+        if (!hasApprovalPermission) {
+            throw new ForbiddenException('Current user is not authorized to deny sales type change request');
         }
     }
 
     /**
-     * Updates the record with denied status
+     * Processes the denial based on the current status of the record
      */
-    private async updateRecordWithDenial(
-        command: DenySalesTypeCommand,
-        existingRecord: SalesTypeDto
-    ): Promise<SalesTypeDto> {
-        const updatedRecord = { ...existingRecord };
+    private async processDenial(existingRecord: SalesTypeDto, user: any): Promise<ResponseDto<SalesTypeDto>> {
+        switch (existingRecord.status) {
+            case StatusEnum.FOR_APPROVAL:
+                return await this.denySalesType(existingRecord, user);
+            case StatusEnum.FOR_DELETION:
+                return await this.denyDeletion(existingRecord);
+            case StatusEnum.NEW_RECORD:
+                return await this.deleteRecord(existingRecord);
+            default:
+                throw new BadRequestException(`Cannot deny sales type with status: ${existingRecord.status}`);
+        }
+    }
 
-        // Set status to ACTIVE (revert to previous state)
-        updatedRecord.status = StatusEnum.ACTIVE;
-
-        // Add denial log
-        updatedRecord.activityLogs = existingRecord.activityLogs || [];
-        updatedRecord.activityLogs.push(
+    /**
+     * Denies a sales type for approval
+     */
+    private async denySalesType(existingRecord: SalesTypeDto, user: any): Promise<ResponseDto<SalesTypeDto>> {
+        // Update status and add activity log
+        existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Sales type denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+            })}, Sales type denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Clear forApprovalVersion if it exists
-        updatedRecord.forApprovalVersion = {};
+        // Optimize activity logs
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.forApprovalVersion = {};
 
         // Update record in database
-        return await this.salesTypeDatabaseService.updateRecord(updatedRecord);
+        const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Sales type denied successfully: ${existingRecord.salesTypeId}`);
+        return new ResponseDto<SalesTypeDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Denies deletion of a sales type
+     */
+    private async denyDeletion(existingRecord: SalesTypeDto): Promise<ResponseDto<SalesTypeDto>> {
+        this.logger.log(`Sales type deletion denied: ${existingRecord.salesTypeId}`);
+        existingRecord.status = StatusEnum.ACTIVE;
+        const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);
+        return new ResponseDto<SalesTypeDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Deletes a sales type when it is a new record and it was denied
+     */
+    private async deleteRecord(existingRecord: SalesTypeDto): Promise<ResponseDto<SalesTypeDto>> {
+        this.logger.log(`Sales type deleted: ${existingRecord.salesTypeId}`);
+        await this.salesTypeDatabaseService.deleteRecord(existingRecord);
+        return new ResponseDto<SalesTypeDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**
      * Centralized error handling
      */
-    private handleError(error: unknown, salesTypeId: string): never {
-        this.logger.error(`Error processing deny request for ${salesTypeId}:`, error);
+    private handleError(error: unknown, recordId: string): never {
+        this.logger.error(`Error processing denial request for ${recordId}:`, error);
 
         // Re-throw known exceptions
-        if (error instanceof BadRequestException || error instanceof NotFoundException) {
+        if (error instanceof NotFoundException || error instanceof ForbiddenException) {
             throw error;
         }
 

@@ -37,4 +37,6 @@ export abstract class AreaDatabaseServiceAbstract {
     abstract convertToDtoList(records: AreaDto[]): Promise<AreaDto[]>;
 
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract findRecordsByTerritoryManagerId(territoryManagerId: string): Promise<AreaDto[]>;
 }

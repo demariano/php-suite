@@ -374,10 +374,72 @@ export default function AreaModal({
                       </div>
                     )}
                     
+                    {/* Territory Manager ID */}
+                    {selectedArea.forApprovalVersion.territoryManagerId !== undefined && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '8px'
+                        }}>
+                          Territory Manager ID
+                        </label>
+                        <input
+                          type="text"
+                          value={String(selectedArea.forApprovalVersion.territoryManagerId)}
+                          readOnly
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: '2px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            backgroundColor: '#f9fafb',
+                            color: '#6b7280',
+                            fontWeight: '500'
+                          }}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Territory Manager Name */}
+                    {selectedArea.forApprovalVersion.territoryManagerName !== undefined && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '8px'
+                        }}>
+                          Territory Manager Name
+                        </label>
+                        <input
+                          type="text"
+                          value={String(selectedArea.forApprovalVersion.territoryManagerName)}
+                          readOnly
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: '2px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            backgroundColor: '#f9fafb',
+                            color: '#6b7280',
+                            fontWeight: '500'
+                          }}
+                        />
+                      </div>
+                    )}
+                    
                     {/* Other fields that might be in forApprovalVersion */}
                     {Object.entries(selectedArea.forApprovalVersion).map(([key, value]) => {
                       // Skip the fields we've already handled
-                      if (key === 'areaName' || key === 'status') {
+                      if (key === 'areaName' || key === 'status' || key === 'territoryManagerId' || key === 'territoryManagerName') {
                         return null;
                       }
                       

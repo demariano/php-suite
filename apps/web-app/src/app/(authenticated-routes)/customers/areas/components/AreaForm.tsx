@@ -1,6 +1,9 @@
 'use client';
 
 import { AreaDto, StatusEnum } from '@data-access/index';
+import { useEffect, useState } from 'react';
+import SelectionField from '../../../products/product/components/SelectionField';
+import TerritoryManagerSearchableSelectionModal from '../../../search-modals/TerritoryManagerSearchableSelectionModal';
 
 interface AreaFormProps {
   isCreateMode: boolean;
@@ -19,14 +22,56 @@ export default function AreaForm({
   onDelete,
   onCancel
 }: AreaFormProps) {
+  const [selectedTerritoryManager, setSelectedTerritoryManager] = useState<{id: string, name: string} | null>(null);
+  const [showTerritoryManagerModal, setShowTerritoryManagerModal] = useState(false);
+  const [userHasMadeSelections, setUserHasMadeSelections] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  
+  // Form state for controlled inputs
+  const [formData, setFormData] = useState({
+    areaName: ''
+  });
+
+  // Set initial values when editing (only when user hasn't made selections)
+  useEffect(() => {
+    if (!isCreateMode && selectedArea && !userHasMadeSelections) {
+      if (selectedArea.territoryManagerId && selectedArea.territoryManagerName) {
+        setSelectedTerritoryManager({
+          id: selectedArea.territoryManagerId,
+          name: selectedArea.territoryManagerName
+        });
+      }
+      // Initialize form data
+      setFormData({
+        areaName: selectedArea.areaName || ''
+      });
+    }
+  }, [isCreateMode, selectedArea, userHasMadeSelections]);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const areaName = formData.get('areaName') as string;
+    const areaName = formData.areaName;
+    
+    // Validate required fields
+    const errors: string[] = [];
+    
+    if (!selectedTerritoryManager) {
+      errors.push('Please select a territory manager.');
+    }
+    
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    
+    // Clear validation errors if validation passes
+    setValidationErrors([]);
     
     if (isCreateMode) {
       const newArea = {
         areaName: areaName,
+        territoryManagerId: selectedTerritoryManager?.id || '',
+        territoryManagerName: selectedTerritoryManager?.name || '',
         status: StatusEnum.ACTIVE // Default status for new areas
       };
       onSave(newArea as AreaDto);
@@ -34,13 +79,25 @@ export default function AreaForm({
       const updatedArea = {
         ...selectedArea,
         areaName: areaName,
+        territoryManagerId: selectedTerritoryManager?.id || '',
+        territoryManagerName: selectedTerritoryManager?.name || '',
         status: StatusEnum.ACTIVE
       };
       onSave(updatedArea as AreaDto);
     }
   };
 
+  const handleTerritoryManagerSelect = (id: string, name: string) => {
+    setSelectedTerritoryManager({ id, name });
+    setUserHasMadeSelections(true);
+  };
+
+  const handleClearTerritoryManager = () => {
+    setSelectedTerritoryManager(null);
+  };
+
   return (
+    <>
     <form onSubmit={handleSubmit}>
       {/* Success message */}
       {successMessage && (
@@ -77,6 +134,41 @@ export default function AreaForm({
           }}>
             {successMessage}
           </span>
+        </div>
+      )}
+
+      {/* Validation errors */}
+      {validationErrors.length > 0 && (
+        <div style={{
+          backgroundColor: '#fef2f2',
+          border: '2px solid #dc2626',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '16px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            marginBottom: '8px'
+          }}>
+            <span style={{ fontSize: '20px' }}>⚠️</span>
+            <span style={{ color: '#dc2626', fontWeight: '600' }}>
+              Please fix the following errors:
+            </span>
+          </div>
+          <ul style={{
+            margin: 0,
+            paddingLeft: '20px',
+            color: '#dc2626'
+          }}>
+            {validationErrors.map((error, index) => (
+              <li key={index} style={{ marginBottom: '4px' }}>
+                {error}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
       
@@ -173,7 +265,8 @@ export default function AreaForm({
           <input
             type="text"
             name="areaName"
-            defaultValue={isCreateMode ? '' : selectedArea?.areaName || ''}
+            value={formData.areaName}
+            onChange={(e) => setFormData(prev => ({ ...prev, areaName: e.target.value }))}
             placeholder={isCreateMode ? 'Enter area name' : ''}
             disabled={!isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE}
             style={{
@@ -201,6 +294,14 @@ export default function AreaForm({
             required
           />
         </div>
+
+        <SelectionField
+          label="Territory Manager *"
+          selectedItem={selectedTerritoryManager}
+          onSelect={() => setShowTerritoryManagerModal(true)}
+          onClear={handleClearTerritoryManager}
+          buttonText="Select Territory Manager"
+        />
         
         {!isCreateMode && selectedArea && (
           <div>
@@ -304,5 +405,15 @@ export default function AreaForm({
         </div>
       </div>
     </form>
+
+    {/* Territory Manager Selection Modal */}
+    <TerritoryManagerSearchableSelectionModal
+      show={showTerritoryManagerModal}
+      title="Select Territory Manager"
+      selectedValue={selectedTerritoryManager?.id || null}
+      onSelect={handleTerritoryManagerSelect}
+      onClose={() => setShowTerritoryManagerModal(false)}
+    />
+    </>
   );
 }

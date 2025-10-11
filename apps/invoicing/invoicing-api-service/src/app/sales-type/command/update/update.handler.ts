@@ -109,6 +109,12 @@ export class UpdateSalesTypeHandler implements ICommandHandler<UpdateSalesTypeCo
             );
             command.salesTypeDto.forApprovalVersion = {};
             command.salesTypeDto.forApprovalVersion.salesTypeName = command.salesTypeDto.salesTypeName;
+            command.salesTypeDto.forApprovalVersion.allowDiscount = command.salesTypeDto.allowDiscount;
+            command.salesTypeDto.forApprovalVersion.contractSales = command.salesTypeDto.contractSales;
+            command.salesTypeDto.forApprovalVersion.defaultDiscount = command.salesTypeDto.defaultDiscount;
+            command.salesTypeDto.forApprovalVersion.defaultTax = command.salesTypeDto.defaultTax;
+            command.salesTypeDto.forApprovalVersion.incomeGenerating = command.salesTypeDto.incomeGenerating;
+            command.salesTypeDto.forApprovalVersion.taxable = command.salesTypeDto.taxable;
         }
     }
 

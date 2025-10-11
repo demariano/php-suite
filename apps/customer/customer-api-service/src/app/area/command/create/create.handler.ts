@@ -1,5 +1,5 @@
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
-import { AreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { AreaDto, CreateAreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateAreaCommand } from './create.command';
@@ -22,6 +22,9 @@ export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
         try {
             // Validate that area name doesn't already exist
             await this.validateAreaNameUnique(command.areaDto.areaName);
+
+            // Validate territory manager fields
+            this.validateTerritoryManagerFields(command.areaDto);
 
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
@@ -48,6 +51,16 @@ export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
         if (existingRecord) {
             this.logger.warn(`Area name already exists: ${areaName}`);
             throw new BadRequestException('Area name already exists');
+        }
+    }
+
+    /**
+     * Validates that territory manager fields are provided
+     */
+    private validateTerritoryManagerFields(areaDto: CreateAreaDto): void {
+        if (!areaDto.territoryManagerId || !areaDto.territoryManagerName) {
+            this.logger.warn('Territory Manager is required');
+            throw new BadRequestException('Territory Manager is required');
         }
     }
 
@@ -87,6 +100,8 @@ export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
             command.areaDto.forApprovalVersion = {};
             command.areaDto.forApprovalVersion.areaName = command.areaDto.areaName;
             command.areaDto.forApprovalVersion.towns = command.areaDto.towns;
+            command.areaDto.forApprovalVersion.territoryManagerId = command.areaDto.territoryManagerId;
+            command.areaDto.forApprovalVersion.territoryManagerName = command.areaDto.territoryManagerName;
         }
     }
 
