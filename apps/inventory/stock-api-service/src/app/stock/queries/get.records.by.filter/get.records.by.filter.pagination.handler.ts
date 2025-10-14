@@ -1,36 +1,39 @@
+import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
+
 import { PageDto, ResponseDto, StockDto } from '@dto';
 import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
-import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { GetRecordsPaginationQuery } from './get.records.pagination.query';
+import { GetRecordsByFilterPaginationQuery } from './get.records.by.filter.pagination.query';
 
 // Constants
 const HTTP_STATUS_OK = 200;
 const MIN_LIMIT = 1;
 const MAX_LIMIT = 100;
 const VALID_DIRECTIONS = ['next', 'prev'];
-const VALID_STATUSES = ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'];
+const DEFAULT_REVERSE = false;
 
-@QueryHandler(GetRecordsPaginationQuery)
-export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPaginationQuery> {
-    private readonly logger = new Logger(GetRecordsPaginationHandler.name);
+@QueryHandler(GetRecordsByFilterPaginationQuery)
+export class GetRecordsByFilterPaginationHandler implements IQueryHandler<GetRecordsByFilterPaginationQuery> {
+    private readonly logger = new Logger(GetRecordsByFilterPaginationHandler.name);
 
     constructor(
         @Inject('StockDatabaseService')
         private readonly stockDatabaseService: StockDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetRecordsPaginationQuery): Promise<ResponseDto<PageDto<StockDto>>> {
-        this.logger.log(`Processing get stocks pagination request - Status: ${query.status}, Limit: ${query.limit}`);
+    async execute(query: GetRecordsByFilterPaginationQuery): Promise<ResponseDto<PageDto<StockDto>>> {
+        this.logger.log(
+            `Processing get stocks by filter pagination request - Limit: ${query.limit}, Direction: ${query.direction}`
+        );
 
         try {
             // Validate parameters
             this.validateParameters(query);
 
-            // Fetch paginated stocks
-            const pageResult = await this.fetchStocksPagination(query);
+            // Fetch paginated stocks by filter
+            const pageResult = await this.fetchStocksByFilter(query);
 
-            this.logger.log(`Stocks pagination retrieved successfully: ${pageResult.data.length} items`);
+            this.logger.log(`Stocks by filter pagination retrieved successfully: ${pageResult.data.length} items`);
             return new ResponseDto<PageDto<StockDto>>(pageResult, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error);
@@ -40,7 +43,7 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
     /**
      * Validates the query parameters
      */
-    private validateParameters(query: GetRecordsPaginationQuery): void {
+    private validateParameters(query: GetRecordsByFilterPaginationQuery): void {
         // Validate limit
         if (!query.limit || query.limit < MIN_LIMIT || query.limit > MAX_LIMIT) {
             throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
@@ -51,19 +54,19 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
             throw new BadRequestException(`Direction must be one of: ${VALID_DIRECTIONS.join(', ')}`);
         }
 
-        // Validate status
-        if (!query.status || !VALID_STATUSES.includes(query.status)) {
-            throw new BadRequestException(`Status must be one of: ${VALID_STATUSES.join(', ')}`);
+        // Set default reverse value if null
+        if (query.stockFilterDto.reverse == null) {
+            query.stockFilterDto.reverse = DEFAULT_REVERSE;
         }
     }
 
     /**
-     * Fetches stocks with pagination
+     * Fetches stocks with filter and pagination
      */
-    private async fetchStocksPagination(query: GetRecordsPaginationQuery): Promise<PageDto<StockDto>> {
-        return await this.stockDatabaseService.findRecordsPagination(
+    private async fetchStocksByFilter(query: GetRecordsByFilterPaginationQuery): Promise<PageDto<StockDto>> {
+        return await this.stockDatabaseService.findStockRecordsByFilterPagination(
+            query.stockFilterDto,
             query.limit,
-            query.status,
             query.direction,
             query.cursorPointer
         );
@@ -73,7 +76,7 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
      * Centralized error handling
      */
     private handleError(error: unknown): never {
-        this.logger.error(`Error fetching stocks pagination:`, error);
+        this.logger.error(`Error fetching stocks by filter pagination:`, error);
 
         // Re-throw known exceptions
         if (error instanceof BadRequestException) {
@@ -81,6 +84,6 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
         }
 
         // Handle unknown errors
-        throw new BadRequestException('Failed to fetch stocks pagination');
+        throw new BadRequestException('Failed to fetch stocks by filter pagination');
     }
 }

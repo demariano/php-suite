@@ -1,15 +1,17 @@
 import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
-import { CreateStockDto, StockDto } from '@dto';
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { CreateStockDto, StockDto, StockFilterDto, UpdateAvailableQtyDto } from '@dto';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, ValidationPipe } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveStockCommand } from './command/approve-record/approve.command';
 import { CreateStockCommand } from './command/create/create.command';
 import { DeleteStockCommand } from './command/delete/delete.command';
 import { DenyStockCommand } from './command/deny-record/deny.command';
+import { UpdateAvailableQtyCommand } from './command/update.available.qty/update.available.qty.command';
 import { UpdateStockCommand } from './command/update/update.command';
 import { GetStockByIdQuery } from './queries/get.by.id/get.stock.by.id.query';
 import { GetStockByNameQuery } from './queries/get.by.name/get.stock.by.name.query';
+import { GetRecordsByFilterPaginationQuery } from './queries/get.records.by.filter/get.records.by.filter.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @Controller('stock')
@@ -78,7 +80,7 @@ export class StockController {
             },
         },
     })
-    createStock(
+    createRecord(
         @Body() createStockDto: CreateStockDto,
         @Query('userRole') userRole: string,
         @CurrentUser() user: UserCognito
@@ -88,7 +90,8 @@ export class StockController {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new CreateStockCommand(createStockDto, user));
+        const command = new CreateStockCommand(createStockDto, user);
+        return this.commandBus.execute(command);
     }
 
     @Put(':id')
@@ -134,7 +137,7 @@ export class StockController {
         type: StockDto,
         description: 'Stock update payload with modified fields',
     })
-    updateStock(
+    updateRecord(
         @Param('id') id: string,
         @Body() stockDto: StockDto,
         @Query('userRole') userRole: string,
@@ -145,7 +148,8 @@ export class StockController {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new UpdateStockCommand(id, stockDto, user));
+        const command = new UpdateStockCommand(id, stockDto, user);
+        return this.commandBus.execute(command);
     }
 
     @Delete(':id')
@@ -187,14 +191,15 @@ export class StockController {
             },
         },
     })
-    deleteStock(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    deleteRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
         const stockDto = new StockDto();
-        return this.commandBus.execute(new DeleteStockCommand(id, stockDto, user));
+        const command = new DeleteStockCommand(id, stockDto, user);
+        return this.commandBus.execute(command);
     }
 
     @Post(':id/approve')
@@ -256,13 +261,14 @@ export class StockController {
             },
         },
     })
-    approveStock(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    approveRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new ApproveStockCommand(id, user));
+        const command = new ApproveStockCommand(id, user);
+        return this.commandBus.execute(command);
     }
 
     @Post(':id/deny')
@@ -323,64 +329,150 @@ export class StockController {
             },
         },
     })
-    denyStock(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    denyRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyStockCommand(id, user));
+        const command = new DenyStockCommand(id, user);
+        return this.commandBus.execute(command);
     }
 
-    @Get('search/name')
+    @Post(':id/update-available-quantity')
     @ApiOperation({
-        summary: 'Get stock items by name',
-        description: 'Retrieves stock item records by name. Returns array of matching stock items.',
+        summary: 'Update available quantity',
+        description: 'Updates the available quantity of a stock item by reducing it by the specified amount.',
     })
-    @ApiQuery({
-        name: 'name',
-        description: 'Stock name to search for',
-        example: 'Widget',
-        required: true,
-        type: String,
+    @ApiParam({
+        name: 'id',
+        description: 'Unique stock identifier',
+        example: 'stock_123456789',
     })
     @ApiResponse({
         status: 200,
-        description: 'Stock items found',
-        schema: {
-            type: 'object',
-            properties: {
-                statusCode: { type: 'number', example: 200 },
-                body: {
-                    type: 'array',
-                    items: { $ref: '#/components/schemas/StockDto' },
-                },
-            },
-        },
+        description: 'Available quantity successfully updated',
+        type: StockDto,
     })
     @ApiResponse({
-        status: 400,
-        description: 'Bad request - Invalid name parameter',
+        status: 404,
+        description: 'Stock item not found',
         schema: {
             type: 'object',
             properties: {
-                statusCode: { type: 'number', example: 400 },
+                statusCode: { type: 'number', example: 404 },
                 body: {
                     type: 'object',
                     properties: {
-                        errorMessage: { type: 'string', example: 'Name parameter is required and must be a string' },
+                        errorMessage: { type: 'string', example: 'Stock not found for ID: stock_123456789' },
                     },
                 },
             },
         },
     })
-    getStockByName(@Query('name') name: string) {
-        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
-        // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetStockByNameQuery(name));
+    @ApiBody({
+        type: UpdateAvailableQtyDto,
+        description: 'Quantity to reduce from available quantity',
+    })
+    updateAvailableQuantity(
+        @Param('id') id: string,
+        @Body() updateAvailableQtyDto: UpdateAvailableQtyDto,
+        @CurrentUser() user: UserCognito
+    ) {
+        const command = new UpdateAvailableQtyCommand(id, updateAvailableQtyDto.qty, user);
+        return this.commandBus.execute(command);
     }
 
-    @Get('pagination')
+    @Get('name/:name')
+    @ApiOperation({
+        summary: 'Get stock items by name',
+        description: 'Retrieves stock items that contain the specified name in their stock name.',
+    })
+    @ApiParam({
+        name: 'name',
+        description: 'Stock name to search for',
+        example: 'Widget',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'For Swagger consistency (not used in query endpoints)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'USER',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Stock items retrieved successfully',
+        type: [StockDto],
+    })
+    getByName(@Param('name') name: string, @Query('userRole') userRole: string) {
+        // Note: userRole is included for Swagger consistency but not used in query endpoints
+        const query = new GetStockByNameQuery(name);
+        return this.queryBus.execute(query);
+    }
+
+    @Get()
+    @ApiOperation({
+        summary: 'Get stock items with pagination',
+        description: 'Retrieves stock items with pagination support.',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to return (1-100)',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'For Swagger consistency (not used in query endpoints)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'USER',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Stock items retrieved successfully with pagination',
+        schema: {
+            type: 'object',
+            properties: {
+                data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/StockDto' },
+                },
+                lastEvaluatedKey: { type: 'string' },
+                count: { type: 'number' },
+            },
+        },
+    })
+    getRecordsPagination(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('userRole') userRole: string
+    ) {
+        const query = new GetRecordsPaginationQuery('ACTIVE', limit, direction, cursorPointer);
+        return this.queryBus.execute(query);
+    }
+
+    @Get('status')
     @ApiOperation({
         summary: 'List stock items with pagination',
         description: 'Retrieves a paginated list of stock items. Use cursor-based pagination for optimal performance.',
@@ -409,9 +501,24 @@ export class StockController {
     @ApiQuery({
         name: 'status',
         type: String,
-        required: true,
+        required: false,
         description: 'Filter by stock item status',
         enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiQuery({
+        name: 'name',
+        type: String,
+        required: false,
+        description: 'Filter by stock name',
+        example: 'Widget',
     })
     @ApiResponse({
         status: 200,
@@ -456,51 +563,189 @@ export class StockController {
             },
         },
     })
-    getStocksPagination(
+    getRecordsPaginationByStatus(
         @Query('limit') limit: number,
-        @Query('direction') direction?: string,
-        @Query('cursorPointer') cursorPointer?: string,
-        @Query('status') status: string
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('userRole') userRole: string,
+        @Query('name') name: string
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
         return this.queryBus.execute(new GetRecordsPaginationQuery(status, limit, direction, cursorPointer));
     }
 
-    @Get(':id')
+    @Get('pagination/filter')
     @ApiOperation({
-        summary: 'Get stock item by ID',
-        description: 'Retrieves a stock item record by its unique identifier',
+        summary: 'List stock items with advanced filtering and pagination',
+        description:
+            'Retrieves a paginated list of stock items with advanced filter options. Use cursor-based pagination for optimal performance.',
     })
-    @ApiParam({
-        name: 'id',
-        description: 'Unique stock identifier',
-        example: 'stock_123456789',
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: false,
+        description: 'Filter by stock status',
+        enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+    })
+    @ApiQuery({
+        name: 'stockTypeName',
+        type: String,
+        required: false,
+        description: 'Filter by stock type name',
+        example: 'Raw Material',
+    })
+    @ApiQuery({
+        name: 'productUnitName',
+        type: String,
+        required: false,
+        description: 'Filter by product unit name',
+        example: 'Kilogram',
+    })
+    @ApiQuery({
+        name: 'productName',
+        type: String,
+        required: false,
+        description: 'Filter by product name',
+        example: 'Steel Bars',
+    })
+    @ApiQuery({
+        name: 'lotNo',
+        type: String,
+        required: false,
+        description: 'Filter by lot number',
+        example: 'LOT-2024-001',
+    })
+    @ApiQuery({
+        name: 'fields',
+        type: [String],
+        required: false,
+        description: 'Specific fields to return',
+        example: ['stockId', 'stockName', 'quantity'],
+    })
+    @ApiQuery({
+        name: 'reverse',
+        type: Boolean,
+        required: false,
+        description: 'Reverse sort order',
+        example: false,
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to fetch (1-100)',
+        example: 20,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination - null for first page',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'For Swagger consistency (not used in query endpoints)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'USER',
     })
     @ApiResponse({
         status: 200,
-        description: 'Stock item found',
-        type: StockDto,
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Stock item not found',
+        description: 'Paginated list of filtered stock items',
         schema: {
             type: 'object',
             properties: {
-                statusCode: { type: 'number', example: 404 },
+                statusCode: { type: 'number', example: 200 },
                 body: {
                     type: 'object',
                     properties: {
-                        errorMessage: { type: 'string', example: 'Stock item not found' },
+                        items: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/StockDto' },
+                        },
+                        pagination: {
+                            type: 'object',
+                            properties: {
+                                nextCursor: { type: 'string', nullable: true },
+                                prevCursor: { type: 'string', nullable: true },
+                                hasMore: { type: 'boolean' },
+                            },
+                        },
                     },
                 },
             },
         },
     })
-    getStockById(@Param('id') id: string) {
-        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
-        // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetStockByIdQuery(id));
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid filter or pagination parameters',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 400 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        errorMessage: { type: 'string', example: 'Limit must be between 1 and 100' },
+                    },
+                },
+            },
+        },
+    })
+    getRecordsByFilterPagination(
+        @Query(new ValidationPipe({ transform: true })) filterParams: StockFilterDto,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('userRole') userRole: string
+    ) {
+        // Note: userRole is included for Swagger consistency but not used in query endpoints
+        return this.queryBus.execute(
+            new GetRecordsByFilterPaginationQuery(filterParams, limit, direction, cursorPointer)
+        );
+    }
+
+    @Get(':id')
+    @ApiOperation({
+        summary: 'Get stock item by ID',
+        description: 'Retrieves a specific stock item by its unique identifier.',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Stock ID',
+        example: 'stock_123456789',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'For Swagger consistency (not used in query endpoints)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'USER',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Stock item retrieved successfully',
+        type: StockDto,
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Stock item not found',
+    })
+    getById(@Param('id') id: string, @Query('userRole') userRole: string) {
+        // Note: userRole is included for Swagger consistency but not used in query endpoints
+        const query = new GetStockByIdQuery(id);
+        return this.queryBus.execute(query);
     }
 }

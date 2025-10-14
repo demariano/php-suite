@@ -27,6 +27,7 @@ export * from './types/product-unit.types';
 export * from './types/product.types';
 export * from './types/responseError';
 export * from './types/status.enum';
+export * from './types/stock.types';
 export * from './types/terms.types';
 export * from './types/territory-manager.types';
 export * from './types/town.types';
@@ -40,6 +41,7 @@ export type { PaginatedResponse, ProductCategoriesResponse } from './api/product
 export type { ProductClassesResponse } from './api/product-class.api';
 export type { ProductPriceTypesResponse } from './api/product-price-type.api';
 export type { ProductUnitsResponse } from './api/product-unit.api';
+export type { StocksResponse } from './api/stock.api';
 export type { TermsResponse } from './api/terms.api';
 export type { TownsResponse } from './api/town.api';
 export type { ProductDealsResponse } from './types/product-deal.types';

@@ -72,13 +72,21 @@ export * from './lib/customer/town/create.town.dto';
 export * from './lib/customer/town/town.dto';
 
 //StockSchema
-export * from './lib/stock/stock.type/create.stock.type.dto';
-export * from './lib/stock/stock.type/stock.type.dto';
-export * from './lib/stock/stock/create.stock.dto';
-export * from './lib/stock/stock/stock.dto';
+export * from './lib/inventory/stock.type/create.stock.type.dto';
+export * from './lib/inventory/stock.type/stock.type.dto';
+export * from './lib/inventory/stock/create.stock.dto';
+export * from './lib/inventory/stock/stock.dto';
+export * from './lib/inventory/stock/stock.filter.dto';
+export * from './lib/inventory/stock/update.available.qty.dto';
 
-//SalesSchema
-export * from './lib/sales/sales.type/create.sales.type.dto';
-export * from './lib/sales/sales.type/sales.type.dto';
-export * from './lib/sales/territory.manager/create.territory.manager.dto';
-export * from './lib/sales/territory.manager/territory.manager.dto';
+//Invoicing
+export * from './lib/enums/invoice.status.enum';
+export * from './lib/enums/payment.status.enum';
+export * from './lib/enums/print.status.enum';
+export * from './lib/invoicing/invoice/create.invoice.dto';
+export * from './lib/invoicing/invoice/invoice.details.dto';
+export * from './lib/invoicing/invoice/invoice.dto';
+export * from './lib/invoicing/sales.type/create.sales.type.dto';
+export * from './lib/invoicing/sales.type/sales.type.dto';
+export * from './lib/invoicing/territory.manager/create.territory.manager.dto';
+export * from './lib/invoicing/territory.manager/territory.manager.dto';

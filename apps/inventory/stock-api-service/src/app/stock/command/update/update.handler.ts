@@ -1,8 +1,8 @@
 import { ErrorResponseDto, ResponseDto, StatusEnum, StockDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { StockDatabaseServiceAbstract } from '@stock-database-service';
 import { UpdateStockCommand } from './update.command';
 
 // Constants
@@ -80,7 +80,8 @@ export class UpdateStockHandler implements ICommandHandler<UpdateStockCommand> {
             existingRecord.productName = command.stockDto.productName;
             existingRecord.lotNo = command.stockDto.lotNo;
             existingRecord.productId = command.stockDto.productId;
-            existingRecord.quantity = command.stockDto.quantity;
+            existingRecord.quantityOnHand = command.stockDto.quantityOnHand;
+            existingRecord.availableQuantity = command.stockDto.availableQuantity;
             existingRecord.productUnitId = command.stockDto.productUnitId;
             existingRecord.productUnitName = command.stockDto.productUnitName;
             existingRecord.expirationDate = command.stockDto.expirationDate;
@@ -107,7 +108,8 @@ export class UpdateStockHandler implements ICommandHandler<UpdateStockCommand> {
                 productName: command.stockDto.productName,
                 lotNo: command.stockDto.lotNo,
                 productId: command.stockDto.productId,
-                quantity: command.stockDto.quantity,
+                quantityOnHand: command.stockDto.quantityOnHand,
+                availableQuantity: command.stockDto.availableQuantity,
                 productUnitId: command.stockDto.productUnitId,
                 productUnitName: command.stockDto.productUnitName,
                 expirationDate: command.stockDto.expirationDate,

@@ -1,4 +1,4 @@
-import { CreateStockDto, PageDto, StatusEnum, StockDto } from '@dto';
+import { CreateStockDto, PageDto, StatusEnum, StockDto, StockFilterDto } from '@dto';
 import {
     createDynamoDbOptionWithPKSKIndex,
     DynamoDbLibService,
@@ -34,7 +34,8 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             lotNo: stockDto.lotNo,
             productId: stockDto.productId,
             productName: stockDto.productName,
-            quantity: stockDto.quantity,
+            quantityOnHand: stockDto.quantityOnHand,
+            availableQuantity: stockDto.availableQuantity,
             productUnitId: stockDto.productUnitId,
             productUnitName: stockDto.productUnitName,
             expirationDate: stockDto.expirationDate,
@@ -66,7 +67,8 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         stockRecord.lotNo = record.lotNo;
         stockRecord.productId = record.productId;
         stockRecord.productName = record.productName;
-        stockRecord.quantity = record.quantity;
+        stockRecord.quantityOnHand = record.quantityOnHand;
+        stockRecord.availableQuantity = record.availableQuantity;
         stockRecord.productUnitId = record.productUnitId;
         stockRecord.productUnitName = record.productUnitName;
         stockRecord.expirationDate = record.expirationDate;
@@ -208,13 +210,90 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         }
     }
 
+    async findStockRecordsByFilterPagination(
+        filter: StockFilterDto,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const whereClause = [
+            filter.status ? '(${status} = @{status})' : null,
+            filter.stockTypeName && filter.stockTypeName.length > 0
+                ? 'contains(${stockTypeName}, @{stockTypeName})'
+                : null,
+            filter.productUnitName && filter.productUnitName.length > 0
+                ? 'contains(${productUnitName}, @{productUnitName})'
+                : null,
+            filter.productName && filter.productName.length > 0 ? 'contains(${productName}, @{productName})' : null,
+            filter.lotNo && filter.lotNo.length > 0 ? 'contains(${lotNo}, @{lotNo})' : null,
+        ]
+            .filter(Boolean)
+            .join(' and ');
+
+        const substitutions = {
+            ...(filter.status && { status: filter.status }),
+            ...(filter.stockTypeName && { stockTypeName: filter.stockTypeName }),
+            ...(filter.productUnitName && { productUnitName: filter.productUnitName }),
+            ...(filter.productName && { productName: filter.productName }),
+            ...(filter.lotNo && { lotNo: filter.lotNo }),
+        };
+
+        //check if filter.fields not undefined but not an array , convert it to an array
+        if (filter.fields && !Array.isArray(filter.fields)) {
+            filter.fields = [filter.fields];
+        }
+
+        //check filter.fields , if it does not include customerId , then add it to the fields
+        if (!filter.fields?.includes('stockId')) {
+            filter.fields?.push('stockId');
+        }
+
+        console.log('whereClause', whereClause);
+        console.log('substitutions', substitutions);
+
+        const stockRecords = await this.stockTable.find(
+            {
+                GSI1PK: 'STOCK',
+            },
+            {
+                fields: filter.fields ? filter.fields : undefined,
+                where: whereClause || undefined,
+                substitutions: Object.keys(substitutions).length > 0 ? substitutions : undefined,
+                reverse: filter.reverse,
+                ...dynamoDbOption,
+            }
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            stockRecords,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(stockRecords.next),
+            JSON.stringify(stockRecords.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(stockRecords),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
     async convertToDto(record: StockDataType): Promise<StockDto> {
         const dto = new StockDto();
         dto.stockId = record.stockId ? record.stockId : '';
         dto.lotNo = record.lotNo ? record.lotNo : '';
         dto.productId = record.productId ? record.productId : '';
         dto.productName = record.productName ? record.productName : '';
-        dto.quantity = record.quantity ? record.quantity : 0;
+        dto.quantityOnHand = record.quantityOnHand ? record.quantityOnHand : 0;
+        dto.availableQuantity = record.availableQuantity ? record.availableQuantity : 0;
         dto.productUnitId = record.productUnitId ? record.productUnitId : '';
         dto.productUnitName = record.productUnitName ? record.productUnitName : '';
         dto.expirationDate = record.expirationDate ? record.expirationDate : '';
@@ -246,7 +325,8 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             lotNo: dto.lotNo,
             productId: dto.productId,
             productName: dto.productName,
-            quantity: dto.quantity,
+            quantityOnHand: dto.quantityOnHand,
+            availableQuantity: dto.availableQuantity,
             productUnitId: dto.productUnitId,
             productUnitName: dto.productUnitName,
             expirationDate: dto.expirationDate,

@@ -9,9 +9,11 @@ import { ApproveStockHandler } from './command/approve-record/approve.handler';
 import { CreateStockHandler } from './command/create/create.handler';
 import { DeleteStockHandler } from './command/delete/delete.handler';
 import { DenyStockHandler } from './command/deny-record/deny.handler';
+import { UpdateAvailableQtyHandler } from './command/update.available.qty/update.available.qty.handler';
 import { UpdateStockHandler } from './command/update/update.handler';
 import { GetStockByIdHandler } from './queries/get.by.id/get.stock.by.id.handler';
 import { GetStockByNameHandler } from './queries/get.by.name/get.stock.by.name.handler';
+import { GetRecordsByFilterPaginationHandler } from './queries/get.records.by.filter/get.records.by.filter.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 import { StockController } from './stock.controller';
 
@@ -38,10 +40,12 @@ import { StockController } from './stock.controller';
         GetStockByIdHandler,
         GetStockByNameHandler,
         GetRecordsPaginationHandler,
+        GetRecordsByFilterPaginationHandler,
         UpdateStockHandler,
         DeleteStockHandler,
         ApproveStockHandler,
         DenyStockHandler,
+        UpdateAvailableQtyHandler,
     ],
 })
 export class StockModule {}

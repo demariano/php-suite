@@ -24,7 +24,8 @@ export const InventorySchema = {
             lotNo: { type: String, required: false },
             productId: { type: String, required: false },
             productName: { type: String, required: false },
-            quantity: { type: Number, required: false },
+            quantityOnHand: { type: Number, required: false }, //actual quantity on hand not considering invoice in draft mode and not considering inventory transfer in transit
+            availableQuantity: { type: Number, required: false }, // actual quantity on hand considering invoice in draft mode , to handle invoice records being created at the same time
             productUnitId: { type: String, required: false },
             productUnitName: { type: String, required: false },
             expirationDate: { type: String, required: false },

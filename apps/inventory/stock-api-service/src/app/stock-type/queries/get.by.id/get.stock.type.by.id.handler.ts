@@ -1,7 +1,7 @@
 import { ResponseDto, StockTypeDto } from '@dto';
+import { StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
 import { Inject, Logger, NotFoundException } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
-import { StockTypeDatabaseServiceAbstract } from '@stock-database-service';
 import { GetStockTypeByIdQuery } from './get.stock.type.by.id.query';
 
 // Constants

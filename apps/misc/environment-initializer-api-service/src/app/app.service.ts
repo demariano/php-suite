@@ -22,13 +22,16 @@ import {
     ProductPriceTypeDto,
     ProductUnitDto,
     ProductUnitPriceDto,
+    SalesTypeDto,
     StatusEnum,
     StockDto,
     StockTypeDto,
     TermsDto,
+    TerritoryManagerDto,
     TownDto,
 } from '@dto';
 import { StockDatabaseServiceAbstract, StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
+import { SalesTypeDatabaseServiceAbstract, TerritoryManagerDatabaseServiceAbstract } from '@invoicing-database-service';
 import { Inject, Injectable } from '@nestjs/common';
 import {
     ProductCategoryDatabaseServiceAbstract,
@@ -81,7 +84,13 @@ export class AppService {
         private readonly stockTypeDatabaseService: StockTypeDatabaseServiceAbstract,
 
         @Inject('StockDatabaseService')
-        private readonly stockDatabaseService: StockDatabaseServiceAbstract
+        private readonly stockDatabaseService: StockDatabaseServiceAbstract,
+
+        @Inject('SalesTypeDatabaseService')
+        private readonly salesTypeDatabaseService: SalesTypeDatabaseServiceAbstract,
+
+        @Inject('TerritoryManagerDatabaseService')
+        private readonly territoryManagerDatabaseService: TerritoryManagerDatabaseServiceAbstract
     ) {}
 
     healthCheck(): { status: string; version: string } {
@@ -288,15 +297,42 @@ export class AppService {
         customerTypeData2.status = StatusEnum.ACTIVE;
         const customerTypeRecord2 = await this.customerTypeDatabaseService.createRecord(customerTypeData2);
 
+        //create 2 sales types
+        const salesTypeData = new SalesTypeDto();
+        salesTypeData.salesTypeName = 'Sales Type 1';
+        salesTypeData.status = StatusEnum.ACTIVE;
+        const salesTypeRecord1 = await this.salesTypeDatabaseService.createRecord(salesTypeData);
+
+        const salesTypeData2 = new SalesTypeDto();
+        salesTypeData2.salesTypeName = 'Sales Type 2';
+        salesTypeData2.status = StatusEnum.ACTIVE;
+        const salesTypeRecord2 = await this.salesTypeDatabaseService.createRecord(salesTypeData2);
+
+        //create 2 territory managers
+
+        const territoryManagerData = new TerritoryManagerDto();
+        territoryManagerData.territoryManagerName = 'Territory Manager 1';
+        territoryManagerData.status = StatusEnum.ACTIVE;
+        const territoryManagerRecord1 = await this.territoryManagerDatabaseService.createRecord(territoryManagerData);
+
+        const territoryManagerData2 = new TerritoryManagerDto();
+        territoryManagerData2.territoryManagerName = 'Territory Manager 2';
+        territoryManagerData2.status = StatusEnum.ACTIVE;
+        const territoryManagerRecord2 = await this.territoryManagerDatabaseService.createRecord(territoryManagerData2);
+
         //create 2 area
         const areaData = new AreaDto();
         areaData.areaName = 'Area 1';
         areaData.status = StatusEnum.ACTIVE;
+        areaData.territoryManagerId = territoryManagerRecord1.territoryManagerId;
+        areaData.territoryManagerName = territoryManagerRecord1.territoryManagerName;
         const areaRecord1 = await this.areaDatabaseService.createRecord(areaData);
 
         const areaData2 = new AreaDto();
         areaData2.areaName = 'Area 2';
         areaData2.status = StatusEnum.ACTIVE;
+        areaData2.territoryManagerId = territoryManagerRecord2.territoryManagerId;
+        areaData2.territoryManagerName = territoryManagerRecord2.territoryManagerName;
         const areaRecord2 = await this.areaDatabaseService.createRecord(areaData2);
 
         //create 2 town
@@ -368,7 +404,8 @@ export class AppService {
         stockData.productUnitName = productUnitRecord1.productUnitName;
         stockData.stockTypeId = stockTypeRecord1.stockTypeId;
         stockData.stockTypeName = stockTypeRecord1.stockTypeName;
-        stockData.quantity = 100;
+        stockData.quantityOnHand = 100;
+        stockData.availableQuantity = 100;
         stockData.expirationDate = '2025-12-01';
         stockData.status = StatusEnum.ACTIVE;
         await this.stockDatabaseService.createRecord(stockData);
@@ -381,7 +418,8 @@ export class AppService {
         stockData2.productUnitName = productUnitRecord2.productUnitName;
         stockData2.stockTypeId = stockTypeRecord2.stockTypeId;
         stockData2.stockTypeName = stockTypeRecord2.stockTypeName;
-        stockData2.quantity = 200;
+        stockData2.quantityOnHand = 200;
+        stockData2.availableQuantity = 200;
         stockData2.expirationDate = '2025-12-02';
         stockData2.status = StatusEnum.ACTIVE;
         await this.stockDatabaseService.createRecord(stockData2);
@@ -402,5 +440,7 @@ export class AppService {
         await this.stockDatabaseService.deleteAllRecords();
         await this.customerDatabaseService.deleteAllRecords();
         await this.productDatabaseService.deleteAllRecords();
+        await this.salesTypeDatabaseService.deleteAllRecords();
+        await this.territoryManagerDatabaseService.deleteAllRecords();
     }
 }

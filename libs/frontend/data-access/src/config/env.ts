@@ -14,6 +14,7 @@ export const ENV_KEYS = [
     'BYPASS_AUTH',
     'API_CUSTOMER_URL',
     'API_INVOICING_URL',
+    'API_INVENTORY_URL',
 ] as const;
 
 export type EnvVariables = {

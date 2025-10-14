@@ -1,10 +1,10 @@
 import { AuthGuardLibModule } from '@auth-guard-lib';
 import { ConfigurationLibModule } from '@configuration-lib';
 import { DynamoDbLibModule } from '@dynamo-db-lib';
+import { InventoryDatabaseServiceModule, StockTypeDatabaseService } from '@inventory-database-service';
 import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue-lib';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
-import { StockDatabaseServiceModule, StockTypeDatabaseService } from '@stock-database-service';
 import { ApproveStockTypeHandler } from './command/approve-record/approve.handler';
 import { CreateStockTypeHandler } from './command/create/create.handler';
 import { DeleteStockTypeHandler } from './command/delete/delete.handler';
@@ -22,7 +22,7 @@ import { StockTypeController } from './stock-type.controller';
         ConfigurationLibModule,
         AuthGuardLibModule,
         MessageQueueLibModule,
-        StockDatabaseServiceModule,
+        InventoryDatabaseServiceModule,
     ],
     controllers: [StockTypeController],
     providers: [

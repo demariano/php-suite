@@ -5,6 +5,7 @@ export { default as CustomerApi } from './customer-main.api';
 export { default as CustomerTypeApi } from './customer-type.api';
 export { default as ProductApi } from './product.api';
 export { default as SalesTypeApi } from './sales-type.api';
+export { default as StockApi } from './stock.api';
 export { default as TermsApi } from './terms.api';
 export { default as TerritoryManagerApi } from './territory-manager.api';
 export { default as TownApi } from './town.api';

@@ -36,9 +36,9 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
             activityLogs: territoryManagerDto.activityLogs,
             forApprovalVersion: territoryManagerDto.forApprovalVersion,
 
-            GSI1PK: `TerritoryManager`,
+            GSI1PK: `TERRITORY_MANAGER`,
             GSI1SK: territoryManagerDto.territoryManagerName,
-            GSI2PK: `TerritoryManager#${territoryManagerDto.status}`,
+            GSI2PK: `TERRITORY_MANAGER#${territoryManagerDto.status}`,
             GSI2SK: territoryManagerDto.territoryManagerName,
         };
 
@@ -54,9 +54,9 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
 
         territoryManagerRecord.territoryManagerName = record.territoryManagerName;
         territoryManagerRecord.status = record.status;
-        territoryManagerRecord.GSI1PK = `TerritoryManager`;
+        territoryManagerRecord.GSI1PK = `TERRITORY_MANAGER`;
         territoryManagerRecord.GSI1SK = record.territoryManagerName;
-        territoryManagerRecord.GSI2PK = `TerritoryManager#${record.status}`;
+        territoryManagerRecord.GSI2PK = `TERRITORY_MANAGER#${record.status}`;
         territoryManagerRecord.GSI2SK = record.territoryManagerName;
         territoryManagerRecord.contactNo = record.contactNo;
         territoryManagerRecord.forApprovalVersion = record.forApprovalVersion;
@@ -85,7 +85,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
         //get all the records
         const records = await this.territoryManagerTable.find(
             {
-                GSI1PK: `TerritoryManager`,
+                GSI1PK: `TERRITORY_MANAGER`,
             },
             {
                 index: 'GSI1',
@@ -108,7 +108,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
 
         const records = await this.territoryManagerTable.find(
             {
-                GSI1PK: `TerritoryManager`,
+                GSI1PK: `TERRITORY_MANAGER`,
                 GSI1SK: {
                     begins: name,
                 },
@@ -140,7 +140,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
     async findRecordByName(name: string): Promise<TerritoryManagerDto | null> {
         const record = await this.territoryManagerTable.get(
             {
-                GSI1PK: `TerritoryManager`,
+                GSI1PK: `TERRITORY_MANAGER`,
                 GSI1SK: `${name}`,
             },
             {
@@ -157,7 +157,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
 
     async getDatabaseRecordById(recordId: string): Promise<TerritoryManagerDataType | undefined> {
         const record: TerritoryManagerDataType | undefined = await this.territoryManagerTable.get({
-            PK: 'TerritoryManager',
+            PK: 'TERRITORY_MANAGER',
             SK: `${recordId}`,
         });
 
@@ -178,7 +178,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
 
         const records = await this.territoryManagerTable.find(
             {
-                GSI2PK: `TerritoryManager#${status}`,
+                GSI2PK: `TERRITORY_MANAGER#${status}`,
                 ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
@@ -213,7 +213,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
 
         const records = await this.territoryManagerTable.find(
             {
-                GSI1PK: `TerritoryManager`,
+                GSI1PK: `TERRITORY_MANAGER`,
             },
             dynamoDbOption
         );
@@ -276,9 +276,9 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
             status: dto.status,
             territoryManagerName: dto.territoryManagerName,
             contactNo: dto.contactNo,
-            GSI1PK: `TerritoryManager`,
+            GSI1PK: `TERRITORY_MANAGER`,
             GSI1SK: dto.territoryManagerName,
-            GSI2PK: `TerritoryManager#${dto.status}`,
+            GSI2PK: `TERRITORY_MANAGER#${dto.status}`,
             GSI2SK: dto.territoryManagerName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,

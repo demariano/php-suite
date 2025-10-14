@@ -1,7 +1,8 @@
 import { ErrorResponseDto, ResponseDto, StatusEnum, StockDto, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
+import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { StockDatabaseServiceAbstract } from '@stock-database-service';
 import { DeleteStockCommand } from './delete.command';
 
 // Constants

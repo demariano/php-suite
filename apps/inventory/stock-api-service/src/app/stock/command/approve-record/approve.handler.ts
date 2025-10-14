@@ -1,9 +1,9 @@
 import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, ResponseDto, StatusEnum, StockDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { StockDatabaseServiceAbstract } from '@stock-database-service';
 import { ApproveStockCommand } from './approve.command';
 
 // Constants
@@ -93,7 +93,8 @@ export class ApproveStockHandler implements ICommandHandler<ApproveStockCommand>
             existingRecord.productName = forApprovalVersion.productName as string;
             existingRecord.lotNo = forApprovalVersion.lotNo as string;
             existingRecord.productId = forApprovalVersion.productId as string;
-            existingRecord.quantity = forApprovalVersion.quantity as number;
+            existingRecord.quantityOnHand = forApprovalVersion.quantityOnHand as number;
+            existingRecord.availableQuantity = forApprovalVersion.availableQuantity as number;
             existingRecord.productUnitId = forApprovalVersion.productUnitId as string;
             existingRecord.productUnitName = forApprovalVersion.productUnitName as string;
             existingRecord.expirationDate = forApprovalVersion.expirationDate as string;

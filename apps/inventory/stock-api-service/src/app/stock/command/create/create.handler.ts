@@ -1,8 +1,8 @@
 import { ErrorResponseDto, ResponseDto, StatusEnum, StockDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { StockDatabaseServiceAbstract } from '@stock-database-service';
 import { CreateStockCommand } from './create.command';
 
 // Constants
@@ -80,7 +80,8 @@ export class CreateStockHandler implements ICommandHandler<CreateStockCommand> {
             command.stockDto.forApprovalVersion = {};
             command.stockDto.forApprovalVersion.productName = command.stockDto.productName;
             command.stockDto.forApprovalVersion.lotNo = command.stockDto.lotNo;
-            command.stockDto.forApprovalVersion.quantity = command.stockDto.quantity;
+            command.stockDto.forApprovalVersion.quantityOnHand = command.stockDto.quantityOnHand;
+            command.stockDto.forApprovalVersion.availableQuantity = command.stockDto.availableQuantity;
             command.stockDto.forApprovalVersion.productUnitId = command.stockDto.productUnitId;
             command.stockDto.forApprovalVersion.productUnitName = command.stockDto.productUnitName;
             command.stockDto.forApprovalVersion.expirationDate = command.stockDto.expirationDate;

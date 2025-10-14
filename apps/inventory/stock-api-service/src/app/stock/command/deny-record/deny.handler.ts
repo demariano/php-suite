@@ -1,9 +1,9 @@
 import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, ResponseDto, StatusEnum, StockDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
-import { StockDatabaseServiceAbstract } from '@stock-database-service';
 import { DenyStockCommand } from './deny.command';
 
 // Constants

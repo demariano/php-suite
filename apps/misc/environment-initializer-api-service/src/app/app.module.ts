@@ -12,7 +12,16 @@ import {
     TermsDatabaseService,
     TownDatabaseService,
 } from '@customer-database-service';
-import { InventoryDatabaseServiceModule, StockTypeDatabaseService } from '@inventory-database-service';
+import {
+    InventoryDatabaseServiceModule,
+    StockDatabaseService,
+    StockTypeDatabaseService,
+} from '@inventory-database-service';
+import {
+    InvoicingDatabaseServiceModule,
+    SalesTypeDatabaseService,
+    TerritoryManagerDatabaseService,
+} from '@invoicing-database-service';
 import {
     ProductCategoryDatabaseService,
     ProductClassDatabaseService,
@@ -33,6 +42,7 @@ import { AppService } from './app.service';
         ProductDatabaseServiceModule,
         CustomerDatabaseServiceModule,
         InventoryDatabaseServiceModule,
+        InvoicingDatabaseServiceModule,
     ],
     controllers: [AppController],
     providers: [
@@ -92,6 +102,18 @@ import { AppService } from './app.service';
         {
             provide: 'StockTypeDatabaseService',
             useClass: StockTypeDatabaseService,
+        },
+        {
+            provide: 'StockDatabaseService',
+            useClass: StockDatabaseService,
+        },
+        {
+            provide: 'SalesTypeDatabaseService',
+            useClass: SalesTypeDatabaseService,
+        },
+        {
+            provide: 'TerritoryManagerDatabaseService',
+            useClass: TerritoryManagerDatabaseService,
         },
     ],
 })

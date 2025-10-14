@@ -23,7 +23,7 @@ async function createSwaggerConfig() {
                 description: 'Enter JWT token',
                 in: 'header',
             },
-            'JWT-auth',
+            'JWT-auth'
         )
         .build();
 }
@@ -43,8 +43,7 @@ async function bootstrapServer() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('swagger', app, document, { useGlobalPrefix: true });
 
-
-    const port = process.env.PORT || 4045;
+    const port = process.env.PORT || 4046;
 
     await app.listen(port);
     Logger.log(`🚀 STOCK-API-SERVICE is running on: http://localhost:${port}/api`);
@@ -54,11 +53,7 @@ async function bootstrapServer() {
 async function bootstrapLambda() {
     if (!cachedServer) {
         const expressApp = express();
-        const nestApp = await NestFactory.create(
-            AppModule,
-            new ExpressAdapter(expressApp),
-        );
-
+        const nestApp = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
         await setupGlobalMiddleware(nestApp);
         const config = await createSwaggerConfig();
@@ -81,5 +76,3 @@ export const handler: Handler = async (event: APIGatewayEvent, context: Context,
 
     return cachedServer(event, context, callback);
 };
-
-

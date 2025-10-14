@@ -1,4 +1,4 @@
-import { CreateStockDto, PageDto, StockDto } from '@dto';
+import { CreateStockDto, PageDto, StockDto, StockFilterDto } from '@dto';
 
 export abstract class StockDatabaseServiceAbstract {
     abstract createRecord(stockDto: CreateStockDto): Promise<StockDto>;
@@ -17,6 +17,13 @@ export abstract class StockDatabaseServiceAbstract {
     ): Promise<PageDto<StockDto>>;
 
     abstract findStockRecordsByStatusAndProductId(status: string, productId: string): Promise<StockDto[]>;
+
+    abstract findStockRecordsByFilterPagination(
+        filter: StockFilterDto,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockDto>>;
 
     abstract deleteRecord(stockDto: StockDto): Promise<StockDto>;
 
