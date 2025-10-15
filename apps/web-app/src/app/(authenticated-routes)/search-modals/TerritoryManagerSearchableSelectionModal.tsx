@@ -1,13 +1,13 @@
 'use client';
 
-import { TerritoryManagerApi } from '@data-access/index';
+import { TerritoryManagerApi, TerritoryManagerDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
 
 interface TerritoryManagerSearchableSelectionModalProps {
   show: boolean;
   title: string;
   selectedValue: string | null;
-  onSelect: (id: string, name: string) => void;
+  onSelect: (territoryManager: TerritoryManagerDto) => void;
   onClose: () => void;
 }
 
@@ -166,7 +166,14 @@ export default function TerritoryManagerSearchableSelectionModal({
   };
 
   const handleSelect = (item: Item) => {
-    onSelect(item.id, item.name);
+    // Create a full TerritoryManagerDto object
+    const territoryManager: TerritoryManagerDto = {
+      territoryManagerId: item.id,
+      territoryManagerName: item.name,
+      contactNo: item.contactNo,
+      status: 'ACTIVE' as any // Default status
+    };
+    onSelect(territoryManager);
     onClose();
   };
 

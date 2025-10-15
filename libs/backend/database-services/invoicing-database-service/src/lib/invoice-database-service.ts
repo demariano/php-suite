@@ -219,11 +219,11 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         cursorPointer: string
     ): Promise<PageDto<InvoiceDto>> {
         limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI12', direction, cursorPointer);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI11', direction, cursorPointer);
 
         const records = await this.invoiceTable.find(
             {
-                GSI12PK: `INVOICE`,
+                GSI11PK: `INVOICE`,
             },
             dynamoDbOption
         );
@@ -232,8 +232,8 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             records,
             limit,
             direction,
-            'GSI12PK',
-            'GSI12SK',
+            'GSI11PK',
+            'GSI11SK',
             'PK',
             'SK',
             JSON.stringify(records.next),

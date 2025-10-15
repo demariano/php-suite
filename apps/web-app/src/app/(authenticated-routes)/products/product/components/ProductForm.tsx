@@ -2,7 +2,9 @@
 
 import { ProductDto, StatusEnum } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import ProductSearchableSelectionModal from '../../../search-modals/ProductSearchableSelectionModal';
+import ProductCategorySearchableSelectionModal from '../../../search-modals/ProductCategorySearchableSelectionModal';
+import ProductClassSearchableSelectionModal from '../../../search-modals/ProductClassSearchableSelectionModal';
+import ProductDealSearchableSelectionModal from '../../../search-modals/ProductDealSearchableSelectionModal';
 import ProductUnitPriceSelectionModal from '../../../search-modals/ProductUnitPriceSelectionModal';
 import SelectionField from './SelectionField';
 
@@ -188,13 +190,13 @@ export default function ProductForm({
     }
   };
 
-  const handleCategorySelect = (id: string, name: string) => {
-    setSelectedCategory({ id, name });
+  const handleCategorySelect = (category: any) => {
+    setSelectedCategory({ id: category.productCategoryId, name: category.productCategoryName });
     setUserHasMadeSelections(true);
   };
 
-  const handleClassSelect = (id: string, name: string) => {
-    setSelectedClass({ id, name });
+  const handleClassSelect = (productClass: any) => {
+    setSelectedClass({ id: productClass.productClassId, name: productClass.productClassName });
     setUserHasMadeSelections(true);
   };
 
@@ -211,9 +213,9 @@ export default function ProductForm({
     setShowDealModal(true);
   };
 
-  const handleDealSelect = (id: string, name: string) => {
+  const handleDealSelect = (deal: any) => {
     // Check if deal is already added
-    const existingDeal = productDeals.find(deal => deal.productDealId === id);
+    const existingDeal = productDeals.find(d => d.productDealId === deal.productDealId);
     if (existingDeal) {
       // Add validation error for duplicate deal
       setValidationErrors(['This product deal has already been added. Please select a different deal.']);
@@ -224,10 +226,10 @@ export default function ProductForm({
     setValidationErrors([]);
 
     const newDeal: ProductDealDetailsDto = {
-      productDealId: id,
-      productDealName: name,
-      additionalQty: 0,
-      minQty: 0
+      productDealId: deal.productDealId,
+      productDealName: deal.productDealName,
+      additionalQty: deal.additionalQty || 0,
+      minQty: deal.minQty || 0
     };
     setProductDeals([...productDeals, newDeal]);
   };
@@ -1113,28 +1115,25 @@ export default function ProductForm({
      </form>
 
      {/* Searchable Selection Modals */}
-     <ProductSearchableSelectionModal
+     <ProductCategorySearchableSelectionModal
        show={showCategoryModal}
        title="Select Product Category"
-       type="category"
        selectedValue={selectedCategory?.id || null}
        onSelect={handleCategorySelect}
        onClose={() => setShowCategoryModal(false)}
      />
 
-     <ProductSearchableSelectionModal
+     <ProductClassSearchableSelectionModal
        show={showClassModal}
        title="Select Product Class"
-       type="class"
        selectedValue={selectedClass?.id || null}
        onSelect={handleClassSelect}
        onClose={() => setShowClassModal(false)}
      />
 
-     <ProductSearchableSelectionModal
+     <ProductDealSearchableSelectionModal
        show={showDealModal}
        title="Select Product Deal"
-       type="deal"
        selectedValue={null}
        onSelect={handleDealSelect}
        onClose={() => setShowDealModal(false)}

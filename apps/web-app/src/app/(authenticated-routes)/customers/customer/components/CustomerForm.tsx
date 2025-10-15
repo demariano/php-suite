@@ -1,12 +1,19 @@
 'use client';
 
-import { CustomerDto, StatusEnum } from '@data-access/index';
+import { AreaDto, CustomerClassificationDto, CustomerDto, CustomerTypeDto, StatusEnum, TermsDto, TownDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import CustomerSearchableSelectionModal from '../../../search-modals/CustomerSearchableSelectionModal';
+import {
+  AreaSearchableSelectionModal,
+  CustomerClassificationSearchableSelectionModal,
+  CustomerTypeSearchableSelectionModal,
+  ProductSearchableSelectionModal,
+  TermsSearchableSelectionModal,
+  TownSearchableSelectionModal
+} from '../../../search-modals';
 import SelectionField from './SelectionField';
 
 // Types for inner tabs
-type InnerTabType = 'record-details' | 'customer-terms' | 'customer-deals';
+type InnerTabType = 'record-details' | 'customer-terms' | 'product-deals';
 
 interface CustomerTermsDetailsDto {
   termsId: string;
@@ -15,6 +22,8 @@ interface CustomerTermsDetailsDto {
 }
 
 interface CustomerDealsDetailsDto {
+  productId: string;
+  productName?: string;
   productDealId: string;
   productDealName?: string;
   additionalQty?: number;
@@ -110,8 +119,10 @@ export default function CustomerForm({
           days: term.days
         })));
       }
-      if (selectedCustomer.customerDeals) {
-        setCustomerDeals(selectedCustomer.customerDeals.map(deal => ({
+      if (selectedCustomer.customerProductDeals) {
+        setCustomerDeals(selectedCustomer.customerProductDeals.map(deal => ({
+          productId: deal.productId,
+          productName: deal.productName,
           productDealId: deal.productDealId,
           productDealName: deal.productDealName,
           additionalQty: deal.additionalQty,
@@ -210,7 +221,7 @@ export default function CustomerForm({
         customerTypeName: selectedType?.name || '',
         status: StatusEnum.NEW_RECORD,
         customerTerms: customerTerms,
-        customerDeals: customerDeals,
+        customerProductDeals: customerDeals,
         changeReason: '' // No change reason needed for new records
       };
       
@@ -245,7 +256,7 @@ export default function CustomerForm({
         customerTypeName: selectedType?.name || '',
         status: StatusEnum.ACTIVE,
         customerTerms: customerTerms,
-        customerDeals: customerDeals,
+        customerProductDeals: customerDeals,
         changeReason: formData.changeReason || ''
       };
       
@@ -260,25 +271,25 @@ export default function CustomerForm({
     }
   };
 
-  const handleTownSelect = (id: string, name: string, additionalData?: any) => {
-    setSelectedTown({ id, name });
+  const handleTownSelect = (town: TownDto) => {
+    setSelectedTown({ id: town.townId, name: town.townName });
     setUserHasMadeSelections(true);
   };
 
-  const handleAreaSelect = (id: string, name: string, additionalData?: any) => {
-    setSelectedArea({ id, name });
+  const handleAreaSelect = (area: AreaDto) => {
+    setSelectedArea({ id: area.areaId, name: area.areaName });
     // Clear town selection when area changes
     setSelectedTown(null);
     setUserHasMadeSelections(true);
   };
 
-  const handleClassificationSelect = (id: string, name: string, additionalData?: any) => {
-    setSelectedClassification({ id, name });
+  const handleClassificationSelect = (classification: CustomerClassificationDto) => {
+    setSelectedClassification({ id: classification.customerClassificationId, name: classification.customerClassificationName });
     setUserHasMadeSelections(true);
   };
 
-  const handleTypeSelect = (id: string, name: string, additionalData?: any) => {
-    setSelectedType({ id, name });
+  const handleTypeSelect = (customerType: CustomerTypeDto) => {
+    setSelectedType({ id: customerType.customerTypeId, name: customerType.customerTypeName });
     setUserHasMadeSelections(true);
   };
 
@@ -303,9 +314,9 @@ export default function CustomerForm({
     setShowTermsModal(true);
   };
 
-  const handleTermsSelect = (id: string, name: string, additionalData?: any) => {
+  const handleTermsSelect = (terms: TermsDto) => {
     // Check if terms is already added
-    const existingTerms = customerTerms.find(term => term.termsId === id);
+    const existingTerms = customerTerms.find(term => term.termsId === terms.termsId);
     if (existingTerms) {
       // Add validation error for duplicate terms
       setValidationErrors(['This customer terms has already been added. Please select different terms.']);
@@ -316,9 +327,9 @@ export default function CustomerForm({
     setValidationErrors([]);
 
     const newTerms: CustomerTermsDetailsDto = {
-      termsId: id,
-      termsName: name,
-      days: additionalData?.days || 0 // Use actual days from the terms data
+      termsId: terms.termsId,
+      termsName: terms.termsName,
+      days: terms.days || 0 // Use actual days from the terms data
     };
     setCustomerTerms([...customerTerms, newTerms]);
   };
@@ -332,23 +343,29 @@ export default function CustomerForm({
     setShowDealsModal(true);
   };
 
-  const handleDealsSelect = (id: string, name: string, additionalData?: any) => {
-    // Check if deal is already added
-    const existingDeal = customerDeals.find(deal => deal.productDealId === id);
+  const handleDealsSelect = (product: any) => {
+    // Check if product is already added
+    const existingDeal = customerDeals.find(customerDeal => customerDeal.productId === product.productId);
     if (existingDeal) {
-      // Add validation error for duplicate deals
-      setValidationErrors(['This customer deal has already been added. Please select a different deal.']);
+      // Add validation error for duplicate products
+      setValidationErrors(['This product has already been added. Please select a different product.']);
       return;
     }
 
     // Clear any existing validation errors
     setValidationErrors([]);
 
+    // Create a deal entry for the selected product
+    // We'll use the first deal if multiple deals exist, or create a default entry
+    const firstDeal = product.productDeals && product.productDeals.length > 0 ? product.productDeals[0] : null;
+    
     const newDeal: CustomerDealsDetailsDto = {
-      productDealId: id,
-      productDealName: name,
-      additionalQty: additionalData?.additionalQty || 0,
-      minQty: additionalData?.minQty || 0
+      productId: product.productId,
+      productName: product.productName,
+      productDealId: firstDeal?.productDealId || '',
+      productDealName: firstDeal?.productDealName || '',
+      additionalQty: firstDeal?.additionalQty || 0,
+      minQty: firstDeal?.minQty || 0
     };
     setCustomerDeals([...customerDeals, newDeal]);
   };
@@ -522,7 +539,7 @@ export default function CustomerForm({
           {[
             { id: 'record-details', label: 'Record Details', icon: '📝' },
             { id: 'customer-terms', label: 'Customer Terms', icon: '📋' },
-            { id: 'customer-deals', label: 'Customer Deals', icon: '🎯' }
+            { id: 'product-deals', label: 'Product Deals', icon: '🎯' }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -1139,8 +1156,8 @@ export default function CustomerForm({
           </div>
         )}
 
-        {/* Customer Deals Tab */}
-        {activeInnerTab === 'customer-deals' && (
+        {/* Product Deals Tab */}
+        {activeInnerTab === 'product-deals' && (
           <div>
             <div style={{
               display: 'flex',
@@ -1154,7 +1171,7 @@ export default function CustomerForm({
                 color: '#1f2937',
                 margin: 0
               }}>
-                Customer Deals
+                Product Deals
               </h4>
               <button
                 type="button"
@@ -1225,7 +1242,7 @@ export default function CustomerForm({
                         color: '#1f2937',
                         margin: 0
                       }}>
-                        {deal.productDealName || 'Unnamed Deal'}
+                        {deal.productName && deal.productName !== deal.productDealName ? `${deal.productName} - ${deal.productDealName || 'Unnamed Deal'}` : (deal.productDealName || 'Unnamed Deal')}
                       </h5>
                       <button
                         type="button"
@@ -1414,56 +1431,50 @@ export default function CustomerForm({
      </form>
 
      {/* Searchable Selection Modals */}
-     <CustomerSearchableSelectionModal
+     <TownSearchableSelectionModal
        show={showTownModal}
        title="Select Town"
-       type="town"
+       areaId={selectedArea?.id || ''}
        selectedValue={selectedTown?.id || null}
-       areaId={selectedArea?.id}
        onSelect={handleTownSelect}
        onClose={() => setShowTownModal(false)}
      />
 
-     <CustomerSearchableSelectionModal
+     <AreaSearchableSelectionModal
        show={showAreaModal}
        title="Select Area"
-       type="area"
        selectedValue={selectedArea?.id || null}
        onSelect={handleAreaSelect}
        onClose={() => setShowAreaModal(false)}
      />
 
-     <CustomerSearchableSelectionModal
+     <CustomerClassificationSearchableSelectionModal
        show={showClassificationModal}
        title="Select Customer Classification"
-       type="classification"
        selectedValue={selectedClassification?.id || null}
        onSelect={handleClassificationSelect}
        onClose={() => setShowClassificationModal(false)}
      />
 
-     <CustomerSearchableSelectionModal
+     <CustomerTypeSearchableSelectionModal
        show={showTypeModal}
        title="Select Customer Type"
-       type="type"
        selectedValue={selectedType?.id || null}
        onSelect={handleTypeSelect}
        onClose={() => setShowTypeModal(false)}
      />
 
-     <CustomerSearchableSelectionModal
+     <TermsSearchableSelectionModal
        show={showTermsModal}
        title="Select Customer Terms"
-       type="terms"
        selectedValue={null}
        onSelect={handleTermsSelect}
        onClose={() => setShowTermsModal(false)}
      />
 
-     <CustomerSearchableSelectionModal
+     <ProductSearchableSelectionModal
        show={showDealsModal}
-       title="Select Customer Deal"
-       type="deals"
+       title="Select Product"
        selectedValue={null}
        onSelect={handleDealsSelect}
        onClose={() => setShowDealsModal(false)}

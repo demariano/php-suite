@@ -456,8 +456,8 @@ export default function CustomerModal({
                       </div>
                     )}
 
-                    {/* Customer Deals */}
-                    {selectedCustomer.forApprovalVersion.customerDeals && selectedCustomer.forApprovalVersion.customerDeals.length > 0 && (
+                    {/* Product Deals */}
+                    {selectedCustomer.forApprovalVersion.customerProductDeals && selectedCustomer.forApprovalVersion.customerProductDeals.length > 0 && (
                       <div style={{ marginBottom: '20px' }}>
                         <h4 style={{
                           fontSize: '16px',
@@ -465,10 +465,10 @@ export default function CustomerModal({
                           color: '#1f2937',
                           marginBottom: '16px'
                         }}>
-                          Customer Deals
+                          Product Deals
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                          {selectedCustomer.forApprovalVersion.customerDeals.map((deal: any, index: number) => (
+                          {selectedCustomer.forApprovalVersion.customerProductDeals.map((productDeal: any, index: number) => (
                             <div key={index} style={{
                               border: '2px solid #e2e8f0',
                               borderRadius: '8px',
@@ -481,7 +481,7 @@ export default function CustomerModal({
                                 color: '#1f2937',
                                 margin: '0 0 16px 0'
                               }}>
-                                {deal.productDealName || 'Unnamed Deal'}
+                                {productDeal.productName && productDeal.productName !== productDeal.productDealName ? `${productDeal.productName} - ${productDeal.productDealName || 'Unnamed Deal'}` : (productDeal.productDealName || 'Unnamed Deal')}
                               </h5>
                               
                               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -497,7 +497,7 @@ export default function CustomerModal({
                                   </label>
                                   <input
                                     type="number"
-                                    value={deal.minQty || 0}
+                                    value={productDeal.minQty || 0}
                                     readOnly
                                     style={{
                                       width: '100%',
@@ -523,7 +523,7 @@ export default function CustomerModal({
                                   </label>
                                   <input
                                     type="number"
-                                    value={deal.additionalQty || 0}
+                                    value={productDeal.additionalQty || 0}
                                     readOnly
                                     style={{
                                       width: '100%',
@@ -546,7 +546,7 @@ export default function CustomerModal({
                     {/* Other fields that might be in forApprovalVersion */}
                     {Object.entries(selectedCustomer.forApprovalVersion).map(([key, value]) => {
                       // Skip the fields we've already handled
-                      if (key === 'customerName' || key === 'status' || key === 'customerTerms' || key === 'customerDeals') {
+                      if (key === 'customerName' || key === 'status' || key === 'customerTerms' || key === 'customerProductDeals') {
                         return null;
                       }
                       

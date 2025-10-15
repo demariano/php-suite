@@ -1,32 +1,27 @@
 'use client';
 
-import { AreaApi, CustomerClassificationApi, CustomerTypeApi, ProductDealApi, TermsApi, TownApi } from '@data-access/index';
+import { CustomerApi, CustomerDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
 
 interface CustomerSearchableSelectionModalProps {
   show: boolean;
   title: string;
-  type: 'town' | 'area' | 'classification' | 'type' | 'terms' | 'deals';
   selectedValue: string | null;
-  areaId?: string; // For filtering towns by area
-  onSelect: (id: string, name: string, additionalData?: any) => void;
+  onSelect: (customer: CustomerDto) => void;
   onClose: () => void;
 }
 
 interface Item {
   id: string;
   name: string;
-  days?: number; // For terms
-  additionalQty?: number; // For deals
-  minQty?: number; // For deals
+  areaName?: string;
+  contactNo?: string;
 }
 
 export default function CustomerSearchableSelectionModal({
   show,
   title,
-  type,
   selectedValue,
-  areaId,
   onSelect,
   onClose
 }: CustomerSearchableSelectionModalProps) {
@@ -69,183 +64,135 @@ export default function CustomerSearchableSelectionModal({
     };
   }, [show, onClose]);
 
-  const loadItems = async (direction?: 'next' | 'prev', cursor?: string | null) => {
-    try {
-      setLoading(true);
-      
-      let response;
-      const serializedCursor = cursor && typeof cursor === 'object' 
-        ? JSON.stringify(cursor) 
-        : cursor || undefined;
-      
-      switch (type) {
-        case 'town':
-          if (areaId) {
-            response = await TownApi.getTownsByArea(areaId, undefined);
-          } else {
-            // If no areaId provided, return empty results
-            response = {
-              statusCode: 200,
-              data: [],
-              nextCursorPointer: null,
-              prevCursorPointer: null
-            };
-          }
-          break;
-        case 'area':
-          response = await AreaApi.getAreas(limit, direction, serializedCursor);
-          break;
-        case 'classification':
-          response = await CustomerClassificationApi.getCustomerClassifications(limit, direction, serializedCursor);
-          break;
-        case 'type':
-          response = await CustomerTypeApi.getCustomerTypes(limit, direction, serializedCursor);
-          break;
-        case 'terms':
-          response = await TermsApi.getTermsByStatus(limit, 'ACTIVE', direction, serializedCursor);
-          break;
-        case 'deals':
-          response = await ProductDealApi.getProductDealsByStatus(limit, 'ACTIVE', direction, serializedCursor);
-          break;
-        default:
-          return;
-      }
-      
-      if (response && response.statusCode === 200 && response.data) {
-        if (Array.isArray(response.data)) {
-          // Transform the data to match the expected Item interface
-          const transformedItems = response.data.map((item: any) => ({
-            id: item.townId || item.areaId || item.customerClassificationId || item.customerTypeId || item.termsId || item.productDealId || item.id,
-            name: item.townName || item.areaName || item.customerClassificationName || item.customerTypeName || item.termsName || item.productDealName || item.name,
-            days: item.days, // For terms
-            additionalQty: item.additionalQty, // For deals
-            minQty: item.minQty // For deals
-          }));
-          setItems(transformedItems);
-          setNextCursor(response.nextCursorPointer || null);
-          setPrevCursor(response.prevCursorPointer || null);
-          setHasNextPage(!!response.nextCursorPointer);
-          setHasPrevPage(!!response.prevCursorPointer);
-        } else {
-          setItems([]);
-          setNextCursor(null);
-          setPrevCursor(null);
-          setHasNextPage(false);
-          setHasPrevPage(false);
-        }
-      } else {
-        setItems([]);
-        setNextCursor(null);
-        setPrevCursor(null);
-        setHasNextPage(false);
-        setHasPrevPage(false);
-      }
-      
-      if (direction && cursor) {
-        setCurrentCursor(cursor);
-      } else {
-        setCurrentCursor(null);
-      }
-    } catch (error) {
-      console.error('Error loading items:', error);
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSearch = async () => {
-    if (!searchTerm.trim()) {
+  useEffect(() => {
+    if (show) {
       loadItems();
-      return;
     }
+  }, [currentPage]);
 
+  // Auto-search when search term changes
+  useEffect(() => {
+    if (show && searchTerm) {
+      const timeoutId = setTimeout(() => {
+        setCurrentPage(1);
+        setCursorStack([]);
+        loadItems(searchTerm);
+      }, 500); // 500ms delay to avoid too many API calls
+
+      return () => clearTimeout(timeoutId);
+    } else if (show && searchTerm === '') {
+      setCurrentPage(1);
+      setCursorStack([]);
+      loadItems();
+    }
+  }, [searchTerm]);
+
+  const loadItems = async (searchQuery?: string) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      
       let response;
       
-      switch (type) {
-        case 'town':
-          response = await TownApi.getTownsByName(searchTerm.trim(), limit);
-          break;
-        case 'area':
-          response = await AreaApi.getAreasByName(searchTerm.trim(), limit);
-          break;
-        case 'classification':
-          response = await CustomerClassificationApi.getCustomerClassificationsByName(searchTerm.trim(), limit);
-          break;
-        case 'type':
-          response = await CustomerTypeApi.getCustomerTypesByName(searchTerm.trim(), limit);
-          break;
-        case 'terms':
-          response = await TermsApi.getTermsByName(searchTerm.trim(), limit);
-          break;
-        case 'deals':
-          response = await ProductDealApi.getProductDealsByName(searchTerm.trim(), limit);
-          break;
-        default:
-          return;
-      }
+      // Determine direction and cursor for pagination
+      const direction = currentPage > 1 ? (isGoingBack ? 'prev' : 'next') : undefined;
+      const cursor = currentCursor ? JSON.stringify(currentCursor) : undefined;
       
-      if (response && response.statusCode === 200 && response.data) {
-        if (Array.isArray(response.data)) {
-          // Transform the data to match the expected Item interface
-          const transformedItems = response.data.map((item: any) => ({
-            id: item.townId || item.areaId || item.customerClassificationId || item.customerTypeId || item.termsId || item.productDealId || item.id,
-            name: item.townName || item.areaName || item.customerClassificationName || item.customerTypeName || item.termsName || item.productDealName || item.name,
-            days: item.days, // For terms
-            additionalQty: item.additionalQty, // For deals
-            minQty: item.minQty // For deals
-          }));
-          setItems(transformedItems);
-          setNextCursor(response.nextCursorPointer || null);
-          setPrevCursor(response.prevCursorPointer || null);
-          setHasNextPage(!!response.nextCursorPointer);
-          setHasPrevPage(!!response.prevCursorPointer);
-        } else {
-          setItems([]);
-          setNextCursor(null);
-          setPrevCursor(null);
-          setHasNextPage(false);
-          setHasPrevPage(false);
-        }
+      if (searchQuery) {
+        response = await CustomerApi.getCustomersByName(
+          searchQuery,
+          limit,
+          direction,
+          cursor
+        );
       } else {
-        setItems([]);
-        setNextCursor(null);
-        setPrevCursor(null);
-        setHasNextPage(false);
-        setHasPrevPage(false);
+        response = await CustomerApi.getCustomersByStatus(
+          limit,
+          'ACTIVE',
+          direction,
+          cursor
+        );
+      }
+
+      const itemsList = response.data.map((item: any) => ({
+        id: item.customerId,
+        name: item.customerName,
+        areaName: item.areaName,
+        contactNo: item.contactNo
+      }));
+
+      setItems(itemsList);
+      setHasNextPage(!!response.nextCursorPointer);
+      setHasPrevPage(!!response.prevCursorPointer);
+      setNextCursor(response.nextCursorPointer || null);
+      setPrevCursor(response.prevCursorPointer || null);
+
+      // Update cursor stack for navigation
+      if (currentPage > 1 && !searchQuery) {
+        const newCursorStack = [...cursorStack];
+        if (response.nextCursorPointer && !newCursorStack.includes(response.nextCursorPointer)) {
+          newCursorStack[currentPage - 1] = response.nextCursorPointer;
+          setCursorStack(newCursorStack);
+        }
       }
     } catch (error) {
-      console.error('Error searching items:', error);
-      setItems([]);
+      console.error('Error loading customers:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleNext = () => {
-    if (nextCursor) {
-      setCursorStack([...cursorStack, currentCursor || '']);
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setCurrentPage(1);
+    setCursorStack([]);
+    setCurrentCursor(null);
+    setIsGoingBack(false);
+    loadItems();
+  };
+
+  const handleNextPage = () => {
+    if (hasNextPage) {
+      // Store current cursor for back navigation
+      const newCursorStack = [...cursorStack];
+      if (currentCursor) {
+        newCursorStack[currentPage] = currentCursor;
+      }
+      setCursorStack(newCursorStack);
+      
+      // Move to next page with next cursor
       setCurrentCursor(nextCursor);
-      loadItems('next', nextCursor || undefined);
+      setIsGoingBack(false);
+      setCurrentPage(prev => prev + 1);
     }
   };
 
-  const handlePrev = () => {
-    if (cursorStack.length > 0) {
-      const newStack = [...cursorStack];
-      const prevCursor = newStack.pop();
-      setCursorStack(newStack);
+  const handlePrevPage = () => {
+    if (hasPrevPage && currentPage > 1) {
+      // Use prevCursor from API response
       setCurrentCursor(prevCursor);
-      loadItems('prev', prevCursor || undefined);
+      setIsGoingBack(true);
+      setCurrentPage(prev => prev - 1);
     }
   };
 
-  const handleItemSelect = (id: string, name: string, additionalData?: any) => {
-    onSelect(id, name, additionalData);
-    onClose();
+  const handleSelect = async (item: Item) => {
+    try {
+      // Fetch full customer details including terms and deals
+      const customer = await CustomerApi.getCustomerById(item.id);
+      onSelect(customer);
+      onClose();
+    } catch (error) {
+      console.error('Error fetching customer details:', error);
+      // Fallback to partial customer data if API call fails
+      const customer: CustomerDto = {
+        customerId: item.id,
+        customerName: item.name,
+        areaName: item.areaName,
+        contactNo: item.contactNo,
+        status: 'ACTIVE' as any // Default status
+      };
+      onSelect(customer);
+      onClose();
+    }
   };
 
   if (!show) return null;
@@ -265,28 +212,33 @@ export default function CustomerSearchableSelectionModal({
     }}>
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '8px',
+        borderRadius: '12px',
         padding: '24px',
         width: '600px',
-        maxWidth: '95vw',
+        maxWidth: '90vw',
         maxHeight: '80vh',
         overflow: 'hidden',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
+        {/* Header */}
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          marginBottom: '20px'
+          marginBottom: '20px',
+          paddingBottom: '16px',
+          borderBottom: '2px solid #e5e7eb'
         }}>
-          <h3 style={{
-            fontSize: '18px',
+          <h2 style={{
+            fontSize: '20px',
             fontWeight: '600',
             color: '#1f2937',
             margin: 0
           }}>
             {title}
-          </h3>
+          </h2>
           <button
             onClick={onClose}
             style={{
@@ -295,78 +247,70 @@ export default function CustomerSearchableSelectionModal({
               fontSize: '24px',
               cursor: 'pointer',
               color: '#6b7280',
-              padding: '4px'
+              padding: '4px',
+              borderRadius: '4px',
+              transition: 'background-color 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = '#f3f4f6';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
             }}
           >
             ×
           </button>
         </div>
 
-        {/* Search Input */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginBottom: '20px'
-        }}>
-          <div style={{ position: 'relative', flex: 1 }}>
+        {/* Search */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
             <input
               type="text"
-              placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter') {
-                  handleSearch();
-                }
-              }}
+              placeholder="Search customers by name..."
               style={{
-                width: '100%',
-                padding: '10px 12px 10px 36px',
-                border: '1px solid #d1d5db',
+                flex: 1,
+                padding: '12px 16px',
+                border: '2px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '14px',
                 outline: 'none',
-                backgroundColor: 'white'
+                transition: 'border-color 0.2s'
+              }}
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#3b82f6';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#d1d5db';
               }}
             />
-            <div style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#6b7280'
-            }}>
-              🔍
-            </div>
+            {searchTerm && (
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Clear
+              </button>
+            )}
           </div>
-          <button
-            onClick={handleSearch}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-            }}
-          >
-            Search
-          </button>
         </div>
 
         {/* Items List */}
         <div style={{
-          maxHeight: '400px',
-          overflowY: 'auto',
+          flex: 1,
+          overflow: 'auto',
           border: '1px solid #e5e7eb',
           borderRadius: '8px',
           marginBottom: '20px'
@@ -379,45 +323,65 @@ export default function CustomerSearchableSelectionModal({
             }}>
               Loading...
             </div>
-          ) : items.length > 0 ? (
-            items.map((item) => (
-              <div
-                key={item.id}
-                onClick={() => handleItemSelect(item.id, item.name, item)}
-                style={{
-                  padding: '12px 16px',
-                  borderBottom: '1px solid #e5e7eb',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s ease',
-                  backgroundColor: selectedValue === item.id ? '#dbeafe' : 'white'
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedValue !== item.id) {
-                    e.currentTarget.style.backgroundColor = '#f9fafb';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedValue !== item.id) {
-                    e.currentTarget.style.backgroundColor = 'white';
-                  }
-                }}
-              >
-                <div style={{
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#1f2937'
-                }}>
-                  {item.name}
-                </div>
-              </div>
-            ))
-          ) : (
+          ) : items.length === 0 ? (
             <div style={{
               padding: '40px',
               textAlign: 'center',
               color: '#6b7280'
             }}>
-              No items found
+              {searchTerm ? `No customers found matching "${searchTerm}"` : 'No customers available'}
+            </div>
+          ) : (
+            <div>
+              {items.map((item, index) => (
+                <div
+                  key={item.id}
+                  onClick={() => handleSelect(item)}
+                  style={{
+                    padding: '16px 20px',
+                    borderBottom: index < items.length - 1 ? '1px solid #f3f4f6' : 'none',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s',
+                    backgroundColor: selectedValue === item.id ? '#eff6ff' : 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (selectedValue !== item.id) {
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (selectedValue !== item.id) {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                  }}
+                >
+                  <div style={{
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    color: '#1f2937',
+                    marginBottom: '4px'
+                  }}>
+                    {item.name}
+                  </div>
+                  {item.areaName && (
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      marginBottom: '2px'
+                    }}>
+                      Area: {item.areaName}
+                    </div>
+                  )}
+                  {item.contactNo && (
+                    <div style={{
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      Contact: {item.contactNo}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -425,56 +389,45 @@ export default function CustomerSearchableSelectionModal({
         {/* Pagination */}
         <div style={{
           display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          paddingTop: '16px',
+          borderTop: '1px solid #e5e7eb',
+          gap: '8px'
         }}>
-          <div style={{
-            fontSize: '14px',
-            color: '#6b7280'
-          }}>
-            {items.length} items
-          </div>
-          <div style={{
-            display: 'flex',
-            gap: '8px'
-          }}>
-            <button
-              onClick={handlePrev}
-              disabled={!hasPrevPage}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: hasPrevPage ? 'white' : 'transparent',
-                color: hasPrevPage ? '#374151' : '#9ca3af',
-                border: hasPrevPage ? '1px solid #d1d5db' : '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: hasPrevPage ? 'pointer' : 'not-allowed',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: hasPrevPage ? 1 : 0.5
-              }}
-            >
-              Previous
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={!hasNextPage}
-              style={{
-                padding: '8px 16px',
-                backgroundColor: hasNextPage ? 'white' : 'transparent',
-                color: hasNextPage ? '#374151' : '#9ca3af',
-                border: hasNextPage ? '1px solid #d1d5db' : '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: hasNextPage ? 'pointer' : 'not-allowed',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: hasNextPage ? 1 : 0.5
-              }}
-            >
-              Next
-            </button>
-          </div>
+          <button
+            onClick={handlePrevPage}
+            disabled={!hasPrevPage || loading}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: hasPrevPage ? '#f3f4f6' : '#f9fafb',
+              color: hasPrevPage ? '#374151' : '#9ca3af',
+              border: '1px solid #d1d5db',
+              borderRadius: '6px',
+              cursor: hasPrevPage ? 'pointer' : 'not-allowed',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            Previous
+          </button>
+          
+          <button
+            onClick={handleNextPage}
+            disabled={!hasNextPage || loading}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: hasNextPage ? '#3b82f6' : '#f9fafb',
+              color: hasNextPage ? 'white' : '#9ca3af',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: hasNextPage ? 'pointer' : 'not-allowed',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            Next
+          </button>
         </div>
       </div>
     </div>

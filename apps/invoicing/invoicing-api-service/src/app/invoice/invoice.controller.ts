@@ -1,0 +1,530 @@
+import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
+import { CreateInvoiceDto, InvoiceDto } from '@dto';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { CommandBus, QueryBus } from '@nestjs/cqrs';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApproveInvoiceCommand } from './command/approve-record/approve.command';
+import { CreateInvoiceCommand } from './command/create/create.command';
+import { DeleteInvoiceCommand } from './command/delete/delete.command';
+import { DenyInvoiceCommand } from './command/deny-record/deny.command';
+import { UpdateInvoiceCommand } from './command/update/update.command';
+import { GetInvoiceByDocnoQuery } from './queries/get.by.docno/get.invoice.by.docno.query';
+import { GetInvoiceByIdQuery } from './queries/get.by.id/get.invoice.by.id.query';
+import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
+import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
+
+@ApiTags('Invoice')
+@Controller('invoice')
+@ApiBearerAuth('JWT-auth')
+@UseGuards(CognitoAuthGuard)
+export class InvoiceController {
+    constructor(private readonly commandBus: CommandBus, private readonly queryBus: QueryBus) {}
+
+    @Post()
+    @ApiOperation({
+        summary: 'Create invoice',
+        description: 'Creates a new invoice record',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 201,
+        description: 'Invoice created successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 201 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        invoiceId: { type: 'string', example: 'invoice-123' },
+                        docno: { type: 'string', example: 'INV-001' },
+                        invoiceDate: { type: 'string', example: '2024-01-01' },
+                        customerName: { type: 'string', example: 'John Doe' },
+                        finalAmount: { type: 'number', example: 1000.0 },
+                        status: { type: 'string', example: 'ACTIVE' },
+                        activityLogs: { type: 'array', items: { type: 'string' } },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - validation failed',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 400 },
+                message: { type: 'string', example: 'Invoice document number already exists' },
+            },
+        },
+    })
+    create(
+        @Body() createInvoiceDto: CreateInvoiceDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        return this.commandBus.execute(new CreateInvoiceCommand(createInvoiceDto, user));
+    }
+
+    @Put(':id')
+    @ApiOperation({
+        summary: 'Update invoice',
+        description: 'Updates an existing invoice record',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Invoice ID',
+        example: 'invoice-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoice updated successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        invoiceId: { type: 'string', example: 'invoice-123' },
+                        docno: { type: 'string', example: 'INV-001' },
+                        invoiceDate: { type: 'string', example: '2024-01-01' },
+                        customerName: { type: 'string', example: 'John Doe' },
+                        finalAmount: { type: 'number', example: 1000.0 },
+                        status: { type: 'string', example: 'ACTIVE' },
+                        activityLogs: { type: 'array', items: { type: 'string' } },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Invoice not found',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 404 },
+                message: { type: 'string', example: 'Invoice not found' },
+            },
+        },
+    })
+    update(
+        @Param('id') id: string,
+        @Body() invoiceDto: InvoiceDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        return this.commandBus.execute(new UpdateInvoiceCommand(id, invoiceDto, user));
+    }
+
+    @Delete(':id')
+    @ApiOperation({
+        summary: 'Delete invoice',
+        description: 'Deletes an invoice record',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Invoice ID',
+        example: 'invoice-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoice deleted successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        invoiceId: { type: 'string', example: 'invoice-123' },
+                        docno: { type: 'string', example: 'INV-001' },
+                        status: { type: 'string', example: 'FOR_DELETION' },
+                    },
+                },
+            },
+        },
+    })
+    delete(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        const invoiceDto = new InvoiceDto();
+        return this.commandBus.execute(new DeleteInvoiceCommand(id, invoiceDto, user));
+    }
+
+    @Post(':id/approve')
+    @ApiOperation({
+        summary: 'Approve invoice',
+        description: 'Approves an invoice change request',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Invoice ID',
+        example: 'invoice-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoice approved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        invoiceId: { type: 'string', example: 'invoice-123' },
+                        docno: { type: 'string', example: 'INV-001' },
+                        invoiceDate: { type: 'string', example: '2024-01-01' },
+                        customerName: { type: 'string', example: 'John Doe' },
+                        finalAmount: { type: 'number', example: 1000.0 },
+                        status: { type: 'string', example: 'ACTIVE' },
+                        activityLogs: { type: 'array', items: { type: 'string' } },
+                    },
+                },
+            },
+        },
+    })
+    approve(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        return this.commandBus.execute(new ApproveInvoiceCommand(id, user));
+    }
+
+    @Post(':id/deny')
+    @ApiOperation({
+        summary: 'Deny invoice',
+        description: 'Denies an invoice change request',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Invoice ID',
+        example: 'invoice-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoice denied successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        invoiceId: { type: 'string', example: 'invoice-123' },
+                        docno: { type: 'string', example: 'INV-001' },
+                        invoiceDate: { type: 'string', example: '2024-01-01' },
+                        customerName: { type: 'string', example: 'John Doe' },
+                        finalAmount: { type: 'number', example: 1000.0 },
+                        status: { type: 'string', example: 'ACTIVE' },
+                        activityLogs: { type: 'array', items: { type: 'string' } },
+                    },
+                },
+            },
+        },
+    })
+    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        return this.commandBus.execute(new DenyInvoiceCommand(id, user));
+    }
+
+    @Get('docno/:docno')
+    @ApiOperation({
+        summary: 'Search invoices by document number',
+        description: 'Searches for invoices containing the specified document number with pagination support',
+    })
+    @ApiParam({
+        name: 'docno',
+        description: 'Document number to search for',
+        example: 'INV-001',
+    })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of records per page',
+        required: true,
+        type: Number,
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        description: 'Pagination direction',
+        required: false,
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        description: 'Cursor pointer for pagination',
+        required: false,
+        type: String,
+        example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoices found successfully with pagination',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    invoiceId: { type: 'string', example: 'invoice-123' },
+                                    docno: { type: 'string', example: 'INV-001' },
+                                    invoiceDate: { type: 'string', example: '2024-01-01' },
+                                    customerName: { type: 'string', example: 'John Doe' },
+                                    finalAmount: { type: 'number', example: 1000.0 },
+                                    status: { type: 'string', example: 'ACTIVE' },
+                                },
+                            },
+                        },
+                        nextCursorPointer: { type: 'string', nullable: true },
+                        prevCursorPointer: { type: 'string', nullable: true },
+                    },
+                },
+            },
+        },
+    })
+    getByDocno(
+        @Param('docno') docno: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(new GetInvoiceByDocnoQuery(docno, limit, direction, cursorPointer));
+    }
+
+    @Get()
+    @ApiOperation({
+        summary: 'List invoices with pagination',
+        description: 'Retrieves a paginated list of invoices with optional filtering',
+    })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of records per page',
+        required: true,
+        type: Number,
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        description: 'Pagination direction',
+        required: false,
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        description: 'Cursor pointer for pagination',
+        required: false,
+        type: String,
+        example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoices retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        items: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    invoiceId: { type: 'string', example: 'invoice-123' },
+                                    docno: { type: 'string', example: 'INV-001' },
+                                    invoiceDate: { type: 'string', example: '2024-01-01' },
+                                    customerName: { type: 'string', example: 'John Doe' },
+                                    finalAmount: { type: 'number', example: 1000.0 },
+                                    status: { type: 'string', example: 'ACTIVE' },
+                                },
+                            },
+                        },
+                        nextCursor: {
+                            type: 'string',
+                            example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
+                        },
+                        prevCursor: {
+                            type: 'string',
+                            example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
+                        },
+                        hasNext: { type: 'boolean', example: true },
+                        hasPrev: { type: 'boolean', example: false },
+                    },
+                },
+            },
+        },
+    })
+    getRecordsPagination(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(new GetRecordsPaginationQuery(limit, direction, cursorPointer));
+    }
+
+    @Get('/status')
+    @ApiOperation({
+        summary: 'List invoices with pagination by status',
+        description:
+            'Retrieves a paginated list of invoices filtered by status. Use cursor-based pagination for optimal performance.',
+    })
+    @ApiQuery({ name: 'limit', description: 'Number of records per page', required: true, type: Number, example: 10 })
+    @ApiQuery({
+        name: 'direction',
+        description: 'Pagination direction',
+        required: false,
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({ name: 'cursorPointer', description: 'Cursor pointer for pagination', required: false, type: String })
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: true,
+        description: 'Filter by status',
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+    })
+    @ApiQuery({
+        name: 'docno',
+        type: String,
+        required: false,
+        description: 'Filter by document number',
+        example: 'INV-001',
+    })
+    @ApiResponse({ status: 200, description: 'Invoices retrieved successfully' })
+    @ApiResponse({ status: 400, description: 'Bad request - Invalid pagination parameters' })
+    getRecordsPaginationByStatus(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('docno') docno: string
+    ) {
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, docno)
+        );
+    }
+
+    @Get(':id')
+    @ApiOperation({
+        summary: 'Get invoice by ID',
+        description: 'Retrieves an invoice record by their unique identifier',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Invoice ID',
+        example: 'invoice-123',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoice retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        invoiceId: { type: 'string', example: 'invoice-123' },
+                        docno: { type: 'string', example: 'INV-001' },
+                        invoiceDate: { type: 'string', example: '2024-01-01' },
+                        customerName: { type: 'string', example: 'John Doe' },
+                        finalAmount: { type: 'number', example: 1000.0 },
+                        status: { type: 'string', example: 'ACTIVE' },
+                        activityLogs: { type: 'array', items: { type: 'string' } },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Invoice not found',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 404 },
+                message: { type: 'string', example: 'Invoice not found' },
+            },
+        },
+    })
+    getById(@Param('id') id: string) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(new GetInvoiceByIdQuery(id));
+    }
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { AreaDto, StatusEnum } from '@data-access/index';
+import { AreaDto, StatusEnum, TerritoryManagerDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import SelectionField from '../../../products/product/components/SelectionField';
 import TerritoryManagerSearchableSelectionModal from '../../../search-modals/TerritoryManagerSearchableSelectionModal';
@@ -87,8 +87,8 @@ export default function AreaForm({
     }
   };
 
-  const handleTerritoryManagerSelect = (id: string, name: string) => {
-    setSelectedTerritoryManager({ id, name });
+  const handleTerritoryManagerSelect = (territoryManager: TerritoryManagerDto) => {
+    setSelectedTerritoryManager({ id: territoryManager.territoryManagerId, name: territoryManager.territoryManagerName });
     setUserHasMadeSelections(true);
   };
 

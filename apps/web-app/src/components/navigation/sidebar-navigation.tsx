@@ -150,6 +150,11 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
           onClick: (route) => onNavigate?.(route),
           subItems: [
             {
+              label: "Invoice",
+              route: "/invoicing/invoice",
+              onClick: (route) => onNavigate?.(route)
+            },
+            {
               label: "Sales Type",
               route: "/invoicing/sales-type",
               onClick: (route) => onNavigate?.(route)

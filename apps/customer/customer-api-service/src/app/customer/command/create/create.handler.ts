@@ -122,7 +122,7 @@ export class CreateCustomerHandler implements ICommandHandler<CreateCustomerComm
             command.customerDto.forApprovalVersion.customerTypeId = command.customerDto.customerTypeId;
             command.customerDto.forApprovalVersion.customerTypeName = command.customerDto.customerTypeName;
             command.customerDto.forApprovalVersion.customerTerms = command.customerDto.customerTerms;
-            command.customerDto.forApprovalVersion.customerDeals = command.customerDto.customerDeals;
+            command.customerDto.forApprovalVersion.customerProductDeals = command.customerDto.customerProductDeals;
         }
     }
 

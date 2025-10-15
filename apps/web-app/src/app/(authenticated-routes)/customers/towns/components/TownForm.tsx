@@ -1,6 +1,6 @@
 'use client';
 
-import { StatusEnum, TownDto } from '@data-access/index';
+import { AreaDto, StatusEnum, TownDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import SelectionField from '../../../products/product/components/SelectionField';
 import AreaSearchableSelectionModal from '../../../search-modals/AreaSearchableSelectionModal';
@@ -92,8 +92,8 @@ export default function TownForm({
     }
   };
 
-  const handleAreaSelect = (id: string, name: string) => {
-    setSelectedArea({ id, name });
+  const handleAreaSelect = (area: AreaDto) => {
+    setSelectedArea({ id: area.areaId, name: area.areaName });
     setUserHasMadeSelections(true);
   };
 

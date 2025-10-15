@@ -242,7 +242,7 @@ export default function CustomersMainPage() {
           customerTypeName: updatedCustomer.customerTypeName,
           changeReason: updatedCustomer.changeReason,
           customerTerms: updatedCustomer.customerTerms,
-          customerDeals: updatedCustomer.customerDeals
+          customerProductDeals: updatedCustomer.customerProductDeals
         }, userRole);
         
         // Refetch the customers to get the most up-to-date data
@@ -275,7 +275,7 @@ export default function CustomersMainPage() {
           status: updatedCustomer.status,
           changeReason: updatedCustomer.changeReason,
           customerTerms: updatedCustomer.customerTerms,
-          customerDeals: updatedCustomer.customerDeals
+          customerProductDeals: updatedCustomer.customerProductDeals
         }, userRole);
         
         // Refetch the customers to get the most up-to-date data

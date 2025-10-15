@@ -43,7 +43,7 @@ export const CustomerSchema = {
             changeReason: { type: String, required: false },
             activityLogs: { type: Array },
             customerTerms: { type: Array },
-            customerDeals: { type: Array },
+            customerProductDeals: { type: Array },
             GSI1PK: { type: String, value: 'CUSTOMER', hidden: false },
             GSI1SK: { type: String, value: '${customerName}', hidden: false },
             GSI2PK: { type: String, value: 'CUSTOMER#${status}', hidden: false },

@@ -1,7 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { StatusEnum } from '../../enums/status.enum';
-import { ProductDealDto } from '../../product/product.deal/product.deal.dto';
 import { TermsDto } from '../terms/terms.dto';
+import { CustomerProductDealDto } from './customer.product.deal.dto';
 
 export class CustomerDto {
     @ApiProperty()
@@ -77,5 +77,5 @@ export class CustomerDto {
     customerTerms?: TermsDto[];
 
     @ApiProperty()
-    customerDeals?: ProductDealDto[];
+    customerProductDeals?: CustomerProductDealDto[];
 }

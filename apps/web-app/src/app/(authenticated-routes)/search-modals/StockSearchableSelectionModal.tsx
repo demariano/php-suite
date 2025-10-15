@@ -13,11 +13,15 @@ interface StockSearchableSelectionModalProps {
 
 interface StockItem {
   stockId: string;
+  productId?: string;
   productName: string;
-  lotNo?: string;
-  stockTypeName?: string;
-  availableQuantity?: number;
+  productUnitId?: string;
   productUnitName?: string;
+  stockTypeId?: string;
+  stockTypeName?: string;
+  lotNo?: string;
+  availableQuantity?: number;
+  expirationDate?: string;
 }
 
 export default function StockSearchableSelectionModal({
@@ -38,11 +42,11 @@ export default function StockSearchableSelectionModal({
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [isGoingBack, setIsGoingBack] = useState(false);
 
-  // Filter inputs
-  const [stockTypeName, setStockTypeName] = useState('');
-  const [productUnitName, setProductUnitName] = useState('');
-  const [productName, setProductName] = useState('');
+  // Search fields
   const [lotNo, setLotNo] = useState('');
+  const [productName, setProductName] = useState('');
+  const [unit, setUnit] = useState('');
+  const [stockType, setStockType] = useState('');
 
   const limit = 20;
 
@@ -53,6 +57,23 @@ export default function StockSearchableSelectionModal({
       loadItems();
     }
   }, [show]);
+
+  // Auto-search when any search field changes
+  useEffect(() => {
+    if (show && (lotNo || productName || unit || stockType)) {
+      const timeoutId = setTimeout(() => {
+        setCurrentPage(1);
+        setCursorStack([]);
+        loadItems();
+      }, 500); // 500ms delay to avoid too many API calls
+
+      return () => clearTimeout(timeoutId);
+    } else if (show && !lotNo && !productName && !unit && !stockType) {
+      setCurrentPage(1);
+      setCursorStack([]);
+      loadItems();
+    }
+  }, [lotNo, productName, unit, stockType]);
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -71,27 +92,27 @@ export default function StockSearchableSelectionModal({
     };
   }, [show, onClose]);
 
-  const loadItems = async (direction?: 'next' | 'prev', cursor?: string | null) => {
+  const loadItems = async () => {
     try {
       setLoading(true);
       
-      const serializedCursor = cursor && typeof cursor === 'object' 
-        ? JSON.stringify(cursor) 
-        : cursor || undefined;
+      // Determine direction and cursor for pagination
+      const direction = currentPage > 1 ? (isGoingBack ? 'prev' : 'next') : undefined;
+      const cursor = currentCursor ? JSON.stringify(currentCursor) : undefined;
       
       const filterParams = {
         status: StatusEnum.ACTIVE,
-        stockTypeName: stockTypeName.trim() || undefined,
-        productUnitName: productUnitName.trim() || undefined,
-        productName: productName.trim() || undefined,
-        lotNo: lotNo.trim() || undefined,
+        lotNo: lotNo?.trim() || undefined,
+        productName: productName?.trim() || undefined,
+        productUnitName: unit?.trim() || undefined,
+        stockTypeName: stockType?.trim() || undefined,
       };
 
       const response = await StockApi.getStocksByFilter(
         filterParams,
         limit,
         direction,
-        serializedCursor
+        cursor
       );
       
       if (response && response.statusCode === 200 && response.data) {
@@ -99,11 +120,15 @@ export default function StockSearchableSelectionModal({
           // Transform the data to match the expected StockItem interface
           const transformedItems = response.data.map((item: StockDto) => ({
             stockId: item.stockId || '',
+            productId: item.productId,
             productName: item.productName || '',
-            lotNo: item.lotNo,
+            productUnitId: item.productUnitId,
+            productUnitName: item.productUnitName,
+            stockTypeId: item.stockTypeId,
             stockTypeName: item.stockTypeName,
+            lotNo: item.lotNo,
             availableQuantity: item.availableQuantity,
-            productUnitName: item.productUnitName
+            expirationDate: item.expirationDate
           }));
           setItems(transformedItems);
           setNextCursor(response.nextCursorPointer || null);
@@ -125,10 +150,13 @@ export default function StockSearchableSelectionModal({
         setHasPrevPage(false);
       }
       
-      if (direction && cursor) {
-        setCurrentCursor(cursor);
-      } else {
-        setCurrentCursor(null);
+      // Update cursor stack for navigation
+      if (currentPage > 1 && !lotNo && !productName && !unit && !stockType) {
+        const newCursorStack = [...cursorStack];
+        if (response.nextCursorPointer && !newCursorStack.includes(response.nextCursorPointer)) {
+          newCursorStack[currentPage - 1] = response.nextCursorPointer;
+          setCursorStack(newCursorStack);
+        }
       }
     } catch (error) {
       console.error('Error loading items:', error);
@@ -138,28 +166,40 @@ export default function StockSearchableSelectionModal({
     }
   };
 
-  const handleSearch = async () => {
+  const handleClearSearch = () => {
+    setLotNo('');
+    setProductName('');
+    setUnit('');
+    setStockType('');
+    setCurrentPage(1);
+    setCursorStack([]);
     setCurrentCursor(null);
     setIsGoingBack(false);
-    setCursorStack([]);
     loadItems();
   };
 
-  const handleNext = () => {
-    if (nextCursor) {
-      setCursorStack([...cursorStack, currentCursor || '']);
+  const handleNextPage = () => {
+    if (hasNextPage) {
+      // Store current cursor for back navigation
+      const newCursorStack = [...cursorStack];
+      if (currentCursor) {
+        newCursorStack[currentPage] = currentCursor;
+      }
+      setCursorStack(newCursorStack);
+      
+      // Move to next page with next cursor
       setCurrentCursor(nextCursor);
-      loadItems('next', nextCursor || undefined);
+      setIsGoingBack(false);
+      setCurrentPage(prev => prev + 1);
     }
   };
 
-  const handlePrev = () => {
-    if (cursorStack.length > 0) {
-      const newStack = [...cursorStack];
-      const prevCursor = newStack.pop();
-      setCursorStack(newStack);
+  const handlePrevPage = () => {
+    if (hasPrevPage && currentPage > 1) {
+      // Use prevCursor from API response
       setCurrentCursor(prevCursor);
-      loadItems('prev', prevCursor || undefined);
+      setIsGoingBack(true);
+      setCurrentPage(prev => prev - 1);
     }
   };
 
@@ -167,23 +207,21 @@ export default function StockSearchableSelectionModal({
     // Find the full StockDto from the original response data
     const fullStock: StockDto = {
       stockId: item.stockId,
+      productId: item.productId,
       productName: item.productName,
-      lotNo: item.lotNo,
-      stockTypeName: item.stockTypeName,
-      availableQuantity: item.availableQuantity,
+      productUnitId: item.productUnitId,
       productUnitName: item.productUnitName,
+      stockTypeId: item.stockTypeId,
+      stockTypeName: item.stockTypeName,
+      lotNo: item.lotNo,
+      availableQuantity: item.availableQuantity,
+      expirationDate: item.expirationDate,
       status: StatusEnum.ACTIVE
     };
     onSelect(fullStock);
     onClose();
   };
 
-  const clearFilters = () => {
-    setStockTypeName('');
-    setProductUnitName('');
-    setProductName('');
-    setLotNo('');
-  };
 
   if (!show) return null;
 
@@ -226,6 +264,7 @@ export default function StockSearchableSelectionModal({
           </h3>
           <button
             onClick={onClose}
+            tabIndex={9}
             style={{
               background: 'none',
               border: 'none',
@@ -239,166 +278,145 @@ export default function StockSearchableSelectionModal({
           </button>
         </div>
 
-        {/* Filter Inputs */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px',
-          marginBottom: '20px'
-        }}>
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '4px'
-            }}>
-              Stock Type Name
-            </label>
-            <input
-              type="text"
-              placeholder="Enter stock type name..."
-              value={stockTypeName}
-              onChange={(e) => setStockTypeName(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                outline: 'none'
-              }}
-            />
+        {/* Search Fields */}
+        <div style={{ marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+            {/* Lot No */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                Lot No
+              </label>
+              <input
+                type="text"
+                value={lotNo}
+                onChange={(e) => setLotNo(e.target.value)}
+                placeholder="Enter lot number..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              />
+            </div>
+
+            {/* Product Name */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                Product Name
+              </label>
+              <input
+                type="text"
+                value={productName}
+                onChange={(e) => setProductName(e.target.value)}
+                placeholder="Enter product name..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              />
+            </div>
+
+            {/* Unit */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                Unit
+              </label>
+              <input
+                type="text"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+                placeholder="Enter unit..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              />
+            </div>
+
+            {/* Stock Type */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                Stock Type
+              </label>
+              <input
+                type="text"
+                value={stockType}
+                onChange={(e) => setStockType(e.target.value)}
+                placeholder="Enter stock type..."
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  transition: 'border-color 0.2s'
+                }}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = '#d1d5db';
+                }}
+              />
+            </div>
           </div>
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '4px'
-            }}>
-              Product Unit Name
-            </label>
-            <input
-              type="text"
-              placeholder="Enter product unit name..."
-              value={productUnitName}
-              onChange={(e) => setProductUnitName(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                outline: 'none'
-              }}
-            />
-          </div>
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '4px'
-            }}>
-              Product Name
-            </label>
-            <input
-              type="text"
-              placeholder="Enter product name..."
-              value={productName}
-              onChange={(e) => setProductName(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                outline: 'none'
-              }}
-            />
-          </div>
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '4px'
-            }}>
-              Lot Number
-            </label>
-            <input
-              type="text"
-              placeholder="Enter lot number..."
-              value={lotNo}
-              onChange={(e) => setLotNo(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                outline: 'none'
-              }}
-            />
-          </div>
+
+          {/* Clear All Button */}
+          {(lotNo || productName || unit || stockType) && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={handleClearSearch}
+                style={{
+                  padding: '8px 16px',
+                  backgroundColor: '#6b7280',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                Clear All
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Search and Clear Buttons */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginBottom: '20px'
-        }}>
-          <button
-            onClick={handleSearch}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#2563eb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#3b82f6';
-            }}
-          >
-            Search
-          </button>
-          <button
-            onClick={clearFilters}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#6b7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#4b5563';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#6b7280';
-            }}
-          >
-            Clear Filters
-          </button>
-        </div>
 
         {/* Items List */}
         <div style={{
@@ -421,6 +439,7 @@ export default function StockSearchableSelectionModal({
               <div
                 key={item.stockId}
                 onClick={() => handleItemSelect(item)}
+                tabIndex={0}
                 style={{
                   padding: '12px 16px',
                   borderBottom: '1px solid #e5e7eb',
@@ -489,37 +508,33 @@ export default function StockSearchableSelectionModal({
             gap: '8px'
           }}>
             <button
-              onClick={handlePrev}
-              disabled={!hasPrevPage}
+              onClick={handlePrevPage}
+              disabled={!hasPrevPage || loading}
               style={{
                 padding: '8px 16px',
-                backgroundColor: hasPrevPage ? 'white' : 'transparent',
+                backgroundColor: hasPrevPage ? '#f3f4f6' : '#f9fafb',
                 color: hasPrevPage ? '#374151' : '#9ca3af',
-                border: hasPrevPage ? '1px solid #d1d5db' : '1px solid #d1d5db',
+                border: '1px solid #d1d5db',
                 borderRadius: '6px',
                 cursor: hasPrevPage ? 'pointer' : 'not-allowed',
                 fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: hasPrevPage ? 1 : 0.5
+                fontWeight: '500'
               }}
             >
               Previous
             </button>
             <button
-              onClick={handleNext}
-              disabled={!hasNextPage}
+              onClick={handleNextPage}
+              disabled={!hasNextPage || loading}
               style={{
                 padding: '8px 16px',
-                backgroundColor: hasNextPage ? 'white' : 'transparent',
-                color: hasNextPage ? '#374151' : '#9ca3af',
-                border: hasNextPage ? '1px solid #d1d5db' : '1px solid #d1d5db',
+                backgroundColor: hasNextPage ? '#3b82f6' : '#f9fafb',
+                color: hasNextPage ? 'white' : '#9ca3af',
+                border: 'none',
                 borderRadius: '6px',
                 cursor: hasNextPage ? 'pointer' : 'not-allowed',
                 fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: hasNextPage ? 1 : 0.5
+                fontWeight: '500'
               }}
             >
               Next

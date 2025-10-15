@@ -53,7 +53,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             changeReason: customerDto.changeReason,
             activityLogs: customerDto.activityLogs,
             customerTerms: customerDto.customerTerms,
-            customerDeals: customerDto.customerDeals,
+            customerProductDeals: customerDto.customerProductDeals,
             GSI1PK: `CUSTOMER`,
             GSI1SK: customerDto.customerName,
             GSI2PK: `CUSTOMER#${customerDto.status}`,
@@ -380,7 +380,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         dto.changeReason = record.changeReason ? record.changeReason : '';
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.customerTerms = record.customerTerms ? record.customerTerms : [];
-        dto.customerDeals = record.customerDeals ? record.customerDeals : [];
+        dto.customerProductDeals = record.customerProductDeals ? record.customerProductDeals : [];
         return dto;
     }
 
@@ -422,7 +422,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             changeReason: dto.changeReason,
             activityLogs: dto.activityLogs,
             customerTerms: dto.customerTerms,
-            customerDeals: dto.customerDeals,
+            customerProductDeals: dto.customerProductDeals,
             GSI1PK: `CUSTOMER`,
             GSI1SK: dto.customerName,
             GSI2PK: `CUSTOMER#${dto.status}`,

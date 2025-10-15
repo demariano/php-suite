@@ -12,6 +12,7 @@ import {
     ConfigurationDto,
     CustomerClassificationDto,
     CustomerDto,
+    CustomerProductDealDto,
     CustomerTypeDto,
     InitializeEnvironmentDto,
     ProductCategoryDto,
@@ -366,22 +367,44 @@ export class AppService {
         customerData.customerName = 'Customer 1';
         customerData.status = StatusEnum.ACTIVE;
         customerData.customerClassificationId = customerClassificationRecord1.customerClassificationId;
+        customerData.customerClassificationName = customerClassificationRecord1.customerClassificationName;
         customerData.customerTypeId = customerTypeRecord1.customerTypeId;
+        customerData.customerTypeName = customerTypeRecord1.customerTypeName;
         customerData.areaId = areaRecord1.areaId;
+        customerData.areaName = areaRecord1.areaName;
         customerData.townId = townRecord1.townId;
+        customerData.townName = townRecord1.townName;
         customerData.customerTerms = [termsRecord1];
-        customerData.customerDeals = [productDealRecord1];
+        const customerProductDeal1 = new CustomerProductDealDto();
+        customerProductDeal1.productId = productRecord1.productId;
+        customerProductDeal1.productName = productRecord1.productName;
+        customerProductDeal1.productDealId = productDealRecord1.productDealId;
+        customerProductDeal1.productDealName = productDealRecord1.productDealName;
+        customerProductDeal1.additionalQty = productDealRecord1.additionalQty;
+        customerProductDeal1.minQty = productDealRecord1.minQty;
+        customerData.customerProductDeals = [customerProductDeal1];
         const customerRecord1 = await this.customerDatabaseService.createRecord(customerData);
 
         const customerData2 = new CustomerDto();
         customerData2.customerName = 'Customer 2';
         customerData2.status = StatusEnum.ACTIVE;
         customerData2.customerClassificationId = customerClassificationRecord2.customerClassificationId;
+        customerData2.customerClassificationName = customerClassificationRecord2.customerClassificationName;
         customerData2.customerTypeId = customerTypeRecord2.customerTypeId;
+        customerData2.customerTypeName = customerTypeRecord2.customerTypeName;
         customerData2.areaId = areaRecord2.areaId;
+        customerData2.areaName = areaRecord2.areaName;
         customerData2.townId = townRecord2.townId;
+        customerData2.townName = townRecord2.townName;
         customerData2.customerTerms = [termsRecord2];
-        customerData2.customerDeals = [productDealRecord2];
+        const customerProductDeal2 = new CustomerProductDealDto();
+        customerProductDeal2.productId = productRecord2.productId;
+        customerProductDeal2.productName = productRecord2.productName;
+        customerProductDeal2.productDealId = productDealRecord2.productDealId;
+        customerProductDeal2.productDealName = productDealRecord2.productDealName;
+        customerProductDeal2.additionalQty = productDealRecord2.additionalQty;
+        customerProductDeal2.minQty = productDealRecord2.minQty;
+        customerData2.customerProductDeals = [customerProductDeal2];
         const customerRecord2 = await this.customerDatabaseService.createRecord(customerData2);
 
         //create 2 stock type

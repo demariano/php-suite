@@ -3,6 +3,7 @@ export { default as AuthApi } from './auth';
 export { default as CustomerClassificationApi } from './customer-classification.api';
 export { default as CustomerApi } from './customer-main.api';
 export { default as CustomerTypeApi } from './customer-type.api';
+export { default as InvoiceApi } from './invoice.api';
 export { default as ProductApi } from './product.api';
 export { default as SalesTypeApi } from './sales-type.api';
 export { default as StockApi } from './stock.api';

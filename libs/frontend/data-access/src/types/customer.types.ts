@@ -1,7 +1,7 @@
 // Frontend-specific types for Customer
 // These mirror the backend DTOs but without NestJS decorators
 
-import { ProductDealDto } from './product-deal.types';
+import { CustomerProductDealDto } from './customer-product-deal.types';
 import { StatusEnum } from './status.enum';
 import { TermsDto } from './terms.types';
 
@@ -30,7 +30,7 @@ export interface CustomerDto {
     changeReason?: string;
     activityLogs?: string[];
     customerTerms?: TermsDto[];
-    customerDeals?: ProductDealDto[];
+    customerProductDeals?: CustomerProductDealDto[];
 }
 
 export interface CreateCustomerDto {
@@ -53,7 +53,7 @@ export interface CreateCustomerDto {
     customerTypeId?: string;
     customerTypeName?: string;
     customerTerms?: TermsDto[];
-    customerDeals?: ProductDealDto[];
+    customerProductDeals?: CustomerProductDealDto[];
     changeReason?: string;
 }
 

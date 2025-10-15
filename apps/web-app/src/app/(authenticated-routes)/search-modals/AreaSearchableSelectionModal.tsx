@@ -1,13 +1,13 @@
 'use client';
 
-import { AreaApi } from '@data-access/index';
+import { AreaApi, AreaDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
 
 interface AreaSearchableSelectionModalProps {
   show: boolean;
   title: string;
   selectedValue: string | null;
-  onSelect: (id: string, name: string) => void;
+  onSelect: (area: AreaDto) => void;
   onClose: () => void;
 }
 
@@ -164,7 +164,13 @@ export default function AreaSearchableSelectionModal({
   };
 
   const handleSelect = (item: Item) => {
-    onSelect(item.id, item.name);
+    // Create a full AreaDto object
+    const area: AreaDto = {
+      areaId: item.id,
+      areaName: item.name,
+      status: 'ACTIVE' as any // Default status
+    };
+    onSelect(area);
     onClose();
   };
 

@@ -69,8 +69,9 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
     }
 
     async findRecordById(id: string): Promise<TerritoryManagerDto | null> {
+        console.log('Finding record by id:', id);
         const record = await this.territoryManagerTable.get({
-            PK: `TerritoryManager`,
+            PK: `TERRITORY_MANAGER`,
             SK: `${id}`,
         });
 
