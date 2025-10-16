@@ -1,5 +1,4 @@
-import { Entity } from "dynamodb-onetable";
-
+import { Entity } from 'dynamodb-onetable';
 
 export const ConfigurationSchema = {
     version: '0.0.1',
@@ -12,13 +11,11 @@ export const ConfigurationSchema = {
             PK: { type: String, value: 'CONFIGURATION' },
             SK: { type: String, value: '${configurationId}' },
             configurationId: { type: String, generate: 'ulid' },
-            GSI1PK: { type: String, value: '${CONFIGURATION}' },
+            GSI1PK: { type: String, value: 'CONFIGURATION' },
             GSI1SK: { type: String, value: '${configurationName}' },
             configurationName: { type: String },
-            configurationValue: { type: String }
-
+            configurationValue: { type: String },
         },
-
     } as const,
     params: {
         isoDates: true,

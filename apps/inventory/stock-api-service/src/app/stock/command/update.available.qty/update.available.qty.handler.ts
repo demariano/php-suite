@@ -54,8 +54,32 @@ export class UpdateAvailableQtyHandler implements ICommandHandler<UpdateAvailabl
      * Updates stock status and activity logs based on user permissions
      */
     private updateAvailableQty(command: UpdateAvailableQtyCommand, existingRecord: StockDto): void {
-        // User can approve directly - update the existing record
-        existingRecord.availableQuantity = existingRecord.availableQuantity - command.qty;
+        // Calculate new available quantity
+        const newAvailableQuantity = existingRecord.availableQuantity - command.qty;
+
+        // Validate that available quantity doesn't go negative when reducing stock
+        if (command.qty > 0 && newAvailableQuantity < 0) {
+            throw new BadRequestException(
+                `Insufficient stock available. Requested: ${command.qty}, Available: ${existingRecord.availableQuantity}`
+            );
+        }
+
+        // Update the available quantity
+        existingRecord.availableQuantity = newAvailableQuantity;
+
+        // Add activity log entry
+        const action = command.qty > 0 ? 'reserved' : 'restored';
+        const quantity = Math.abs(command.qty);
+        const logEntry = `Stock quantity ${action}: ${quantity} units (${
+            action === 'reserved' ? 'reduced' : 'increased'
+        } available quantity from ${existingRecord.availableQuantity + command.qty} to ${
+            existingRecord.availableQuantity
+        })`;
+
+        if (!existingRecord.activityLogs) {
+            existingRecord.activityLogs = [];
+        }
+        existingRecord.activityLogs.push(logEntry);
     }
 
     /**

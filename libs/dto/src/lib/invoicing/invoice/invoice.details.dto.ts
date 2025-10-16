@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { InvoiceDetailTypeEnum } from '../../enums/invoice.detail.type.enum';
 
 export class InvoiceDetailsDto {
     @ApiProperty()
@@ -45,4 +46,10 @@ export class InvoiceDetailsDto {
 
     @ApiProperty()
     lotNo?: string;
+
+    @ApiProperty()
+    stockId?: string;
+
+    @ApiProperty({ enum: InvoiceDetailTypeEnum })
+    invoiceDetailType?: InvoiceDetailTypeEnum;
 }

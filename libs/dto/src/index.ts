@@ -81,7 +81,7 @@ export * from './lib/inventory/stock/stock.filter.dto';
 export * from './lib/inventory/stock/update.available.qty.dto';
 
 //Invoicing
-export * from './lib/enums/invoice.status.enum';
+export * from './lib/enums/invoice.detail.type.enum';
 export * from './lib/enums/payment.status.enum';
 export * from './lib/enums/print.status.enum';
 export * from './lib/invoicing/invoice/create.invoice.dto';

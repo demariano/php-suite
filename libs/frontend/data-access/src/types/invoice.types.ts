@@ -1,7 +1,7 @@
 // Frontend-specific types for Invoice
 // These mirror the backend DTOs but without NestJS decorators
 
-import { InvoiceStatusEnum } from './invoice-status.enum';
+import { InvoiceDetailTypeEnum } from './invoice-detail-type.enum';
 import { PaymentStatusEnum } from './payment-status.enum';
 import { PrintStatusEnum } from './print-status.enum';
 import { StatusEnum } from './status.enum';
@@ -22,6 +22,8 @@ export interface InvoiceDetailsDto {
     stockTypeId?: string;
     stockTypeName?: string;
     lotNo?: string;
+    stockId?: string;
+    invoiceDetailType?: InvoiceDetailTypeEnum;
 }
 
 export interface InvoiceDto {
@@ -48,14 +50,13 @@ export interface InvoiceDto {
     status?: StatusEnum;
     paymentStatus?: PaymentStatusEnum;
     printStatus?: PrintStatusEnum;
-    invoiceStatus?: InvoiceStatusEnum;
     invoiceDetails?: InvoiceDetailsDto[];
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
 }
 
 export interface CreateInvoiceDto {
-    docno?: string;
+    docno: string;
     invoiceDate?: string;
     customerId?: string;
     customerName?: string;
@@ -77,7 +78,6 @@ export interface CreateInvoiceDto {
     status?: StatusEnum;
     paymentStatus?: PaymentStatusEnum;
     printStatus?: PrintStatusEnum;
-    invoiceStatus?: InvoiceStatusEnum;
     invoiceDetails?: InvoiceDetailsDto[];
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;

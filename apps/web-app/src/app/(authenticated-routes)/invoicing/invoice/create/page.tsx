@@ -51,7 +51,6 @@ export default function CreateInvoicePage() {
         status: invoice.status,
         paymentStatus: invoice.paymentStatus,
         printStatus: invoice.printStatus,
-        invoiceStatus: invoice.invoiceStatus,
         invoiceDetails: invoice.invoiceDetails,
         changeReason: invoice.changeReason
       }, userRole);

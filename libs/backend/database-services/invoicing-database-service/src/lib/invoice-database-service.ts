@@ -1,12 +1,4 @@
-import {
-    CreateInvoiceDto,
-    InvoiceDto,
-    InvoiceStatusEnum,
-    PageDto,
-    PaymentStatusEnum,
-    PrintStatusEnum,
-    StatusEnum,
-} from '@dto';
+import { CreateInvoiceDto, InvoiceDto, PageDto, PaymentStatusEnum, PrintStatusEnum, StatusEnum } from '@dto';
 import {
     createDynamoDbOptionWithPKSKIndex,
     DynamoDbLibService,
@@ -59,7 +51,6 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             termsName: dto.termsName,
             productPriceTypeId: dto.productPriceTypeId,
             productPriceTypeName: dto.productPriceTypeName,
-            invoiceStatus: dto.invoiceStatus as InvoiceStatusEnum.DRAFT,
             printStatus: dto.printStatus as PrintStatusEnum.PENDING,
             paymentStatus: dto.paymentStatus as PaymentStatusEnum.PENDING,
             invoiceDetails: dto.invoiceDetails,
@@ -280,9 +271,6 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         dto.productPriceTypeId = record.productPriceTypeId ? record.productPriceTypeId : '';
         dto.productPriceTypeName = record.productPriceTypeName ? record.productPriceTypeName : '';
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
-        dto.invoiceStatus = record.invoiceStatus
-            ? (record.invoiceStatus as InvoiceStatusEnum.DRAFT)
-            : InvoiceStatusEnum.DRAFT;
         dto.printStatus = record.printStatus
             ? (record.printStatus as PrintStatusEnum.PENDING)
             : PrintStatusEnum.PENDING;
@@ -330,7 +318,6 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             termsName: dto.termsName,
             productPriceTypeId: dto.productPriceTypeId,
             productPriceTypeName: dto.productPriceTypeName,
-            invoiceStatus: dto.invoiceStatus as InvoiceStatusEnum.DRAFT,
             printStatus: dto.printStatus as PrintStatusEnum.PENDING,
             paymentStatus: dto.paymentStatus as PaymentStatusEnum.PENDING,
             invoiceDetails: dto.invoiceDetails,
@@ -358,8 +345,6 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             GSI11SK: dto.invoiceDate,
             GSI12PK: `INVOICE`,
             GSI12SK: dto.docno,
-            GSI13PK: `INVOICE#${dto.invoiceStatus}`,
-            GSI13SK: dto.docno,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
         };

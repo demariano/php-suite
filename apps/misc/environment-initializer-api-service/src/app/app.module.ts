@@ -18,6 +18,7 @@ import {
     StockTypeDatabaseService,
 } from '@inventory-database-service';
 import {
+    InvoiceDatabaseService,
     InvoicingDatabaseServiceModule,
     SalesTypeDatabaseService,
     TerritoryManagerDatabaseService,
@@ -114,6 +115,10 @@ import { AppService } from './app.service';
         {
             provide: 'TerritoryManagerDatabaseService',
             useClass: TerritoryManagerDatabaseService,
+        },
+        {
+            provide: 'InvoiceDatabaseService',
+            useClass: InvoiceDatabaseService,
         },
     ],
 })

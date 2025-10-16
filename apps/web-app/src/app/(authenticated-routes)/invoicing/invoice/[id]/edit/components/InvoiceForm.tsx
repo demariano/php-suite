@@ -1,6 +1,6 @@
 'use client';
 
-import { InvoiceDto, StatusEnum } from '@data-access/index';
+import { CustomerProductDealDto, InvoiceDetailTypeEnum, InvoiceDto, PrintStatusEnum, StatusEnum, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import InvoiceDetailsTab from './InvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
@@ -57,15 +57,17 @@ export default function InvoiceForm({
     productPriceTypeName: '',
     status: isCreateMode ? StatusEnum.NEW_RECORD : StatusEnum.ACTIVE,
     paymentStatus: 'PENDING' as any,
-    printStatus: 'NOT_PRINTED' as any,
-    invoiceStatus: 'DRAFT' as any,
+    printStatus: PrintStatusEnum.PENDING,
     invoiceDetails: [],
     activityLogs: [],
     forApprovalVersion: {}
   });
 
   // State for customer deals
-  const [customerDeals, setCustomerDeals] = useState<ProductDealDto[]>([]);
+  const [customerDeals, setCustomerDeals] = useState<CustomerProductDealDto[]>([]);
+  
+  // Toast notification hook
+  const { setFlashNotification } = useSessionStore();
 
   // Initialize form data when selectedInvoice changes
   useEffect(() => {
@@ -99,8 +101,7 @@ export default function InvoiceForm({
         productPriceTypeName: '',
         status: StatusEnum.NEW_RECORD,
         paymentStatus: 'PENDING' as any,
-        printStatus: 'NOT_PRINTED' as any,
-        invoiceStatus: 'DRAFT' as any,
+        printStatus: PrintStatusEnum.PENDING,
         invoiceDetails: [],
         activityLogs: [],
         forApprovalVersion: {}
@@ -108,7 +109,54 @@ export default function InvoiceForm({
     }
   }, [selectedInvoice, isCreateMode]);
 
+  // Validation function for invoice data
+  const validateInvoice = (invoice: InvoiceDto): string | null => {
+    // Rule 1: Document number is required
+    if (!invoice.docno || invoice.docno.trim() === '') {
+      return 'Document number is required and cannot be empty.';
+    }
+
+    // Rule 2: Customer must be selected
+    if (!invoice.customerId || invoice.customerId.trim() === '') {
+      return 'Please select a customer before saving the invoice.';
+    }
+
+    // Rule 3: Invoice details must not be empty
+    if (!invoice.invoiceDetails || invoice.invoiceDetails.length === 0) {
+      return 'Please add at least one item to the invoice.';
+    }
+
+    // Rule 4: Invoice details cannot contain all free items
+    const hasRegularItem = invoice.invoiceDetails.some(
+      detail => detail.invoiceDetailType === InvoiceDetailTypeEnum.REGULAR_ITEM
+    );
+    if (!hasRegularItem) {
+      return 'Invoice must contain at least one regular item (not all free items).';
+    }
+
+    // Rule 5: Invoice amount cannot be zero
+    if (!invoice.invoiceAmount || invoice.invoiceAmount <= 0) {
+      return 'Invoice amount must be greater than zero.';
+    }
+
+    // Rule 6: Final amount cannot be zero
+    if (!invoice.finalAmount || invoice.finalAmount <= 0) {
+      return 'Final amount must be greater than zero.';
+    }
+
+    return null; // All validations passed
+  };
+
   const handleSave = () => {
+    const validationError = validateInvoice(formData);
+    if (validationError) {
+      setFlashNotification({
+        title: 'Validation Error',
+        message: validationError,
+        alertType: 'error',
+      });
+      return;
+    }
     onSave(formData);
   };
 
@@ -119,7 +167,7 @@ export default function InvoiceForm({
     }));
   };
 
-  const handleCustomerDealsChange = (deals: ProductDealDto[]) => {
+  const handleCustomerDealsChange = (deals: CustomerProductDealDto[]) => {
     setCustomerDeals(deals);
   };
 

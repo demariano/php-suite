@@ -1,5 +1,4 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { InvoiceStatusEnum } from '../../enums/invoice.status.enum';
 import { PaymentStatusEnum } from '../../enums/payment.status.enum';
 import { PrintStatusEnum } from '../../enums/print.status.enum';
 import { StatusEnum } from '../../enums/status.enum';
@@ -74,9 +73,6 @@ export class InvoiceDto {
 
     @ApiProperty({ enum: PrintStatusEnum })
     printStatus?: PrintStatusEnum;
-
-    @ApiProperty({ enum: InvoiceStatusEnum })
-    invoiceStatus?: InvoiceStatusEnum;
 
     @ApiProperty({ type: [InvoiceDetailsDto], isArray: true })
     invoiceDetails?: InvoiceDetailsDto[];

@@ -1,4 +1,5 @@
-import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
+import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum } from '@dto';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -14,21 +15,34 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
 
     constructor(
         @Inject('InvoiceDatabaseService')
-        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        @Inject('ConfigurationDatabaseService')
+        private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract
     ) {}
 
     async execute(command: CreateInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
         this.logger.log(`Processing create request for invoice: ${command.invoiceDto.docno}`);
 
         try {
+            const invoiceAmountNeededForApproval = await this.configurationDatabaseService.findRecordByName(
+                'INVOICE_AMOUNT_NEEDED_FOR_APPROVAL'
+            );
+
+            console.log('invoiceAmountNeededForApproval', invoiceAmountNeededForApproval);
+            if (!invoiceAmountNeededForApproval) {
+                throw new BadRequestException('Invoice amount needed for approval not found');
+            }
+
+            const invoiceAmountNeededForApprovalValue = parseFloat(invoiceAmountNeededForApproval.configurationValue);
+
+            // Validate that docno is not empty, null, undefined, or whitespace-only
+            this.validateDocnoNotEmpty(command.invoiceDto.docno);
+
             // Validate that invoice docno doesn't already exist
             await this.validateInvoiceDocnoUnique(command.invoiceDto.docno);
 
-            // Check user authorization and determine status
-            const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
-
             // Update status and activity logs based on permissions
-            this.updateInvoiceStatus(command, hasApprovalPermission);
+            this.updateInvoiceStatus(command, invoiceAmountNeededForApprovalValue);
 
             // Create record in database
             const createdRecord = await this.invoiceDatabaseService.createRecord(command.invoiceDto);
@@ -37,6 +51,16 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
             return new ResponseDto<InvoiceDto>(createdRecord, HTTP_STATUS_CREATED);
         } catch (error) {
             return this.handleError(error, command.invoiceDto.docno);
+        }
+    }
+
+    /**
+     * Validates that the docno is not empty, null, undefined, or whitespace-only
+     */
+    private validateDocnoNotEmpty(docno: string): void {
+        if (!docno || docno.trim() === '') {
+            this.logger.warn(`Invoice docno is empty or invalid: ${docno}`);
+            throw new BadRequestException('Document number is required and cannot be empty');
         }
     }
 
@@ -53,23 +77,12 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
     }
 
     /**
-     * Checks if user has permission to approve updates directly
-     */
-    private hasApprovalPermission(userRoles?: string[]): boolean {
-        console.log('userRoles', userRoles);
-        if (!userRoles || userRoles.length === 0) {
-            return false;
-        }
-
-        return userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
-    }
-
-    /**
      * Updates invoice status and activity logs based on user permissions
      */
-    private updateInvoiceStatus(command: CreateInvoiceCommand, hasApprovalPermission: boolean): void {
-        console.log('hasApprovalPermission', hasApprovalPermission);
-        if (hasApprovalPermission) {
+    private updateInvoiceStatus(command: CreateInvoiceCommand, invoiceAmountNeededForApprovalValue: number): void {
+        //get the invoice amount needed for approval from the configuration database
+
+        if (command.invoiceDto.invoiceAmount <= invoiceAmountNeededForApprovalValue) {
             // User can approve directly - set to ACTIVE
             command.invoiceDto.status = StatusEnum.ACTIVE;
             command.invoiceDto.activityLogs = [];
@@ -79,8 +92,8 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
                 })}, Invoice created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
         } else {
-            // User needs approval - set to NEW_RECORD
-            command.invoiceDto.status = StatusEnum.NEW_RECORD;
+            // User needs approval - set to FOR_APPROVAL
+            command.invoiceDto.status = StatusEnum.FOR_APPROVAL;
             command.invoiceDto.activityLogs = [];
             command.invoiceDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {

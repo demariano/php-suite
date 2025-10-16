@@ -1,6 +1,7 @@
 'use client';
 
-import { InvoiceDetailsDto, InvoiceDto, ProductApi, ProductDealDto, StockDto, useSessionStore } from '@data-access/index';
+import { InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, StockApi, StockDto, useSessionStore } from '@data-access/index';
+import { CustomerProductDealDto } from '@data-access/types/customer-product-deal.types';
 import { useState } from 'react';
 import StockSearchableSelectionModal from '../../../../../search-modals/StockSearchableSelectionModal';
 
@@ -8,12 +9,17 @@ interface InvoiceDetailsTabProps {
   formData: InvoiceDto;
   onFormDataChange: (updatedData: Partial<InvoiceDto>) => void;
   isCreateMode: boolean;
-  customerDeals?: ProductDealDto[];
+  customerDeals?: CustomerProductDealDto[];
+}
+
+interface StockWithPricing extends StockDto {
+  cost?: number;
+  price?: number;
 }
 
 interface StockSelectionState {
-  selectedStock: StockDto | null;
-  selectedProductDeal: ProductDealDto | null;
+  selectedStock: StockWithPricing | null;
+  selectedProductDeal: CustomerProductDealDto | null;
   quantity: number;
   showStockModal: boolean;
   showProductDealModal: boolean;
@@ -60,6 +66,14 @@ export default function InvoiceDetailsTab({
       }
 
       // Fetch product details to get pricing
+      if (!stock.productId) {
+        setFlashNotification({ 
+          title: 'Error', 
+          message: 'Product ID is missing from selected stock', 
+          alertType: 'error' 
+        });
+        return;
+      }
       const product = await ProductApi.getProductById(stock.productId);
       
       // Find matching price based on productUnitId and productPriceTypeId
@@ -94,14 +108,51 @@ export default function InvoiceDetailsTab({
   };
 
 
-  const handleAddDetailRecord = () => {
+  const handleAddDetailRecord = async () => {
     if (!stockSelection.selectedStock || stockSelection.quantity <= 0) {
       return;
     }
 
-    const cost = stockSelection.selectedStock.cost || 0;
-    const price = stockSelection.selectedStock.price || 0;
-    const amount = stockSelection.quantity * price;
+    // Calculate total quantity needed (including free items from deal)
+    let totalQuantityNeeded = stockSelection.quantity;
+    if (stockSelection.selectedProductDeal && 
+        stockSelection.quantity >= (stockSelection.selectedProductDeal.minQty || 0)) {
+      totalQuantityNeeded += stockSelection.selectedProductDeal.additionalQty || 0;
+    }
+
+    // Fetch current stock to validate availability
+    try {
+      if (!stockSelection.selectedStock.stockId) {
+        setFlashNotification({
+          title: 'Error',
+          message: 'Stock ID is missing from selected stock',
+          alertType: 'error'
+        });
+        return;
+      }
+      const currentStock = await StockApi.getStockById(stockSelection.selectedStock.stockId);
+      
+      if (!currentStock || (currentStock.availableQuantity || 0) < totalQuantityNeeded) {
+        setFlashNotification({
+          title: 'Insufficient Stock',
+          message: `Not enough stock available. Required: ${totalQuantityNeeded}, Available: ${currentStock?.availableQuantity || 0}`,
+          alertType: 'error'
+        });
+        return;
+      }
+    } catch (error) {
+      console.error('Error fetching stock details:', error);
+      setFlashNotification({
+        title: 'Error',
+        message: 'Failed to verify stock availability',
+        alertType: 'error'
+      });
+      return;
+    }
+
+    const cost = Math.round((stockSelection.selectedStock.cost || 0) * 100) / 100;
+    const price = Math.round((stockSelection.selectedStock.price || 0) * 100) / 100;
+    const amount = Math.round((stockSelection.quantity * price) * 100) / 100;
 
     const newDetail: InvoiceDetailsDto = {
       invoiceDetailId: `temp_${Date.now()}`,
@@ -112,19 +163,88 @@ export default function InvoiceDetailsTab({
       stockTypeId: stockSelection.selectedStock.stockTypeId,
       stockTypeName: stockSelection.selectedStock.stockTypeName,
       lotNo: stockSelection.selectedStock.lotNo,
+      stockId: stockSelection.selectedStock.stockId,
       qty: stockSelection.quantity,
       productDealId: stockSelection.selectedProductDeal?.productDealId,
       productDealName: stockSelection.selectedProductDeal?.productDealName,
       price: price,
       cost: cost,
       amount: amount,
-      expiryDate: stockSelection.selectedStock.expirationDate
+      expiryDate: stockSelection.selectedStock.expirationDate,
+      invoiceDetailType: InvoiceDetailTypeEnum.REGULAR_ITEM
     };
 
-    const updatedDetails = [...(formData.invoiceDetails || []), newDetail];
-    const invoiceAmount = updatedDetails.reduce((sum, detail) => sum + (detail.amount || 0), 0);
-    const taxAmount = invoiceAmount * 0.1; // 10% tax rate - adjust as needed
-    const finalAmount = invoiceAmount + taxAmount;
+    // Prevent duplicate regular items with the same product and lot number
+    const hasDuplicate = (formData.invoiceDetails || []).some(d =>
+      d.invoiceDetailType !== InvoiceDetailTypeEnum.FREE_ITEM &&
+      d.productId === newDetail.productId &&
+      d.lotNo === newDetail.lotNo
+    );
+    if (hasDuplicate) {
+      setFlashNotification({
+        title: 'Duplicate Item',
+        message: 'An item with the same product and lot is already added.',
+        alertType: 'warning'
+      });
+      return;
+    }
+
+    const updatedDetails = [...(formData.invoiceDetails || [])];
+    updatedDetails.push(newDetail);
+
+    // Check if we should add a free item
+    if (stockSelection.selectedProductDeal && 
+        stockSelection.quantity >= (stockSelection.selectedProductDeal.minQty || 0)) {
+      // Add free item
+      const freeItem: InvoiceDetailsDto = {
+        invoiceDetailId: `temp_${Date.now()}_free`,
+        productId: stockSelection.selectedStock.productId,
+        productName: stockSelection.selectedStock.productName,
+        productUnitId: stockSelection.selectedStock.productUnitId,
+        productUnitName: stockSelection.selectedStock.productUnitName,
+        stockTypeId: stockSelection.selectedStock.stockTypeId,
+        stockTypeName: stockSelection.selectedStock.stockTypeName,
+        lotNo: stockSelection.selectedStock.lotNo,
+        stockId: stockSelection.selectedStock.stockId,
+        qty: stockSelection.selectedProductDeal.additionalQty || 0,
+        productDealId: stockSelection.selectedProductDeal.productDealId,
+        productDealName: stockSelection.selectedProductDeal.productDealName,
+        price: 0,
+        cost: 0,
+        amount: 0,
+        expiryDate: stockSelection.selectedStock.expirationDate,
+        invoiceDetailType: InvoiceDetailTypeEnum.FREE_ITEM
+      };
+      updatedDetails.push(freeItem);
+    }
+
+    // Reserve stock quantities
+    try {
+      if (!stockSelection.selectedStock.stockId) {
+        setFlashNotification({
+          title: 'Error',
+          message: 'Stock ID is missing from selected stock',
+          alertType: 'error'
+        });
+        return;
+      }
+      await StockApi.updateAvailableQuantity(
+        stockSelection.selectedStock.stockId,
+        { qty: totalQuantityNeeded }
+      );
+    } catch (error) {
+      console.error('Error reserving stock:', error);
+      setFlashNotification({
+        title: 'Stock Reservation Failed',
+        message: 'Failed to reserve stock quantities. Please try again.',
+        alertType: 'error'
+      });
+      return;
+    }
+
+    const invoiceAmount = Math.round(updatedDetails.reduce((sum, detail) => sum + (detail.amount || 0), 0) * 100) / 100;
+    const taxAmount = Math.round((invoiceAmount * 0.1) * 100) / 100;
+    const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
 
     onFormDataChange({
       invoiceDetails: updatedDetails,
@@ -144,13 +264,67 @@ export default function InvoiceDetailsTab({
   };
 
 
-  const handleDeleteDetail = (index: number) => {
+  const handleDeleteDetail = async (index: number) => {
     const updatedDetails = [...(formData.invoiceDetails || [])];
+    const detailToDelete = updatedDetails[index];
+    
+    if (!detailToDelete) {
+      return;
+    }
+
+    // Calculate total quantity to restore (including associated free item if exists)
+    let totalQuantityToRestore = detailToDelete.qty || 0;
+    let associatedFreeItemIndex = -1;
+
+    // If this is a regular item with a product deal, find and include the associated free item
+    if (detailToDelete.invoiceDetailType === InvoiceDetailTypeEnum.REGULAR_ITEM && 
+        detailToDelete.productDealId) {
+      // Look for the associated free item (same productId, lotNo, and productDealId)
+      for (let i = 0; i < updatedDetails.length; i++) {
+        const item = updatedDetails[i];
+        if (i !== index && 
+            item.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM &&
+            item.productId === detailToDelete.productId &&
+            item.lotNo === detailToDelete.lotNo &&
+            item.productDealId === detailToDelete.productDealId) {
+          totalQuantityToRestore += item.qty || 0;
+          associatedFreeItemIndex = i;
+          break;
+        }
+      }
+    }
+
+    // Restore stock quantities if stockId exists
+    if (detailToDelete.stockId && totalQuantityToRestore > 0) {
+      try {
+        await StockApi.updateAvailableQuantity(
+          detailToDelete.stockId,
+          { qty: -totalQuantityToRestore } // Negative value to restore stock
+        );
+      } catch (error) {
+        console.error('Error restoring stock:', error);
+        setFlashNotification({
+          title: 'Stock Restoration Failed',
+          message: 'Failed to restore stock quantities. Please try again.',
+          alertType: 'error'
+        });
+        return;
+      }
+    }
+
+    // Remove the main item
     updatedDetails.splice(index, 1);
     
-    const invoiceAmount = updatedDetails.reduce((sum, detail) => sum + (detail.amount || 0), 0);
-    const taxAmount = invoiceAmount * 0.1; // 10% tax rate - adjust as needed
-    const finalAmount = invoiceAmount + taxAmount;
+    // Remove the associated free item if it exists
+    if (associatedFreeItemIndex > -1) {
+      // Adjust index if the free item was after the main item
+      const adjustedIndex = associatedFreeItemIndex > index ? associatedFreeItemIndex - 1 : associatedFreeItemIndex;
+      updatedDetails.splice(adjustedIndex, 1);
+    }
+    
+    const invoiceAmount = Math.round(updatedDetails.reduce((sum, detail) => sum + (detail.amount || 0), 0) * 100) / 100;
+    const taxAmount = Math.round((invoiceAmount * 0.1) * 100) / 100;
+    const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
 
     onFormDataChange({
       invoiceDetails: updatedDetails,
@@ -267,13 +441,16 @@ export default function InvoiceDetailsTab({
               value={stockSelection.selectedProductDeal?.productDealId || ''}
               onChange={(e) => {
                 const dealId = e.target.value;
-                const selectedDeal = customerDeals.find(deal => deal.productDealId === dealId);
+                const filteredDeals = stockSelection.selectedStock 
+                  ? customerDeals.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                  : [];
+                const selectedDeal = filteredDeals.find(deal => deal.productDealId === dealId);
                 setStockSelection(prev => ({
                   ...prev,
                   selectedProductDeal: selectedDeal || null
                 }));
               }}
-              disabled={customerDeals.length === 0}
+              disabled={!stockSelection.selectedStock}
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -281,18 +458,21 @@ export default function InvoiceDetailsTab({
                 borderRadius: '8px',
                 fontSize: '14px',
                 outline: 'none',
-                backgroundColor: customerDeals.length === 0 ? '#f9fafb' : 'white',
-                color: customerDeals.length === 0 ? '#6b7280' : '#1f2937'
+                backgroundColor: !stockSelection.selectedStock ? '#f9fafb' : 'white',
+                color: !stockSelection.selectedStock ? '#6b7280' : '#1f2937',
+                cursor: !stockSelection.selectedStock ? 'not-allowed' : 'pointer'
               }}
             >
               <option value="">
-                {customerDeals.length === 0 ? 'No customer deals available' : 'Select product deal'}
+                {!stockSelection.selectedStock ? 'Select stock item first' : 'Select product deal'}
               </option>
-              {customerDeals.map((deal) => (
-                <option key={deal.productDealId} value={deal.productDealId}>
-                  {deal.productDealName}
-                </option>
-              ))}
+              {stockSelection.selectedStock && customerDeals
+                .filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                .map((deal) => (
+                  <option key={deal.productDealId} value={deal.productDealId}>
+                    {deal.productDealName} (Min: {deal.minQty || 0}, Free: {deal.additionalQty || 0})
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -357,12 +537,12 @@ export default function InvoiceDetailsTab({
                 style={{
                   padding: '16px',
                   borderBottom: '1px solid #e5e7eb',
-                  backgroundColor: index % 2 === 0 ? 'white' : '#f9fafb'
+                  backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#d1fae5' : (index % 2 === 0 ? 'white' : '#f9fafb')
                 }}
               >
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
+                  gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
                   gap: '16px',
                   alignItems: 'center'
                 }}>
@@ -371,9 +551,24 @@ export default function InvoiceDetailsTab({
                       fontSize: '14px',
                       fontWeight: '500',
                       color: '#1f2937',
-                      marginBottom: '4px'
+                      marginBottom: '4px',
+                      display: 'flex',
+                      alignItems: 'center'
                     }}>
                       {detail.productName}
+                      {detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM && (
+                        <span style={{
+                          backgroundColor: '#10b981',
+                          color: 'white',
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          fontSize: '10px',
+                          fontWeight: '600',
+                          marginLeft: '8px'
+                        }}>
+                          FREE
+                        </span>
+                      )}
                     </div>
                     <div style={{
                       fontSize: '12px',
@@ -430,8 +625,9 @@ export default function InvoiceDetailsTab({
                         border: '1px solid #d1d5db',
                         borderRadius: '6px',
                         fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
+                        backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f0fdf4' : '#f9fafb',
+                        color: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#10b981' : '#6b7280',
+                        fontWeight: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '600' : 'normal'
                       }}
                     />
                   </div>
@@ -482,34 +678,13 @@ export default function InvoiceDetailsTab({
                         border: '1px solid #d1d5db',
                         borderRadius: '6px',
                         fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280',
-                        fontWeight: '500'
+                        backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f0fdf4' : '#f9fafb',
+                        color: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#10b981' : '#6b7280',
+                        fontWeight: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '600' : '500'
                       }}
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
-                      Product Deal
-                    </label>
-                    <div style={{
-                      fontSize: '12px',
-                      color: '#6b7280',
-                      padding: '8px 12px',
-                      backgroundColor: '#f9fafb',
-                      borderRadius: '6px',
-                      border: '1px solid #d1d5db'
-                    }}>
-                      {detail.productDealName || 'None'}
-                    </div>
-                  </div>
 
                   <div>
                     <label style={{

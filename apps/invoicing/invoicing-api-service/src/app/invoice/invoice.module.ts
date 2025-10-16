@@ -6,6 +6,7 @@ import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 
+import { ConfigurationDatabaseService, ConfigurationDatabaseServiceModule } from '@configuration-database-service';
 import { ApproveInvoiceHandler } from './command/approve-record/approve.handler';
 import { CreateInvoiceHandler } from './command/create/create.handler';
 import { DeleteInvoiceHandler } from './command/delete/delete.handler';
@@ -25,6 +26,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         AuthGuardLibModule,
         MessageQueueLibModule,
         InvoicingDatabaseServiceModule,
+        ConfigurationDatabaseServiceModule,
     ],
     controllers: [InvoiceController],
     providers: [
@@ -35,6 +37,10 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         {
             provide: 'InvoiceDatabaseService',
             useClass: InvoiceDatabaseService,
+        },
+        {
+            provide: 'ConfigurationDatabaseService',
+            useClass: ConfigurationDatabaseService,
         },
         CreateInvoiceHandler,
         GetInvoiceByIdHandler,

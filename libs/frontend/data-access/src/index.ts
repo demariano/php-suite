@@ -19,7 +19,7 @@ export * from './types/area.types';
 export * from './types/customer-classification.types';
 export * from './types/customer-type.types';
 export * from './types/customer.types';
-export * from './types/invoice-status.enum';
+export * from './types/invoice-detail-type.enum';
 export * from './types/invoice.types';
 export * from './types/payment-status.enum';
 export * from './types/print-status.enum';

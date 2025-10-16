@@ -32,7 +32,11 @@ import {
     TownDto,
 } from '@dto';
 import { StockDatabaseServiceAbstract, StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
-import { SalesTypeDatabaseServiceAbstract, TerritoryManagerDatabaseServiceAbstract } from '@invoicing-database-service';
+import {
+    InvoiceDatabaseServiceAbstract,
+    SalesTypeDatabaseServiceAbstract,
+    TerritoryManagerDatabaseServiceAbstract,
+} from '@invoicing-database-service';
 import { Inject, Injectable } from '@nestjs/common';
 import {
     ProductCategoryDatabaseServiceAbstract,
@@ -91,7 +95,10 @@ export class AppService {
         private readonly salesTypeDatabaseService: SalesTypeDatabaseServiceAbstract,
 
         @Inject('TerritoryManagerDatabaseService')
-        private readonly territoryManagerDatabaseService: TerritoryManagerDatabaseServiceAbstract
+        private readonly territoryManagerDatabaseService: TerritoryManagerDatabaseServiceAbstract,
+
+        @Inject('InvoiceDatabaseService')
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract
     ) {}
 
     healthCheck(): { status: string; version: string } {
@@ -119,6 +126,17 @@ export class AppService {
         configurationData3.configurationValue = initializeEnvironmentDto.defaultSenderEmail;
         try {
             await this.configurationDatabaseService.createRecord(configurationData3);
+        } catch (error) {
+            console.error('Failed to create configuration record:', error);
+        }
+
+        //creating invoice amount needed for approval as a configuration
+        const invoiceAmountNeededForApproval = 1000;
+        const configurationData4: ConfigurationDto = new ConfigurationDto();
+        configurationData4.configurationName = 'INVOICE_AMOUNT_NEEDED_FOR_APPROVAL';
+        configurationData4.configurationValue = invoiceAmountNeededForApproval.toString();
+        try {
+            await this.configurationDatabaseService.createRecord(configurationData4);
         } catch (error) {
             console.error('Failed to create configuration record:', error);
         }
@@ -465,5 +483,6 @@ export class AppService {
         await this.productDatabaseService.deleteAllRecords();
         await this.salesTypeDatabaseService.deleteAllRecords();
         await this.territoryManagerDatabaseService.deleteAllRecords();
+        await this.invoiceDatabaseService.deleteAllRecords();
     }
 }

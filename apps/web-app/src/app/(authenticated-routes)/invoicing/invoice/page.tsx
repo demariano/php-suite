@@ -1,6 +1,6 @@
 'use client';
 
-import { InvoiceApi, InvoiceDto, InvoiceStatusEnum, PaymentStatusEnum, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { InvoiceApi, InvoiceDto, PaymentStatusEnum, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { InvoiceHeader, InvoiceTable } from './components';
 
@@ -109,7 +109,6 @@ export default function InvoicePage() {
     { key: 'invoiceDate', label: 'INVOICE DATE' },
     { key: 'customerName', label: 'CUSTOMER NAME' },
     { key: 'status', label: 'STATUS' },
-    { key: 'invoiceStatus', label: 'INVOICE STATUS' },
     { key: 'paymentStatus', label: 'PAID STATUS' }
   ];
 
@@ -136,24 +135,6 @@ export default function InvoicePage() {
     );
   };
 
-  const getInvoiceStatusBadge = (status: InvoiceStatusEnum) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
-    
-    let colorClasses = "";
-    if (status === InvoiceStatusEnum.DRAFT) {
-      colorClasses = "!bg-gray-100 !text-gray-800";
-    } else if (status === InvoiceStatusEnum.COMPLETED) {
-      colorClasses = "!bg-green-100 !text-green-800";
-    } else {
-      colorClasses = "!bg-gray-100 !text-gray-600";
-    }
-    
-    return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === InvoiceStatusEnum.DRAFT ? '#f3f4f6' : status === InvoiceStatusEnum.COMPLETED ? '#dcfce7' : '#f3f4f6', color: status === InvoiceStatusEnum.DRAFT ? '#6b7280' : status === InvoiceStatusEnum.COMPLETED ? '#166534' : '#6b7280' }}>
-        {status}
-      </span>
-    );
-  };
 
   const getPaymentStatusBadge = (status: PaymentStatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
@@ -200,7 +181,6 @@ export default function InvoicePage() {
     return {
       ...invoice,
       status: getStatusBadge(invoice.status || StatusEnum.ACTIVE),
-      invoiceStatus: getInvoiceStatusBadge(invoice.invoiceStatus || InvoiceStatusEnum.DRAFT),
       paymentStatus: getPaymentStatusBadge(invoice.paymentStatus || PaymentStatusEnum.PENDING)
     };
   }) || [];

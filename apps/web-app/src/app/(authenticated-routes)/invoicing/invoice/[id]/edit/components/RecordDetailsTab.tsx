@@ -1,17 +1,18 @@
 'use client';
 
-import { AreaApi, CustomerDto, InvoiceDto, InvoiceStatusEnum, PaymentStatusEnum, PrintStatusEnum, ProductDealDto, ProductPriceTypeDto, SalesTypeDto, StatusEnum, TermsDto } from '@data-access/index';
+import { AreaApi, CustomerDto, CustomerProductDealDto, InvoiceDto, PaymentStatusEnum, PrintStatusEnum, ProductPriceTypeDto, SalesTypeDto, StatusEnum, StockApi, TermsDto, useSessionStore } from '@data-access/index';
 import { useState } from 'react';
 import CustomerSearchableSelectionModal from '../../../../../search-modals/CustomerSearchableSelectionModal';
 import ProductPriceTypeSearchableSelectionModal from '../../../../../search-modals/ProductPriceTypeSearchableSelectionModal';
 import SalesTypeSearchableSelectionModal from '../../../../../search-modals/SalesTypeSearchableSelectionModal';
+import CustomerChangeConfirmationModal from './CustomerChangeConfirmationModal';
 
 interface RecordDetailsTabProps {
   formData: InvoiceDto;
   onFormDataChange: (updatedData: Partial<InvoiceDto>) => void;
   isCreateMode: boolean;
   isAdminUser: boolean;
-  onCustomerDealsChange?: (deals: ProductDealDto[]) => void;
+  onCustomerDealsChange?: (deals: CustomerProductDealDto[]) => void;
 }
 
 export default function RecordDetailsTab({
@@ -24,13 +25,32 @@ export default function RecordDetailsTab({
   // State management for customer selection and modals
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDto | null>(null);
   const [customerTerms, setCustomerTerms] = useState<TermsDto[]>([]);
-  const [customerDeals, setCustomerDeals] = useState<ProductDealDto[]>([]);
+  const [customerDeals, setCustomerDeals] = useState<CustomerProductDealDto[]>([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showSalesTypeModal, setShowSalesTypeModal] = useState(false);
   const [showProductPriceTypeModal, setShowProductPriceTypeModal] = useState(false);
+  
+  // State for customer change confirmation
+  const [showCustomerChangeConfirmation, setShowCustomerChangeConfirmation] = useState(false);
+  const [pendingCustomerAction, setPendingCustomerAction] = useState<CustomerDto | null>(null);
+  
+  // Toast notification hook
+  const { setFlashNotification } = useSessionStore();
 
   // Handle customer selection
   const handleCustomerSelect = async (customer: CustomerDto) => {
+    // Check if we have invoice details and we're in create mode
+    if (formData.invoiceDetails && formData.invoiceDetails.length > 0 && isCreateMode) {
+      setPendingCustomerAction(customer);
+      setShowCustomerChangeConfirmation(true);
+      return;
+    }
+    
+    await processCustomerSelection(customer);
+  };
+  
+  // Process customer selection (original logic)
+  const processCustomerSelection = async (customer: CustomerDto) => {
     try {
       setSelectedCustomer(customer);
       
@@ -51,12 +71,12 @@ export default function RecordDetailsTab({
         setCustomerTerms([]);
       }
       
-      if (customer.customerDeals && Array.isArray(customer.customerDeals) && customer.customerDeals.length > 0) {
-        console.log('Setting customer deals:', customer.customerDeals);
-        setCustomerDeals(customer.customerDeals);
-        onCustomerDealsChange?.(customer.customerDeals);
+      if (customer.customerProductDeals && Array.isArray(customer.customerProductDeals) && customer.customerProductDeals.length > 0) {
+        console.log('Setting customer product deals:', customer.customerProductDeals);
+        setCustomerDeals(customer.customerProductDeals);
+        onCustomerDealsChange?.(customer.customerProductDeals);
       } else {
-        console.log('No customer deals found for customer:', customer.customerName);
+        console.log('No customer product deals found for customer:', customer.customerName);
         setCustomerDeals([]);
       }
 
@@ -109,6 +129,18 @@ export default function RecordDetailsTab({
 
   // Clear handlers
   const handleClearCustomer = () => {
+    // Check if we have invoice details and we're in create mode
+    if (formData.invoiceDetails && formData.invoiceDetails.length > 0 && isCreateMode) {
+      setPendingCustomerAction(null);
+      setShowCustomerChangeConfirmation(true);
+      return;
+    }
+    
+    processClearCustomer();
+  };
+  
+  // Process clear customer (original logic)
+  const processClearCustomer = () => {
     setSelectedCustomer(null);
     setCustomerTerms([]);
     setCustomerDeals([]);
@@ -126,6 +158,81 @@ export default function RecordDetailsTab({
 
   const handleClearProductPriceType = () => {
     onFormDataChange({ productPriceTypeId: '', productPriceTypeName: '' });
+  };
+  
+  // Handle customer change confirmation
+  const handleConfirmCustomerChange = async () => {
+    try {
+      // Restore stock quantities for all invoice details
+      if (formData.invoiceDetails && formData.invoiceDetails.length > 0) {
+        for (const detail of formData.invoiceDetails) {
+          if (detail.stockId && detail.qty && detail.qty > 0) {
+            try {
+              // Calculate total quantity to restore (including associated free items)
+              let totalQuantityToRestore = detail.qty;
+              
+              // If this is a regular item with a product deal, find and include the associated free item
+              if (detail.productDealId) {
+                const associatedFreeItem = formData.invoiceDetails.find(
+                  item => item.invoiceDetailType === 'FREE_ITEM' &&
+                          item.productId === detail.productId &&
+                          item.lotNo === detail.lotNo &&
+                          item.productDealId === detail.productDealId
+                );
+                if (associatedFreeItem && associatedFreeItem.qty) {
+                  totalQuantityToRestore += associatedFreeItem.qty;
+                }
+              }
+              
+              await StockApi.updateAvailableQuantity(
+                detail.stockId,
+                { qty: -totalQuantityToRestore } // Negative value to restore stock
+              );
+            } catch (error) {
+              console.error('Error restoring stock for item:', detail.productName, error);
+              setFlashNotification({
+                title: 'Stock Restoration Warning',
+                message: `Failed to restore stock for ${detail.productName}. Please check stock levels manually.`,
+                alertType: 'warning'
+              });
+            }
+          }
+        }
+      }
+      
+      // Clear invoice details and reset amounts
+      onFormDataChange({
+        invoiceDetails: [],
+        invoiceAmount: 0,
+        taxAmount: 0,
+        finalAmount: 0
+      });
+      
+      // Process the pending customer action
+      if (pendingCustomerAction) {
+        await processCustomerSelection(pendingCustomerAction);
+      } else {
+        processClearCustomer();
+      }
+      
+      // Close confirmation modal and reset pending action
+      setShowCustomerChangeConfirmation(false);
+      setPendingCustomerAction(null);
+      
+    } catch (error) {
+      console.error('Error processing customer change:', error);
+      setFlashNotification({
+        title: 'Error',
+        message: 'Failed to process customer change. Please try again.',
+        alertType: 'error'
+      });
+    }
+  };
+  
+  // Handle cancel customer change
+  const handleCancelCustomerChange = () => {
+    setShowCustomerChangeConfirmation(false);
+    setPendingCustomerAction(null);
   };
 
   // Handle terms selection
@@ -162,24 +269,6 @@ export default function RecordDetailsTab({
     );
   };
 
-  const getInvoiceStatusBadge = (status: InvoiceStatusEnum) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
-    
-    let colorClasses = "";
-    if (status === InvoiceStatusEnum.DRAFT) {
-      colorClasses = "!bg-gray-100 !text-gray-800";
-    } else if (status === InvoiceStatusEnum.COMPLETED) {
-      colorClasses = "!bg-green-100 !text-green-800";
-    } else {
-      colorClasses = "!bg-gray-100 !text-gray-600";
-    }
-    
-    return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === InvoiceStatusEnum.DRAFT ? '#f3f4f6' : status === InvoiceStatusEnum.COMPLETED ? '#dcfce7' : '#f3f4f6', color: status === InvoiceStatusEnum.DRAFT ? '#6b7280' : status === InvoiceStatusEnum.COMPLETED ? '#166534' : '#6b7280' }}>
-        {status}
-      </span>
-    );
-  };
 
   const getPaymentStatusBadge = (status: PaymentStatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
@@ -208,14 +297,14 @@ export default function RecordDetailsTab({
     let colorClasses = "";
     if (status === PrintStatusEnum.PRINTED) {
       colorClasses = "!bg-green-100 !text-green-800";
-    } else if (status === PrintStatusEnum.NOT_PRINTED) {
+    } else if (status === PrintStatusEnum.PENDING) {
       colorClasses = "!bg-gray-100 !text-gray-800";
     } else {
       colorClasses = "!bg-gray-100 !text-gray-600";
     }
     
     return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === PrintStatusEnum.PRINTED ? '#dcfce7' : status === PrintStatusEnum.NOT_PRINTED ? '#f3f4f6' : '#f3f4f6', color: status === PrintStatusEnum.PRINTED ? '#166534' : status === PrintStatusEnum.NOT_PRINTED ? '#6b7280' : '#6b7280' }}>
+      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === PrintStatusEnum.PRINTED ? '#dcfce7' : status === PrintStatusEnum.PENDING ? '#f3f4f6' : '#f3f4f6', color: status === PrintStatusEnum.PRINTED ? '#166534' : status === PrintStatusEnum.PENDING ? '#6b7280' : '#6b7280' }}>
         {status}
       </span>
     );
@@ -305,24 +394,28 @@ export default function RecordDetailsTab({
               type="text"
               value={formData.customerName || ''}
               readOnly
-              onClick={() => setShowCustomerModal(true)}
+              onClick={() => isCreateMode && setShowCustomerModal(true)}
+              disabled={!isCreateMode}
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                paddingRight: formData.customerName ? '40px' : '16px',
+                paddingRight: (formData.customerName && isCreateMode) ? '40px' : '16px',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '14px',
-                backgroundColor: '#f9fafb',
+                backgroundColor: isCreateMode ? '#f9fafb' : '#f3f4f6',
                 color: formData.customerName ? '#1f2937' : '#6b7280',
-                cursor: 'pointer',
+                cursor: isCreateMode ? 'pointer' : 'not-allowed',
                 outline: 'none',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                opacity: isCreateMode ? 1 : 0.6
               }}
-              placeholder="Click to select customer"
+              placeholder={isCreateMode ? "Click to select customer" : "Customer cannot be changed in edit mode"}
               onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                if (isCreateMode) {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.borderColor = '#d1d5db';
@@ -330,7 +423,7 @@ export default function RecordDetailsTab({
               }}
             />
             
-            {formData.customerName && (
+            {formData.customerName && isCreateMode && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -650,7 +743,7 @@ export default function RecordDetailsTab({
       {/* Status Information */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr 1fr',
+        gridTemplateColumns: '1fr 1fr 1fr',
         gap: '20px',
         marginBottom: '24px'
       }}>
@@ -669,20 +762,6 @@ export default function RecordDetailsTab({
           </div>
         </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Invoice Status
-          </label>
-          <div style={{ padding: '8px 0' }}>
-            {getInvoiceStatusBadge(formData.invoiceStatus || InvoiceStatusEnum.DRAFT)}
-          </div>
-        </div>
 
         <div>
           <label style={{
@@ -710,7 +789,7 @@ export default function RecordDetailsTab({
             Print Status
           </label>
           <div style={{ padding: '8px 0' }}>
-            {getPrintStatusBadge(formData.printStatus || PrintStatusEnum.NOT_PRINTED)}
+            {getPrintStatusBadge(formData.printStatus || PrintStatusEnum.PENDING)}
           </div>
         </div>
       </div>
@@ -875,6 +954,14 @@ export default function RecordDetailsTab({
         selectedValue={formData.productPriceTypeId || null}
         onSelect={handleProductPriceTypeSelect}
         onClose={() => setShowProductPriceTypeModal(false)}
+      />
+      
+      {/* Customer Change Confirmation Modal */}
+      <CustomerChangeConfirmationModal
+        show={showCustomerChangeConfirmation}
+        itemCount={formData.invoiceDetails?.length || 0}
+        onConfirm={handleConfirmCustomerChange}
+        onCancel={handleCancelCustomerChange}
       />
     </div>
   );

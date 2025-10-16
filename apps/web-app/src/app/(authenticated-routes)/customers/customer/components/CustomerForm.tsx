@@ -3,12 +3,12 @@
 import { AreaDto, CustomerClassificationDto, CustomerDto, CustomerTypeDto, StatusEnum, TermsDto, TownDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import {
-  AreaSearchableSelectionModal,
-  CustomerClassificationSearchableSelectionModal,
-  CustomerTypeSearchableSelectionModal,
-  ProductSearchableSelectionModal,
-  TermsSearchableSelectionModal,
-  TownSearchableSelectionModal
+    AreaSearchableSelectionModal,
+    CustomerClassificationSearchableSelectionModal,
+    CustomerTypeSearchableSelectionModal,
+    ProductSearchableSelectionModal,
+    TermsSearchableSelectionModal,
+    TownSearchableSelectionModal
 } from '../../../search-modals';
 import SelectionField from './SelectionField';
 
@@ -184,10 +184,10 @@ export default function CustomerForm({
       errors.push('Duplicate customer terms detected. Please remove duplicate terms.');
     }
     
-    // Check for duplicate deals
-    const dealIds = customerDeals.map(deal => deal.productDealId);
-    const uniqueDealIds = new Set(dealIds);
-    if (dealIds.length !== uniqueDealIds.size) {
+    // Check for duplicate deals using composite key (productId + productDealId)
+    const dealKeys = customerDeals.map(deal => `${deal.productId}|${deal.productDealId}`);
+    const uniqueDealKeys = new Set(dealKeys);
+    if (dealKeys.length !== uniqueDealKeys.size) {
       errors.push('Duplicate customer deals detected. Please remove duplicate deals.');
     }
     
@@ -344,28 +344,32 @@ export default function CustomerForm({
   };
 
   const handleDealsSelect = (product: any) => {
-    // Check if product is already added
-    const existingDeal = customerDeals.find(customerDeal => customerDeal.productId === product.productId);
+    // Find the selected deal - use selectedDealId if provided, otherwise use first deal
+    const selectedDeal = product.selectedDealId 
+      ? product.productDeals?.find((d: any) => d.productDealId === product.selectedDealId)
+      : (product.productDeals && product.productDeals.length > 0 ? product.productDeals[0] : null);
+    
+    // Check if this specific product deal combination is already added
+    const existingDeal = customerDeals.find(customerDeal => 
+      customerDeal.productId === product.productId && 
+      customerDeal.productDealId === selectedDeal?.productDealId
+    );
     if (existingDeal) {
-      // Add validation error for duplicate products
-      setValidationErrors(['This product has already been added. Please select a different product.']);
+      // Add validation error for duplicate product deal combinations
+      setValidationErrors(['This product deal combination has already been added. Please select a different product or deal.']);
       return;
     }
 
     // Clear any existing validation errors
     setValidationErrors([]);
 
-    // Create a deal entry for the selected product
-    // We'll use the first deal if multiple deals exist, or create a default entry
-    const firstDeal = product.productDeals && product.productDeals.length > 0 ? product.productDeals[0] : null;
-    
     const newDeal: CustomerDealsDetailsDto = {
       productId: product.productId,
       productName: product.productName,
-      productDealId: firstDeal?.productDealId || '',
-      productDealName: firstDeal?.productDealName || '',
-      additionalQty: firstDeal?.additionalQty || 0,
-      minQty: firstDeal?.minQty || 0
+      productDealId: selectedDeal?.productDealId || '',
+      productDealName: selectedDeal?.productDealName || '',
+      additionalQty: selectedDeal?.additionalQty || 0,
+      minQty: selectedDeal?.minQty || 0
     };
     setCustomerDeals([...customerDeals, newDeal]);
   };

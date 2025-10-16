@@ -68,9 +68,6 @@ export default function InvoiceTable({
                     {invoice.status}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4" style={{ backgroundColor: 'white' }}>
-                    {invoice.invoiceStatus}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4" style={{ backgroundColor: 'white' }}>
                     {invoice.paymentStatus}
                   </td>
                 </tr>

@@ -229,7 +229,8 @@ export default function ProductSearchableSelectionModal({
         productName: selectedProduct.productName,
         productCategoryName: selectedProduct.productCategoryName,
         productClassName: selectedProduct.productClassName,
-        productDeals: selectedProduct.productDeals || []
+        productDeals: selectedProduct.productDeals || [],
+        selectedDealId: deal.productDealId  // Add this to indicate which deal was selected
       };
       onSelect(fullProduct);
       onClose();

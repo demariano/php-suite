@@ -17,7 +17,7 @@ export const CustomerSchema = {
             SK: { type: String, value: '${customerId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             customerId: { type: String, generate: 'ulid' },
@@ -62,7 +62,7 @@ export const CustomerSchema = {
             SK: { type: String, value: '${customerClassificationId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             activityLogs: { type: Array },
@@ -79,7 +79,7 @@ export const CustomerSchema = {
             SK: { type: String, value: '${customerTypeId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             customerTypeId: { type: String, generate: 'ulid' },
@@ -96,7 +96,7 @@ export const CustomerSchema = {
             SK: { type: String, value: '${termsId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             termsId: { type: String, generate: 'ulid' },
@@ -114,7 +114,7 @@ export const CustomerSchema = {
             SK: { type: String, value: '${areaId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             areaId: { type: String, generate: 'ulid' },
@@ -141,7 +141,7 @@ export const CustomerSchema = {
             forApprovalVersion: { type: Object },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             GSI1PK: { type: String, value: 'TOWN', hidden: false },
