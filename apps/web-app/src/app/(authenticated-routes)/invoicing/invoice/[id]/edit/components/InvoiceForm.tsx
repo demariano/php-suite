@@ -144,6 +144,16 @@ export default function InvoiceForm({
       return 'Final amount must be greater than zero.';
     }
 
+    // Rule 7: Change reason required for non-admin users editing existing invoices
+    if (!isCreateMode && !isAdminUser) {
+      if (!invoice.changeReason || invoice.changeReason.trim() === '') {
+        return 'Change reason is required when modifying an invoice.';
+      }
+      if (invoice.changeReason.trim().length < 10) {
+        return 'Change reason must be at least 10 characters when modifying an invoice.';
+      }
+    }
+
     return null; // All validations passed
   };
 
@@ -221,6 +231,7 @@ export default function InvoiceForm({
             boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
             marginRight: '4px'
           }}
+          title={(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE) ? 'View original invoice details (read-only)' : 'View and edit invoice details'}
           onMouseEnter={(e) => {
             if (activeTab !== 'details') {
               e.currentTarget.style.backgroundColor = '#f1f5f9';
@@ -308,244 +319,246 @@ export default function InvoiceForm({
         {/* Details Tab */}
         {activeTab === 'details' && (
           <div>
+            {/* Show read-only warning when invoice is pending approval */}
+            {!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE && (
+              <div style={{
+                backgroundColor: '#fef3c7',
+                border: '2px solid #f59e0b',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px',
+                boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginBottom: '8px'
+                }}>
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    backgroundColor: '#f59e0b',
+                    borderRadius: '4px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: 'white',
+                    fontSize: '12px',
+                    fontWeight: 'bold'
+                  }}>
+                    🔒
+                  </div>
+                  <h4 style={{
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    color: '#92400e',
+                    margin: 0
+                  }}>
+                    Read-Only Mode
+                  </h4>
+                </div>
+                <p style={{
+                  fontSize: '14px',
+                  color: '#92400e',
+                  margin: 0,
+                  lineHeight: '1.5'
+                }}>
+                  This invoice is pending approval. You can view the original details here, but cannot make changes. 
+                  Use the "Approval Version" tab to see the proposed changes.
+                </p>
+              </div>
+            )}
+            
             <RecordDetailsTab
               formData={formData}
               onFormDataChange={handleFormDataChange}
               isCreateMode={isCreateMode}
               isAdminUser={isAdminUser}
               onCustomerDealsChange={handleCustomerDealsChange}
+              isReadOnly={!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE}
             />
             <InvoiceDetailsTab
               formData={formData}
               onFormDataChange={handleFormDataChange}
               isCreateMode={isCreateMode}
               customerDeals={customerDeals}
+              isReadOnly={!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE}
             />
           </div>
         )}
         
         {/* Approval Version Tab */}
-        {activeTab === 'approval' && !isCreateMode && selectedInvoice && (
-          <div>
-            <div className="mb-5">
-              {(selectedInvoice.status === StatusEnum.FOR_APPROVAL || selectedInvoice.status === StatusEnum.NEW_RECORD) && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-                  <span className="text-yellow-600 text-base">ℹ️</span>
-                  <span className="text-yellow-800 text-sm">
-                    These are the proposed changes awaiting approval
-                  </span>
-                </div>
-              )}
+        {activeTab === 'approval' && !isCreateMode && selectedInvoice && (() => {
+          // Merge original invoice data with forApprovalVersion changes
+          const approvalVersionData: InvoiceDto = {
+            ...selectedInvoice,
+            ...selectedInvoice.forApprovalVersion
+          };
+          
+          return (
+            <div>
+              <div className="mb-5">
+                {(selectedInvoice.status === StatusEnum.FOR_APPROVAL || selectedInvoice.status === StatusEnum.NEW_RECORD) && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
+                    <span className="text-yellow-600 text-base">ℹ️</span>
+                    <span className="text-yellow-800 text-sm">
+                      These are the proposed changes awaiting approval
+                    </span>
+                  </div>
+                )}
 
-              {/* Change Reason - Highlighted field */}
-              {selectedInvoice?.changeReason && (
-                <div style={{
-                  backgroundColor: '#fef3c7',
-                  border: '2px solid #f59e0b',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  marginBottom: '20px',
-                  boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-                }}>
+                {/* Change Reason - Highlighted field */}
+                {selectedInvoice?.changeReason && (
                   <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '12px'
+                    backgroundColor: '#fef3c7',
+                    border: '2px solid #f59e0b',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    marginBottom: '20px',
+                    boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
                   }}>
                     <div style={{
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: '#f59e0b',
-                      borderRadius: '4px',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
+                      gap: '8px',
+                      marginBottom: '12px'
                     }}>
-                      📝
-                    </div>
-                    <h4 style={{
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#92400e',
-                      margin: 0
-                    }}>
-                      Change Reason
-                    </h4>
-                  </div>
-                  <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: 'white',
-                    border: '1px solid #f59e0b',
-                    borderRadius: '6px',
-                    fontSize: '14px',
-                    color: '#92400e',
-                    lineHeight: '1.5',
-                    whiteSpace: 'pre-wrap'
-                  }}>
-                    {selectedInvoice.changeReason}
-                  </div>
-                </div>
-              )}
-              
-              {selectedInvoice?.forApprovalVersion ? (
-                <div style={{
-                  backgroundColor: '#f8fafc',
-                  border: '2px solid #e2e8f0',
-                  borderRadius: '12px',
-                  padding: '20px',
-                  marginBottom: '24px',
-                  boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
-                }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '16px'
-                  }}>
-                    <div style={{
-                      width: '20px',
-                      height: '20px',
-                      backgroundColor: '#f59e0b',
-                      borderRadius: '4px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'white',
-                      fontSize: '12px',
-                      fontWeight: 'bold'
-                    }}>
-                      ⏳
-                    </div>
-                    <h3 style={{
-                      fontSize: '16px',
-                      fontWeight: '600',
-                      color: '#1f2937',
-                      margin: 0
-                    }}>
-                      Pending Approval Details
-                    </h3>
-                  </div>
-
-                  {/* Display all fields from forApprovalVersion */}
-                  {Object.entries(selectedInvoice.forApprovalVersion).map(([key, value]) => (
-                    <div key={key} style={{ marginBottom: '20px' }}>
-                      <label style={{
-                        display: 'block',
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: '#f59e0b',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        📝
+                      </div>
+                      <h4 style={{
                         fontSize: '14px',
                         fontWeight: '600',
-                        color: '#374151',
-                        marginBottom: '8px'
+                        color: '#92400e',
+                        margin: 0
                       }}>
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                      </label>
-                      <input
-                        type="text"
-                        value={String(value)}
-                        readOnly
-                        style={{
-                          width: '100%',
-                          padding: '12px 16px',
-                          border: '2px solid #d1d5db',
-                          borderRadius: '8px',
-                          fontSize: '14px',
-                          outline: 'none',
-                          backgroundColor: '#f9fafb',
-                          color: '#6b7280',
-                          fontWeight: '500'
-                        }}
-                      />
+                        Change Reason
+                      </h4>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">
-                  No pending approval changes
-                </p>
-              )}
-            </div>
-            
-            <div className="flex justify-between mt-6">
-              {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
-              {isAdminUser && (selectedInvoice?.status === StatusEnum.FOR_APPROVAL || selectedInvoice?.status === StatusEnum.NEW_RECORD || selectedInvoice?.status === StatusEnum.FOR_DELETION) && (
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button
-                    type="button"
-                    onClick={onDeny}
-                    disabled={isLoading}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: isLoading ? '#9ca3af' : '#dc2626',
-                      color: 'white',
-                      border: 'none',
+                    <div style={{
+                      padding: '12px 16px',
+                      backgroundColor: 'white',
+                      border: '1px solid #f59e0b',
                       borderRadius: '6px',
-                      cursor: isLoading ? 'not-allowed' : 'pointer',
                       fontSize: '14px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease',
-                      opacity: isLoading ? 0.7 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isLoading) {
-                        e.currentTarget.style.backgroundColor = '#b91c1c';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isLoading) {
-                        e.currentTarget.style.backgroundColor = '#dc2626';
-                      }
-                    }}
-                  >
-                    {isLoading ? 'Processing...' : 'Deny Changes'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={onApprove}
-                    disabled={isLoading}
-                    style={{
-                      padding: '10px 20px',
-                      backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: isLoading ? 'not-allowed' : 'pointer',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s ease',
-                      opacity: isLoading ? 0.7 : 1
-                    }}
-                    onMouseEnter={(e) => {
-                      if (!isLoading) {
-                        e.currentTarget.style.backgroundColor = '#2563eb';
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isLoading) {
-                        e.currentTarget.style.backgroundColor = '#3b82f6';
-                      }
-                    }}
-                  >
-                    {isLoading ? 'Processing...' : 'Approve Changes'}
-                  </button>
-                </div>
-              )}
+                      color: '#92400e',
+                      lineHeight: '1.5',
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      {selectedInvoice.changeReason}
+                    </div>
+                  </div>
+                )}
+              </div>
               
-              {/* Close button - moved to right side */}
-              <div>
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
-                >
-                  Close
-                </button>
+              {/* Use the same components as Details tab but with merged data and read-only */}
+              <RecordDetailsTab
+                formData={approvalVersionData}
+                onFormDataChange={() => {}} // No-op since read-only
+                isCreateMode={false}
+                isAdminUser={isAdminUser}
+                onCustomerDealsChange={() => {}} // No-op since read-only
+                isReadOnly={true}
+              />
+              <InvoiceDetailsTab
+                formData={approvalVersionData}
+                onFormDataChange={() => {}} // No-op since read-only
+                isCreateMode={false}
+                customerDeals={[]} // Not needed for read-only display
+                isReadOnly={true}
+              />
+              
+              <div className="flex justify-between mt-6">
+                {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
+                {isAdminUser && (selectedInvoice?.status === StatusEnum.FOR_APPROVAL || selectedInvoice?.status === StatusEnum.NEW_RECORD || selectedInvoice?.status === StatusEnum.FOR_DELETION) && (
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                      type="button"
+                      onClick={onDeny}
+                      disabled={isLoading}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: isLoading ? '#9ca3af' : '#dc2626',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s ease',
+                        opacity: isLoading ? 0.7 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.backgroundColor = '#b91c1c';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.backgroundColor = '#dc2626';
+                        }
+                      }}
+                    >
+                      {isLoading ? 'Processing...' : 'Deny Changes'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={onApprove}
+                      disabled={isLoading}
+                      style={{
+                        padding: '10px 20px',
+                        backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: isLoading ? 'not-allowed' : 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '500',
+                        transition: 'all 0.2s ease',
+                        opacity: isLoading ? 0.7 : 1
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.backgroundColor = '#2563eb';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isLoading) {
+                          e.currentTarget.style.backgroundColor = '#3b82f6';
+                        }
+                      }}
+                    >
+                      {isLoading ? 'Processing...' : 'Approve Changes'}
+                    </button>
+                  </div>
+                )}
+                
+                {/* Close button - moved to right side */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={onCancel}
+                    className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+                  >
+                    Close
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         
         {/* Activity Logs Tab */}
         {activeTab === 'logs' && !isCreateMode && (
@@ -602,26 +615,27 @@ export default function InvoiceForm({
               <button
                 type="button"
                 onClick={onDelete}
-                disabled={isLoading}
+                disabled={isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)}
                 style={{
                   padding: '10px 20px',
-                  backgroundColor: isLoading ? '#9ca3af' : '#dc2626',
+                  backgroundColor: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? '#9ca3af' : '#dc2626',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  cursor: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
                   fontWeight: '500',
                   transition: 'all 0.2s ease',
-                  opacity: isLoading ? 0.7 : 1
+                  opacity: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? 0.7 : 1
                 }}
+                title={(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE) ? 'Delete button is disabled - invoice is pending approval' : 'Delete invoice'}
                 onMouseEnter={(e) => {
-                  if (!isLoading) {
+                  if (!isLoading && !(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) {
                     e.currentTarget.style.backgroundColor = '#b91c1c';
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isLoading) {
+                  if (!isLoading && !(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) {
                     e.currentTarget.style.backgroundColor = '#dc2626';
                   }
                 }}
@@ -658,26 +672,27 @@ export default function InvoiceForm({
             <button
               type="button"
               onClick={handleSave}
-              disabled={isLoading}
+              disabled={isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)}
               style={{
                 padding: '10px 20px',
-                backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
+                backgroundColor: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? '#9ca3af' : '#3b82f6',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
+                cursor: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
                 fontWeight: '500',
                 transition: 'all 0.2s ease',
-                opacity: isLoading ? 0.7 : 1
+                opacity: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? 0.7 : 1
               }}
+              title={(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE) ? 'Save button is disabled - invoice is pending approval' : (isCreateMode ? 'Create invoice' : 'Save changes')}
               onMouseEnter={(e) => {
-                if (!isLoading) {
+                if (!isLoading && !(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) {
                   e.currentTarget.style.backgroundColor = '#2563eb';
                 }
               }}
               onMouseLeave={(e) => {
-                if (!isLoading) {
+                if (!isLoading && !(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) {
                   e.currentTarget.style.backgroundColor = '#3b82f6';
                 }
               }}

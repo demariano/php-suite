@@ -1,8 +1,9 @@
 'use client';
 
-import { AreaApi, CustomerDto, CustomerProductDealDto, InvoiceDto, PaymentStatusEnum, PrintStatusEnum, ProductPriceTypeDto, SalesTypeDto, StatusEnum, StockApi, TermsDto, useSessionStore } from '@data-access/index';
-import { useState } from 'react';
+import { AreaApi, CustomerApi, CustomerDto, CustomerProductDealDto, InvoiceDto, PaymentStatusEnum, PrintStatusEnum, ProductPriceTypeDto, SalesTypeDto, StatusEnum, StockApi, TermsDto, useSessionStore } from '@data-access/index';
+import { useEffect, useState } from 'react';
 import CustomerSearchableSelectionModal from '../../../../../search-modals/CustomerSearchableSelectionModal';
+import CustomerTermsSelectionModal from '../../../../../search-modals/CustomerTermsSelectionModal';
 import ProductPriceTypeSearchableSelectionModal from '../../../../../search-modals/ProductPriceTypeSearchableSelectionModal';
 import SalesTypeSearchableSelectionModal from '../../../../../search-modals/SalesTypeSearchableSelectionModal';
 import CustomerChangeConfirmationModal from './CustomerChangeConfirmationModal';
@@ -13,6 +14,7 @@ interface RecordDetailsTabProps {
   isCreateMode: boolean;
   isAdminUser: boolean;
   onCustomerDealsChange?: (deals: CustomerProductDealDto[]) => void;
+  isReadOnly?: boolean;
 }
 
 export default function RecordDetailsTab({
@@ -20,15 +22,15 @@ export default function RecordDetailsTab({
   onFormDataChange,
   isCreateMode,
   isAdminUser,
-  onCustomerDealsChange
+  onCustomerDealsChange,
+  isReadOnly = false
 }: RecordDetailsTabProps) {
   // State management for customer selection and modals
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerDto | null>(null);
   const [customerTerms, setCustomerTerms] = useState<TermsDto[]>([]);
-  const [customerDeals, setCustomerDeals] = useState<CustomerProductDealDto[]>([]);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showSalesTypeModal, setShowSalesTypeModal] = useState(false);
   const [showProductPriceTypeModal, setShowProductPriceTypeModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
   
   // State for customer change confirmation
   const [showCustomerChangeConfirmation, setShowCustomerChangeConfirmation] = useState(false);
@@ -36,6 +38,27 @@ export default function RecordDetailsTab({
   
   // Toast notification hook
   const { setFlashNotification } = useSessionStore();
+
+  // Load customer data when editing existing invoice
+  useEffect(() => {
+    const loadCustomerData = async () => {
+      if (formData.customerId && customerTerms.length === 0 && !isCreateMode) {
+        try {
+          const customer = await CustomerApi.getCustomerById(formData.customerId);
+          if (customer.customerTerms && Array.isArray(customer.customerTerms)) {
+            setCustomerTerms(customer.customerTerms);
+          }
+          if (customer.customerProductDeals && Array.isArray(customer.customerProductDeals)) {
+            onCustomerDealsChange?.(customer.customerProductDeals);
+          }
+        } catch (error) {
+          console.error('Error loading customer data:', error);
+        }
+      }
+    };
+    
+    loadCustomerData();
+  }, [formData.customerId, isCreateMode, customerTerms.length, onCustomerDealsChange]);
 
   // Handle customer selection
   const handleCustomerSelect = async (customer: CustomerDto) => {
@@ -52,8 +75,6 @@ export default function RecordDetailsTab({
   // Process customer selection (original logic)
   const processCustomerSelection = async (customer: CustomerDto) => {
     try {
-      setSelectedCustomer(customer);
-      
       // Update form data with customer info
       onFormDataChange({
         customerId: customer.customerId,
@@ -73,11 +94,9 @@ export default function RecordDetailsTab({
       
       if (customer.customerProductDeals && Array.isArray(customer.customerProductDeals) && customer.customerProductDeals.length > 0) {
         console.log('Setting customer product deals:', customer.customerProductDeals);
-        setCustomerDeals(customer.customerProductDeals);
         onCustomerDealsChange?.(customer.customerProductDeals);
       } else {
         console.log('No customer product deals found for customer:', customer.customerName);
-        setCustomerDeals([]);
       }
 
       // Fetch area details to get territory manager
@@ -113,6 +132,7 @@ export default function RecordDetailsTab({
 
   // Handle sales type selection
   const handleSalesTypeSelect = (salesType: SalesTypeDto) => {
+    if (!isCreateMode) return;
     onFormDataChange({
       salesTypeId: salesType.salesTypeId,
       salesTypeName: salesType.salesTypeName
@@ -121,6 +141,7 @@ export default function RecordDetailsTab({
 
   // Handle product price type selection
   const handleProductPriceTypeSelect = (productPriceType: ProductPriceTypeDto) => {
+    if (!isCreateMode) return;
     onFormDataChange({
       productPriceTypeId: productPriceType.productPriceTypeId,
       productPriceTypeName: productPriceType.productPriceTypeName
@@ -141,9 +162,7 @@ export default function RecordDetailsTab({
   
   // Process clear customer (original logic)
   const processClearCustomer = () => {
-    setSelectedCustomer(null);
     setCustomerTerms([]);
-    setCustomerDeals([]);
     onFormDataChange({
       customerId: '', customerName: '',
       areaId: '', areaName: '',
@@ -158,6 +177,19 @@ export default function RecordDetailsTab({
 
   const handleClearProductPriceType = () => {
     onFormDataChange({ productPriceTypeId: '', productPriceTypeName: '' });
+  };
+
+  // Handle terms selection
+  const handleTermsSelect = (terms: TermsDto) => {
+    if (!isCreateMode) return;
+    onFormDataChange({
+      termsId: terms.termsId,
+      termsName: terms.termsName
+    });
+  };
+
+  const handleClearTerms = () => {
+    onFormDataChange({ termsId: '', termsName: '' });
   };
   
   // Handle customer change confirmation
@@ -235,17 +267,6 @@ export default function RecordDetailsTab({
     setPendingCustomerAction(null);
   };
 
-  // Handle terms selection
-  const handleTermsChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const termsId = e.target.value;
-    const selectedTerms = customerTerms.find(terms => terms.termsId === termsId);
-    if (selectedTerms) {
-      onFormDataChange({
-        termsId: selectedTerms.termsId,
-        termsName: selectedTerms.termsName
-      });
-    }
-  };
   const getStatusBadge = (status: StatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
     
@@ -295,7 +316,7 @@ export default function RecordDetailsTab({
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
     
     let colorClasses = "";
-    if (status === PrintStatusEnum.PRINTED) {
+    if (status === PrintStatusEnum.COMPLETED) {
       colorClasses = "!bg-green-100 !text-green-800";
     } else if (status === PrintStatusEnum.PENDING) {
       colorClasses = "!bg-gray-100 !text-gray-800";
@@ -304,7 +325,7 @@ export default function RecordDetailsTab({
     }
     
     return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === PrintStatusEnum.PRINTED ? '#dcfce7' : status === PrintStatusEnum.PENDING ? '#f3f4f6' : '#f3f4f6', color: status === PrintStatusEnum.PRINTED ? '#166534' : status === PrintStatusEnum.PENDING ? '#6b7280' : '#6b7280' }}>
+      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === PrintStatusEnum.COMPLETED ? '#dcfce7' : status === PrintStatusEnum.PENDING ? '#f3f4f6' : '#f3f4f6', color: status === PrintStatusEnum.COMPLETED ? '#166534' : status === PrintStatusEnum.PENDING ? '#6b7280' : '#6b7280' }}>
         {status}
       </span>
     );
@@ -320,6 +341,83 @@ export default function RecordDetailsTab({
       }}>
         Invoice Details
       </h3>
+
+      {/* Change Reason Field - Only for non-admin users editing existing invoices */}
+      {!isCreateMode && !isAdminUser && !isReadOnly && (
+        <div style={{
+          backgroundColor: '#fef3c7',
+          border: '2px solid #f59e0b',
+          borderRadius: '8px',
+          padding: '16px',
+          marginBottom: '20px',
+          boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '12px'
+          }}>
+            <div style={{
+              width: '20px',
+              height: '20px',
+              backgroundColor: '#f59e0b',
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '12px',
+              fontWeight: 'bold'
+            }}>
+              📝
+            </div>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#92400e',
+              margin: 0
+            }}>
+              Change Reason *
+            </h4>
+          </div>
+          <textarea
+            value={formData.changeReason || ''}
+            onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
+            placeholder="Please provide a reason for the changes (minimum 10 characters)"
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              border: '1px solid #f59e0b',
+              borderRadius: '6px',
+              fontSize: '14px',
+              color: '#92400e',
+              lineHeight: '1.5',
+              backgroundColor: 'white',
+              outline: 'none',
+              resize: 'vertical',
+              minHeight: '80px',
+              fontFamily: 'inherit'
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = '#d97706';
+              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = '#f59e0b';
+              e.currentTarget.style.boxShadow = 'none';
+            }}
+          />
+          <div style={{
+            fontSize: '12px',
+            color: '#92400e',
+            marginTop: '8px',
+            fontStyle: 'italic'
+          }}>
+            Minimum 10 characters required
+          </div>
+        </div>
+      )}
 
       {/* Basic Information */}
       <div style={{
@@ -342,13 +440,15 @@ export default function RecordDetailsTab({
             type="text"
             value={formData.docno || ''}
             onChange={(e) => onFormDataChange({ docno: e.target.value })}
+            readOnly={!isCreateMode || isReadOnly}
             style={{
               width: '100%',
               padding: '12px 16px',
               border: '1px solid #d1d5db',
               borderRadius: '8px',
               fontSize: '14px',
-              outline: 'none'
+              outline: 'none',
+              backgroundColor: (!isCreateMode || isReadOnly) ? '#f9fafb' : 'white'
             }}
             placeholder="Enter document number"
           />
@@ -368,13 +468,15 @@ export default function RecordDetailsTab({
             type="date"
             value={formData.invoiceDate || ''}
             onChange={(e) => onFormDataChange({ invoiceDate: e.target.value })}
+            disabled={!isCreateMode || isReadOnly}
             style={{
               width: '100%',
               padding: '12px 16px',
               border: '1px solid #d1d5db',
               borderRadius: '8px',
               fontSize: '14px',
-              outline: 'none'
+              outline: 'none',
+              backgroundColor: (!isCreateMode || isReadOnly) ? '#f9fafb' : 'white'
             }}
           />
         </div>
@@ -394,23 +496,23 @@ export default function RecordDetailsTab({
               type="text"
               value={formData.customerName || ''}
               readOnly
-              onClick={() => isCreateMode && setShowCustomerModal(true)}
-              disabled={!isCreateMode}
+              onClick={() => isCreateMode && !isReadOnly && setShowCustomerModal(true)}
+              disabled={!isCreateMode || isReadOnly}
               style={{
                 width: '100%',
                 padding: '12px 16px',
-                paddingRight: (formData.customerName && isCreateMode) ? '40px' : '16px',
+                paddingRight: (formData.customerName && isCreateMode && !isReadOnly) ? '40px' : '16px',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '14px',
-                backgroundColor: isCreateMode ? '#f9fafb' : '#f3f4f6',
+                backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
                 color: formData.customerName ? '#1f2937' : '#6b7280',
-                cursor: isCreateMode ? 'pointer' : 'not-allowed',
+                cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
                 outline: 'none',
                 transition: 'all 0.2s ease',
-                opacity: isCreateMode ? 1 : 0.6
+                opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
               }}
-              placeholder={isCreateMode ? "Click to select customer" : "Customer cannot be changed in edit mode"}
+              placeholder={(!isCreateMode || isReadOnly) ? "Customer cannot be changed" : "Click to select customer"}
               onMouseEnter={(e) => {
                 if (isCreateMode) {
                   e.currentTarget.style.borderColor = '#3b82f6';
@@ -423,7 +525,7 @@ export default function RecordDetailsTab({
               }}
             />
             
-            {formData.customerName && isCreateMode && (
+            {formData.customerName && isCreateMode && !isReadOnly && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -532,7 +634,8 @@ export default function RecordDetailsTab({
               type="text"
               value={formData.salesTypeName || ''}
               readOnly
-              onClick={() => setShowSalesTypeModal(true)}
+              onClick={() => isCreateMode && !isReadOnly && setShowSalesTypeModal(true)}
+              disabled={!isCreateMode || isReadOnly}
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -540,13 +643,14 @@ export default function RecordDetailsTab({
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '14px',
-                backgroundColor: '#f9fafb',
+                backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
                 color: formData.salesTypeName ? '#1f2937' : '#6b7280',
-                cursor: 'pointer',
+                cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
                 outline: 'none',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
               }}
-              placeholder="Click to select sales type"
+              placeholder={(!isCreateMode || isReadOnly) ? "Sales type cannot be changed" : "Click to select sales type"}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = '#3b82f6';
                 e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
@@ -557,7 +661,7 @@ export default function RecordDetailsTab({
               }}
             />
             
-            {formData.salesTypeName && (
+            {isCreateMode && !isReadOnly && formData.salesTypeName && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -611,13 +715,15 @@ export default function RecordDetailsTab({
             type="text"
             value={formData.contractName || ''}
             onChange={(e) => onFormDataChange({ contractName: e.target.value })}
+            readOnly={!isCreateMode || isReadOnly}
             style={{
               width: '100%',
               padding: '12px 16px',
               border: '1px solid #d1d5db',
               borderRadius: '8px',
               fontSize: '14px',
-              outline: 'none'
+              outline: 'none',
+              backgroundColor: (!isCreateMode || isReadOnly) ? '#f9fafb' : 'white'
             }}
             placeholder="Enter contract name"
           />
@@ -633,30 +739,78 @@ export default function RecordDetailsTab({
           }}>
             Terms Name
           </label>
-          <select
-            value={formData.termsId || ''}
-            onChange={handleTermsChange}
-            disabled={customerTerms.length === 0}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: customerTerms.length === 0 ? '#f9fafb' : 'white',
-              color: customerTerms.length === 0 ? '#6b7280' : '#1f2937'
-            }}
-          >
-            <option value="">
-              {customerTerms.length === 0 ? 'Select customer first' : 'Select terms'}
-            </option>
-            {customerTerms.map((terms) => (
-              <option key={terms.termsId} value={terms.termsId}>
-                {terms.termsName}
-              </option>
-            ))}
-          </select>
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              value={formData.termsName || ''}
+              readOnly
+              onClick={() => isCreateMode && !isReadOnly && customerTerms.length > 0 && setShowTermsModal(true)}
+              disabled={!isCreateMode || customerTerms.length === 0 || isReadOnly}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                paddingRight: (formData.termsName && isCreateMode && !isReadOnly && customerTerms.length > 0) ? '40px' : '16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: (!isCreateMode || isReadOnly || customerTerms.length === 0) ? '#f9fafb' : '#f9fafb',
+                color: formData.termsName ? '#1f2937' : '#6b7280',
+                cursor: (isCreateMode && !isReadOnly && customerTerms.length > 0) ? 'pointer' : 'not-allowed',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                opacity: (isCreateMode && !isReadOnly && customerTerms.length > 0) ? 1 : 0.6
+              }}
+              placeholder={(!isCreateMode || isReadOnly) ? "Terms cannot be changed" : (customerTerms.length === 0 ? "Select customer first" : "Click to select terms")}
+              onMouseEnter={(e) => {
+                if (isCreateMode && customerTerms.length > 0) {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#d1d5db';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+            
+            {formData.termsName && isCreateMode && !isReadOnly && customerTerms.length > 0 && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClearTerms();
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '20px',
+                  height: '20px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#6b7280',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  zIndex: 10,
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#dc2626';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+                title="Clear terms selection"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
 
         <div>
@@ -674,7 +828,8 @@ export default function RecordDetailsTab({
               type="text"
               value={formData.productPriceTypeName || ''}
               readOnly
-              onClick={() => setShowProductPriceTypeModal(true)}
+              onClick={() => isCreateMode && !isReadOnly && setShowProductPriceTypeModal(true)}
+              disabled={!isCreateMode || isReadOnly}
               style={{
                 width: '100%',
                 padding: '12px 16px',
@@ -682,13 +837,14 @@ export default function RecordDetailsTab({
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 fontSize: '14px',
-                backgroundColor: '#f9fafb',
+                backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
                 color: formData.productPriceTypeName ? '#1f2937' : '#6b7280',
-                cursor: 'pointer',
+                cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
                 outline: 'none',
-                transition: 'all 0.2s ease'
+                transition: 'all 0.2s ease',
+                opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
               }}
-              placeholder="Click to select product price type"
+              placeholder={(!isCreateMode || isReadOnly) ? "Product price type cannot be changed" : "Click to select product price type"}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = '#3b82f6';
                 e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
@@ -699,7 +855,7 @@ export default function RecordDetailsTab({
               }}
             />
             
-            {formData.productPriceTypeName && (
+            {isCreateMode && !isReadOnly && formData.productPriceTypeName && (
               <button
                 type="button"
                 onClick={(e) => {
@@ -899,35 +1055,6 @@ export default function RecordDetailsTab({
         </div>
       </div>
 
-      {/* Change Reason for non-admin users */}
-      {!isAdminUser && (
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Change Reason
-          </label>
-          <textarea
-            value={formData.changeReason || ''}
-            onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              minHeight: '100px',
-              resize: 'vertical'
-            }}
-            placeholder="Enter reason for changes (required for approval)"
-          />
-        </div>
-      )}
 
       {/* Customer Selection Modal */}
       <CustomerSearchableSelectionModal
@@ -962,6 +1089,16 @@ export default function RecordDetailsTab({
         itemCount={formData.invoiceDetails?.length || 0}
         onConfirm={handleConfirmCustomerChange}
         onCancel={handleCancelCustomerChange}
+      />
+      
+      {/* Customer Terms Selection Modal */}
+      <CustomerTermsSelectionModal
+        show={showTermsModal}
+        title="Select Terms"
+        customerTerms={customerTerms}
+        selectedValue={formData.termsId || null}
+        onSelect={handleTermsSelect}
+        onClose={() => setShowTermsModal(false)}
       />
     </div>
   );

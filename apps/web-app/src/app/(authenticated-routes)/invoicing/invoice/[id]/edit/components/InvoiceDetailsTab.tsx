@@ -10,6 +10,7 @@ interface InvoiceDetailsTabProps {
   onFormDataChange: (updatedData: Partial<InvoiceDto>) => void;
   isCreateMode: boolean;
   customerDeals?: CustomerProductDealDto[];
+  isReadOnly?: boolean;
 }
 
 interface StockWithPricing extends StockDto {
@@ -29,7 +30,8 @@ export default function InvoiceDetailsTab({
   formData,
   onFormDataChange,
   isCreateMode,
-  customerDeals = []
+  customerDeals = [],
+  isReadOnly = false
 }: InvoiceDetailsTabProps) {
   const { setFlashNotification } = useSessionStore();
   const [stockSelection, setStockSelection] = useState<StockSelectionState>({
@@ -346,167 +348,170 @@ export default function InvoiceDetailsTab({
         Invoice Details
       </h3>
 
-      {/* Stock Selection Section */}
-      <div style={{
-        backgroundColor: '#f8fafc',
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '24px'
-      }}>
-        <h4 style={{
-          fontSize: '16px',
-          fontWeight: '600',
-          color: '#1f2937',
-          marginBottom: '16px'
-        }}>
-          Add Stock Item
-        </h4>
-
+      {/* Stock Selection Section - Hidden when read-only */}
+      {!isReadOnly && (
         <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr auto',
-          gap: '16px',
-          alignItems: 'end'
+          backgroundColor: '#f8fafc',
+          border: '1px solid #e2e8f0',
+          borderRadius: '8px',
+          padding: '20px',
+          marginBottom: '24px'
         }}>
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Stock Item
-            </label>
-            <input
-              type="text"
-              value={stockSelection.selectedStock?.productName || ''}
-              readOnly
-              placeholder={formData.productPriceTypeId ? "Click to select stock" : "Select Product Price Type first"}
-              onClick={handleAddStock}
-              disabled={!formData.productPriceTypeId}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: formData.productPriceTypeId ? '#f9fafb' : '#f3f4f6',
-                color: formData.productPriceTypeId ? '#6b7280' : '#9ca3af',
-                cursor: formData.productPriceTypeId ? 'pointer' : 'not-allowed',
-                opacity: formData.productPriceTypeId ? 1 : 0.6
-              }}
-            />
-          </div>
+          <h4 style={{
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#1f2937',
+            marginBottom: '16px'
+          }}>
+            Add Stock Item
+          </h4>
 
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Quantity *
-            </label>
-            <input
-              type="number"
-              value={stockSelection.quantity}
-              onChange={(e) => setStockSelection(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
-              min="1"
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr 1fr auto',
+            gap: '16px',
+            alignItems: 'end'
+          }}>
+            <div>
+              <label style={{
+                display: 'block',
                 fontSize: '14px',
-                outline: 'none'
-              }}
-              placeholder="Enter quantity"
-            />
-          </div>
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Stock Item
+              </label>
+              <input
+                type="text"
+                value={stockSelection.selectedStock?.productName || ''}
+                readOnly
+                placeholder={formData.productPriceTypeId ? "Click to select stock" : "Select Product Price Type first"}
+                onClick={handleAddStock}
+                disabled={!formData.productPriceTypeId || isReadOnly}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: formData.productPriceTypeId ? '#f9fafb' : '#f3f4f6',
+                  color: formData.productPriceTypeId ? '#6b7280' : '#9ca3af',
+                  cursor: formData.productPriceTypeId ? 'pointer' : 'not-allowed',
+                  opacity: formData.productPriceTypeId ? 1 : 0.6
+                }}
+              />
+            </div>
 
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Product Deal
-            </label>
-            <select
-              value={stockSelection.selectedProductDeal?.productDealId || ''}
-              onChange={(e) => {
-                const dealId = e.target.value;
-                const filteredDeals = stockSelection.selectedStock 
-                  ? customerDeals.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
-                  : [];
-                const selectedDeal = filteredDeals.find(deal => deal.productDealId === dealId);
-                setStockSelection(prev => ({
-                  ...prev,
-                  selectedProductDeal: selectedDeal || null
-                }));
-              }}
-              disabled={!stockSelection.selectedStock}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
+            <div>
+              <label style={{
+                display: 'block',
                 fontSize: '14px',
-                outline: 'none',
-                backgroundColor: !stockSelection.selectedStock ? '#f9fafb' : 'white',
-                color: !stockSelection.selectedStock ? '#6b7280' : '#1f2937',
-                cursor: !stockSelection.selectedStock ? 'not-allowed' : 'pointer'
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Quantity *
+              </label>
+              <input
+                type="number"
+                value={stockSelection.quantity}
+                onChange={(e) => setStockSelection(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
+                min="1"
+                disabled={isReadOnly}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none'
+                }}
+                placeholder="Enter quantity"
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Product Deal
+              </label>
+              <select
+                value={stockSelection.selectedProductDeal?.productDealId || ''}
+                onChange={(e) => {
+                  const dealId = e.target.value;
+                  const filteredDeals = stockSelection.selectedStock 
+                    ? customerDeals.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                    : [];
+                  const selectedDeal = filteredDeals.find(deal => deal.productDealId === dealId);
+                  setStockSelection(prev => ({
+                    ...prev,
+                    selectedProductDeal: selectedDeal || null
+                  }));
+                }}
+                disabled={!stockSelection.selectedStock}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: !stockSelection.selectedStock ? '#f9fafb' : 'white',
+                  color: !stockSelection.selectedStock ? '#6b7280' : '#1f2937',
+                  cursor: !stockSelection.selectedStock ? 'not-allowed' : 'pointer'
+                }}
+              >
+                <option value="">
+                  {!stockSelection.selectedStock ? 'Select stock item first' : 'Select product deal'}
+                </option>
+                {stockSelection.selectedStock && customerDeals
+                  .filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                  .map((deal) => (
+                    <option key={deal.productDealId} value={deal.productDealId}>
+                      {deal.productDealName} (Min: {deal.minQty || 0}, Free: {deal.additionalQty || 0})
+                    </option>
+                  ))}
+              </select>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddDetailRecord}
+              disabled={!stockSelection.selectedStock || stockSelection.quantity <= 0 || isReadOnly}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: (!stockSelection.selectedStock || stockSelection.quantity <= 0 || isReadOnly) ? '#9ca3af' : '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: (!stockSelection.selectedStock || stockSelection.quantity <= 0 || isReadOnly) ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                fontWeight: '500',
+                transition: 'all 0.2s ease',
+                opacity: (!stockSelection.selectedStock || stockSelection.quantity <= 0) ? 0.7 : 1
+              }}
+              onMouseEnter={(e) => {
+                if (stockSelection.selectedStock && stockSelection.quantity > 0) {
+                  e.currentTarget.style.backgroundColor = '#059669';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (stockSelection.selectedStock && stockSelection.quantity > 0) {
+                  e.currentTarget.style.backgroundColor = '#10b981';
+                }
               }}
             >
-              <option value="">
-                {!stockSelection.selectedStock ? 'Select stock item first' : 'Select product deal'}
-              </option>
-              {stockSelection.selectedStock && customerDeals
-                .filter(deal => deal.productId === stockSelection.selectedStock?.productId)
-                .map((deal) => (
-                  <option key={deal.productDealId} value={deal.productDealId}>
-                    {deal.productDealName} (Min: {deal.minQty || 0}, Free: {deal.additionalQty || 0})
-                  </option>
-                ))}
-            </select>
+              Add Detail
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={handleAddDetailRecord}
-            disabled={!stockSelection.selectedStock || stockSelection.quantity <= 0}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: (!stockSelection.selectedStock || stockSelection.quantity <= 0) ? '#9ca3af' : '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: (!stockSelection.selectedStock || stockSelection.quantity <= 0) ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: (!stockSelection.selectedStock || stockSelection.quantity <= 0) ? 0.7 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (stockSelection.selectedStock && stockSelection.quantity > 0) {
-                e.currentTarget.style.backgroundColor = '#059669';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (stockSelection.selectedStock && stockSelection.quantity > 0) {
-                e.currentTarget.style.backgroundColor = '#10b981';
-              }
-            }}
-          >
-            Add Detail
-          </button>
         </div>
-      </div>
+      )}
 
       {/* Invoice Details Table */}
       <div style={{
@@ -542,7 +547,7 @@ export default function InvoiceDetailsTab({
               >
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
+                  gridTemplateColumns: isReadOnly ? '2fr 1fr 1fr 1fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
                   gap: '16px',
                   alignItems: 'center'
                 }}>
@@ -712,31 +717,34 @@ export default function InvoiceDetailsTab({
                     />
                   </div>
 
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteDetail(index)}
-                      style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#dc2626',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '12px',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#b91c1c';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#dc2626';
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
+                  {!isReadOnly && (
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteDetail(index)}
+                        disabled={isReadOnly}
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: isReadOnly ? '#9ca3af' : '#dc2626',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: isReadOnly ? 'not-allowed' : 'pointer',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = '#b91c1c';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = '#dc2626';
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
@@ -747,7 +755,10 @@ export default function InvoiceDetailsTab({
             textAlign: 'center',
             color: '#6b7280'
           }}>
-            No invoice details added yet. Click &quot;Add Stock&quot; to get started.
+            {isReadOnly 
+              ? "No invoice details in this version."
+              : "No invoice details added yet. Click \"Add Stock\" to get started."
+            }
           </div>
         )}
       </div>

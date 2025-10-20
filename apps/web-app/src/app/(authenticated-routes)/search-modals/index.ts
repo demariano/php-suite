@@ -10,6 +10,7 @@ export { default as ProductUnitPriceSelectionModal } from './ProductUnitPriceSel
 export { default as AreaSearchableSelectionModal } from './AreaSearchableSelectionModal';
 export { default as CustomerClassificationSearchableSelectionModal } from './CustomerClassificationSearchableSelectionModal';
 export { default as CustomerSearchableSelectionModal } from './CustomerSearchableSelectionModal';
+export { default as CustomerTermsSelectionModal } from './CustomerTermsSelectionModal';
 export { default as CustomerTypeSearchableSelectionModal } from './CustomerTypeSearchableSelectionModal';
 export { default as SalesTypeSearchableSelectionModal } from './SalesTypeSearchableSelectionModal';
 export { default as StockSearchableSelectionModal } from './StockSearchableSelectionModal';

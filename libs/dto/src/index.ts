@@ -91,3 +91,8 @@ export * from './lib/invoicing/sales.type/create.sales.type.dto';
 export * from './lib/invoicing/sales.type/sales.type.dto';
 export * from './lib/invoicing/territory.manager/create.territory.manager.dto';
 export * from './lib/invoicing/territory.manager/territory.manager.dto';
+
+//COntract
+export * from './lib/enums/delivery.status.enum';
+export * from './lib/invoicing/contract/contract.dto';
+export * from './lib/invoicing/contract/create.contract.dto';

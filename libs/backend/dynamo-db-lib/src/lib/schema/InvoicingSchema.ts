@@ -24,6 +24,7 @@ export const InvoicingSchema = {
             invoiceId: { type: String, generate: 'ulid' },
             docno: { type: String },
             invoiceDate: { type: String },
+            changeReason: { type: String, required: false },
             customerId: { type: String },
             customerName: { type: String },
             areaId: { type: String },
@@ -117,6 +118,40 @@ export const InvoicingSchema = {
             GSI2PK: { type: String, value: 'TERRITORY_MANAGER#${status}', hidden: false },
             GSI2SK: { type: String, value: '${territoryManagerName}', hidden: false },
         },
+        Contract: {
+            PK: { type: String, value: 'CONTRACT', hidden: false },
+            SK: { type: String, value: '${contractId}', hidden: false },
+            contractId: { type: String, generate: 'ulid' },
+            contractNo: { type: String },
+            contractName: { type: String },
+            customerId: { type: String },
+            customerName: { type: String },
+            startDate: { type: String },
+            endDate: { type: String },
+            contractAmount: { type: Number },
+            amountPaid: { type: Number },
+            productDealId: { type: String },
+            productDealName: { type: String },
+            deliveryStatus: { type: String, enum: ['PENDING', 'DELIVERED'], required: false },
+            paymentStatus: { type: String, enum: ['PENDING', 'PARTIAL', 'PAID'], required: false },
+            deliveredAmount: { type: Number },
+            changeReason: { type: String, required: false },
+            activityLogs: { type: Array },
+            forApprovalVersion: { type: Object },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                required: false,
+            },
+            GSI1PK: { type: String, value: 'CONTRACT', hidden: false },
+            GSI1SK: { type: String, value: '${contractNo}', hidden: false },
+            GSI2PK: { type: String, value: 'CONTRACT#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${contractNo}', hidden: false },
+            GSI3PK: { type: String, value: 'CONTRACT#${customerId}', hidden: false },
+            GSI3SK: { type: String, value: '${contractNo}', hidden: false },
+            GSI4PK: { type: String, value: 'CONTRACT#${customerId}#${status}', hidden: false },
+            GSI4SK: { type: String, value: '${contractNo}', hidden: false },
+        },
     } as const,
     params: {
         isoDates: true,
@@ -127,3 +162,4 @@ export const InvoicingSchema = {
 export type SalesTypeDataType = Entity<typeof InvoicingSchema.models.SalesType>;
 export type TerritoryManagerDataType = Entity<typeof InvoicingSchema.models.TerritoryManager>;
 export type InvoiceDataType = Entity<typeof InvoicingSchema.models.Invoice>;
+export type ContractDataType = Entity<typeof InvoicingSchema.models.Contract>;

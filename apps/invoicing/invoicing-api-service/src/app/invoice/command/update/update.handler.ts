@@ -31,6 +31,8 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
+            console.log('hasApprovalPermission', hasApprovalPermission);
+
             // Update status and activity logs based on permissions
             this.updateInvoiceStatus(command, existingRecord, hasApprovalPermission);
 
@@ -113,6 +115,8 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
             existingRecord.invoiceAmount = command.invoiceDto.invoiceAmount;
             existingRecord.taxAmount = command.invoiceDto.taxAmount;
             existingRecord.invoiceDetails = command.invoiceDto.invoiceDetails;
+            // Clear changeReason for admin users since changes are applied directly
+            existingRecord.changeReason = undefined;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Invoice updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
@@ -120,6 +124,8 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
+            // Store changeReason in main record for admin visibility
+            existingRecord.changeReason = command.invoiceDto.changeReason;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Invoice updated by ${command.user.username} for approval`;

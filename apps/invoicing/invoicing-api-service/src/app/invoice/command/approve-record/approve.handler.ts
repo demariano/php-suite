@@ -1,5 +1,5 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { ErrorResponseDto, InvoiceDetailsDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
@@ -115,8 +115,9 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         existingRecord.finalAmount = forApprovalVersion.finalAmount as number;
         existingRecord.invoiceAmount = forApprovalVersion.invoiceAmount as number;
         existingRecord.taxAmount = forApprovalVersion.taxAmount as number;
-        existingRecord.invoiceDetails = forApprovalVersion.invoiceDetails as any[];
+        existingRecord.invoiceDetails = forApprovalVersion.invoiceDetails as InvoiceDetailsDto[];
         existingRecord.forApprovalVersion = {};
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.invoiceDatabaseService.updateRecord(existingRecord);

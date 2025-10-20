@@ -17,6 +17,7 @@ export * from './state-management';
 // Export types
 export * from './types/area.types';
 export * from './types/customer-classification.types';
+export * from './types/customer-product-deal.types';
 export * from './types/customer-type.types';
 export * from './types/customer.types';
 export * from './types/invoice-detail-type.enum';
@@ -30,6 +31,7 @@ export * from './types/product-price-type.types';
 export * from './types/product-unit.types';
 export * from './types/product.types';
 export * from './types/responseError';
+export * from './types/sales-type.types';
 export * from './types/status.enum';
 export * from './types/stock.types';
 export * from './types/terms.types';

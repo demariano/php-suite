@@ -87,6 +87,7 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
     private async denyInvoice(existingRecord: InvoiceDto, user: UserCognito): Promise<ResponseDto<InvoiceDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.changeReason = null;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',

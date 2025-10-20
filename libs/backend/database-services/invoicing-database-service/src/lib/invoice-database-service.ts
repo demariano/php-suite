@@ -280,6 +280,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         dto.invoiceDetails = record.invoiceDetails ? record.invoiceDetails : [];
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = record.changeReason ? record.changeReason : '';
         return dto;
     }
 
@@ -347,6 +348,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             GSI12SK: dto.docno,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return invoiceData;
     }

@@ -464,6 +464,20 @@ export class AppService {
         stockData2.expirationDate = '2025-12-02';
         stockData2.status = StatusEnum.ACTIVE;
         await this.stockDatabaseService.createRecord(stockData2);
+
+        const stockData3 = new StockDto();
+        stockData3.productName = productRecord1.productName;
+        stockData3.lotNo = '111111';
+        stockData3.productId = productRecord1.productId;
+        stockData3.productUnitId = productUnitRecord1.productUnitId;
+        stockData3.productUnitName = productUnitRecord1.productUnitName;
+        stockData3.stockTypeId = stockTypeRecord1.stockTypeId;
+        stockData3.stockTypeName = stockTypeRecord1.stockTypeName;
+        stockData3.quantityOnHand = 600;
+        stockData3.availableQuantity = 600;
+        stockData3.expirationDate = '2025-12-01';
+        stockData3.status = StatusEnum.ACTIVE;
+        await this.stockDatabaseService.createRecord(stockData3);
     }
 
     async deleteAllRecords() {
