@@ -591,7 +591,7 @@ export default function CustomerModal({
               
               <div className="flex justify-between mt-6">
                 {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
-                {isAdminUser && (selectedCustomer?.status === StatusEnum.FOR_APPROVAL || selectedCustomer?.status === StatusEnum.NEW_RECORD || selectedCustomer?.status === StatusEnum.FOR_DELETION) && (
+                {isAdminUser && (selectedCustomer?.status === StatusEnum.FOR_APPROVAL || selectedCustomer?.status === StatusEnum.NEW_RECORD || selectedCustomer?.status === StatusEnum.FOR_DELETION) ? (
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button
                       type="button"
@@ -652,9 +652,11 @@ export default function CustomerModal({
                       {isLoading ? 'Processing...' : 'Approve Changes'}
                     </button>
                   </div>
+                ) : (
+                  <div></div>
                 )}
                 
-                {/* Close button - moved to right side */}
+                {/* Close button - always visible on the right */}
                 <div>
                   <button
                     type="button"

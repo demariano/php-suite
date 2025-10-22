@@ -2,8 +2,8 @@
 
 import { AreaDto, StatusEnum, TownDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import SelectionField from '../../../products/product/components/SelectionField';
 import AreaSearchableSelectionModal from '../../../search-modals/AreaSearchableSelectionModal';
+import SelectionField from '../../customer/components/SelectionField';
 
 // Extended TownDto interface to include areaName
 interface ExtendedTownDto extends TownDto {

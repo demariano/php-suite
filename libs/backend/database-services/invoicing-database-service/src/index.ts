@@ -1,3 +1,5 @@
+export * from './lib/contract-database-service';
+export * from './lib/contract-database-service-abstract-class';
 export * from './lib/invoice-database-service';
 export * from './lib/invoice-database-service-abstract-class';
 export * from './lib/invoicing-database-service.module';

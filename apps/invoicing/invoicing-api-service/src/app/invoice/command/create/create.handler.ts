@@ -121,6 +121,7 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
             command.invoiceDto.forApprovalVersion.invoiceAmount = command.invoiceDto.invoiceAmount;
             command.invoiceDto.forApprovalVersion.taxAmount = command.invoiceDto.taxAmount;
             command.invoiceDto.forApprovalVersion.invoiceDetails = command.invoiceDto.invoiceDetails;
+            command.invoiceDto.forApprovalVersion.contractSales = command.invoiceDto.contractSales;
         }
     }
 

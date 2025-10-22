@@ -8,6 +8,7 @@ export { default as ProductUnitPriceSelectionModal } from './ProductUnitPriceSel
 
 // Other Selection Modals
 export { default as AreaSearchableSelectionModal } from './AreaSearchableSelectionModal';
+export { default as ContractSearchableSelectionModal } from './ContractSearchableSelectionModal';
 export { default as CustomerClassificationSearchableSelectionModal } from './CustomerClassificationSearchableSelectionModal';
 export { default as CustomerSearchableSelectionModal } from './CustomerSearchableSelectionModal';
 export { default as CustomerTermsSelectionModal } from './CustomerTermsSelectionModal';

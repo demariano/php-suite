@@ -2,6 +2,7 @@
 
 import { ProductPriceTypeApi, ProductUnitApi } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import SelectionField from '../customers/customer/components/SelectionField';
 
 interface ProductUnitPriceSelectionModalProps {
   show: boolean;
@@ -391,168 +392,22 @@ export default function ProductUnitPriceSelectionModal({
         </div>
 
         {/* Product Unit Selection */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Product Unit *
-          </label>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              type="text"
-              value={selectedProductUnit?.name || ''}
-              placeholder="Select Product Unit"
-              readOnly
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                border: '2px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: '#f9fafb',
-                color: selectedProductUnit ? '#1f2937' : '#6b7280',
-                cursor: 'pointer'
-              }}
-              onClick={() => setShowProductUnitModal(true)}
-            />
-            <button
-              type="button"
-              onClick={() => setShowProductUnitModal(true)}
-              style={{
-                padding: '12px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '48px',
-                height: '48px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-              }}
-            >
-              🔍
-            </button>
-            {selectedProductUnit && (
-              <button
-                type="button"
-                onClick={handleClearProductUnit}
-                style={{
-                  padding: '12px 16px',
-                  backgroundColor: '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  height: '48px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#b91c1c';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#dc2626';
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
+        <SelectionField
+          label="Product Unit *"
+          selectedItem={selectedProductUnit}
+          onSelect={() => setShowProductUnitModal(true)}
+          onClear={handleClearProductUnit}
+          buttonText="Select Product Unit"
+        />
 
         {/* Product Price Type Selection */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Product Price Type *
-          </label>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <input
-              type="text"
-              value={selectedProductPriceType?.name || ''}
-              placeholder="Select Product Price Type"
-              readOnly
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                border: '2px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: '#f9fafb',
-                color: selectedProductPriceType ? '#1f2937' : '#6b7280',
-                cursor: 'pointer'
-              }}
-              onClick={() => setShowProductPriceTypeModal(true)}
-            />
-            <button
-              type="button"
-              onClick={() => setShowProductPriceTypeModal(true)}
-              style={{
-                padding: '12px',
-                backgroundColor: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minWidth: '48px',
-                height: '48px'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-              }}
-            >
-              🔍
-            </button>
-            {selectedProductPriceType && (
-              <button
-                type="button"
-                onClick={handleClearProductPriceType}
-                style={{
-                  padding: '12px 16px',
-                  backgroundColor: '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  height: '48px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#b91c1c';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#dc2626';
-                }}
-              >
-                Clear
-              </button>
-            )}
-          </div>
-        </div>
+        <SelectionField
+          label="Product Price Type *"
+          selectedItem={selectedProductPriceType}
+          onSelect={() => setShowProductPriceTypeModal(true)}
+          onClear={handleClearProductPriceType}
+          buttonText="Select Product Price Type"
+        />
 
         {/* Action Buttons */}
         <div style={{

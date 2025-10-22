@@ -10,15 +10,19 @@ import {
 import {
     AreaDto,
     ConfigurationDto,
+    ContractDto,
     CustomerClassificationDto,
     CustomerDto,
     CustomerProductDealDto,
     CustomerTypeDto,
+    DeliveryStatusEnum,
     InitializeEnvironmentDto,
+    PaymentStatusEnum,
     ProductCategoryDto,
     ProductClassDto,
     ProductDealDetailsDto,
     ProductDealDto,
+    ProductDealQtyDto,
     ProductDto,
     ProductPriceTypeDto,
     ProductUnitDto,
@@ -33,6 +37,7 @@ import {
 } from '@dto';
 import { StockDatabaseServiceAbstract, StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
 import {
+    ContractDatabaseServiceAbstract,
     InvoiceDatabaseServiceAbstract,
     SalesTypeDatabaseServiceAbstract,
     TerritoryManagerDatabaseServiceAbstract,
@@ -98,7 +103,10 @@ export class AppService {
         private readonly territoryManagerDatabaseService: TerritoryManagerDatabaseServiceAbstract,
 
         @Inject('InvoiceDatabaseService')
-        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+
+        @Inject('ContractDatabaseService')
+        private readonly contractDatabaseService: ContractDatabaseServiceAbstract
     ) {}
 
     healthCheck(): { status: string; version: string } {
@@ -478,6 +486,54 @@ export class AppService {
         stockData3.expirationDate = '2025-12-01';
         stockData3.status = StatusEnum.ACTIVE;
         await this.stockDatabaseService.createRecord(stockData3);
+
+        //add contract record for each customer
+        const contractData1 = new ContractDto();
+        contractData1.contractNo = '1234567890';
+        contractData1.contractName = 'Contract 1';
+        contractData1.customerId = customerRecord1.customerId;
+        contractData1.customerName = customerRecord1.customerName;
+        contractData1.status = StatusEnum.ACTIVE;
+        contractData1.startDate = '2025-01-01';
+        contractData1.endDate = '2025-12-31';
+        contractData1.contractAmount = 10000;
+        contractData1.amountPaid = 0;
+        contractData1.productDealId = productDealRecord1.productDealId;
+        contractData1.productDealName = productDealRecord1.productDealName;
+        contractData1.productDealQty = new ProductDealQtyDto();
+        contractData1.productDealQty.additionalQty = productDealRecord1.additionalQty;
+        contractData1.productDealQty.minQty = productDealRecord1.minQty;
+
+        contractData1.deliveryStatus = DeliveryStatusEnum.PENDING;
+        contractData1.paymentStatus = PaymentStatusEnum.PENDING;
+        contractData1.deliveredAmount = 0;
+        contractData1.activityLogs = [];
+        contractData1.forApprovalVersion = {};
+        contractData1.changeReason = '';
+        await this.contractDatabaseService.createRecord(contractData1);
+
+        const contractData2 = new ContractDto();
+        contractData2.contractNo = '0987654321';
+        contractData2.contractName = 'Contract 2';
+        contractData2.customerId = customerRecord2.customerId;
+        contractData2.customerName = customerRecord2.customerName;
+        contractData2.status = StatusEnum.ACTIVE;
+        contractData2.startDate = '2025-01-01';
+        contractData2.endDate = '2025-12-31';
+        contractData2.contractAmount = 10000;
+        contractData2.amountPaid = 0;
+        contractData2.productDealId = productDealRecord2.productDealId;
+        contractData2.productDealName = productDealRecord2.productDealName;
+        contractData2.productDealQty = new ProductDealQtyDto();
+        contractData2.productDealQty.additionalQty = productDealRecord2.additionalQty;
+        contractData2.productDealQty.minQty = productDealRecord2.minQty;
+        contractData2.deliveryStatus = DeliveryStatusEnum.PENDING;
+        contractData2.paymentStatus = PaymentStatusEnum.PENDING;
+        contractData2.deliveredAmount = 0;
+        contractData2.activityLogs = [];
+        contractData2.forApprovalVersion = {};
+        contractData2.changeReason = '';
+        await this.contractDatabaseService.createRecord(contractData2);
     }
 
     async deleteAllRecords() {

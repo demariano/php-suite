@@ -2,12 +2,12 @@
 import colors from '@ui-config/colors';
 import clsx from 'classnames';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Avatar from '../../data-display/avatar/avatar';
 import Badge from '../../data-display/badge/badge';
 import Tooltip from '../../data-display/tooltip/tooltip';
 import Typography from '../../data-display/typography/typography';
-import { Collapse, Sort } from '../../icons';
+import { ChevronDown, ChevronRight, Collapse, Sort } from '../../icons';
 import { Menu } from '../../types/menu';
 import { WithRequiredProperty } from '../../types/utility';
 import ProfileWrapper from './profileWrapper';
@@ -38,6 +38,7 @@ export function Sidebar({ onClick, menu, profile, onLogout, isToggleDisabled = f
     const [isCollapsed, setIsCollapsed] = useState(
         isToggleDisabled ? true : parseInt(localStorage.getItem(STORE_KEY) as string) || false
     );
+    const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
     const pathname = window.location.pathname;
 
     const handleToggle = () => {
@@ -46,6 +47,49 @@ export function Sidebar({ onClick, menu, profile, onLogout, isToggleDisabled = f
         setIsCollapsed(collapsed);
         localStorage.setItem(STORE_KEY, collapsed ? '1' : '0');
     };
+
+    const toggleSection = (sectionKey: string) => {
+        setExpandedSections(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(sectionKey)) {
+                newSet.delete(sectionKey);
+            } else {
+                newSet.add(sectionKey);
+            }
+            return newSet;
+        });
+    };
+
+    const isRouteActive = (route: string) => {
+        if (pathname === route) return true;
+        if (route !== '/dashboard' && pathname.startsWith(route + '/')) return true;
+        return false;
+    };
+
+    const isParentActive = (subItems?: Menu[]) => {
+        if (!subItems) return false;
+        return subItems.some(item => isRouteActive(item.route || ''));
+    };
+
+    const shouldAutoExpand = (route: string, subItems?: Menu[]) => {
+        if (!subItems) return false;
+        return isRouteActive(route) || isParentActive(subItems);
+    };
+
+    // Auto-expand sections based on current route
+    useEffect(() => {
+        if (menu) {
+            const newExpandedSections = new Set<string>();
+            menu.forEach(section => {
+                section.menuItems.forEach(item => {
+                    if (item.subItems && shouldAutoExpand(item.route || '', item.subItems)) {
+                        newExpandedSections.add(item.route || '');
+                    }
+                });
+            });
+            setExpandedSections(newExpandedSections);
+        }
+    }, [pathname, menu]);
 
     return (
         <div>
@@ -105,57 +149,130 @@ export function Sidebar({ onClick, menu, profile, onLogout, isToggleDisabled = f
                                     key={m.sectionTitle}>
                                     {!isCollapsed && <Typography>{m.sectionTitle}</Typography>}
 
-                                    {m.menuItems.map(({ icon: Icon, label, route, onClick, badge }, index) => {
-                                        const isSelected = pathname === `/${route}`;
+                                    {m.menuItems.map(({ icon: Icon, label, route, onClick, badge, subItems }, index) => {
+                                        const isSelected = isRouteActive(route || '');
+                                        const isParentSelected = isParentActive(subItems);
+                                        const isExpanded = expandedSections.has(route || '');
+                                        const hasSubItems = subItems && subItems.length > 0;
 
-                                        return <Tooltip
-                                            key={route}
-                                            delayDuration={0}
-                                            disableHoverableContent={!isCollapsed ? false : undefined}
-                                            content={label.split(' ').pop() as string}
-                                            position='right'
-                                            contentClassName='ml-2'>
-                                            <div
-                                                className={clsx(
-                                                    'text-text03', 'rounded', 'hover:cursor-pointer',
-                                                    'mx-auto', 'flex', 'flex-col', 'items-center',
-                                                )}
-                                                onClick={() => onClick && onClick(route || '')}>
+                                        return (
+                                            <div key={route} className="w-full">
+                                                <Tooltip
+                                                    delayDuration={0}
+                                                    disableHoverableContent={!isCollapsed ? false : undefined}
+                                                    content={label.split(' ').pop() as string}
+                                                    position='right'
+                                                    contentClassName='ml-2'>
+                                                    <div
+                                                        className={clsx(
+                                                            'text-text03', 'rounded', 'hover:cursor-pointer',
+                                                            'mx-auto', 'flex', 'flex-col', 'items-center',
+                                                        )}
+                                                        onClick={() => {
+                                                            if (hasSubItems && !isCollapsed) {
+                                                                toggleSection(route || '');
+                                                            } else {
+                                                                onClick && onClick(route || '');
+                                                            }
+                                                        }}>
 
-                                                <div className={clsx(
-                                                    'flex py-[0.625rem] gap-4 rounded-full hover:bg-secondaryBlue-600',
-                                                    {
-                                                        'bg-secondaryBlue-600': isSelected, 'flex-col': isCollapsed, 'flex-row': !isCollapsed, 'w-10': isCollapsed, 'mx-5': isCollapsed,
-                                                        'px-3': !isCollapsed, 'px-[0.625rem]': isCollapsed
-                                                    })}>
-                                                    <div className='relative'>
-                                                        {(isCollapsed && badge && badge > 0) &&
-                                                            <div className='absolute -top-1 -right-1'>
-                                                                <Badge variant='danger' />
+                                                        <div className={clsx(
+                                                            'flex py-[0.625rem] gap-4 rounded-full hover:bg-secondaryBlue-600',
+                                                            {
+                                                                'bg-secondaryBlue-600': isSelected || isParentSelected, 
+                                                                'flex-col': isCollapsed, 
+                                                                'flex-row': !isCollapsed, 
+                                                                'w-10': isCollapsed, 
+                                                                'mx-5': isCollapsed,
+                                                                'px-3': !isCollapsed, 
+                                                                'px-[0.625rem]': isCollapsed
+                                                            })}>
+                                                            <div className='relative'>
+                                                                {(isCollapsed && badge && badge > 0) &&
+                                                                    <div className='absolute -top-1 -right-1'>
+                                                                        <Badge variant='danger' />
+                                                                    </div>
+                                                                }
+
+                                                                <Icon
+                                                                    size={isCollapsed ? 20 : 24}
+                                                                    color={colors.secondaryNeutral[0]} />
                                                             </div>
+
+                                                            {!isCollapsed && (
+                                                                <div className="flex items-center justify-between w-full">
+                                                                    <Typography
+                                                                        className={clsx('spacing whitespace-nowrap flex-1 flex items-center gap-3 !text-secondaryNeutral-0')}>
+                                                                        {label} {badge && badge > 0 ? <Badge isRounded variant='danger'>{String(badge)}</Badge> : ''}
+                                                                    </Typography>
+                                                                    {hasSubItems && (
+                                                                        <div className="ml-2">
+                                                                            {isExpanded ? 
+                                                                                <ChevronDown size={16} color={colors.secondaryNeutral[0]} /> : 
+                                                                                <ChevronRight size={16} color={colors.secondaryNeutral[0]} />
+                                                                            }
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        {isCollapsed &&
+                                                            <Typography
+                                                                className={clsx(styles.collapsedLabel, '!text-secondaryNeutral-0', { 'opacity-0': !isSelected })}>
+                                                                {label.split(' ').pop()}
+                                                            </Typography>
                                                         }
-
-                                                        <Icon
-                                                            size={isCollapsed ? 20 : 24}
-                                                            color={colors.secondaryNeutral[0]} />
                                                     </div>
+                                                </Tooltip>
 
-                                                    {!isCollapsed &&
-                                                        <Typography
-                                                            className={clsx('spacing whitespace-nowrap w-[10.5rem] flex items-center gap-3 !text-secondaryNeutral-0')}>
-                                                            {label} {badge && badge > 0 ? <Badge isRounded variant='danger'>{String(badge)}</Badge> : ''}
-                                                        </Typography>}
-                                                </div>
-
-                                                {isCollapsed &&
-                                                    <Typography
-                                                        className={clsx(styles.collapsedLabel, '!text-secondaryNeutral-0', { 'opacity-0': !isSelected })}>
-                                                        {label.split(' ').pop()}
-                                                    </Typography>
-                                                }
+                                                {/* Render sub-items */}
+                                                {!isCollapsed && hasSubItems && isExpanded && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, height: 0 }}
+                                                        animate={{ opacity: 1, height: 'auto' }}
+                                                        exit={{ opacity: 0, height: 0 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className="ml-6 mt-2 space-y-1"
+                                                    >
+                                                        {subItems.map((subItem) => {
+                                                            const isSubSelected = isRouteActive(subItem.route || '');
+                                                            const SubIcon = subItem.icon || Icon;
+                                                            
+                                                            return (
+                                                                <Tooltip
+                                                                    key={subItem.route}
+                                                                    delayDuration={0}
+                                                                    content={subItem.label.split(' ').pop() as string}
+                                                                    position='right'
+                                                                    contentClassName='ml-2'>
+                                                                    <div
+                                                                        className={clsx(
+                                                                            'text-text03', 'rounded', 'hover:cursor-pointer',
+                                                                            'flex', 'items-center', 'py-2', 'px-3',
+                                                                            'hover:bg-secondaryBlue-600', 'rounded-full',
+                                                                            {
+                                                                                'bg-secondaryBlue-600': isSubSelected
+                                                                            }
+                                                                        )}
+                                                                        onClick={() => subItem.onClick && subItem.onClick(subItem.route || '')}
+                                                                    >
+                                                                        <SubIcon
+                                                                            size={20}
+                                                                            color={colors.secondaryNeutral[0]} 
+                                                                            className="mr-3"
+                                                                        />
+                                                                        <Typography className="!text-secondaryNeutral-0 text-sm">
+                                                                            {subItem.label}
+                                                                        </Typography>
+                                                                    </div>
+                                                                </Tooltip>
+                                                            );
+                                                        })}
+                                                    </motion.div>
+                                                )}
                                             </div>
-                                        </Tooltip>;
-
+                                        );
                                     })}
                                 </div>
                             )}

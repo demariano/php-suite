@@ -18,6 +18,7 @@ import {
     StockTypeDatabaseService,
 } from '@inventory-database-service';
 import {
+    ContractDatabaseService,
     InvoiceDatabaseService,
     InvoicingDatabaseServiceModule,
     SalesTypeDatabaseService,
@@ -119,6 +120,10 @@ import { AppService } from './app.service';
         {
             provide: 'InvoiceDatabaseService',
             useClass: InvoiceDatabaseService,
+        },
+        {
+            provide: 'ContractDatabaseService',
+            useClass: ContractDatabaseService,
         },
     ],
 })

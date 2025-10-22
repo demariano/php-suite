@@ -115,6 +115,7 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
             existingRecord.invoiceAmount = command.invoiceDto.invoiceAmount;
             existingRecord.taxAmount = command.invoiceDto.taxAmount;
             existingRecord.invoiceDetails = command.invoiceDto.invoiceDetails;
+            existingRecord.contractSales = command.invoiceDto.contractSales;
             // Clear changeReason for admin users since changes are applied directly
             existingRecord.changeReason = undefined;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
@@ -152,6 +153,7 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
                 invoiceAmount: command.invoiceDto.invoiceAmount,
                 taxAmount: command.invoiceDto.taxAmount,
                 invoiceDetails: command.invoiceDto.invoiceDetails,
+                contractSales: command.invoiceDto.contractSales,
             };
         }
 

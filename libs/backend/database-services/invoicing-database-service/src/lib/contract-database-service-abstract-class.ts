@@ -15,6 +15,13 @@ export abstract class ContractDatabaseServiceAbstract {
 
     abstract findRecordByContractNo(contractNo: string): Promise<ContractDto | null>;
 
+    abstract findRecordContainingContractNo(
+        limit: number,
+        contractNo: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ContractDto>>;
+
     abstract updateRecord(contractData: ContractDto): Promise<ContractDto>;
 
     abstract findRecordsByStatusPagination(

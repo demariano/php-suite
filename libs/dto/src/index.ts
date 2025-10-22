@@ -46,6 +46,7 @@ export * from './lib/product/product.class/create.product.class.dto';
 export * from './lib/product/product.class/product.class.dto';
 export * from './lib/product/product.deal/create.product.deal.dto';
 export * from './lib/product/product.deal/product.deal.dto';
+export * from './lib/product/product.deal/product.deal.qty.dto';
 export * from './lib/product/product.price.type/create.product.price.type.dto';
 export * from './lib/product/product.price.type/product.price.type.dto';
 export * from './lib/product/product.unit/create.product.unit.dto';

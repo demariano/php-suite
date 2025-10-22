@@ -2,13 +2,14 @@
 
 import { AreaDto, CustomerClassificationDto, CustomerDto, CustomerTypeDto, StatusEnum, TermsDto, TownDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { useNumberFormatting } from '../../../components/NumberFormatting';
 import {
-    AreaSearchableSelectionModal,
-    CustomerClassificationSearchableSelectionModal,
-    CustomerTypeSearchableSelectionModal,
-    ProductSearchableSelectionModal,
-    TermsSearchableSelectionModal,
-    TownSearchableSelectionModal
+  AreaSearchableSelectionModal,
+  CustomerClassificationSearchableSelectionModal,
+  CustomerTypeSearchableSelectionModal,
+  ProductSearchableSelectionModal,
+  TermsSearchableSelectionModal,
+  TownSearchableSelectionModal
 } from '../../../search-modals';
 import SelectionField from './SelectionField';
 
@@ -83,6 +84,11 @@ export default function CustomerForm({
     tinNumber: '',
     changeReason: ''
   });
+
+  // Number formatting hooks for monetary fields
+  const balanceFormatting = useNumberFormatting(formData.balance);
+  const creditLimitFormatting = useNumberFormatting(formData.creditLimit);
+  const customerCreditFormatting = useNumberFormatting(formData.customerCredit);
 
   // Set initial values when editing (only when user hasn't made selections)
   useEffect(() => {
@@ -272,24 +278,24 @@ export default function CustomerForm({
   };
 
   const handleTownSelect = (town: TownDto) => {
-    setSelectedTown({ id: town.townId, name: town.townName });
+    setSelectedTown({ id: town.townId, name: town.townName || '' });
     setUserHasMadeSelections(true);
   };
 
   const handleAreaSelect = (area: AreaDto) => {
-    setSelectedArea({ id: area.areaId, name: area.areaName });
+    setSelectedArea({ id: area.areaId, name: area.areaName || '' });
     // Clear town selection when area changes
     setSelectedTown(null);
     setUserHasMadeSelections(true);
   };
 
   const handleClassificationSelect = (classification: CustomerClassificationDto) => {
-    setSelectedClassification({ id: classification.customerClassificationId, name: classification.customerClassificationName });
+    setSelectedClassification({ id: classification.customerClassificationId, name: classification.customerClassificationName || '' });
     setUserHasMadeSelections(true);
   };
 
   const handleTypeSelect = (customerType: CustomerTypeDto) => {
-    setSelectedType({ id: customerType.customerTypeId, name: customerType.customerTypeName });
+    setSelectedType({ id: customerType.customerTypeId, name: customerType.customerTypeName || '' });
     setUserHasMadeSelections(true);
   };
 
@@ -343,10 +349,10 @@ export default function CustomerForm({
     setShowDealsModal(true);
   };
 
-  const handleDealsSelect = (product: any) => {
+  const handleDealsSelect = (product: { productId: string; productName?: string; productDeals?: { productDealId: string; productDealName?: string; additionalQty?: number; minQty?: number }[]; selectedDealId?: string }) => {
     // Find the selected deal - use selectedDealId if provided, otherwise use first deal
     const selectedDeal = product.selectedDealId 
-      ? product.productDeals?.find((d: any) => d.productDealId === product.selectedDealId)
+      ? product.productDeals?.find((d: { productDealId: string }) => d.productDealId === product.selectedDealId)
       : (product.productDeals && product.productDeals.length > 0 ? product.productDeals[0] : null);
     
     // Check if this specific product deal combination is already added
@@ -454,8 +460,8 @@ export default function CustomerForm({
         </div>
       )}
       
-      {/* Pending approval or deletion warning */}
-      {!isCreateMode && selectedCustomer && 
+      {/* Pending approval or deletion warning - hide on approval tab since changeReason is already shown */}
+      {!isCreateMode && selectedCustomer && activeTab !== 'approval' &&
        (selectedCustomer.status === StatusEnum.FOR_APPROVAL || selectedCustomer.status === StatusEnum.NEW_RECORD || selectedCustomer.status === StatusEnum.FOR_DELETION) && (
         <div style={{
           backgroundColor: '#fef3c7',
@@ -813,13 +819,19 @@ export default function CustomerForm({
             Balance
           </label>
           <input
-            type="number"
+            type="text"
             name="balance"
-            value={formData.balance}
-            onChange={(e) => setFormData(prev => ({ ...prev, balance: e.target.value }))}
+            value={balanceFormatting.value}
+            onChange={(e) => {
+              balanceFormatting.onChange(e);
+              setFormData(prev => ({ ...prev, balance: e.target.value }));
+            }}
+            onFocus={balanceFormatting.onFocus}
+            onBlur={(e) => {
+              balanceFormatting.onBlur(e);
+              setFormData(prev => ({ ...prev, balance: balanceFormatting.numericValue.toString() }));
+            }}
             placeholder={isCreateMode ? 'Enter balance' : ''}
-            min="0"
-            step="0.01"
             disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
             style={{
               width: '100%',
@@ -847,13 +859,19 @@ export default function CustomerForm({
             Credit Limit
           </label>
           <input
-            type="number"
+            type="text"
             name="creditLimit"
-            value={formData.creditLimit}
-            onChange={(e) => setFormData(prev => ({ ...prev, creditLimit: e.target.value }))}
+            value={creditLimitFormatting.value}
+            onChange={(e) => {
+              creditLimitFormatting.onChange(e);
+              setFormData(prev => ({ ...prev, creditLimit: e.target.value }));
+            }}
+            onFocus={creditLimitFormatting.onFocus}
+            onBlur={(e) => {
+              creditLimitFormatting.onBlur(e);
+              setFormData(prev => ({ ...prev, creditLimit: creditLimitFormatting.numericValue.toString() }));
+            }}
             placeholder={isCreateMode ? 'Enter credit limit' : ''}
-            min="0"
-            step="0.01"
             disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
             style={{
               width: '100%',
@@ -881,13 +899,19 @@ export default function CustomerForm({
             Customer Credit
           </label>
           <input
-            type="number"
+            type="text"
             name="customerCredit"
-            value={formData.customerCredit}
-            onChange={(e) => setFormData(prev => ({ ...prev, customerCredit: e.target.value }))}
+            value={customerCreditFormatting.value}
+            onChange={(e) => {
+              customerCreditFormatting.onChange(e);
+              setFormData(prev => ({ ...prev, customerCredit: e.target.value }));
+            }}
+            onFocus={customerCreditFormatting.onFocus}
+            onBlur={(e) => {
+              customerCreditFormatting.onBlur(e);
+              setFormData(prev => ({ ...prev, customerCredit: customerCreditFormatting.numericValue.toString() }));
+            }}
             placeholder={isCreateMode ? 'Enter customer credit' : ''}
-            min="0"
-            step="0.01"
             disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
             style={{
               width: '100%',
@@ -1068,7 +1092,7 @@ export default function CustomerForm({
                 border: '2px dashed #d1d5db'
               }}>
                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>📋</div>
-                <p>No customer terms added yet. Click "Add Terms" to get started.</p>
+                <p>No customer terms added yet. Click &quot;Add Terms&quot; to get started.</p>
               </div>
             ) : (
               <div style={{ 
@@ -1216,7 +1240,7 @@ export default function CustomerForm({
                 border: '2px dashed #d1d5db'
               }}>
                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎯</div>
-                <p>No customer deals added yet. Click "Add Deal" to get started.</p>
+                <p>No customer deals added yet. Click &quot;Add Deal&quot; to get started.</p>
               </div>
             ) : (
               <div style={{ 
@@ -1338,7 +1362,12 @@ export default function CustomerForm({
         alignItems: 'center',
         marginTop: '24px'
       }}>
-        {!isCreateMode && (
+        {/* Hide all buttons on approval tab - let modal handle buttons */}
+        {activeTab === 'approval' ? (
+          <div></div>
+        ) : (
+          <>
+            {!isCreateMode && (
           <button
             type="button"
             onClick={(e) => {
@@ -1431,6 +1460,8 @@ export default function CustomerForm({
             {isCreateMode ? 'Create Customer' : 'Save Changes'}
           </button>
         </div>
+          </>
+        )}
        </div>
      </form>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { SalesTypeDto, StatusEnum } from '@data-access/index';
+import NumberInput from '../../../components/NumberInput';
 
 interface SalesTypeFormProps {
   isCreateMode: boolean;
@@ -335,13 +336,14 @@ export default function SalesTypeForm({
             }}>
               Default Discount (%)
             </label>
-            <input
-              type="number"
-              name="defaultDiscount"
-              step="0.01"
-              min="0"
-              max="100"
-              defaultValue={isCreateMode ? '0' : selectedSalesType?.defaultDiscount || '0'}
+            <NumberInput
+              value={isCreateMode ? 0 : selectedSalesType?.defaultDiscount || 0}
+              onChange={(value: number) => {
+                // Update the form data for submission
+                const input = document.querySelector('input[name="defaultDiscount"]') as HTMLInputElement;
+                if (input) input.value = value.toString();
+              }}
+              placeholder="Enter discount percentage"
               disabled={!isCreateMode && selectedSalesType?.status !== StatusEnum.ACTIVE}
               style={{
                 width: '100%',
@@ -354,16 +356,6 @@ export default function SalesTypeForm({
                 color: (!isCreateMode && selectedSalesType?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
                 transition: 'all 0.2s ease',
                 cursor: (!isCreateMode && selectedSalesType?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-              }}
-              onFocus={(e) => {
-                if (isCreateMode || selectedSalesType?.status === StatusEnum.ACTIVE) {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
               }}
             />
           </div>
@@ -378,13 +370,14 @@ export default function SalesTypeForm({
             }}>
               Default Tax (%)
             </label>
-            <input
-              type="number"
-              name="defaultTax"
-              step="0.01"
-              min="0"
-              max="100"
-              defaultValue={isCreateMode ? '0' : selectedSalesType?.defaultTax || '0'}
+            <NumberInput
+              value={isCreateMode ? 0 : selectedSalesType?.defaultTax || 0}
+              onChange={(value: number) => {
+                // Update the form data for submission
+                const input = document.querySelector('input[name="defaultTax"]') as HTMLInputElement;
+                if (input) input.value = value.toString();
+              }}
+              placeholder="Enter tax percentage"
               disabled={!isCreateMode && selectedSalesType?.status !== StatusEnum.ACTIVE}
               style={{
                 width: '100%',
@@ -397,16 +390,6 @@ export default function SalesTypeForm({
                 color: (!isCreateMode && selectedSalesType?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
                 transition: 'all 0.2s ease',
                 cursor: (!isCreateMode && selectedSalesType?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-              }}
-              onFocus={(e) => {
-                if (isCreateMode || selectedSalesType?.status === StatusEnum.ACTIVE) {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
               }}
             />
           </div>

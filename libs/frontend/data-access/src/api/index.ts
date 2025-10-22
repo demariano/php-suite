@@ -1,5 +1,6 @@
 export { default as AreaApi } from './area.api';
 export { default as AuthApi } from './auth';
+export { default as ContractApi } from './contract.api';
 export { default as CustomerClassificationApi } from './customer-classification.api';
 export { default as CustomerApi } from './customer-main.api';
 export { default as CustomerTypeApi } from './customer-type.api';

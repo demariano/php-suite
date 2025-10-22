@@ -42,6 +42,7 @@ export const InvoicingSchema = {
             termsName: { type: String },
             productPriceTypeId: { type: String },
             productPriceTypeName: { type: String },
+            contractSales: { type: Boolean, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT', 'DRAFT'],
@@ -132,6 +133,8 @@ export const InvoicingSchema = {
             amountPaid: { type: Number },
             productDealId: { type: String },
             productDealName: { type: String },
+            productDealQty: { type: Object },
+            invoicedAmount: { type: Number },
             deliveryStatus: { type: String, enum: ['PENDING', 'DELIVERED'], required: false },
             paymentStatus: { type: String, enum: ['PENDING', 'PARTIAL', 'PAID'], required: false },
             deliveredAmount: { type: Number },

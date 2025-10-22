@@ -2,6 +2,7 @@
 
 import { ProductDto, StatusEnum } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import NumberInput from '../../../components/NumberInput';
 import ProductCategorySearchableSelectionModal from '../../../search-modals/ProductCategorySearchableSelectionModal';
 import ProductClassSearchableSelectionModal from '../../../search-modals/ProductClassSearchableSelectionModal';
 import ProductDealSearchableSelectionModal from '../../../search-modals/ProductDealSearchableSelectionModal';
@@ -190,13 +191,13 @@ export default function ProductForm({
     }
   };
 
-  const handleCategorySelect = (category: any) => {
-    setSelectedCategory({ id: category.productCategoryId, name: category.productCategoryName });
+  const handleCategorySelect = (category: { productCategoryId: string; productCategoryName?: string }) => {
+    setSelectedCategory({ id: category.productCategoryId, name: category.productCategoryName || '' });
     setUserHasMadeSelections(true);
   };
 
-  const handleClassSelect = (productClass: any) => {
-    setSelectedClass({ id: productClass.productClassId, name: productClass.productClassName });
+  const handleClassSelect = (productClass: { productClassId: string; productClassName?: string }) => {
+    setSelectedClass({ id: productClass.productClassId, name: productClass.productClassName || '' });
     setUserHasMadeSelections(true);
   };
 
@@ -213,7 +214,7 @@ export default function ProductForm({
     setShowDealModal(true);
   };
 
-  const handleDealSelect = (deal: any) => {
+  const handleDealSelect = (deal: { productDealId: string; productDealName?: string; additionalQty?: number; minQty?: number }) => {
     // Check if deal is already added
     const existingDeal = productDeals.find(d => d.productDealId === deal.productDealId);
     if (existingDeal) {
@@ -741,7 +742,7 @@ export default function ProductForm({
                 border: '2px dashed #d1d5db'
               }}>
                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎯</div>
-                <p>No product deals added yet. Click "Add Deal" to get started.</p>
+                <p>No product deals added yet. Click &quot;Add Deal&quot; to get started.</p>
               </div>
             ) : (
               <div style={{ 
@@ -905,7 +906,7 @@ export default function ProductForm({
                 border: '2px dashed #d1d5db'
               }}>
                 <div style={{ fontSize: '24px', marginBottom: '8px' }}>💰</div>
-                <p>No unit prices added yet. Click "Add Unit Price" to get started.</p>
+                <p>No unit prices added yet. Click &quot;Add Unit Price&quot; to get started.</p>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -985,12 +986,10 @@ export default function ProductForm({
                         }}>
                           Cost
                         </label>
-                        <input
-                          type="number"
+                        <NumberInput
                           value={unitPrice.cost || 0}
-                          onChange={(e) => updateProductUnitPrice(index, 'cost', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
+                          onChange={(value: number) => updateProductUnitPrice(index, 'cost', value)}
+                          placeholder="Enter cost"
                           style={{
                             width: '100%',
                             padding: '8px 12px',
@@ -1012,12 +1011,10 @@ export default function ProductForm({
                         }}>
                           Price
                         </label>
-                        <input
-                          type="number"
+                        <NumberInput
                           value={unitPrice.price || 0}
-                          onChange={(e) => updateProductUnitPrice(index, 'price', parseFloat(e.target.value) || 0)}
-                          min="0"
-                          step="0.01"
+                          onChange={(value: number) => updateProductUnitPrice(index, 'price', value)}
+                          placeholder="Enter price"
                           style={{
                             width: '100%',
                             padding: '8px 12px',

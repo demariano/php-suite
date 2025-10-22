@@ -95,6 +95,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
         paymentStatus: invoice.paymentStatus,
         printStatus: invoice.printStatus,
         invoiceDetails: invoice.invoiceDetails,
+        contractSales: invoice.contractSales,
         changeReason: invoice.changeReason
       }, userRole);
       

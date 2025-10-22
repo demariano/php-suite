@@ -2,8 +2,8 @@
 
 import { AreaDto, StatusEnum, TerritoryManagerDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import SelectionField from '../../../products/product/components/SelectionField';
 import TerritoryManagerSearchableSelectionModal from '../../../search-modals/TerritoryManagerSearchableSelectionModal';
+import SelectionField from '../../customer/components/SelectionField';
 
 interface AreaFormProps {
   isCreateMode: boolean;

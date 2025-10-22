@@ -1,4 +1,12 @@
-import { ContractDto, CreateContractDto, DeliveryStatusEnum, PageDto, PaymentStatusEnum } from '@dto';
+import {
+    ContractDto,
+    CreateContractDto,
+    DeliveryStatusEnum,
+    PageDto,
+    PaymentStatusEnum,
+    ProductDealQtyDto,
+    StatusEnum,
+} from '@dto';
 import {
     ContractDataType,
     createDynamoDbOptionWithPKSKIndex,
@@ -48,6 +56,7 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             changeReason: contractDto.changeReason,
             activityLogs: contractDto.activityLogs,
             forApprovalVersion: contractDto.forApprovalVersion,
+            productDealQty: contractDto.productDealQty,
             GSI1PK: `CONTRACT`,
             GSI1SK: contractDto.contractNo,
             GSI2PK: `CONTRACT#${contractDto.status}`,
@@ -154,6 +163,45 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         }
 
         return await this.convertToDto(record);
+    }
+
+    async findRecordContainingContractNo(
+        limit: number,
+        contractNo: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ContractDto>> {
+        limit = Number(limit);
+
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.contractTable.find(
+            {
+                GSI1PK: `CONTRACT`,
+                GSI1SK: {
+                    begins: contractNo,
+                },
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async getDatabaseRecordById(recordId: string): Promise<ContractDataType | undefined> {
@@ -265,6 +313,10 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         dto.deliveredAmount = record.deliveredAmount ? record.deliveredAmount : 0;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.invoicedAmount = record.invoicedAmount ? record.invoicedAmount : 0;
+        dto.status = record.status as StatusEnum;
+        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.productDealQty = record.productDealQty as ProductDealQtyDto;
         return dto;
     }
 
@@ -298,7 +350,10 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             deliveredAmount: dto.deliveredAmount,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
-            status: dto.status,
+            invoicedAmount: dto.invoicedAmount,
+            changeReason: dto.changeReason,
+            status: dto.status as StatusEnum,
+            productDealQty: dto.productDealQty,
             GSI1PK: `CONTRACT`,
             GSI1SK: dto.contractNo,
             GSI2PK: `CONTRACT#${dto.status}`,

@@ -85,4 +85,7 @@ export class InvoiceDto {
 
     @ApiProperty()
     changeReason?: string;
+
+    @ApiProperty()
+    contractSales?: boolean;
 }

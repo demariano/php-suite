@@ -6,4 +6,6 @@ export type Menu = {
     icon?: React.ElementType<IIcon>;
     route?: string;
     badge?: number;
+    subItems?: Menu[];
+    isExpanded?: boolean;
 };

@@ -644,7 +644,7 @@ export default function ProductModal({
               
               <div className="flex justify-between mt-6">
                 {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
-                {isAdminUser && (selectedProduct?.status === StatusEnum.FOR_APPROVAL || selectedProduct?.status === StatusEnum.NEW_RECORD || selectedProduct?.status === StatusEnum.FOR_DELETION) && (
+                {isAdminUser && (selectedProduct?.status === StatusEnum.FOR_APPROVAL || selectedProduct?.status === StatusEnum.NEW_RECORD || selectedProduct?.status === StatusEnum.FOR_DELETION) ? (
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <button
                       type="button"
@@ -705,9 +705,11 @@ export default function ProductModal({
                       {isLoading ? 'Processing...' : 'Approve Changes'}
                     </button>
                   </div>
+                ) : (
+                  <div></div>
                 )}
                 
-                {/* Close button - moved to right side */}
+                {/* Close button - always visible on the right */}
                 <div>
                   <button
                     type="button"

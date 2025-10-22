@@ -55,6 +55,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             paymentStatus: dto.paymentStatus as PaymentStatusEnum.PENDING,
             invoiceDetails: dto.invoiceDetails,
             activityLogs: dto.activityLogs,
+            contractSales: dto.contractSales,
             forApprovalVersion: dto.forApprovalVersion,
         };
 
@@ -281,6 +282,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.contractSales = record.contractSales ? record.contractSales : false;
         return dto;
     }
 
@@ -322,6 +324,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             printStatus: dto.printStatus as PrintStatusEnum.PENDING,
             paymentStatus: dto.paymentStatus as PaymentStatusEnum.PENDING,
             invoiceDetails: dto.invoiceDetails,
+            contractSales: dto.contractSales,
             GSI1PK: `INVOICE`,
             GSI1SK: dto.invoiceId,
             GSI2PK: `INVOICE#${dto.status}`,

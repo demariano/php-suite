@@ -1,6 +1,6 @@
 'use client';
 
-import { InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, StockApi, StockDto, useSessionStore } from '@data-access/index';
+import { InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, ProductDealQtyDto, StockApi, StockDto, useSessionStore } from '@data-access/index';
 import { CustomerProductDealDto } from '@data-access/types/customer-product-deal.types';
 import { useState } from 'react';
 import StockSearchableSelectionModal from '../../../../../search-modals/StockSearchableSelectionModal';
@@ -10,6 +10,8 @@ interface InvoiceDetailsTabProps {
   onFormDataChange: (updatedData: Partial<InvoiceDto>) => void;
   isCreateMode: boolean;
   customerDeals?: CustomerProductDealDto[];
+  contractProductDealQty?: ProductDealQtyDto | null;
+  contractSales?: boolean;
   isReadOnly?: boolean;
 }
 
@@ -31,6 +33,8 @@ export default function InvoiceDetailsTab({
   onFormDataChange,
   isCreateMode,
   customerDeals = [],
+  contractProductDealQty,
+  contractSales = false,
   isReadOnly = false
 }: InvoiceDetailsTabProps) {
   const { setFlashNotification } = useSessionStore();
@@ -52,6 +56,17 @@ export default function InvoiceDetailsTab({
       });
       return;
     }
+    
+    // Check if contract sales is enabled but no contract is selected
+    if (contractSales && !formData.contractId) {
+      setFlashNotification({ 
+        title: 'Contract Required', 
+        message: 'Please select a contract before adding items when using contract sales.', 
+        alertType: 'warning' 
+      });
+      return;
+    }
+    
     setStockSelection(prev => ({ ...prev, showStockModal: true }));
   };
 
@@ -117,9 +132,19 @@ export default function InvoiceDetailsTab({
 
     // Calculate total quantity needed (including free items from deal)
     let totalQuantityNeeded = stockSelection.quantity;
-    if (stockSelection.selectedProductDeal && 
+    let freeItemQuantity = 0;
+    
+    if (contractSales && contractProductDealQty) {
+      // Use contract's productDealQty for all products
+      if (stockSelection.quantity >= (contractProductDealQty.minQty || 0)) {
+        freeItemQuantity = contractProductDealQty.additionalQty || 0;
+        totalQuantityNeeded += freeItemQuantity;
+      }
+    } else if (stockSelection.selectedProductDeal && 
         stockSelection.quantity >= (stockSelection.selectedProductDeal.minQty || 0)) {
-      totalQuantityNeeded += stockSelection.selectedProductDeal.additionalQty || 0;
+      // Use customer product deal
+      freeItemQuantity = stockSelection.selectedProductDeal.additionalQty || 0;
+      totalQuantityNeeded += freeItemQuantity;
     }
 
     // Fetch current stock to validate availability
@@ -195,8 +220,7 @@ export default function InvoiceDetailsTab({
     updatedDetails.push(newDetail);
 
     // Check if we should add a free item
-    if (stockSelection.selectedProductDeal && 
-        stockSelection.quantity >= (stockSelection.selectedProductDeal.minQty || 0)) {
+    if (freeItemQuantity > 0) {
       // Add free item
       const freeItem: InvoiceDetailsDto = {
         invoiceDetailId: `temp_${Date.now()}_free`,
@@ -208,9 +232,9 @@ export default function InvoiceDetailsTab({
         stockTypeName: stockSelection.selectedStock.stockTypeName,
         lotNo: stockSelection.selectedStock.lotNo,
         stockId: stockSelection.selectedStock.stockId,
-        qty: stockSelection.selectedProductDeal.additionalQty || 0,
-        productDealId: stockSelection.selectedProductDeal.productDealId,
-        productDealName: stockSelection.selectedProductDeal.productDealName,
+        qty: freeItemQuantity,
+        productDealId: contractSales ? formData.contractId : stockSelection.selectedProductDeal?.productDealId,
+        productDealName: contractSales ? formData.contractName : stockSelection.selectedProductDeal?.productDealName,
         price: 0,
         cost: 0,
         amount: 0,
@@ -441,43 +465,64 @@ export default function InvoiceDetailsTab({
               }}>
                 Product Deal
               </label>
-              <select
-                value={stockSelection.selectedProductDeal?.productDealId || ''}
-                onChange={(e) => {
-                  const dealId = e.target.value;
-                  const filteredDeals = stockSelection.selectedStock 
-                    ? customerDeals.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
-                    : [];
-                  const selectedDeal = filteredDeals.find(deal => deal.productDealId === dealId);
-                  setStockSelection(prev => ({
-                    ...prev,
-                    selectedProductDeal: selectedDeal || null
-                  }));
-                }}
-                disabled={!stockSelection.selectedStock}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: !stockSelection.selectedStock ? '#f9fafb' : 'white',
-                  color: !stockSelection.selectedStock ? '#6b7280' : '#1f2937',
-                  cursor: !stockSelection.selectedStock ? 'not-allowed' : 'pointer'
-                }}
-              >
-                <option value="">
-                  {!stockSelection.selectedStock ? 'Select stock item first' : 'Select product deal'}
-                </option>
-                {stockSelection.selectedStock && customerDeals
-                  .filter(deal => deal.productId === stockSelection.selectedStock?.productId)
-                  .map((deal) => (
-                    <option key={deal.productDealId} value={deal.productDealId}>
-                      {deal.productDealName} (Min: {deal.minQty || 0}, Free: {deal.additionalQty || 0})
-                    </option>
-                  ))}
-              </select>
+              {contractSales ? (
+                <input
+                  type="text"
+                  value={contractProductDealQty ? 
+                    `Contract Deal (Min: ${contractProductDealQty.minQty || 0}, Free: ${contractProductDealQty.additionalQty || 0})` : 
+                    'No contract deal available'
+                  }
+                  readOnly
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    backgroundColor: '#f9fafb',
+                    color: '#6b7280',
+                    cursor: 'not-allowed'
+                  }}
+                />
+              ) : (
+                <select
+                  value={stockSelection.selectedProductDeal?.productDealId || ''}
+                  onChange={(e) => {
+                    const dealId = e.target.value;
+                    const filteredDeals = stockSelection.selectedStock 
+                      ? customerDeals.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                      : [];
+                    const selectedDeal = filteredDeals.find(deal => deal.productDealId === dealId);
+                    setStockSelection(prev => ({
+                      ...prev,
+                      selectedProductDeal: selectedDeal || null
+                    }));
+                  }}
+                  disabled={!stockSelection.selectedStock}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    backgroundColor: !stockSelection.selectedStock ? '#f9fafb' : 'white',
+                    color: !stockSelection.selectedStock ? '#6b7280' : '#1f2937',
+                    cursor: !stockSelection.selectedStock ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <option value="">
+                    {!stockSelection.selectedStock ? 'Select stock item first' : 'Select product deal'}
+                  </option>
+                  {stockSelection.selectedStock && customerDeals
+                    .filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                    .map((deal) => (
+                      <option key={deal.productDealId} value={deal.productDealId}>
+                        {deal.productDealName} (Min: {deal.minQty || 0}, Free: {deal.additionalQty || 0})
+                      </option>
+                    ))}
+                </select>
+              )}
             </div>
 
             <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { CustomerProductDealDto, InvoiceDetailTypeEnum, InvoiceDto, PrintStatusEnum, StatusEnum, useSessionStore } from '@data-access/index';
+import { CustomerProductDealDto, InvoiceDetailTypeEnum, InvoiceDto, PrintStatusEnum, ProductDealQtyDto, StatusEnum, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import InvoiceDetailsTab from './InvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
@@ -65,6 +65,9 @@ export default function InvoiceForm({
 
   // State for customer deals
   const [customerDeals, setCustomerDeals] = useState<CustomerProductDealDto[]>([]);
+  
+  // State for contract product deal quantity
+  const [contractProductDealQty, setContractProductDealQty] = useState<ProductDealQtyDto | null>(null);
   
   // Toast notification hook
   const { setFlashNotification } = useSessionStore();
@@ -179,6 +182,10 @@ export default function InvoiceForm({
 
   const handleCustomerDealsChange = (deals: CustomerProductDealDto[]) => {
     setCustomerDeals(deals);
+  };
+
+  const handleContractProductDealQtyChange = (productDealQty: ProductDealQtyDto | null) => {
+    setContractProductDealQty(productDealQty);
   };
 
   return (
@@ -376,6 +383,7 @@ export default function InvoiceForm({
               isCreateMode={isCreateMode}
               isAdminUser={isAdminUser}
               onCustomerDealsChange={handleCustomerDealsChange}
+              onContractProductDealQtyChange={handleContractProductDealQtyChange}
               isReadOnly={!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE}
             />
             <InvoiceDetailsTab
@@ -383,6 +391,8 @@ export default function InvoiceForm({
               onFormDataChange={handleFormDataChange}
               isCreateMode={isCreateMode}
               customerDeals={customerDeals}
+              contractProductDealQty={contractProductDealQty}
+              contractSales={formData.contractSales}
               isReadOnly={!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE}
             />
           </div>

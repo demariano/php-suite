@@ -1,6 +1,6 @@
 'use client';
 
-import { ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { CategoryHeader, CategoryModal, CategoryTable, DeleteConfirmationModal } from './components';
 

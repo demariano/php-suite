@@ -1,14 +1,10 @@
 'use client';
 
 import {
-  Customers,
   Dashboard,
   File,
   Groups,
-  Inventory,
-  Products,
-  Reports,
-  Settings
+  Reporting
 } from '@components-web/icons';
 import { Menu } from '@components-web/types/menu';
 import { WithRequiredProperty } from '@components-web/types/utility';
@@ -27,7 +23,7 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
           label: "Dashboard", 
           route: "/dashboard", 
           icon: Dashboard,
-          onClick: (route) => onNavigate?.(route)
+          onClick: (route: string) => onNavigate?.(route)
         }
       ]
     },
@@ -35,42 +31,49 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
       sectionTitle: "Products",
       menuItems: [
         { 
-          label: "Producs", 
-          route: "/products", 
-          icon: Products,
-          onClick: (route) => onNavigate?.(route),
+          label: "Products", 
+          route: "/products/product", 
+          icon: File,
+          onClick: (route: string) => onNavigate?.(route),
           subItems: [
-            {
-              label: "Product",
-              route: "/products",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Products", 
+              route: "/products/product", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Categories",
-              route: "/products/categories",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Categories", 
+              route: "/products/categories", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Classes",
-              route: "/products/classes",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Classes", 
+              route: "/products/classes", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Units",
-              route: "/products/units",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Units", 
+              route: "/products/units", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Price Types",
-              route: "/products/price-types",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Price Types", 
+              route: "/products/price-types", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Deals",
-              route: "/products/deals",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Deals", 
+              route: "/products/deals", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             }
-          ]
+          ],
+          isExpanded: false
         }
       ]
     },
@@ -79,41 +82,48 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
       menuItems: [
         { 
           label: "Customers", 
-          route: "/customers", 
-          icon: Customers,
-          onClick: (route) => onNavigate?.(route),
+          route: "/customers/customer", 
+          icon: Groups,
+          onClick: (route: string) => onNavigate?.(route),
           subItems: [
-            {
-              label: "Customers",
-              route: "/customers",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Customers", 
+              route: "/customers/customer", 
+              icon: Groups,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Classifications",
-              route: "/customers/classifications",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Areas", 
+              route: "/customers/areas", 
+              icon: Groups,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Types",
-              route: "/customers/types",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Towns", 
+              route: "/customers/towns", 
+              icon: Groups,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Terms",
-              route: "/customers/terms",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Classifications", 
+              route: "/customers/classifications", 
+              icon: Groups,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Areas",
-              route: "/customers/areas",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Types", 
+              route: "/customers/types", 
+              icon: Groups,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Towns",
-              route: "/customers/towns",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Terms", 
+              route: "/customers/terms", 
+              icon: Groups,
+              onClick: (route: string) => onNavigate?.(route)
             }
-          ]
+          ],
+          isExpanded: false
         }
       ]
     },
@@ -122,21 +132,30 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
       menuItems: [
         { 
           label: "Inventory", 
-          route: "/inventory", 
-          icon: Inventory,
-          onClick: (route) => onNavigate?.(route),
+          route: "/inventory/stock", 
+          icon: File,
+          onClick: (route: string) => onNavigate?.(route),
           subItems: [
-            {
-              label: "Stock Levels",
-              route: "/inventory/stock",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Inventory", 
+              route: "/inventory/stock", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Stock Types",
-              route: "/inventory/stock-types",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Stock", 
+              route: "/inventory/stock", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Stock Types", 
+              route: "/inventory/stock-types", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             }
-          ]
+          ],
+          isExpanded: false
         }
       ]
     },
@@ -145,26 +164,36 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
       menuItems: [
         { 
           label: "Invoicing", 
-          route: "/invoicing", 
+          route: "/invoicing/invoice", 
           icon: File,
-          onClick: (route) => onNavigate?.(route),
+          onClick: (route: string) => onNavigate?.(route),
           subItems: [
-            {
-              label: "Invoice",
-              route: "/invoicing/invoice",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Invoices", 
+              route: "/invoicing/invoice", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Sales Type",
-              route: "/invoicing/sales-type",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Contracts", 
+              route: "/invoicing/contract", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             },
-            {
-              label: "Territory Manager",
-              route: "/invoicing/territory-manager",
-              onClick: (route) => onNavigate?.(route)
+            { 
+              label: "Sales Types", 
+              route: "/invoicing/sales-type", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Territory Managers", 
+              route: "/invoicing/territory-manager", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             }
-          ]
+          ],
+          isExpanded: false
         }
       ]
     },
@@ -174,8 +203,8 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
         { 
           label: "Reports", 
           route: "/reports", 
-          icon: Reports,
-          onClick: (route) => onNavigate?.(route)
+          icon: Reporting,
+          onClick: (route: string) => onNavigate?.(route)
         }
       ]
     },
@@ -186,13 +215,13 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
           label: "Users", 
           route: "/users", 
           icon: Groups,
-          onClick: (route) => onNavigate?.(route)
+          onClick: (route: string) => onNavigate?.(route)
         },
         { 
           label: "Settings", 
           route: "/settings", 
-          icon: Settings,
-          onClick: (route) => onNavigate?.(route)
+          icon: File,
+          onClick: (route: string) => onNavigate?.(route)
         }
       ]
     }
@@ -208,9 +237,21 @@ export const useNavigationState = () => {
     if (route !== '/dashboard' && pathname.startsWith(route + '/')) return true;
     return false;
   };
+
+  const isParentActive = (subItems?: Menu[]) => {
+    if (!subItems) return false;
+    return subItems.some(item => isRouteActive(item.route || ''));
+  };
+
+  const shouldAutoExpand = (route: string, subItems?: Menu[]) => {
+    if (!subItems) return false;
+    return isRouteActive(route) || isParentActive(subItems);
+  };
   
   return {
     currentPath: pathname,
-    isRouteActive
+    isRouteActive,
+    isParentActive,
+    shouldAutoExpand
   };
 };

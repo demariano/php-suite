@@ -2,6 +2,7 @@ import { ApiProperty } from '@nestjs/swagger';
 import { DeliveryStatusEnum } from '../../enums/delivery.status.enum';
 import { PaymentStatusEnum } from '../../enums/payment.status.enum';
 import { StatusEnum } from '../../enums/status.enum';
+import { ProductDealQtyDto } from '../../product/product.deal/product.deal.qty.dto';
 
 export class ContractDto {
     @ApiProperty()
@@ -61,4 +62,10 @@ export class ContractDto {
 
     @ApiProperty({ enum: StatusEnum })
     status?: StatusEnum;
+
+    @ApiProperty()
+    invoicedAmount?: number;
+
+    @ApiProperty()
+    productDealQty?: ProductDealQtyDto;
 }

@@ -1,11 +1,14 @@
 'use client';
 
-import { AreaApi, CustomerApi, CustomerDto, CustomerProductDealDto, InvoiceDto, PaymentStatusEnum, PrintStatusEnum, ProductPriceTypeDto, SalesTypeDto, StatusEnum, StockApi, TermsDto, useSessionStore } from '@data-access/index';
+import { AreaApi, ContractApi, ContractDto, CustomerApi, CustomerDto, CustomerProductDealDto, InvoiceDto, PaymentStatusEnum, PrintStatusEnum, ProductDealQtyDto, ProductPriceTypeDto, SalesTypeApi, SalesTypeDto, StatusEnum, StockApi, TermsDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import DatePicker from '../../../../../components/DatePicker';
+import ContractSearchableSelectionModal from '../../../../../search-modals/ContractSearchableSelectionModal';
 import CustomerSearchableSelectionModal from '../../../../../search-modals/CustomerSearchableSelectionModal';
 import CustomerTermsSelectionModal from '../../../../../search-modals/CustomerTermsSelectionModal';
 import ProductPriceTypeSearchableSelectionModal from '../../../../../search-modals/ProductPriceTypeSearchableSelectionModal';
 import SalesTypeSearchableSelectionModal from '../../../../../search-modals/SalesTypeSearchableSelectionModal';
+import ContractChangeConfirmationModal from './ContractChangeConfirmationModal';
 import CustomerChangeConfirmationModal from './CustomerChangeConfirmationModal';
 
 interface RecordDetailsTabProps {
@@ -14,6 +17,7 @@ interface RecordDetailsTabProps {
   isCreateMode: boolean;
   isAdminUser: boolean;
   onCustomerDealsChange?: (deals: CustomerProductDealDto[]) => void;
+  onContractProductDealQtyChange?: (productDealQty: ProductDealQtyDto | null) => void;
   isReadOnly?: boolean;
 }
 
@@ -23,6 +27,7 @@ export default function RecordDetailsTab({
   isCreateMode,
   isAdminUser,
   onCustomerDealsChange,
+  onContractProductDealQtyChange,
   isReadOnly = false
 }: RecordDetailsTabProps) {
   // State management for customer selection and modals
@@ -31,10 +36,15 @@ export default function RecordDetailsTab({
   const [showSalesTypeModal, setShowSalesTypeModal] = useState(false);
   const [showProductPriceTypeModal, setShowProductPriceTypeModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showContractModal, setShowContractModal] = useState(false);
   
   // State for customer change confirmation
   const [showCustomerChangeConfirmation, setShowCustomerChangeConfirmation] = useState(false);
   const [pendingCustomerAction, setPendingCustomerAction] = useState<CustomerDto | null>(null);
+  
+  // State for contract change confirmation
+  const [showContractChangeConfirmation, setShowContractChangeConfirmation] = useState(false);
+  const [pendingContractAction, setPendingContractAction] = useState<ContractDto | null>(null);
   
   // Toast notification hook
   const { setFlashNotification } = useSessionStore();
@@ -59,6 +69,45 @@ export default function RecordDetailsTab({
     
     loadCustomerData();
   }, [formData.customerId, isCreateMode, customerTerms.length, onCustomerDealsChange]);
+
+  // Set contractSales flag when salesTypeId changes
+  useEffect(() => {
+    const updateContractSalesFlag = async () => {
+      if (formData.salesTypeId) {
+        try {
+          const salesType = await SalesTypeApi.getSalesTypeById(formData.salesTypeId);
+          const newContractSales = salesType.contractSales || false;
+          
+          // If changing from contractSales=true to false, clear contract and show confirmation if items exist
+          if (formData.contractSales === true && newContractSales === false) {
+            if (formData.invoiceDetails && formData.invoiceDetails.length > 0) {
+              setPendingContractAction(null);
+              setShowContractChangeConfirmation(true);
+              return;
+            } else {
+              // No items, just clear contract
+              onFormDataChange({ 
+                contractSales: newContractSales,
+                contractId: '',
+                contractName: ''
+              });
+              onContractProductDealQtyChange?.(null);
+              return;
+            }
+          }
+          
+          onFormDataChange({ contractSales: newContractSales });
+        } catch (error) {
+          console.error('Error fetching sales type details:', error);
+          onFormDataChange({ contractSales: false });
+        }
+      } else {
+        onFormDataChange({ contractSales: false });
+      }
+    };
+    
+    updateContractSalesFlag();
+  }, [formData.salesTypeId]);
 
   // Handle customer selection
   const handleCustomerSelect = async (customer: CustomerDto) => {
@@ -191,6 +240,65 @@ export default function RecordDetailsTab({
   const handleClearTerms = () => {
     onFormDataChange({ termsId: '', termsName: '' });
   };
+
+  // Handle contract selection
+  const handleContractSelect = async (contract: ContractDto) => {
+    if (!isCreateMode) return;
+    
+    // Check if we have invoice details and we're in create mode
+    if (formData.invoiceDetails && formData.invoiceDetails.length > 0 && isCreateMode) {
+      setPendingContractAction(contract);
+      setShowContractChangeConfirmation(true);
+      return;
+    }
+    
+    await processContractSelection(contract);
+  };
+  
+  // Process contract selection (original logic)
+  const processContractSelection = async (contract: ContractDto) => {
+    try {
+      // Fetch full contract details to get productDealQty
+      const fullContract = await ContractApi.getContractById(contract.contractId);
+      
+      // Update form data with contract info
+      onFormDataChange({
+        contractId: contract.contractId,
+        contractName: contract.contractName
+      });
+      
+      // Pass contract's productDealQty to parent
+      if (fullContract.productDealQty) {
+        onContractProductDealQtyChange?.(fullContract.productDealQty);
+      } else {
+        onContractProductDealQtyChange?.(null);
+      }
+    } catch (error) {
+      console.error('Error processing contract selection:', error);
+      setFlashNotification({
+        title: 'Error',
+        message: 'Failed to load contract details. Please try again.',
+        alertType: 'error'
+      });
+    }
+  };
+
+  const handleClearContract = () => {
+    // Check if we have invoice details and we're in create mode
+    if (formData.invoiceDetails && formData.invoiceDetails.length > 0 && isCreateMode) {
+      setPendingContractAction(null);
+      setShowContractChangeConfirmation(true);
+      return;
+    }
+    
+    processClearContract();
+  };
+  
+  // Process clear contract (original logic)
+  const processClearContract = () => {
+    onFormDataChange({ contractId: '', contractName: '' });
+    onContractProductDealQtyChange?.(null);
+  };
   
   // Handle customer change confirmation
   const handleConfirmCustomerChange = async () => {
@@ -265,6 +373,87 @@ export default function RecordDetailsTab({
   const handleCancelCustomerChange = () => {
     setShowCustomerChangeConfirmation(false);
     setPendingCustomerAction(null);
+  };
+  
+  // Handle contract change confirmation
+  const handleConfirmContractChange = async () => {
+    try {
+      // Restore stock quantities for all invoice details
+      if (formData.invoiceDetails && formData.invoiceDetails.length > 0) {
+        for (const detail of formData.invoiceDetails) {
+          if (detail.stockId && detail.qty && detail.qty > 0) {
+            try {
+              // Calculate total quantity to restore (including associated free items)
+              let totalQuantityToRestore = detail.qty;
+              
+              // If this is a regular item with a product deal, find and include the associated free item
+              if (detail.productDealId) {
+                const associatedFreeItem = formData.invoiceDetails.find(
+                  item => item.invoiceDetailType === 'FREE_ITEM' &&
+                          item.productId === detail.productId &&
+                          item.lotNo === detail.lotNo &&
+                          item.productDealId === detail.productDealId
+                );
+                if (associatedFreeItem && associatedFreeItem.qty) {
+                  totalQuantityToRestore += associatedFreeItem.qty;
+                }
+              }
+              
+              await StockApi.updateAvailableQuantity(
+                detail.stockId,
+                { qty: -totalQuantityToRestore } // Negative value to restore stock
+              );
+            } catch (error) {
+              console.error('Error restoring stock for item:', detail.productName, error);
+              setFlashNotification({
+                title: 'Stock Restoration Warning',
+                message: `Failed to restore stock for ${detail.productName}. Please check stock levels manually.`,
+                alertType: 'warning'
+              });
+            }
+          }
+        }
+      }
+      
+      // Clear invoice details and reset amounts
+      onFormDataChange({
+        invoiceDetails: [],
+        invoiceAmount: 0,
+        taxAmount: 0,
+        finalAmount: 0
+      });
+      
+      // Process the pending contract action
+      if (pendingContractAction) {
+        await processContractSelection(pendingContractAction);
+      } else {
+        // Clear contract and update contractSales flag
+        onFormDataChange({ 
+          contractId: '', 
+          contractName: '',
+          contractSales: false
+        });
+        onContractProductDealQtyChange?.(null);
+      }
+      
+      // Close confirmation modal and reset pending action
+      setShowContractChangeConfirmation(false);
+      setPendingContractAction(null);
+      
+    } catch (error) {
+      console.error('Error processing contract change:', error);
+      setFlashNotification({
+        title: 'Error',
+        message: 'Failed to process contract change. Please try again.',
+        alertType: 'error'
+      });
+    }
+  };
+  
+  // Handle cancel contract change
+  const handleCancelContractChange = () => {
+    setShowContractChangeConfirmation(false);
+    setPendingContractAction(null);
   };
 
   const getStatusBadge = (status: StatusEnum) => {
@@ -464,20 +653,11 @@ export default function RecordDetailsTab({
           }}>
             Invoice Date *
           </label>
-          <input
-            type="date"
+          <DatePicker
             value={formData.invoiceDate || ''}
-            onChange={(e) => onFormDataChange({ invoiceDate: e.target.value })}
+            onChange={(date) => onFormDataChange({ invoiceDate: date })}
+            placeholder="Select invoice date"
             disabled={!isCreateMode || isReadOnly}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode || isReadOnly) ? '#f9fafb' : 'white'
-            }}
           />
         </div>
 
@@ -711,22 +891,91 @@ export default function RecordDetailsTab({
           }}>
             Contract Name
           </label>
-          <input
-            type="text"
-            value={formData.contractName || ''}
-            onChange={(e) => onFormDataChange({ contractName: e.target.value })}
-            readOnly={!isCreateMode || isReadOnly}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode || isReadOnly) ? '#f9fafb' : 'white'
-            }}
-            placeholder="Enter contract name"
-          />
+          <div style={{ position: 'relative' }}>
+            <input
+              type="text"
+              value={formData.contractName || ''}
+              readOnly
+              onClick={() => {
+                const isEnabled = formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly;
+                if (isEnabled) {
+                  setShowContractModal(true);
+                }
+              }}
+              disabled={!formData.customerId || formData.contractSales !== true || !isCreateMode || isReadOnly}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                paddingRight: (formData.contractName && formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly) ? '40px' : '16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: (!formData.customerId || formData.contractSales !== true || !isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
+                color: formData.contractName ? '#1f2937' : '#6b7280',
+                cursor: (formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
+                outline: 'none',
+                transition: 'all 0.2s ease',
+                opacity: (!formData.customerId || formData.contractSales !== true || !isCreateMode || isReadOnly) ? 0.6 : 1
+              }}
+              placeholder={
+                !formData.customerId 
+                  ? "Select customer first" 
+                  : formData.contractSales !== true 
+                    ? "Select sales type with contract sales enabled" 
+                    : (!isCreateMode || isReadOnly) 
+                      ? "Contract cannot be changed" 
+                      : "Click to select contract"
+              }
+              onMouseEnter={(e) => {
+                if (formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly) {
+                  e.currentTarget.style.borderColor = '#3b82f6';
+                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = '#d1d5db';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
+            />
+            
+            {formData.contractName && formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleClearContract();
+                }}
+                style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '20px',
+                  height: '20px',
+                  backgroundColor: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#6b7280',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  zIndex: 10,
+                  transition: 'color 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#dc2626';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#6b7280';
+                }}
+                title="Clear contract selection"
+              >
+                ×
+              </button>
+            )}
+          </div>
         </div>
 
         <div>
@@ -1091,6 +1340,14 @@ export default function RecordDetailsTab({
         onCancel={handleCancelCustomerChange}
       />
       
+      {/* Contract Change Confirmation Modal */}
+      <ContractChangeConfirmationModal
+        show={showContractChangeConfirmation}
+        itemCount={formData.invoiceDetails?.length || 0}
+        onConfirm={handleConfirmContractChange}
+        onCancel={handleCancelContractChange}
+      />
+      
       {/* Customer Terms Selection Modal */}
       <CustomerTermsSelectionModal
         show={showTermsModal}
@@ -1099,6 +1356,16 @@ export default function RecordDetailsTab({
         selectedValue={formData.termsId || null}
         onSelect={handleTermsSelect}
         onClose={() => setShowTermsModal(false)}
+      />
+      
+      {/* Contract Selection Modal */}
+      <ContractSearchableSelectionModal
+        show={showContractModal}
+        title="Select Contract"
+        customerId={formData.customerId}
+        selectedValue={formData.contractId || null}
+        onSelect={handleContractSelect}
+        onClose={() => setShowContractModal(false)}
       />
     </div>
   );

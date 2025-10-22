@@ -10,6 +10,11 @@ export interface ProductDealDto {
     forApprovalVersion?: Record<string, unknown>;
 }
 
+export interface ProductDealQtyDto {
+    additionalQty?: number;
+    minQty?: number;
+}
+
 export interface CreateProductDealDto {
     productDealName?: string;
     additionalQty?: number;

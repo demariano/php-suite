@@ -50,9 +50,11 @@ export interface InvoiceDto {
     status?: StatusEnum;
     paymentStatus?: PaymentStatusEnum;
     printStatus?: PrintStatusEnum;
+    contractSales: boolean;
     invoiceDetails?: InvoiceDetailsDto[];
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    changeReason?: string;
 }
 
 export interface CreateInvoiceDto {
@@ -78,7 +80,9 @@ export interface CreateInvoiceDto {
     status?: StatusEnum;
     paymentStatus?: PaymentStatusEnum;
     printStatus?: PrintStatusEnum;
+    contractSales: boolean;
     invoiceDetails?: InvoiceDetailsDto[];
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    changeReason?: string;
 }

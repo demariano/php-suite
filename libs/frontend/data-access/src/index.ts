@@ -16,10 +16,12 @@ export * from './state-management';
 
 // Export types
 export * from './types/area.types';
+export * from './types/contract.types';
 export * from './types/customer-classification.types';
 export * from './types/customer-product-deal.types';
 export * from './types/customer-type.types';
 export * from './types/customer.types';
+export * from './types/delivery-status.enum';
 export * from './types/invoice-detail-type.enum';
 export * from './types/invoice.types';
 export * from './types/payment-status.enum';
@@ -40,6 +42,7 @@ export * from './types/town.types';
 
 // Export API types
 export type { AreasResponse } from './api/area.api';
+export type { ContractsResponse } from './api/contract.api';
 export type { CustomerClassificationsResponse } from './api/customer-classification.api';
 export type { CustomersResponse } from './api/customer-main.api';
 export type { CustomerTypesResponse } from './api/customer-type.api';
