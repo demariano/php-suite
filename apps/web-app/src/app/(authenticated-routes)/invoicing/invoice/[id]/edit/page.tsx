@@ -1,6 +1,6 @@
 'use client';
 
-import { InvoiceApi, InvoiceDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { extractErrorMessage, InvoiceApi, InvoiceDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import InvoiceForm from './components/InvoiceForm';
@@ -13,12 +13,11 @@ interface EditInvoicePageProps {
 
 export default function EditInvoicePage({ params }: EditInvoicePageProps) {
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
+  const { setFlashNotification } = useSessionStore();
   const router = useRouter();
   
   // Check if user is admin or super admin
@@ -29,7 +28,6 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     const fetchInvoice = async () => {
       try {
         setIsLoading(true);
-        setError(null);
         
         // SECURITY: Only get user role if BYPASS_AUTH is enabled
         // This prevents role parameter leakage when bypass auth is disabled
@@ -48,7 +46,12 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
         
       } catch (err) {
         console.error('Error fetching invoice:', err);
-        setError('Failed to load invoice details. Please try again.');
+        const errorMessage = extractErrorMessage(err, 'Failed to load invoice details. Please try again.');
+        setFlashNotification({
+          title: 'Error',
+          message: errorMessage,
+          alertType: 'error'
+        });
       } finally {
         setIsLoading(false);
       }
@@ -62,7 +65,6 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
   const handleSave = async (invoice: InvoiceDto) => {
     try {
       setIsLoading(true);
-      setError(null);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
       // This prevents role parameter leakage in production
@@ -100,7 +102,11 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
       }, userRole);
       
       setSelectedInvoice(updatedInvoice);
-      setSuccessMessage('Invoice updated successfully!');
+      setFlashNotification({
+        title: 'Success!',
+        message: 'Invoice updated successfully!',
+        alertType: 'success'
+      });
       
       // Navigate back to invoice list after a short delay
       setTimeout(() => {
@@ -109,7 +115,12 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
       
     } catch (error) {
       console.error('Error updating invoice:', error);
-      setError('Failed to update invoice. Please try again.');
+      const errorMessage = extractErrorMessage(error, 'Failed to update invoice. Please try again.');
+      setFlashNotification({
+        title: 'Error',
+        message: errorMessage,
+        alertType: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -122,7 +133,6 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     
     try {
       setIsLoading(true);
-      setError(null);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
       // This prevents role parameter leakage in production
@@ -132,7 +142,11 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
       
       await InvoiceApi.deleteInvoice(selectedInvoice, userRole);
       
-      setSuccessMessage('Invoice deleted successfully!');
+      setFlashNotification({
+        title: 'Success!',
+        message: 'Invoice deleted successfully!',
+        alertType: 'success'
+      });
       
       // Navigate back to invoice list after a short delay
       setTimeout(() => {
@@ -141,7 +155,12 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
       
     } catch (error) {
       console.error('Error deleting invoice:', error);
-      setError('Failed to delete invoice. Please try again.');
+      const errorMessage = extractErrorMessage(error, 'Failed to delete invoice. Please try again.');
+      setFlashNotification({
+        title: 'Error',
+        message: errorMessage,
+        alertType: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -152,7 +171,6 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     
     try {
       setIsLoading(true);
-      setError(null);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
@@ -161,7 +179,11 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
       // Call the API to approve the record
       const approvedInvoice = await InvoiceApi.approveInvoice(selectedInvoice.invoiceId, userRole);
       setSelectedInvoice(approvedInvoice);
-      setSuccessMessage('Invoice approved successfully!');
+      setFlashNotification({
+        title: 'Success!',
+        message: 'Invoice approved successfully!',
+        alertType: 'success'
+      });
       
       // Navigate back to invoice list after a short delay
       setTimeout(() => {
@@ -170,7 +192,12 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
       
     } catch (err) {
       console.error('Error approving invoice:', err);
-      setError('Failed to approve invoice. Please try again.');
+      const errorMessage = extractErrorMessage(err, 'Failed to approve invoice. Please try again.');
+      setFlashNotification({
+        title: 'Error',
+        message: errorMessage,
+        alertType: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -181,7 +208,6 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     
     try {
       setIsLoading(true);
-      setError(null);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
@@ -190,7 +216,11 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
       // Call the API to deny the record
       const deniedInvoice = await InvoiceApi.denyInvoice(selectedInvoice.invoiceId, userRole);
       setSelectedInvoice(deniedInvoice);
-      setSuccessMessage('Invoice changes denied successfully!');
+      setFlashNotification({
+        title: 'Success!',
+        message: 'Invoice changes denied successfully!',
+        alertType: 'success'
+      });
       
       // Navigate back to invoice list after a short delay
       setTimeout(() => {
@@ -199,7 +229,12 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
       
     } catch (err) {
       console.error('Error denying invoice:', err);
-      setError('Failed to deny invoice. Please try again.');
+      const errorMessage = extractErrorMessage(err, 'Failed to deny invoice. Please try again.');
+      setFlashNotification({
+        title: 'Error',
+        message: errorMessage,
+        alertType: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -221,32 +256,6 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
-          <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
-      {/* Success Message */}
-      {successMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
-          <span>{successMessage}</span>
-          <button
-            onClick={() => setSuccessMessage(null)}
-            className="bg-transparent border-none text-green-600 cursor-pointer text-lg font-bold hover:text-green-800"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       {/* Breadcrumbs */}
       <div className="mb-6">
         <nav className="flex items-center gap-2">
@@ -278,7 +287,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
         <InvoiceForm
           isCreateMode={false}
           selectedInvoice={selectedInvoice}
-          successMessage={successMessage}
+          successMessage={null}
           isAdminUser={isAdminUser}
           isLoading={isLoading}
           activeTab={activeTab}

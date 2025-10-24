@@ -157,6 +157,33 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         return await this.convertToDto(record);
     }
 
+    async findPendingPaymentInvoices(customerId: string, status: string): Promise<InvoiceDto[] | null> {
+        const pendingPaymentInvoices = await this.invoiceTable.find(
+            {
+                GSI13PK: `INVOICE#${customerId}#${PaymentStatusEnum.PENDING}#${status}`,
+            },
+            {
+                index: 'GSI13',
+            }
+        );
+
+        const partialPaymentInvoices = await this.invoiceTable.find(
+            {
+                GSI13PK: `INVOICE#${customerId}#${PaymentStatusEnum.PARTIAL}#${status}`,
+            },
+            {
+                index: 'GSI13',
+            }
+        );
+
+        const pendingPaymentsDto = await this.convertToDtoList(pendingPaymentInvoices);
+        const partialPaymentsDto = await this.convertToDtoList(partialPaymentInvoices);
+
+        const records = pendingPaymentsDto.concat(partialPaymentsDto);
+
+        return records;
+    }
+
     async getDatabaseRecordById(recordId: string): Promise<InvoiceDataType | undefined> {
         const record: TerritoryManagerDataType | undefined = await this.invoiceTable.get({
             PK: 'INVOICE',
@@ -176,11 +203,11 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         docno: string
     ): Promise<PageDto<InvoiceDto>> {
         limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
 
         const records = await this.invoiceTable.find(
             {
-                GSI3PK: `INVOICE#${status}`,
+                GSI2PK: `INVOICE#${status}`,
                 ...(docno != null ? { GSI2SK: { begins: docno } } : {}),
             },
             dynamoDbOption
@@ -190,8 +217,8 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             records,
             limit,
             direction,
-            'GSI3PK',
-            'GSI3SK',
+            'GSI2PK',
+            'GSI2SK',
             'PK',
             'SK',
             JSON.stringify(records.next),
@@ -328,7 +355,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             GSI1PK: `INVOICE`,
             GSI1SK: dto.invoiceId,
             GSI2PK: `INVOICE#${dto.status}`,
-            GSI2SK: dto.invoiceDate,
+            GSI2SK: dto.docno,
             GSI3PK: `INVOICE#${dto.customerId}`,
             GSI3SK: dto.invoiceDate,
             GSI4PK: `INVOICE#${dto.salesTypeId}`,
@@ -349,6 +376,8 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             GSI11SK: dto.invoiceDate,
             GSI12PK: `INVOICE`,
             GSI12SK: dto.docno,
+            GSI13PK: `INVOICE#${dto.customerId}#${dto.paymentStatus}#${dto.status}`,
+            GSI13SK: dto.docno,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

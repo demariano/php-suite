@@ -345,7 +345,8 @@ export default function RecordDetailsTab({
         invoiceDetails: [],
         invoiceAmount: 0,
         taxAmount: 0,
-        finalAmount: 0
+        finalAmount: 0,
+        totalAmountPaid: 0
       });
       
       // Process the pending customer action
@@ -420,7 +421,8 @@ export default function RecordDetailsTab({
         invoiceDetails: [],
         invoiceAmount: 0,
         taxAmount: 0,
-        finalAmount: 0
+        finalAmount: 0,
+        totalAmountPaid: 0
       });
       
       // Process the pending contract action
@@ -1218,7 +1220,7 @@ export default function RecordDetailsTab({
 
         <div style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr',
+          gridTemplateColumns: '1fr 1fr 1fr 1fr',
           gap: '20px'
         }}>
           <div>
@@ -1288,6 +1290,33 @@ export default function RecordDetailsTab({
             <input
               type="number"
               value={formData.finalAmount || 0}
+              readOnly
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                backgroundColor: '#f9fafb',
+                color: '#6b7280',
+                fontWeight: '500'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: '8px'
+            }}>
+              Total Amount Paid
+            </label>
+            <input
+              type="number"
+              value={formData.totalAmountPaid || 0}
               readOnly
               style={{
                 width: '100%',

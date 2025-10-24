@@ -65,6 +65,8 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             GSI3SK: contractDto.contractNo,
             GSI4PK: `CONTRACT#${contractDto.customerId}#${contractDto.status}`,
             GSI4SK: contractDto.contractNo,
+            GSI5PK: `CONTRACT#${contractDto.customerId}#${contractDto.paymentStatus}`,
+            GSI5SK: contractDto.contractNo,
         };
 
         const contractRecord: ContractDataType = await this.contractTable.create(contractData);
@@ -163,6 +165,31 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         }
 
         return await this.convertToDto(record);
+    }
+
+    async findPendingPaymentContracts(customerId: string): Promise<ContractDto[] | null> {
+        const pendingPaymentContracts = await this.contractTable.find(
+            {
+                GSI5PK: `CONTRACT#${customerId}#${PaymentStatusEnum.PENDING}`,
+            },
+            {
+                index: 'GSI5',
+            }
+        );
+
+        const partialPaymentContracts = await this.contractTable.find(
+            {
+                GSI5PK: `CONTRACT#${customerId}#${PaymentStatusEnum.PARTIAL}`,
+            },
+            {
+                index: 'GSI5',
+            }
+        );
+
+        const pendingContractsDto = await this.convertToDtoList(pendingPaymentContracts);
+        const partialContractsDto = await this.convertToDtoList(partialPaymentContracts);
+        const records = pendingContractsDto.concat(partialContractsDto);
+        return records;
     }
 
     async findRecordContainingContractNo(
@@ -362,6 +389,8 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             GSI3SK: dto.contractNo,
             GSI4PK: `CONTRACT#${dto.customerId}#${dto.status}`,
             GSI4SK: dto.contractNo,
+            GSI5PK: `CONTRACT#${dto.customerId}#${dto.paymentStatus}`,
+            GSI5SK: dto.contractNo,
         };
         return contractData;
     }

@@ -175,6 +175,18 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
               onClick: (route: string) => onNavigate?.(route)
             },
             { 
+              label: "Payments", 
+              route: "/invoicing/payment", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Return Good Sold", 
+              route: "/invoicing/return-good-sold", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
               label: "Contracts", 
               route: "/invoicing/contract", 
               icon: File,

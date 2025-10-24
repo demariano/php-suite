@@ -115,6 +115,7 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         existingRecord.finalAmount = forApprovalVersion.finalAmount as number;
         existingRecord.invoiceAmount = forApprovalVersion.invoiceAmount as number;
         existingRecord.taxAmount = forApprovalVersion.taxAmount as number;
+        existingRecord.totalAmountPaid = forApprovalVersion.totalAmountPaid as number;
         existingRecord.invoiceDetails = forApprovalVersion.invoiceDetails as InvoiceDetailsDto[];
         existingRecord.contractSales = forApprovalVersion.contractSales as boolean;
         existingRecord.forApprovalVersion = {};

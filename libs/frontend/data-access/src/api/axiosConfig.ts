@@ -76,10 +76,8 @@ export class AxiosConfig {
                     let prevCursorPointer;
 
                     if (response.data.body && Array.isArray(response.data.body)) {
-                        // Towns format: body is directly an array
-                        data = response.data.body;
-                        nextCursorPointer = response.data.nextCursorPointer;
-                        prevCursorPointer = response.data.prevCursorPointer;
+                        // Array responses (like getPendingPaymentInvoices): return the array directly
+                        return response.data.body;
                     } else if (response.data.body && response.data.body.data) {
                         // Other paginated endpoints format: body.data contains the array
                         data = response.data.body.data;

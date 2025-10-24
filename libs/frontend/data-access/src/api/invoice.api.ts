@@ -147,6 +147,10 @@ class InvoiceApi extends AxiosConfig {
 
         return await this.axiosInstance.post(url);
     };
+
+    public getPendingPaymentInvoices = async (customerId: string, status: string): Promise<InvoiceDto[]> => {
+        return await this.axiosInstance.get(`/invoice/customer/${customerId}/pending-payment?status=${status}`);
+    };
 }
 
 export default new InvoiceApi();

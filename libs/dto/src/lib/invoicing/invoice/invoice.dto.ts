@@ -48,6 +48,9 @@ export class InvoiceDto {
     taxAmount?: number;
 
     @ApiProperty()
+    totalAmountPaid?: number;
+
+    @ApiProperty()
     contractId?: string;
 
     @ApiProperty()

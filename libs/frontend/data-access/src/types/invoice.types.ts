@@ -41,6 +41,7 @@ export interface InvoiceDto {
     finalAmount?: number;
     invoiceAmount?: number;
     taxAmount?: number;
+    totalAmountPaid?: number;
     contractId?: string;
     contractName?: string;
     termsId?: string;
@@ -71,6 +72,7 @@ export interface CreateInvoiceDto {
     finalAmount?: number;
     invoiceAmount?: number;
     taxAmount?: number;
+    totalAmountPaid?: number;
     contractId?: string;
     contractName?: string;
     termsId?: string;

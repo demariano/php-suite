@@ -5,7 +5,9 @@ export { default as CustomerClassificationApi } from './customer-classification.
 export { default as CustomerApi } from './customer-main.api';
 export { default as CustomerTypeApi } from './customer-type.api';
 export { default as InvoiceApi } from './invoice.api';
+export { default as PaymentApi } from './payment.api';
 export { default as ProductApi } from './product.api';
+export { default as ReturnGoodSoldApi } from './return-good-sold.api';
 export { default as SalesTypeApi } from './sales-type.api';
 export { default as StockApi } from './stock.api';
 export { default as TermsApi } from './terms.api';

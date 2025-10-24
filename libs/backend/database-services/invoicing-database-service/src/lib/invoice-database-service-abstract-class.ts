@@ -24,6 +24,8 @@ export abstract class InvoiceDatabaseServiceAbstract {
         docno: string
     ): Promise<PageDto<InvoiceDto>>;
 
+    abstract findPendingPaymentInvoices(customerId: string, status: string): Promise<InvoiceDto[] | null>;
+
     abstract findRecordsByPagination(
         limit: number,
         direction: string,

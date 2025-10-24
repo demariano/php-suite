@@ -16,6 +16,7 @@ export * from './state-management';
 
 // Export types
 export * from './types/area.types';
+export * from './types/cheque-clear-status.enum';
 export * from './types/contract.types';
 export * from './types/customer-classification.types';
 export * from './types/customer-product-deal.types';
@@ -25,6 +26,8 @@ export * from './types/delivery-status.enum';
 export * from './types/invoice-detail-type.enum';
 export * from './types/invoice.types';
 export * from './types/payment-status.enum';
+export * from './types/payment-type.enum';
+export * from './types/payment.types';
 export * from './types/print-status.enum';
 export * from './types/product-category.types';
 export * from './types/product-class.types';
@@ -33,6 +36,7 @@ export * from './types/product-price-type.types';
 export * from './types/product-unit.types';
 export * from './types/product.types';
 export * from './types/responseError';
+export * from './types/return-good-sold.types';
 export * from './types/sales-type.types';
 export * from './types/status.enum';
 export * from './types/stock.types';
@@ -50,6 +54,7 @@ export type { PaginatedResponse, ProductCategoriesResponse } from './api/product
 export type { ProductClassesResponse } from './api/product-class.api';
 export type { ProductPriceTypesResponse } from './api/product-price-type.api';
 export type { ProductUnitsResponse } from './api/product-unit.api';
+export type { ReturnGoodSoldsResponse } from './api/return-good-sold.api';
 export type { StocksResponse } from './api/stock.api';
 export type { TermsResponse } from './api/terms.api';
 export type { TownsResponse } from './api/town.api';
@@ -58,3 +63,6 @@ export type { ProductDealsResponse } from './types/product-deal.types';
 // Export config
 export * from './config/constants';
 export * from './config/env';
+
+// Export utilities
+export * from './utils/errorExtraction';

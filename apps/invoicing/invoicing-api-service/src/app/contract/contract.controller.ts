@@ -12,6 +12,7 @@ import { GetContractByContractNoQuery } from './queries/get.by.contractNo/get.co
 import { GetContractsByCustomerIdQuery } from './queries/get.by.customerId/get.contracts.by.customerId.query';
 import { GetContractByIdQuery } from './queries/get.by.id/get.contract.by.id.query';
 import { GetContractsContainingContractNoQuery } from './queries/get.containing.contractNo/get.contracts.containing.contractNo.query';
+import { GetPendingPaymentContractsQuery } from './queries/get.pending.payment.contracts/get.pending.payment.contracts.query';
 import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
@@ -645,5 +646,45 @@ export class ContractController {
         @Query('cursorPointer') cursorPointer: string
     ) {
         return this.queryBus.execute(new GetContractsByCustomerIdQuery(customerId, limit, direction, cursorPointer));
+    }
+
+    @Get('customer/:customerId/pending-payment')
+    @ApiOperation({
+        summary: 'Get pending payment contracts by customer ID',
+        description: 'Retrieves contracts with pending or partial payment status for a specific customer',
+    })
+    @ApiParam({
+        name: 'customerId',
+        description: 'Customer ID',
+        example: 'customer-123',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Pending payment contracts retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            contractId: { type: 'string', example: 'contract-123' },
+                            contractNo: { type: 'string', example: 'CT-2024-001' },
+                            contractName: { type: 'string', example: 'Software License Agreement' },
+                            customerId: { type: 'string', example: 'customer-123' },
+                            customerName: { type: 'string', example: 'Acme Corp' },
+                            paymentStatus: { type: 'string', example: 'PENDING' },
+                            contractAmount: { type: 'number', example: 10000 },
+                            amountPaid: { type: 'number', example: 0 },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    getPendingPaymentContracts(@Param('customerId') customerId: string) {
+        return this.queryBus.execute(new GetPendingPaymentContractsQuery(customerId));
     }
 }

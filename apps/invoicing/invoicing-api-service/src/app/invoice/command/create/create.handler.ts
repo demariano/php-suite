@@ -28,7 +28,6 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
                 'INVOICE_AMOUNT_NEEDED_FOR_APPROVAL'
             );
 
-            console.log('invoiceAmountNeededForApproval', invoiceAmountNeededForApproval);
             if (!invoiceAmountNeededForApproval) {
                 throw new BadRequestException('Invoice amount needed for approval not found');
             }
@@ -85,6 +84,7 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
         if (command.invoiceDto.invoiceAmount <= invoiceAmountNeededForApprovalValue) {
             // User can approve directly - set to ACTIVE
             command.invoiceDto.status = StatusEnum.ACTIVE;
+            command.invoiceDto.totalAmountPaid = 0;
             command.invoiceDto.activityLogs = [];
             command.invoiceDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
@@ -120,6 +120,7 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
             command.invoiceDto.forApprovalVersion.finalAmount = command.invoiceDto.finalAmount;
             command.invoiceDto.forApprovalVersion.invoiceAmount = command.invoiceDto.invoiceAmount;
             command.invoiceDto.forApprovalVersion.taxAmount = command.invoiceDto.taxAmount;
+            command.invoiceDto.forApprovalVersion.totalAmountPaid = 0;
             command.invoiceDto.forApprovalVersion.invoiceDetails = command.invoiceDto.invoiceDetails;
             command.invoiceDto.forApprovalVersion.contractSales = command.invoiceDto.contractSales;
         }

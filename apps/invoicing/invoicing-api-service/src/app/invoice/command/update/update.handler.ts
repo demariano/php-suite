@@ -114,6 +114,7 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
             existingRecord.finalAmount = command.invoiceDto.finalAmount;
             existingRecord.invoiceAmount = command.invoiceDto.invoiceAmount;
             existingRecord.taxAmount = command.invoiceDto.taxAmount;
+            existingRecord.totalAmountPaid = command.invoiceDto.totalAmountPaid;
             existingRecord.invoiceDetails = command.invoiceDto.invoiceDetails;
             existingRecord.contractSales = command.invoiceDto.contractSales;
             // Clear changeReason for admin users since changes are applied directly
@@ -152,6 +153,7 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
                 finalAmount: command.invoiceDto.finalAmount,
                 invoiceAmount: command.invoiceDto.invoiceAmount,
                 taxAmount: command.invoiceDto.taxAmount,
+                totalAmountPaid: command.invoiceDto.totalAmountPaid,
                 invoiceDetails: command.invoiceDto.invoiceDetails,
                 contractSales: command.invoiceDto.contractSales,
             };

@@ -15,6 +15,7 @@ import { UpdateInvoiceHandler } from './command/update/update.handler';
 import { InvoiceController } from './invoice.controller';
 import { GetInvoiceByDocnoHandler } from './queries/get.by.docno/get.invoice.by.docno.handler';
 import { GetInvoiceByIdHandler } from './queries/get.by.id/get.invoice.by.id.handler';
+import { GetPendingPaymentInvoicesHandler } from './queries/get.pending.payment.invoices/get.pending.payment.invoices.handler';
 import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 
@@ -45,6 +46,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         CreateInvoiceHandler,
         GetInvoiceByIdHandler,
         GetInvoiceByDocnoHandler,
+        GetPendingPaymentInvoicesHandler,
         GetRecordsPaginationHandler,
         GetRecordsByStatusPaginationHandler,
         UpdateInvoiceHandler,

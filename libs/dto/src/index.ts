@@ -97,3 +97,15 @@ export * from './lib/invoicing/territory.manager/territory.manager.dto';
 export * from './lib/enums/delivery.status.enum';
 export * from './lib/invoicing/contract/contract.dto';
 export * from './lib/invoicing/contract/create.contract.dto';
+
+//payment
+export * from './lib/enums/cheque.clear.status.enum';
+export * from './lib/enums/payment.type.enum';
+export * from './lib/invoicing/payment/create.payment.dto';
+export * from './lib/invoicing/payment/payment.details.dto';
+export * from './lib/invoicing/payment/payment.dto';
+export * from './lib/invoicing/payment/payment.invoice.details.dto';
+
+//return good sold
+export * from './lib/invoicing/return.good.sold/create.return.good.sold.dto';
+export * from './lib/invoicing/return.good.sold/return.good.sold.dto';

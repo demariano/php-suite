@@ -10,6 +10,7 @@ import { DenyInvoiceCommand } from './command/deny-record/deny.command';
 import { UpdateInvoiceCommand } from './command/update/update.command';
 import { GetInvoiceByDocnoQuery } from './queries/get.by.docno/get.invoice.by.docno.query';
 import { GetInvoiceByIdQuery } from './queries/get.by.id/get.invoice.by.id.query';
+import { GetPendingPaymentInvoicesQuery } from './queries/get.pending.payment.invoices/get.pending.payment.invoices.query';
 import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
@@ -526,5 +527,68 @@ export class InvoiceController {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
         return this.queryBus.execute(new GetInvoiceByIdQuery(id));
+    }
+
+    @Get('customer/:customerId/pending-payment')
+    @ApiOperation({
+        summary: 'Get pending payment invoices for customer',
+        description: 'Retrieves all pending payment invoices for a specific customer with the given status',
+    })
+    @ApiParam({
+        name: 'customerId',
+        description: 'Customer ID',
+        example: 'customer-123',
+    })
+    @ApiQuery({
+        name: 'status',
+        type: String,
+        required: true,
+        description: 'Invoice status to filter by',
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
+        example: 'ACTIVE',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Pending payment invoices retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            invoiceId: { type: 'string', example: 'invoice-123' },
+                            docno: { type: 'string', example: 'INV-001' },
+                            invoiceDate: { type: 'string', example: '2024-01-01' },
+                            customerName: { type: 'string', example: 'John Doe' },
+                            finalAmount: { type: 'number', example: 1000.0 },
+                            status: { type: 'string', example: 'ACTIVE' },
+                            paymentStatus: { type: 'string', example: 'PENDING' },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'No pending payment invoices found',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 404 },
+                message: {
+                    type: 'string',
+                    example: 'No pending payment invoices found for customer customer-123 with status ACTIVE',
+                },
+            },
+        },
+    })
+    getPendingPaymentInvoices(@Param('customerId') customerId: string, @Query('status') status: string) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(new GetPendingPaymentInvoicesQuery(customerId, status));
     }
 }

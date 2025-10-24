@@ -112,6 +112,10 @@ class ContractApi extends AxiosConfig {
         return await this.axiosInstance.get(`/contract/customer/${customerId}?${params.toString()}`);
     };
 
+    public getPendingPaymentContracts = async (customerId: string): Promise<ContractDto[]> => {
+        return await this.axiosInstance.get(`/contract/customer/${customerId}/pending-payment`);
+    };
+
     public createContract = async (contract: CreateContractDto, userRole?: string): Promise<ContractDto> => {
         const params = new URLSearchParams();
 

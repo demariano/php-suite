@@ -1,6 +1,6 @@
 'use client';
 
-import { ContractApi, ContractDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { ContractApi, ContractDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { ContractHeader, ContractModal, ContractTable, DeleteConfirmationModal } from './components';
 
@@ -36,7 +36,6 @@ export default function ContractsPage() {
   const fetchContracts = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
     try {
       setIsLoading(true);
-      setError(null);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
@@ -92,8 +91,13 @@ export default function ContractsPage() {
       } else {
         setCurrentCursor(undefined);
       }
-    } catch {
-      setError('Failed to load contracts. Please try again.');
+    } catch (error) {
+      const errorMessage = extractErrorMessage(error, 'Failed to load contracts. Please try again.');
+      setFlashNotification({
+        title: 'Error',
+        message: errorMessage,
+        alertType: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -184,8 +188,13 @@ export default function ContractsPage() {
       }
       
       setShowEditModal(true);
-    } catch {
-      setError('Failed to load contract details. Please try again.');
+    } catch (error) {
+      const errorMessage = extractErrorMessage(error, 'Failed to load contract details. Please try again.');
+      setFlashNotification({
+        title: 'Error',
+        message: errorMessage,
+        alertType: 'error'
+      });
     } finally {
       setIsLoading(false);
     }
@@ -280,12 +289,12 @@ export default function ContractsPage() {
       }
     } catch (error) {
       console.error('Error saving contract:', error);
+      const errorMessage = extractErrorMessage(error, 'Failed to save contract. Please try again.');
       setFlashNotification({
         title: 'Error!',
-        message: 'Failed to save contract. Please try again.',
+        message: errorMessage,
         alertType: 'error'
       });
-      setError('Failed to save contract. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -322,12 +331,12 @@ export default function ContractsPage() {
       await fetchContracts();
     } catch (error) {
       console.error('Error deleting contract:', error);
+      const errorMessage = extractErrorMessage(error, 'Failed to delete contract. Please try again.');
       setFlashNotification({
         title: 'Error!',
-        message: 'Failed to delete contract. Please try again.',
+        message: errorMessage,
         alertType: 'error'
       });
-      setError('Failed to delete contract. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -371,12 +380,12 @@ export default function ContractsPage() {
       await fetchContracts();
     } catch (error) {
       console.error('Error approving contract:', error);
+      const errorMessage = extractErrorMessage(error, 'Failed to approve contract. Please try again.');
       setFlashNotification({
         title: 'Error!',
-        message: 'Failed to approve contract. Please try again.',
+        message: errorMessage,
         alertType: 'error'
       });
-      setError('Failed to approve contract. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -406,12 +415,12 @@ export default function ContractsPage() {
       await fetchContracts();
     } catch (error) {
       console.error('Error denying contract:', error);
+      const errorMessage = extractErrorMessage(error, 'Failed to deny contract. Please try again.');
       setFlashNotification({
         title: 'Error!',
-        message: 'Failed to deny contract. Please try again.',
+        message: errorMessage,
         alertType: 'error'
       });
-      setError('Failed to deny contract. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -433,19 +442,6 @@ export default function ContractsPage() {
 
   return (
     <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
-          <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
-          >
-            ×
-          </button>
-        </div>
-      )}
-
       {/* Breadcrumbs */}
       <div className="mb-6">
         <nav className="flex items-center gap-2">

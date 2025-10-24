@@ -49,6 +49,7 @@ export default function InvoiceForm({
     finalAmount: 0,
     invoiceAmount: 0,
     taxAmount: 0,
+    totalAmountPaid: 0,
     contractId: '',
     contractName: '',
     termsId: '',
