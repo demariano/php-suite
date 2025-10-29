@@ -3,6 +3,10 @@
     "version": "0.0.0",
     "license": "MIT",
     "scripts": {
+    "build-accounting-api-service": "nx build accounting-api-service --skip-nx-cache --configuration=production",
+    "post-build-accounting-api-service": "nx build-serverless-files accounting-api-service",
+    "build-accounts-api-service": "nx build accounts-api-service --skip-nx-cache --configuration=production",
+    "post-build-accounts-api-service": "nx build-serverless-files accounts-api-service",
     "build-invoicing-api-service": "nx build invoicing-api-service --skip-nx-cache --configuration=production",
     "post-build-invoicing-api-service": "nx build-serverless-files invoicing-api-service",
     "build-stock-api-service": "nx build stock-api-service --skip-nx-cache --configuration=production",

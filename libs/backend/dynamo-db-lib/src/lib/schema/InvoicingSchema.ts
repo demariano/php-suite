@@ -47,7 +47,7 @@ export const InvoicingSchema = {
             contractSales: { type: Boolean, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT', 'DRAFT'],
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             printStatus: { type: String, enum: ['PENDING', 'COMPLETED', 'FOR_REPRINT'], required: false },

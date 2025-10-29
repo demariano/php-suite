@@ -251,9 +251,6 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             filter.fields?.push('stockId');
         }
 
-        console.log('whereClause', whereClause);
-        console.log('substitutions', substitutions);
-
         const stockRecords = await this.stockTable.find(
             {
                 GSI1PK: 'STOCK',

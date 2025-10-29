@@ -17,6 +17,7 @@
         "esModuleInterop": true,
         "baseUrl": ".",
         "paths": {
+            "@accounting-database-service": ["libs/backend/database-services/accounting-database-service/src/index.ts"],
             "@auth-guard-lib": ["libs/backend/auth-guard-lib/src/index.ts"],
             "@aws-cognito-lib": ["libs/backend/aws-services/aws-cognito-lib/src/index.ts"],
             "@aws-s3-lib": ["libs/backend/aws-services/aws-s3-lib/src/index.ts"],

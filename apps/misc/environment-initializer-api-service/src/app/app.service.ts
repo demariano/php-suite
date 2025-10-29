@@ -1,3 +1,4 @@
+import { AccountsDatabaseServiceAbstract } from '@accounting-database-service';
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
 import {
     AreaDatabaseServiceAbstract,
@@ -8,6 +9,8 @@ import {
     TownDatabaseServiceAbstract,
 } from '@customer-database-service';
 import {
+    AccountsDto,
+    AccountTypeEnum,
     AreaDto,
     ConfigurationDto,
     ContractDto,
@@ -106,7 +109,10 @@ export class AppService {
         private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
 
         @Inject('ContractDatabaseService')
-        private readonly contractDatabaseService: ContractDatabaseServiceAbstract
+        private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
+
+        @Inject('AccountsDatabaseService')
+        private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract
     ) {}
 
     healthCheck(): { status: string; version: string } {
@@ -534,6 +540,21 @@ export class AppService {
         contractData2.forApprovalVersion = {};
         contractData2.changeReason = '';
         await this.contractDatabaseService.createRecord(contractData2);
+
+        //create 2 accounts
+        const accountData1 = new AccountsDto();
+        accountData1.accountName = 'Account 1 - Area';
+        accountData1.accountType = AccountTypeEnum.AREA;
+        accountData1.status = StatusEnum.ACTIVE;
+        accountData1.subAccounts = ['Sub Account 1 - Area', 'Sub Account 2 - Area'];
+        await this.accountsDatabaseService.createRecord(accountData1);
+
+        const accountData2 = new AccountsDto();
+        accountData2.accountName = 'Account 2 - Customer';
+        accountData2.accountType = AccountTypeEnum.CUSTOMER;
+        accountData2.status = StatusEnum.ACTIVE;
+        accountData2.subAccounts = ['Sub Account 1 - Customer', 'Sub Account 2 - Customer'];
+        await this.accountsDatabaseService.createRecord(accountData2);
     }
 
     async deleteAllRecords() {
@@ -554,5 +575,7 @@ export class AppService {
         await this.salesTypeDatabaseService.deleteAllRecords();
         await this.territoryManagerDatabaseService.deleteAllRecords();
         await this.invoiceDatabaseService.deleteAllRecords();
+        await this.contractDatabaseService.deleteAllRecords();
+        await this.accountsDatabaseService.deleteAllRecords();
     }
 }

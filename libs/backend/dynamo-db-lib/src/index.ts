@@ -10,6 +10,7 @@ export * from './lib/utils/expirty.data.util';
 export * from './lib/utils/get.first.monday.util';
 export * from './lib/utils/reduce.array.contents';
 
+export * from './lib/schema/AccountingSchema';
 export * from './lib/schema/ConfigurationSchema';
 export * from './lib/schema/CustomerSchema';
 export * from './lib/schema/EmailTemplateSchema';

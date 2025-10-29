@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 
+import { AccountingDatabaseServiceModule, AccountsDatabaseService } from '@accounting-database-service';
 import { AuthGuardLibModule } from '@auth-guard-lib';
 import { AwsCognitoLibModule } from '@aws-cognito-lib';
 import { ConfigurationDatabaseService, ConfigurationDatabaseServiceModule } from '@configuration-database-service';
@@ -45,6 +46,7 @@ import { AppService } from './app.service';
         CustomerDatabaseServiceModule,
         InventoryDatabaseServiceModule,
         InvoicingDatabaseServiceModule,
+        AccountingDatabaseServiceModule,
     ],
     controllers: [AppController],
     providers: [
@@ -124,6 +126,10 @@ import { AppService } from './app.service';
         {
             provide: 'ContractDatabaseService',
             useClass: ContractDatabaseService,
+        },
+        {
+            provide: 'AccountsDatabaseService',
+            useClass: AccountsDatabaseService,
         },
     ],
 })

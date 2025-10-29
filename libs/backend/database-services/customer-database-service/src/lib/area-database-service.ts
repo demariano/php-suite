@@ -115,8 +115,6 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             dynamoDbOption
         );
 
-        console.log('Records:', records);
-
         const pageRecordCursorPointers = pageRecordHandler(
             records,
             limit,

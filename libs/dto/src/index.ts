@@ -109,3 +109,8 @@ export * from './lib/invoicing/payment/payment.invoice.details.dto';
 //return good sold
 export * from './lib/invoicing/return.good.sold/create.return.good.sold.dto';
 export * from './lib/invoicing/return.good.sold/return.good.sold.dto';
+
+//accounting
+export * from './lib/accounting/account.dto';
+export * from './lib/accounting/create.account.dto';
+export * from './lib/enums/account.type.enum';
