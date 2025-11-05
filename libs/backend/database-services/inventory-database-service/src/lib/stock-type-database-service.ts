@@ -32,6 +32,7 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         const stockTypeData: StockTypeDataType = {
             status: stockTypeDto.status,
             activityLogs: stockTypeDto.activityLogs,
+            stockTypeName: stockTypeDto.stockTypeName,
             forApprovalVersion: stockTypeDto.forApprovalVersion,
             GSI1PK: `STOCK_TYPE`,
             GSI1SK: stockTypeDto.stockTypeName,
@@ -73,21 +74,44 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         return await this.convertToDto(record);
     }
 
-    async findRecordContainingName(name: string): Promise<StockTypeDto[] | null> {
-        const stockTypeRecords = await this.stockTypeTable.find(
+    async findRecordContainingName(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockTypeDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.stockTypeTable.find(
             {
-                GSI1PK: 'STOCK_TYPE',
-            },
-            {
-                where: 'contains(${stockTypeName}, @{stockTypeName})',
-                substitutions: {
-                    stockTypeName: name,
+                GSI1PK: `STOCK_TYPE`,
+                GSI1SK: {
+                    begins: name,
                 },
-                index: 'GSI1',
-            }
+            },
+            dynamoDbOption
         );
 
-        return await this.convertToDtoList(stockTypeRecords);
+        console.log('Records:', records);
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordByName(name: string): Promise<StockTypeDto | null> {
@@ -119,11 +143,12 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         return record;
     }
 
-    async findRecordsPagination(
+    async findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<StockTypeDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
@@ -131,6 +156,7 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         const records = await this.stockTypeTable.find(
             {
                 GSI2PK: `STOCK_TYPE#${status}`,
+                ...(name != null ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );
@@ -141,6 +167,40 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
             direction,
             'GSI2PK',
             'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockTypeDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.stockTypeTable.find(
+            {
+                GSI1PK: `STOCK_TYPE`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(records.next),

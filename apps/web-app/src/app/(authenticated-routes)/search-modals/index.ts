@@ -15,6 +15,7 @@ export { default as CustomerTermsSelectionModal } from './CustomerTermsSelection
 export { default as CustomerTypeSearchableSelectionModal } from './CustomerTypeSearchableSelectionModal';
 export { default as SalesTypeSearchableSelectionModal } from './SalesTypeSearchableSelectionModal';
 export { default as StockSearchableSelectionModal } from './StockSearchableSelectionModal';
+export { default as StockTypeSearchableSelectionModal } from './StockTypeSearchableSelectionModal';
 export { default as TermsSearchableSelectionModal } from './TermsSearchableSelectionModal';
 export { default as TerritoryManagerSearchableSelectionModal } from './TerritoryManagerSearchableSelectionModal';
 export { default as TownSearchableSelectionModal } from './TownSearchableSelectionModal';

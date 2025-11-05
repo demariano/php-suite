@@ -1,0 +1,195 @@
+import { VoucherDatabaseServiceAbstract } from '@accounting-database-service';
+import { ErrorResponseDto, ResponseDto, StatusEnum, UserRole, VoucherDto } from '@dto';
+import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { UpdateVoucherCommand } from './update.command';
+
+// Constants
+const HTTP_STATUS_OK = 200;
+
+@CommandHandler(UpdateVoucherCommand)
+export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherCommand> {
+    protected readonly logger = new Logger(UpdateVoucherHandler.name);
+
+    constructor(
+        @Inject('VoucherDatabaseService')
+        private readonly voucherDatabaseService: VoucherDatabaseServiceAbstract
+    ) {}
+
+    async execute(command: UpdateVoucherCommand): Promise<ResponseDto<VoucherDto | ErrorResponseDto>> {
+        this.logger.log(`Processing update request for voucher: ${command.recordId}`);
+
+        try {
+            // Fetch and validate existing voucher record
+            const existingRecord = await this.fetchVoucherById(command.recordId);
+
+            // Validate that voucher number doesn't already exist (if changed)
+            await this.validateVoucherNoUnique(command.voucherDto.voucherNo, command.recordId);
+
+            // Validate required fields
+            this.validateRequiredFields(command.voucherDto);
+
+            // Check user authorization and determine status
+            const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
+
+            // Update status and activity logs based on permissions
+            this.updateVoucherStatus(command, existingRecord, hasApprovalPermission);
+
+            // Update record in database
+            const updatedRecord = await this.voucherDatabaseService.updateRecord(existingRecord);
+
+            this.logger.log(`Voucher updated successfully: ${updatedRecord.voucherId}`);
+            return new ResponseDto<VoucherDto>(updatedRecord, HTTP_STATUS_OK);
+        } catch (error) {
+            return this.handleError(error, command.recordId);
+        }
+    }
+
+    /**
+     * Fetches and validates a voucher record by ID
+     */
+    private async fetchVoucherById(recordId: string): Promise<VoucherDto> {
+        const voucherRecord = await this.voucherDatabaseService.findRecordById(recordId);
+
+        if (!voucherRecord) {
+            this.logger.warn(`Voucher not found for ID: ${recordId}`);
+            throw new NotFoundException(`Voucher not found for ID: ${recordId}`);
+        }
+
+        return voucherRecord;
+    }
+
+    /**
+     * Validates that the voucher number is unique (excluding current record)
+     */
+    private async validateVoucherNoUnique(voucherNo: string, currentRecordId: string): Promise<void> {
+        const existingRecord = await this.voucherDatabaseService.findRecordByVoucherNo(voucherNo);
+
+        if (existingRecord && existingRecord.voucherId !== currentRecordId) {
+            this.logger.warn(`Voucher number already exists: ${voucherNo}`);
+            throw new BadRequestException('Voucher number already exists');
+        }
+    }
+
+    /**
+     * Validates that required fields are provided
+     */
+    private validateRequiredFields(voucherDto: VoucherDto): void {
+        if (!voucherDto.voucherNo) {
+            this.logger.warn('Voucher number is required');
+            throw new BadRequestException('Voucher number is required');
+        }
+
+        if (!voucherDto.voucherDate) {
+            this.logger.warn('Voucher date is required');
+            throw new BadRequestException('Voucher date is required');
+        }
+    }
+
+    /**
+     * Checks if user has permission to approve updates directly
+     */
+    private hasApprovalPermission(userRoles?: string[]): boolean {
+        if (!userRoles || userRoles.length === 0) {
+            return false;
+        }
+
+        return userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+    }
+
+    /**
+     * Updates voucher status and activity logs based on user permissions
+     */
+    private updateVoucherStatus(
+        command: UpdateVoucherCommand,
+        existingRecord: VoucherDto,
+        hasApprovalPermission: boolean
+    ): void {
+        if (hasApprovalPermission) {
+            // User can approve directly - update the existing record
+            existingRecord.status = StatusEnum.ACTIVE;
+            existingRecord.voucherNo = command.voucherDto.voucherNo;
+            existingRecord.voucherDate = command.voucherDto.voucherDate;
+            existingRecord.voucherAmount = command.voucherDto.voucherAmount;
+            existingRecord.remarks = command.voucherDto.remarks;
+            existingRecord.voucherDetails = command.voucherDto.voucherDetails;
+            existingRecord.paymentType = command.voucherDto.paymentType;
+            existingRecord.bankName = command.voucherDto.bankName;
+            existingRecord.chequeNo = command.voucherDto.chequeNo;
+            existingRecord.chequeDate = command.voucherDto.chequeDate;
+            existingRecord.totalAmount = command.voucherDto.totalAmount;
+            existingRecord.accountId = command.voucherDto.accountId;
+            existingRecord.accountName = command.voucherDto.accountName;
+            existingRecord.accountType = command.voucherDto.accountType;
+            existingRecord.customerId = command.voucherDto.customerId;
+            existingRecord.customerName = command.voucherDto.customerName;
+            existingRecord.areaId = command.voucherDto.areaId;
+            existingRecord.areaName = command.voucherDto.areaName;
+            existingRecord.changeReason = command.voucherDto.changeReason;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Voucher updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
+            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        } else {
+            // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
+            existingRecord.status = StatusEnum.FOR_APPROVAL;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Voucher updated by ${command.user.username} for approval`;
+            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            existingRecord.forApprovalVersion = {
+                ...existingRecord.forApprovalVersion,
+                voucherNo: command.voucherDto.voucherNo,
+                voucherDate: command.voucherDto.voucherDate,
+                voucherAmount: command.voucherDto.voucherAmount,
+                remarks: command.voucherDto.remarks,
+                voucherDetails: command.voucherDto.voucherDetails,
+                paymentType: command.voucherDto.paymentType,
+                bankName: command.voucherDto.bankName,
+                chequeNo: command.voucherDto.chequeNo,
+                chequeDate: command.voucherDto.chequeDate,
+                totalAmount: command.voucherDto.totalAmount,
+                accountId: command.voucherDto.accountId,
+                accountName: command.voucherDto.accountName,
+                accountType: command.voucherDto.accountType,
+                customerId: command.voucherDto.customerId,
+                customerName: command.voucherDto.customerName,
+                areaId: command.voucherDto.areaId,
+                areaName: command.voucherDto.areaName,
+                changeReason: command.voucherDto.changeReason,
+            };
+        }
+    }
+
+    /**
+     * Centralized error handling
+     */
+    private handleError(error: unknown, recordId: string): never {
+        this.logger.error(`Error processing update request for ${recordId}:`, error);
+
+        // Re-throw known exceptions
+        if (error instanceof BadRequestException || error instanceof NotFoundException) {
+            throw error;
+        }
+
+        // Handle unknown errors
+        const errorMessage = this.extractErrorMessage(error);
+        throw new BadRequestException(errorMessage);
+    }
+
+    /**
+     * Extracts error message from various error types
+     */
+    private extractErrorMessage(error: unknown): string {
+        if (error instanceof Error) {
+            return error.message;
+        }
+
+        if (typeof error === 'object' && error !== null && 'response' in error) {
+            const responseError = error as { response?: { body?: { errorMessage?: string } } };
+            return responseError.response?.body?.errorMessage || 'Unknown error occurred';
+        }
+
+        return 'An unexpected error occurred';
+    }
+}

@@ -1,13 +1,11 @@
-import { ResponseDto, StockTypeDto } from '@dto';
+import { PageDto, ResponseDto } from '@dto';
 import { StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
-import { BadRequestException, Inject, Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetStockTypeByNameQuery } from './get.stock.type.by.name.query';
 
 // Constants
 const HTTP_STATUS_OK = 200;
-const MIN_NAME_LENGTH = 1;
-const MAX_NAME_LENGTH = 255;
 
 @QueryHandler(GetStockTypeByNameQuery)
 export class GetStockTypeByNameHandler implements IQueryHandler<GetStockTypeByNameQuery> {
@@ -18,42 +16,30 @@ export class GetStockTypeByNameHandler implements IQueryHandler<GetStockTypeByNa
         private readonly stockTypeDatabaseService: StockTypeDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetStockTypeByNameQuery): Promise<ResponseDto<StockTypeDto[]>> {
-        this.logger.log(`Processing get stock types by name request: ${query.name}`);
+    async execute(query: GetStockTypeByNameQuery): Promise<ResponseDto<PageDto<any>>> {
+        this.logger.log(`Processing get stock type by name request for: ${query.name}`);
 
         try {
-            // Validate name parameter
-            this.validateNameParameter(query.name);
+            // Fetch stock types by name with pagination
+            const stockTypePage = await this.fetchStockTypesByName(query);
 
-            // Fetch stock types by name
-            const stockTypes = await this.fetchStockTypesByName(query.name);
-
-            this.logger.log(`Stock types retrieved successfully: ${stockTypes.length} found`);
-            return new ResponseDto<StockTypeDto[]>(stockTypes, HTTP_STATUS_OK);
+            this.logger.log(`Stock types retrieved successfully for name: ${query.name}`);
+            return new ResponseDto<PageDto<any>>(stockTypePage, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
     }
 
     /**
-     * Validates the name parameter
+     * Fetches stock types by name with pagination
      */
-    private validateNameParameter(name: string): void {
-        if (!name || typeof name !== 'string') {
-            throw new BadRequestException('Name parameter is required and must be a string');
-        }
-
-        if (name.length < MIN_NAME_LENGTH || name.length > MAX_NAME_LENGTH) {
-            throw new BadRequestException(`Name must be between ${MIN_NAME_LENGTH} and ${MAX_NAME_LENGTH} characters`);
-        }
-    }
-
-    /**
-     * Fetches stock types by name
-     */
-    private async fetchStockTypesByName(name: string): Promise<StockTypeDto[]> {
-        const stockTypes = await this.stockTypeDatabaseService.findRecordContainingName(name);
-        return stockTypes || [];
+    private async fetchStockTypesByName(query: GetStockTypeByNameQuery): Promise<PageDto<any>> {
+        return await this.stockTypeDatabaseService.findRecordContainingName(
+            query.limit,
+            query.name,
+            query.direction,
+            query.cursorPointer
+        );
     }
 
     /**
@@ -62,12 +48,7 @@ export class GetStockTypeByNameHandler implements IQueryHandler<GetStockTypeByNa
     private handleError(error: unknown, name: string): never {
         this.logger.error(`Error fetching stock types by name ${name}:`, error);
 
-        // Re-throw known exceptions
-        if (error instanceof BadRequestException) {
-            throw error;
-        }
-
-        // Handle unknown errors
-        throw new BadRequestException('Failed to fetch stock types by name');
+        // Handle unknown errors by throwing a generic error
+        throw new Error(`Failed to fetch stock types by name: ${name}`);
     }
 }

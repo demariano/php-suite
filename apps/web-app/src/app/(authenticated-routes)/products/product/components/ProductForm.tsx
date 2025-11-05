@@ -626,8 +626,8 @@ export default function ProductForm({
               </div>
             )}
 
-            {/* Change Reason Field - Only show for non-create mode */}
-            {!isCreateMode && (
+            {/* Change Reason Field - Only show for non-create mode and non-admin users */}
+            {!isCreateMode && !isAdminUser && (
               <div style={{ marginTop: '24px', marginBottom: '20px' }}>
                 <label style={{
                   display: 'block',
@@ -636,7 +636,7 @@ export default function ProductForm({
                   color: '#374151',
                   marginBottom: '8px'
                 }}>
-                  Change Reason {!isAdminUser ? '*' : ''}
+                  Change Reason *
                 </label>
                 <textarea
                   name="changeReason"
@@ -676,10 +676,7 @@ export default function ProductForm({
                   color: '#6b7280',
                   marginTop: '4px'
                 }}>
-                  {isAdminUser 
-                    ? 'Optional field for documenting the reason for changes.' 
-                    : 'This field is required when making changes to the product record.'
-                  }
+                  This field is required when making changes to the product record.
                 </div>
               </div>
             )}

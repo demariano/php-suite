@@ -870,7 +870,7 @@ export default function ContractForm({
               color: '#374151',
               marginBottom: '8px'
             }}>
-              Change Reason {!isAdminUser ? '*' : ''}
+              Change Reason *
             </label>
             <textarea
               name="changeReason"

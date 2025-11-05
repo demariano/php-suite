@@ -1,15 +1,11 @@
-import { PageDto, ResponseDto, StockTypeDto } from '@dto';
+import { PageDto, ResponseDto } from '@dto';
 import { StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
-import { BadRequestException, Inject, Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetRecordsPaginationQuery } from './get.records.pagination.query';
 
 // Constants
 const HTTP_STATUS_OK = 200;
-const MIN_LIMIT = 1;
-const MAX_LIMIT = 100;
-const VALID_DIRECTIONS = ['next', 'prev'];
-const VALID_STATUSES = ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'];
 
 @QueryHandler(GetRecordsPaginationQuery)
 export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPaginationQuery> {
@@ -20,52 +16,26 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
         private readonly stockTypeDatabaseService: StockTypeDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetRecordsPaginationQuery): Promise<ResponseDto<PageDto<StockTypeDto>>> {
-        this.logger.log(
-            `Processing get stock types pagination request - Status: ${query.status}, Limit: ${query.limit}`
-        );
+    async execute(query: GetRecordsPaginationQuery): Promise<ResponseDto<PageDto<any>>> {
+        this.logger.log(`Processing get stock types pagination request`);
 
         try {
-            // Validate parameters
-            this.validateParameters(query);
+            // Fetch stock types with pagination
+            const stockTypePage = await this.fetchStockTypesPagination(query);
 
-            // Fetch paginated stock types
-            const pageResult = await this.fetchStockTypesPagination(query);
-
-            this.logger.log(`Stock types pagination retrieved successfully: ${pageResult.data.length} items`);
-            return new ResponseDto<PageDto<StockTypeDto>>(pageResult, HTTP_STATUS_OK);
+            this.logger.log(`Stock types retrieved successfully with pagination`);
+            return new ResponseDto<PageDto<any>>(stockTypePage, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error);
         }
     }
 
     /**
-     * Validates the query parameters
-     */
-    private validateParameters(query: GetRecordsPaginationQuery): void {
-        // Validate limit
-        if (!query.limit || query.limit < MIN_LIMIT || query.limit > MAX_LIMIT) {
-            throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
-        }
-
-        // Validate direction
-        if (query.direction && !VALID_DIRECTIONS.includes(query.direction)) {
-            throw new BadRequestException(`Direction must be one of: ${VALID_DIRECTIONS.join(', ')}`);
-        }
-
-        // Validate status
-        if (!query.status || !VALID_STATUSES.includes(query.status)) {
-            throw new BadRequestException(`Status must be one of: ${VALID_STATUSES.join(', ')}`);
-        }
-    }
-
-    /**
      * Fetches stock types with pagination
      */
-    private async fetchStockTypesPagination(query: GetRecordsPaginationQuery): Promise<PageDto<StockTypeDto>> {
-        return await this.stockTypeDatabaseService.findRecordsPagination(
+    private async fetchStockTypesPagination(query: GetRecordsPaginationQuery): Promise<PageDto<any>> {
+        return await this.stockTypeDatabaseService.findRecordsByPagination(
             query.limit,
-            query.status,
             query.direction,
             query.cursorPointer
         );
@@ -75,14 +45,9 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
      * Centralized error handling
      */
     private handleError(error: unknown): never {
-        this.logger.error(`Error fetching stock types pagination:`, error);
+        this.logger.error(`Error fetching stock types with pagination:`, error);
 
-        // Re-throw known exceptions
-        if (error instanceof BadRequestException) {
-            throw error;
-        }
-
-        // Handle unknown errors
-        throw new BadRequestException('Failed to fetch stock types pagination');
+        // Handle unknown errors by throwing a generic error
+        throw new Error('Failed to fetch stock types with pagination');
     }
 }

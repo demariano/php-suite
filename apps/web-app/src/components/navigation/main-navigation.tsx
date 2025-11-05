@@ -71,6 +71,23 @@ const navigationModules = [
     ]
   },
   {
+    sectionTitle: "Accounting",
+    menuItems: [
+      { 
+        label: "Accounts", 
+        route: "/accounting/accounts", 
+        icon: File,
+        description: "Manage accounting accounts"
+      },
+      { 
+        label: "Vouchers", 
+        route: "/accounting/voucher", 
+        icon: File,
+        description: "Manage vouchers"
+      }
+    ]
+  },
+  {
     sectionTitle: "Reports",
     menuItems: [
       { 

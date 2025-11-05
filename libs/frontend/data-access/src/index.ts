@@ -15,6 +15,7 @@ export * from './local-state-management';
 export * from './state-management';
 
 // Export types
+export * from './types/account.types';
 export * from './types/area.types';
 export * from './types/cheque-clear-status.enum';
 export * from './types/contract.types';
@@ -39,10 +40,12 @@ export * from './types/responseError';
 export * from './types/return-good-sold.types';
 export * from './types/sales-type.types';
 export * from './types/status.enum';
+export * from './types/stock-type.types';
 export * from './types/stock.types';
 export * from './types/terms.types';
 export * from './types/territory-manager.types';
 export * from './types/town.types';
+export * from './types/voucher.types';
 
 // Export API types
 export type { AreasResponse } from './api/area.api';
@@ -55,9 +58,11 @@ export type { ProductClassesResponse } from './api/product-class.api';
 export type { ProductPriceTypesResponse } from './api/product-price-type.api';
 export type { ProductUnitsResponse } from './api/product-unit.api';
 export type { ReturnGoodSoldsResponse } from './api/return-good-sold.api';
+export type { StockTypesResponse } from './api/stock-type.api';
 export type { StocksResponse } from './api/stock.api';
 export type { TermsResponse } from './api/terms.api';
 export type { TownsResponse } from './api/town.api';
+export type { VouchersResponse } from './api/voucher.api';
 export type { ProductDealsResponse } from './types/product-deal.types';
 
 // Export config

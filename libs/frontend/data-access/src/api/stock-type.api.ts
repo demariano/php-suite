@@ -16,8 +16,8 @@ class StockTypeApi extends AxiosConfig {
     }
 
     public getStockTypes = async (
-        status?: string,
         limit = 10,
+        status?: string,
         direction?: string,
         cursorPointer?: string,
         userRole?: string
@@ -28,6 +28,7 @@ class StockTypeApi extends AxiosConfig {
 
         if (status) {
             params.append('status', status);
+            return this.getStockTypesByStatus(limit, status, direction, cursorPointer, userRole);
         }
 
         if (direction) {
@@ -42,7 +43,39 @@ class StockTypeApi extends AxiosConfig {
             params.append('userRole', userRole);
         }
 
-        return await this.axiosInstance.get(`/stock-type/pagination?${params.toString()}`);
+        return await this.axiosInstance.get(`/stock-type?${params.toString()}`);
+    };
+
+    public getStockTypesByStatus = async (
+        limit = 10,
+        status: string,
+        direction?: string,
+        cursorPointer?: string,
+        userRole?: string,
+        name?: string
+    ): Promise<StockTypesResponse> => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+            status: status,
+        });
+
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        if (name) {
+            params.append('name', name);
+        }
+
+        return await this.axiosInstance.get(`/stock-type/status?${params.toString()}`);
     };
 
     public getStockTypeById = async (id: string, userRole?: string): Promise<StockTypeDto> => {
@@ -81,7 +114,7 @@ class StockTypeApi extends AxiosConfig {
             params.append('userRole', userRole);
         }
 
-        return await this.axiosInstance.get(`/stock-type/search/name?name=${name}&${params.toString()}`);
+        return await this.axiosInstance.get(`/stock-type/name/${name}?${params.toString()}`);
     };
 
     public createStockType = async (stockType: CreateStockTypeDto, userRole?: string): Promise<StockTypeDto> => {

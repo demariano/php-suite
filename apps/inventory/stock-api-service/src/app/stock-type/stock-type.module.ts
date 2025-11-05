@@ -12,6 +12,7 @@ import { DenyStockTypeHandler } from './command/deny-record/deny.handler';
 import { UpdateStockTypeHandler } from './command/update/update.handler';
 import { GetStockTypeByIdHandler } from './queries/get.by.id/get.stock.type.by.id.handler';
 import { GetStockTypeByNameHandler } from './queries/get.by.name/get.stock.type.by.name.handler';
+import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 import { StockTypeController } from './stock-type.controller';
 
@@ -38,6 +39,7 @@ import { StockTypeController } from './stock-type.controller';
         GetStockTypeByIdHandler,
         GetStockTypeByNameHandler,
         GetRecordsPaginationHandler,
+        GetRecordsByStatusPaginationHandler,
         UpdateStockTypeHandler,
         DeleteStockTypeHandler,
         ApproveStockTypeHandler,

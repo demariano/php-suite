@@ -31,6 +31,7 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
         const record = await this.accountsTable.create({
             accountName: dto.accountName,
             accountType: dto.accountType,
+            subAccounts: dto.subAccounts,
             status: dto.status,
             activityLogs: dto.activityLogs,
         });
@@ -266,6 +267,9 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
         dto.accountType = record.accountType ? (record.accountType as AccountTypeEnum) : AccountTypeEnum.OTHERS;
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
+        dto.subAccounts = record.subAccounts ? record.subAccounts : [];
+        dto.changeReason = record.changeReason ? record.changeReason : undefined;
+        dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : undefined;
 
         return dto;
     }
@@ -288,6 +292,7 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
             activityLogs: dto.activityLogs,
             changeReason: dto.changeReason,
             subAccounts: dto.subAccounts ? dto.subAccounts : [],
+            forApprovalVersion: dto.forApprovalVersion,
             GSI1PK: `ACCOUNTS`,
             GSI1SK: dto.accountingId,
             GSI2PK: `ACCOUNTS#${dto.status}`,

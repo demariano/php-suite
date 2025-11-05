@@ -210,6 +210,32 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
       ]
     },
     {
+      sectionTitle: "Accounting",
+      menuItems: [
+        { 
+          label: "Accounting", 
+          route: "/accounting/accounts", 
+          icon: File,
+          onClick: (route: string) => onNavigate?.(route),
+          subItems: [
+            { 
+              label: "Accounts", 
+              route: "/accounting/accounts", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Vouchers", 
+              route: "/accounting/voucher", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            }
+          ],
+          isExpanded: false
+        }
+      ]
+    },
+    {
       sectionTitle: "Reports",
       menuItems: [
         { 

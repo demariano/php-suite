@@ -40,6 +40,50 @@ export const AccountingSchema = {
             GSI4PK: { type: String, value: 'ACCOUNTS#${accountType}#${status}', hidden: false },
             GSI4SK: { type: String, value: '${accountName}', hidden: false },
         },
+        Voucher: {
+            PK: { type: String, value: 'VOUCHER', hidden: false },
+            SK: { type: String, value: '${voucherId}', hidden: false },
+            voucherId: { type: String, generate: 'ulid' },
+            voucherNo: { type: String },
+            voucherDate: { type: String },
+            voucherAmount: { type: Number },
+            activityLogs: { type: Array },
+            forApprovalVersion: { type: Object },
+            accountId: { type: String },
+            accountName: { type: String },
+            accountType: {
+                type: String,
+                enum: ['AREA', 'CUSTOMER', 'OTHERS'],
+                required: false,
+            },
+            customerId: { type: String, required: false },
+            customerName: { type: String, required: false },
+            areaId: { type: String, required: false },
+            areaName: { type: String, required: false },
+            changeReason: { type: String, required: false },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                required: false,
+            },
+            remarks: { type: String, required: false },
+            voucherDetails: { type: Array },
+            paymentType: {
+                type: String,
+                enum: ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'OTHER'],
+                required: false,
+            },
+            bankName: { type: String, required: false },
+            chequeNo: { type: String, required: false },
+            chequeDate: { type: String, required: false },
+            totalAmount: { type: Number, required: false },
+            GSI1PK: { type: String, value: 'VOUCHER', hidden: false },
+            GSI1SK: { type: String, value: '${voucherNo}', hidden: false },
+            GSI2PK: { type: String, value: 'VOUCHER#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${voucherNo}', hidden: false },
+            GSI3PK: { type: String, value: 'VOUCHER#${voucherDate}', hidden: false },
+            GSI3SK: { type: String, value: '${voucherNo}', hidden: false },
+        },
     } as const,
     params: {
         isoDates: true,
@@ -48,3 +92,4 @@ export const AccountingSchema = {
 };
 
 export type AccountsDataType = Entity<typeof AccountingSchema.models.Accounts>;
+export type VoucherDataType = Entity<typeof AccountingSchema.models.Voucher>;

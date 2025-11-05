@@ -113,4 +113,7 @@ export * from './lib/invoicing/return.good.sold/return.good.sold.dto';
 //accounting
 export * from './lib/accounting/account.dto';
 export * from './lib/accounting/create.account.dto';
+export * from './lib/accounting/create.voucher.dto';
+export * from './lib/accounting/voucher.detail.dto';
+export * from './lib/accounting/voucher.dto';
 export * from './lib/enums/account.type.enum';
