@@ -317,11 +317,18 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 
 ## 5. Frontend UI/UX
 
+**IMPORTANT STYLING GUIDELINES:**
+- **NO GRADIENTS**: All components must use solid colors only. Do NOT use `bg-gradient-to-r`, `bg-gradient-to-br`, or any gradient classes.
+- **Solid Colors Only**: Use solid color classes like `bg-blue-600`, `bg-red-600`, `bg-gray-50`, etc.
+- **Simple Shadows**: Use `shadow-sm` for subtle shadows, avoid complex shadow effects.
+- **Simple Hover Effects**: Use `hover:bg-{color}-700` for color transitions, avoid transform scale effects.
+- **Status Badges**: Display status badges without icon boxes. Use solid color badges (e.g., `bg-green-600 text-white shadow-sm`).
+
 ### 5.1 Table Page
 
 - Location: `apps/web-app/src/app/(authenticated-routes)/{entities}/{entity}/page.tsx`
 - Main container: `<div className="p-6 space-y-6">` (NOT full-width gradient background)
-- **IMPORTANT**: Page should NOT use full-width background gradients
+- **IMPORTANT**: Page should NOT use full-width background gradients or any gradient styling. Use solid colors only.
 - State management:
   - `isLoading`, `error`, `entities` array
   - `nextCursor`, `prevCursor`, `currentCursor` for pagination
@@ -338,6 +345,15 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - Header component with search input and create button
   - Table component with pagination controls
   - Status badges with color coding
+- Status Display:
+  - **IMPORTANT**: Status badges must display readable text, not raw enum values
+  - Implement `getStatusText(status: StatusEnum): string` helper function to convert enum values:
+    - `ACTIVE` → "Active"
+    - `FOR_APPROVAL` → "For Approval"
+    - `FOR_DELETION` → "For Deletion"
+    - `NEW_RECORD` → "New Record"
+  - Use `getStatusText()` in `getStatusBadge()` function to display converted text
+  - Status badges should use color-coded styling (green for ACTIVE, yellow for FOR_APPROVAL, red for FOR_DELETION, blue for NEW_RECORD)
 
 #### 5.1.1 Header Component
 
@@ -384,26 +400,44 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 - Location: `apps/web-app/src/app/(authenticated-routes)/{entities}/{entity}/[id]/edit/page.tsx`
 - Main container: `<div className="p-6 space-y-6">`
 - Form wrapper: `<div className="flex justify-center">`
-- Card container: `<div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">`
+- Card container: `<div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">`
 - Tabs:
-  - Details tab: Main form (named after entity, e.g., "Customer Information", "Area Information")
+  - Details tab: Main form (named after entity with status, e.g., "Customer Information - Active", "Area Information - For Approval")
   - Approval tab: Only shown when status is not ACTIVE (shows pending changes)
   - Activity Logs tab: Shows activity logs array
 - Tab Navigation:
-  - Container: `<div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 rounded-t-xl p-2">`
+  - Container: `<div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2">`
   - Buttons container: `<div className="flex gap-2">`
-  - Active tab button: `className="px-5 py-3 rounded-lg font-semibold text-sm bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 transform scale-105"`
-  - Inactive tab button: `className="px-5 py-3 rounded-lg font-semibold text-sm bg-white/60 text-gray-600 hover:bg-white/80 hover:text-blue-600"`
+  - **Main Details Tab**:
+    - Tab name format: `"{Entity} Information - {Status}"` (e.g., "Customer Information - Active")
+    - Status shown as plain text in tab name (no badge)
+    - Tab color changes based on status when active:
+      - ACTIVE: `bg-green-600 text-white shadow-sm`
+      - FOR_APPROVAL: `bg-yellow-500 text-white shadow-sm`
+      - FOR_DELETION: `bg-red-600 text-white shadow-sm`
+      - NEW_RECORD: `bg-blue-600 text-white shadow-sm`
+    - Inactive state: `bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900`
+    - Helper functions required:
+      - `getStatusText(status: StatusEnum): string` - Converts status enum to readable text
+      - `getTabColorClasses(status: StatusEnum, isActive: boolean): string` - Returns appropriate color classes based on status and active state
+  - **Other Tabs** (Approval, Activity Logs):
+    - Active tab button: `className="px-5 py-3 rounded-lg font-semibold text-sm bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors duration-200"`
+    - Inactive tab button: `className="px-5 py-3 rounded-lg font-semibold text-sm bg-white text-gray-600 hover:bg-gray-100 hover:text-blue-600 transition-colors duration-200"`
   - Tab button content: `<span className="flex items-center gap-2">` with SVG icon and text
   - Tab icons: Document icon for details, checkmark icon for approval, list icon for logs
 - Tab content wrapper: `<div className="p-6 bg-white">`
 - Approval Tab Logic:
-  - Display `forApprovalVersion` fields as read-only
-  - Highlight changed fields with blue border/background
-  - Show change reason at top
-  - Handle inner tables (arrays) with change detection
-  - Show "All records removed" warning if arrays emptied
-  - Approve/Deny buttons (only for admin users)
+  - **FOR_DELETION Status**: When status is FOR_DELETION, `forApprovalVersion` will be empty. Instead of showing approval version fields, display a deletion message:
+    - Show a red-themed warning box with deletion icon
+    - Display message: "Record Marked for Deletion" with description
+    - Show deletion reason (if `changeReason` exists) in a separate section
+    - Display "Deny Deletion" and "Approve Deletion" buttons (for admin users)
+  - **FOR_APPROVAL and NEW_RECORD Status**: Display `forApprovalVersion` fields as read-only
+    - Highlight changed fields with blue border/background
+    - Show change reason at top
+    - Handle inner tables (arrays) with change detection
+    - Show "All records removed" warning if arrays emptied
+    - Approve/Deny buttons (only for admin users)
 - Activity Logs Tab:
   - Display logs in scrollable container
   - Format: Simple list with border separators
@@ -415,27 +449,39 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 
 #### 5.2.1 Approval Tab Implementation
 
-- Helper functions required:
-  - `normalizeValue(val: unknown): string` - Normalize values for comparison (handle null, undefined, objects)
-  - `isFieldChanged(fieldName: string): boolean` - Check if field changed by comparing current entity fields vs `forApprovalVersion`
-  - `formatValue(value: unknown): string` - Format value for display (handle null, boolean, number, object, string)
-  - `renderReadOnlyField(label: string, value: unknown, colorClass: string, fieldName?: string)` - Render read-only field with change highlighting
+- **IMPORTANT**: Check status first before rendering approval tab content
+- **FOR_DELETION Status Handling**:
+  - When `status === StatusEnum.FOR_DELETION`, do NOT try to display `forApprovalVersion` (it will be empty)
+  - Instead, render a deletion message:
+    - Container: `<div className="bg-red-50 border-2 border-red-300 rounded-xl p-8 shadow-sm">`
+    - Icon: Red circular icon with trash/delete SVG icon (`w-12 h-12 bg-red-600 rounded-full`)
+    - Title: "Record Marked for Deletion" (`text-lg font-bold text-red-800`)
+    - Description: "This record has been marked for deletion and is awaiting approval." (`text-sm text-red-700`)
+    - Deletion reason (if exists): Show `changeReason` in a white box with border (`bg-white border-2 border-red-200 rounded-lg p-4`)
+    - Buttons: "Deny Deletion" (red) and "Approve Deletion" (green) for admin users
+- **FOR_APPROVAL and NEW_RECORD Status Handling**:
+  - Only proceed with approval version display if `forApprovalVersion` exists
+  - Helper functions required:
+    - `normalizeValue(val: unknown): string` - Normalize values for comparison (handle null, undefined, objects)
+    - `isFieldChanged(fieldName: string): boolean` - Check if field changed by comparing current entity fields vs `forApprovalVersion`
+    - `formatValue(value: unknown): string` - Format value for display (handle null, boolean, number, object, string)
+    - `renderReadOnlyField(label: string, value: unknown, colorClass: string, fieldName?: string)` - Render read-only field with change highlighting
 - Change reason display:
-  - Container: `<div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-5 shadow-md mb-6">`
-  - Header: Icon + title with gradient styling
-  - Content: `<div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">`
+  - Container: `<div className="bg-white border-2 border-gray-200 rounded-xl p-5 shadow-sm mb-6">`
+  - Header: Icon + title with solid color styling
+  - Content: `<div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-500 font-medium shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">`
 - Section structure:
-  - Container: `<div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 shadow-lg">`
-  - Section header: `<div className="border-2 border-gray-200 rounded-xl p-4">` with icon box and gradient title
+  - Container: `<div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-white shadow-sm">`
+  - Section header: `<div className="border-2 border-gray-200 rounded-xl p-4">` with icon box and solid color title
   - Field grid: `<div className="grid grid-cols-1 md:grid-cols-2 gap-6">`
 - Read-only field styling:
   - Changed field: `border-blue-500 bg-blue-50 text-gray-700`
-  - Unchanged field: `border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500`
+  - Unchanged field: `border-gray-200 bg-gray-50 text-gray-500`
 - Action buttons:
-  - Container: `<div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">`
-  - Deny button: `className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"`
-  - Approve button: `className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"`
-  - Cancel button: `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"`
+  - Container: `<div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">`
+  - Deny button: `className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"`
+  - Approve button: `className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"`
+  - Cancel button: `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center gap-2"`
 
 #### 5.2.2 Activity Logs Tab
 
@@ -449,8 +495,8 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 - Same structure as edit page:
   - Main container: `<div className="p-6 space-y-6">`
   - Form wrapper: `<div className="flex justify-center">`
-  - Card container: `<div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">`
-  - Tab navigation container: `<div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 rounded-t-xl p-2">`
+  - Card container: `<div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">`
+  - Tab navigation container: `<div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2">`
   - Only one tab (Details/Information tab)
   - Tab button is always active (no onClick handler needed, same styling as active tab)
   - Tab content wrapper: `<div className="p-6 bg-white">`
@@ -473,11 +519,9 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 
 #### 5.4.1 Status Badge Display
 
-- Location: Top of form, only in edit mode (`!isCreateMode`)
-- Container: `<div className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-4 shadow-md mb-6">`
-- Structure: Icon box + status badge
-- Icon box: `<div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-lg shadow-md">` with status icon SVG
-- Status badge: Use `getStatusBadge()` function with color-coded badges
+- **IMPORTANT**: Status badges should NOT be displayed in the form component when the status is shown in the main tab name (see Section 5.2 for tab status display pattern).
+- The status is already visible in the tab name (e.g., "Customer Information - Active") and the tab color changes based on status, so a separate status badge in the form is redundant.
+- If status display is needed elsewhere (not in edit pages with tabs), use color-coded badges with solid colors (e.g., `bg-green-600 text-white shadow-sm`).
 
 #### 5.4.2 Section Structure
 
@@ -486,13 +530,13 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 - Section container: `<div className="border-2 border-gray-200 rounded-xl p-4">`
 - Section header:
   - Container: `<div className="flex items-center gap-3 mb-4">`
-  - Icon box: `<div className="p-2 bg-gradient-to-br from-{color}-500 to-{color}-600 rounded-lg shadow-md">` with white SVG icon
-  - Title: `<h3 className="text-base font-bold bg-gradient-to-r from-{color}-600 to-{color}-600 bg-clip-text text-transparent">`
+  - Icon box: `<div className="p-2 bg-{color}-600 rounded-lg shadow-sm">` with white SVG icon
+  - Title: `<h3 className="text-base font-bold text-{color}-600">`
 - Field grid: `<div className="grid grid-cols-1 md:grid-cols-2 gap-6">`
 - Field group: `<div className="group">`
 - Label: `<label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">` with colored dot `<span className="w-1.5 h-1.5 bg-{color}-500 rounded-full"></span>`
 - Input: `<input className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" />`
-- Disabled input: `className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium shadow-sm bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed"`
+- Disabled input: `className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium shadow-sm bg-gray-50 text-gray-500 cursor-not-allowed"`
 - Textarea: Same classes as input
 - Change reason field: Only show for `!isCreateMode && !isAdminUser`
 - Change reason textarea: Same styling as regular textarea
@@ -508,11 +552,11 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 
 #### 5.4.4 Action Buttons
 
-- Container: `<div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">`
-- Delete button (left side, only when status is ACTIVE): `className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"`
+- Container: `<div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">`
+- Delete button (left side, only when status is ACTIVE): `className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center gap-2"`
 - Delete button onClick: Must call `onDelete()` handler (NOT directly delete), which should show the delete confirmation modal
-- Save button (right side): `className="px-6 py-3 font-semibold rounded-xl shadow-lg transform transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:from-blue-600 hover:to-indigo-700 hover:scale-105"`
-- Cancel button (right side, next to Save): `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"`
+- Save button (right side): `className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-sm hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2"`
+- Cancel button (right side, next to Save): `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center gap-2"`
 - Button icons: Use SVG icons for each button type
 
 #### 5.4.5 Delete Confirmation Modal Component
@@ -535,8 +579,8 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
     - Title: `<h3 className="text-lg font-semibold text-gray-800 m-0">Delete {Entity}</h3>`
   - Message: `<p className="text-sm text-gray-600 mb-6 leading-relaxed">Are you sure you want to delete <strong>{entity?.nameField}</strong>? This action cannot be undone.</p>` (use entity's name field, e.g., `customerName`, `areaName`)
   - Buttons container: `<div className="flex gap-3 justify-end">`
-  - Cancel button: `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"`
-  - Delete button: `className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"`
+  - Cancel button: `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center gap-2"`
+  - Delete button: `className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center gap-2"`
 
 #### 5.4.6 Form Fields and Validation
 
@@ -564,8 +608,9 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 - Styling:
   - Header: `bg-blue-600` with white text
   - Rows: Hover effect with `hover:bg-gray-50`
-  - Status badges: Color-coded
+  - Status badges: Color-coded with readable text (not raw enum values)
   - Pagination controls at bottom
+- **Note**: Status badges in table data should already be converted to readable text by the `getStatusBadge()` function in the table page component, which uses `getStatusText()` helper
 
 ### 5.6 Modal Component (if used)
 
@@ -583,15 +628,15 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - For Deletion: Red (`bg-red-100 text-red-800`)
   - New Record: Blue (`bg-blue-100 text-blue-800`)
 - Button Styles:
-  - Primary: `bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg`
-  - Danger: `bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg`
-  - Secondary: `bg-white text-gray-700 border-2 border-gray-300`
+  - Primary: `bg-blue-600 text-white shadow-sm hover:bg-blue-700 transition-colors duration-200`
+  - Danger: `bg-red-600 text-white shadow-sm hover:bg-red-700 transition-colors duration-200`
+  - Secondary: `bg-white text-gray-700 border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 transition-all duration-200`
 - Form Field Styles:
   - Label: `text-sm font-bold text-gray-700 mb-2` with colored dot indicator
   - Input: `border-2 rounded-xl text-sm font-medium shadow-sm`
-  - Disabled: `border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed`
+  - Disabled: `border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed`
 - Section Headers:
-  - Icon + Title with gradient text
+  - Icon + Title with solid color text
   - Border containers with padding
 - Inner Tables:
   - Same styling as main table
@@ -688,26 +733,32 @@ When implementing a new entity:
 - [ ] Create API service in `libs/frontend/data-access/src/api/`
 - [ ] Create table page with search (use `searchQuery` not `searchTerm`)
 - [ ] Use `p-6 space-y-6` for main container (NOT full-width gradient)
+- [ ] Implement `getStatusText()` helper function to convert enum values to readable text
+- [ ] Update `getStatusBadge()` function to use `getStatusText()` for status display
 - [ ] Create Header component using Input component with Search icon
 - [ ] Create Header component using Add icon for create button
 - [ ] Create table component using blue header (`bg-blue-600`)
 - [ ] Create table component using `rounded-xl` and `shadow-lg`
 - [ ] Create detail/edit page with tabs
 - [ ] Edit page uses centered container with `max-w-4xl`
-- [ ] Tab navigation uses gradient background with icons
+- [ ] Tab navigation uses solid color background with icons
+- [ ] Main Details tab includes status in tab name (e.g., "Customer Information - Active")
+- [ ] Main Details tab color changes based on status when active (green/yellow/red/blue)
+- [ ] Implement `getStatusText()` and `getTabColorClasses()` helper functions
 - [ ] Create form component
-- [ ] Form uses section-based layout with gradient icon boxes
-- [ ] Status badge displayed at top of form in edit mode
+- [ ] Form uses section-based layout with solid color icon boxes
+- [ ] Status badge NOT displayed in form (status is shown in tab name instead)
 - [ ] Related entities integrated into main form (not separate tab)
 - [ ] Change reason field shown for non-admin users in edit mode
-- [ ] Approval tab includes helper functions (normalizeValue, isFieldChanged, formatValue, renderReadOnlyField)
-- [ ] Approval tab uses read-only fields with change highlighting
-- [ ] Approval tab buttons use gradient styling
+- [ ] Approval tab checks status first (FOR_DELETION shows deletion message, not approval version)
+- [ ] Approval tab includes helper functions (normalizeValue, isFieldChanged, formatValue, renderReadOnlyField) for FOR_APPROVAL/NEW_RECORD
+- [ ] Approval tab uses read-only fields with change highlighting for FOR_APPROVAL/NEW_RECORD
+- [ ] Approval tab buttons use solid color styling
 - [ ] Activity logs tab displays logs in scrollable container
 - [ ] Create Delete Confirmation Modal component
 - [ ] Delete button triggers confirmation modal (not direct delete)
 - [ ] Modal width is 900px (if using modal component)
-- [ ] All buttons use consistent gradient styling
+- [ ] All buttons use consistent solid color styling
 - [ ] Implement inner tables if needed
 - [ ] Test all CRUD operations
 - [ ] Test approval/deny flows
@@ -744,17 +795,23 @@ When implementing a new entity:
 
 12. **Frontend Variable Naming**: Always use `searchQuery` (not `searchTerm`) for search state variables throughout frontend code.
 
-13. **Form Layout**: Forms must use centered container with `max-w-4xl`, section-based layout with gradient icon boxes, and related entities integrated into main form sections (not separate tabs).
+13. **Form Layout**: Forms must use centered container with `max-w-4xl`, section-based layout with solid color icon boxes, and related entities integrated into main form sections (not separate tabs).
 
-14. **Tab Navigation**: Tab navigation must use gradient backgrounds (`bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50`), icons in tab buttons, and proper active/inactive states.
+14. **Tab Navigation**: Tab navigation must use solid color backgrounds (`bg-gray-50`), icons in tab buttons, and proper active/inactive states with simple hover transitions.
 
-15. **Button Styling**: All buttons must use gradient backgrounds, shadows, hover effects, and transform scale on hover. Use consistent classes across all components.
+15. **Main Tab Status Display**: The main Details/Information tab must include the record status in the tab name (e.g., "Customer Information - Active"). The tab background color must change based on status when active: green for ACTIVE, yellow for FOR_APPROVAL, red for FOR_DELETION, blue for NEW_RECORD. Status should be displayed as plain text in the tab name (no badge). Implement `getStatusText()` and `getTabColorClasses()` helper functions for this functionality.
 
-16. **Approval Tab Implementation**: Approval tab MUST include helper functions for field change detection and highlighting. Changed fields must have blue border and background.
+16. **Button Styling**: All buttons must use solid color backgrounds (e.g., `bg-blue-600`, `bg-red-600`), simple shadows (`shadow-sm`), and hover color transitions. Do NOT use gradients or transform scale effects.
 
-17. **Modal Width**: Modal components must use `900px` width (not 500px) to match Customer/Area patterns.
+17. **Approval Tab Implementation**: Approval tab MUST check status first. For FOR_DELETION status, display a deletion message (not approval version fields). For FOR_APPROVAL and NEW_RECORD status, include helper functions for field change detection and highlighting. Changed fields must have blue border and background.
 
-18. **Status Badge Display**: Status badges must be displayed at the top of forms in edit mode using gradient icon boxes and color-coded badges.
+18. **Modal Width**: Modal components must use `900px` width (not 500px) to match Customer/Area patterns.
 
-19. **Delete Confirmation**: Delete operations must use a custom confirmation modal component. The delete button should trigger the modal, not directly delete the entity.
+19. **Status Badge Display**: Status badges should NOT be displayed in form components when the status is shown in the main tab name (see note #15). The status is already visible in the tab name and tab color, making a separate badge redundant. If status display is needed elsewhere (not in edit pages with tabs), use solid color badges (e.g., `bg-green-600 text-white shadow-sm`).
+
+20. **Delete Confirmation**: Delete operations must use a custom confirmation modal component. The delete button should trigger the modal, not directly delete the entity.
+
+21. **Status Text Conversion**: Status badges in table pages must display readable text (e.g., "Active", "For Approval") instead of raw enum values (e.g., "ACTIVE", "FOR_APPROVAL"). Implement `getStatusText()` helper function in table page components to convert enum values, and use it in `getStatusBadge()` function. This ensures consistent, user-friendly status display across all table views.
+
+22. **FOR_DELETION Status in Approval Tab**: When a record has FOR_DELETION status, the `forApprovalVersion` field will be empty. The approval tab MUST check the status first and display a deletion message instead of trying to render empty approval version fields. Show a red-themed warning box with deletion icon, message, deletion reason (if exists), and "Deny Deletion"/"Approve Deletion" buttons for admin users.
 

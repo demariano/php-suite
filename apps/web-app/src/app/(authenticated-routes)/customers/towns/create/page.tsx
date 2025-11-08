@@ -88,12 +88,12 @@ export default function CreateTownPage() {
 
       {/* Town Form */}
       <div className="flex justify-center">
-        <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
           {/* Tab Navigation */}
-          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 rounded-t-xl p-2">
+          <div className="bg-gray-50 border-b-2 border-gray-200 rounded-t-xl p-2">
             <div className="flex gap-2">
               <button
-                className="px-5 py-3 rounded-lg font-semibold text-sm bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 transform scale-105"
+                className="px-5 py-3 rounded-lg font-semibold text-sm bg-blue-600 text-white shadow-sm"
               >
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

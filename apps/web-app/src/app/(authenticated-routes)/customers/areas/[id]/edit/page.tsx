@@ -236,6 +236,42 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     router.push('/customers/areas');
   };
 
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
+
+  // Helper function to get tab color based on status
+  const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+    
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'bg-green-600 text-white shadow-sm';
+      case StatusEnum.FOR_APPROVAL:
+        return 'bg-yellow-500 text-white shadow-sm';
+      case StatusEnum.FOR_DELETION:
+        return 'bg-red-600 text-white shadow-sm';
+      case StatusEnum.NEW_RECORD:
+        return 'bg-blue-600 text-white shadow-sm';
+      default:
+        return 'bg-gray-500 text-white shadow-sm';
+    }
+  };
+
   if (!selectedArea && !isLoading) {
     return (
       <div className="p-6 space-y-6">
@@ -248,7 +284,80 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
 
   // Render approval tab content
   const renderApprovalTab = () => {
-    if (!selectedArea || !selectedArea.forApprovalVersion) return null;
+    if (!selectedArea) return null;
+    
+    // If status is FOR_DELETION, show deletion message instead of approval version
+    if (selectedArea.status === StatusEnum.FOR_DELETION) {
+      return (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="bg-red-50 border-2 border-red-300 rounded-xl p-8 shadow-sm">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-red-800">Record Marked for Deletion</h3>
+                <p className="text-sm text-red-700 mt-1">This record has been marked for deletion and is awaiting approval.</p>
+              </div>
+            </div>
+            {selectedArea.changeReason && (
+              <div className="mt-6 p-4 bg-white border-2 border-red-200 rounded-lg">
+                <p className="text-sm font-semibold text-gray-700 mb-2">Deletion Reason:</p>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap font-mono leading-relaxed">{selectedArea.changeReason}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
+            {isAdminUser ? (
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={handleDeny}
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Deny Deletion'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={isLoading}
+                  className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Approve Deletion'}
+                </button>
+              </div>
+            ) : (
+              <div></div>
+            )}
+            
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // For FOR_APPROVAL and NEW_RECORD, show approval version
+    if (!selectedArea.forApprovalVersion) return null;
     
     const approvalData = selectedArea.forApprovalVersion;
     
@@ -311,7 +420,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
           <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
             fieldChanged 
               ? 'border-blue-500 bg-blue-50 text-gray-700' 
-              : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500'
+              : 'border-gray-200 bg-gray-50 text-gray-500'
           }`}>
             {formatValue(value)}
           </div>
@@ -320,12 +429,12 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     };
     
     return (
-      <div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 shadow-lg">
+      <div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-white shadow-lg">
         {/* Change Reason and Modification Made */}
         {selectedArea?.changeReason && (
-          <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-5 shadow-md mb-6">
+          <div className="bg-white border-2 border-gray-200 rounded-xl p-5 shadow-md mb-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+              <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
@@ -334,7 +443,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 Change Reason and Modification Made
               </h4>
             </div>
-            <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">
+            <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-white text-gray-500 font-medium shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">
               {selectedArea.changeReason}
             </div>
           </div>
@@ -344,12 +453,12 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
         <div className="space-y-4">
           <div className="border-2 border-gray-200 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+              <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
               </div>
-              <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <h3 className="text-base font-bold text-blue-600">
                 Area Information
               </h3>
             </div>
@@ -361,14 +470,14 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
+        <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
           {isAdminUser && (selectedArea?.status === StatusEnum.FOR_APPROVAL || selectedArea?.status === StatusEnum.NEW_RECORD || selectedArea?.status === StatusEnum.FOR_DELETION) ? (
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={handleDeny}
                 disabled={isLoading}
-                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -379,7 +488,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 type="button"
                 onClick={handleApprove}
                 disabled={isLoading}
-                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -480,16 +589,14 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
       {/* Area Form with Tabs */}
       {selectedArea && (
         <div className="flex justify-center">
-          <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
             {/* Tab Navigation */}
-            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 rounded-t-xl p-2">
+            <div className="bg-gray-50 border-b-2 border-gray-200 rounded-t-xl p-2">
               <div className="flex gap-2">
                 <button
                   onClick={() => setActiveTab('details')}
-                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
-                    activeTab === 'details'
-                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 transform scale-105'
-                      : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-blue-600'
+                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                    getTabColorClasses(selectedArea.status || StatusEnum.ACTIVE, activeTab === 'details')
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -497,16 +604,22 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     Area Information
+                    {selectedArea && (
+                      <>
+                        <span className="mx-1">-</span>
+                        <span>{getStatusText(selectedArea.status || StatusEnum.ACTIVE)}</span>
+                      </>
+                    )}
                   </span>
                 </button>
                 
                 {selectedArea.status !== StatusEnum.ACTIVE && (
                   <button
                     onClick={() => setActiveTab('approval')}
-                    className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                    className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
                       activeTab === 'approval'
-                        ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/50 transform scale-105'
-                        : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-teal-600'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -520,10 +633,10 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 
                 <button
                   onClick={() => setActiveTab('logs')}
-                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
                     activeTab === 'logs'
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/50 transform scale-105'
-                      : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-green-600'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                   }`}
                 >
                   <span className="flex items-center gap-2">

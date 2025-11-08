@@ -118,6 +118,22 @@ export default function CustomerAreasPage() {
     { key: 'status', label: 'STATUS' }
   ];
 
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
+
   const getStatusBadge = (status: StatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
     
@@ -136,7 +152,7 @@ export default function CustomerAreasPage() {
     
     return (
       <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
+        {getStatusText(status)}
       </span>
     );
   };

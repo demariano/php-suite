@@ -111,67 +111,6 @@ export default function TownForm({
     setSelectedArea(null);
   };
 
-  // Status badge helper function with enhanced styling and readable text
-  const getStatusBadge = (status: StatusEnum) => {
-    // Convert status enum to readable text
-    const getStatusText = (s: StatusEnum): string => {
-      switch (s) {
-        case StatusEnum.ACTIVE:
-          return 'Active';
-        case StatusEnum.FOR_APPROVAL:
-          return 'For Approval';
-        case StatusEnum.FOR_DELETION:
-          return 'For Deletion';
-        case StatusEnum.NEW_RECORD:
-          return 'New Record';
-        default:
-          return s;
-      }
-    };
-
-    const statusText = getStatusText(status);
-    
-    // Enhanced styling with shadows and better colors
-    let badgeClasses = "";
-    let dotColor = "";
-    let bgColor = "";
-    let textColor = "";
-    
-    if (status === StatusEnum.ACTIVE) {
-      badgeClasses = "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-lg shadow-green-500/50";
-      dotColor = "bg-white";
-      bgColor = "#10b981";
-      textColor = "#ffffff";
-    } else if (status === StatusEnum.FOR_APPROVAL) {
-      badgeClasses = "bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-lg shadow-yellow-500/50";
-      dotColor = "bg-white";
-      bgColor = "#f59e0b";
-      textColor = "#ffffff";
-    } else if (status === StatusEnum.FOR_DELETION) {
-      badgeClasses = "bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-lg shadow-red-500/50";
-      dotColor = "bg-white";
-      bgColor = "#ef4444";
-      textColor = "#ffffff";
-    } else if (status === StatusEnum.NEW_RECORD) {
-      badgeClasses = "bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow-lg shadow-blue-500/50";
-      dotColor = "bg-white";
-      bgColor = "#3b82f6";
-      textColor = "#ffffff";
-    } else {
-      badgeClasses = "bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg shadow-gray-500/50";
-      dotColor = "bg-white";
-      bgColor = "#6b7280";
-      textColor = "#ffffff";
-    }
-    
-    return (
-      <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${badgeClasses}`} style={{ backgroundColor: bgColor, color: textColor }}>
-        <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
-        {statusText}
-      </span>
-    );
-  };
-
   return (
     <>
     <form onSubmit={handleSubmit}>
@@ -248,34 +187,18 @@ export default function TownForm({
         </div>
       )}
       
-      {/* Status Display for Edit Mode - Prominently displayed at top */}
-      {!isCreateMode && selectedTown && (
-        <div className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-4 shadow-md mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-lg shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="flex items-center">
-              {getStatusBadge(selectedTown.status || StatusEnum.ACTIVE)}
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Details Container */}
       <div className="space-y-6">
         {/* Basic Information Section */}
         <div className="space-y-4">
           <div className="border-2 border-gray-200 rounded-xl p-4">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+              <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
               </div>
-              <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              <h3 className="text-base font-bold text-blue-600">
                 Town Information
               </h3>
             </div>
@@ -295,8 +218,8 @@ export default function TownForm({
                   disabled={!isCreateMode && selectedTown?.status !== StatusEnum.ACTIVE}
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedTown?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                      ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
                   }`}
                   required
                 />
@@ -326,12 +249,12 @@ export default function TownForm({
           <div className="space-y-4">
             <div className="border-2 border-gray-200 rounded-xl p-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-lg shadow-md">
+                <div className="p-2 bg-amber-500 rounded-lg shadow-md">
                   <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                   </svg>
                 </div>
-                <h3 className="text-base font-bold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent">
+                <h3 className="text-base font-bold text-amber-600">
                   Change Reason
                 </h3>
               </div>
@@ -349,8 +272,8 @@ export default function TownForm({
                   disabled={!isCreateMode && selectedTown?.status !== StatusEnum.ACTIVE}
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 resize-vertical min-h-[80px] ${
                     !isCreateMode && selectedTown?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-amber-300 group-hover:shadow-md'
+                      ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-amber-300 group-hover:shadow-md'
                   }`}
                   required={!isAdminUser}
                 />
@@ -364,7 +287,7 @@ export default function TownForm({
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
+      <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
         {!isCreateMode && selectedTown?.status === StatusEnum.ACTIVE ? (
           <button
             type="button"
@@ -373,7 +296,7 @@ export default function TownForm({
               e.stopPropagation();
               onDelete();
             }}
-            className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
+            className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors flex items-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -388,7 +311,7 @@ export default function TownForm({
           {(isCreateMode || selectedTown?.status === StatusEnum.ACTIVE) && (
             <button
               type="submit"
-              className="px-6 py-3 font-semibold rounded-xl shadow-lg transform transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:from-blue-600 hover:to-indigo-700 hover:scale-105"
+              className="px-6 py-3 font-semibold rounded-xl shadow-sm transition-colors flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

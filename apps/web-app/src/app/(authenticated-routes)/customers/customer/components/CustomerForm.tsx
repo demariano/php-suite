@@ -379,67 +379,6 @@ export default function CustomerForm({
     setCustomerDeals(customerDeals.filter((_, i) => i !== index));
   };
 
-  // Status badge helper function with enhanced styling and readable text
-  const getStatusBadge = (status: StatusEnum) => {
-    // Convert status enum to readable text
-    const getStatusText = (s: StatusEnum): string => {
-      switch (s) {
-        case StatusEnum.ACTIVE:
-          return 'Active';
-        case StatusEnum.FOR_APPROVAL:
-          return 'For Approval';
-        case StatusEnum.FOR_DELETION:
-          return 'For Deletion';
-        case StatusEnum.NEW_RECORD:
-          return 'New Record';
-        default:
-          return s;
-      }
-    };
-
-    const statusText = getStatusText(status);
-    
-    // Enhanced styling with shadows and better colors
-    let badgeClasses = "";
-    let dotColor = "";
-    let bgColor = "";
-    let textColor = "";
-    
-    if (status === StatusEnum.ACTIVE) {
-      badgeClasses = "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-lg shadow-green-500/50";
-      dotColor = "bg-white";
-      bgColor = "#10b981";
-      textColor = "#ffffff";
-    } else if (status === StatusEnum.FOR_APPROVAL) {
-      badgeClasses = "bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-lg shadow-yellow-500/50";
-      dotColor = "bg-white";
-      bgColor = "#f59e0b";
-      textColor = "#ffffff";
-    } else if (status === StatusEnum.FOR_DELETION) {
-      badgeClasses = "bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-lg shadow-red-500/50";
-      dotColor = "bg-white";
-      bgColor = "#ef4444";
-      textColor = "#ffffff";
-    } else if (status === StatusEnum.NEW_RECORD) {
-      badgeClasses = "bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow-lg shadow-blue-500/50";
-      dotColor = "bg-white";
-      bgColor = "#3b82f6";
-      textColor = "#ffffff";
-    } else {
-      badgeClasses = "bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg shadow-gray-500/50";
-      dotColor = "bg-white";
-      bgColor = "#6b7280";
-      textColor = "#ffffff";
-    }
-    
-    return (
-      <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${badgeClasses}`} style={{ backgroundColor: bgColor, color: textColor }}>
-        <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
-        {statusText}
-      </span>
-    );
-  };
-
   return (
     <>
     <form onSubmit={handleSubmit}>
@@ -516,34 +455,18 @@ export default function CustomerForm({
         </div>
       )}
       
-      {/* Status Display for Edit Mode - Prominently displayed at top */}
-      {!isCreateMode && selectedCustomer && (
-        <div className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-4 shadow-md mb-6">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-lg shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <div className="flex items-center">
-              {getStatusBadge(selectedCustomer.status || StatusEnum.ACTIVE)}
-            </div>
-          </div>
-        </div>
-      )}
-      
       {/* Details Container */}
       <div className="space-y-6">
             {/* Basic Information Section */}
             <div className="space-y-4">
               <div className="border-2 border-gray-200 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  <h3 className="text-base font-bold text-blue-600">
                     Basic Information
                   </h3>
                 </div>
@@ -563,8 +486,8 @@ export default function CustomerForm({
                   disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                      ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -584,8 +507,8 @@ export default function CustomerForm({
                   disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-indigo-300 group-hover:shadow-md'
+                      ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-indigo-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -605,8 +528,8 @@ export default function CustomerForm({
                   disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-purple-300 group-hover:shadow-md'
+                      ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-purple-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -626,8 +549,8 @@ export default function CustomerForm({
                   disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-green-300 group-hover:shadow-md'
+                      ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-green-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -639,13 +562,13 @@ export default function CustomerForm({
             <div className="space-y-4">
               <div className="border-2 border-gray-200 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-pink-600 rounded-lg shadow-md">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                  <h3 className="text-base font-bold text-pink-600">
                     Address Information
                   </h3>
                 </div>
@@ -664,8 +587,8 @@ export default function CustomerForm({
                 disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
                 className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                   !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                    ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                    : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-pink-300 group-hover:shadow-md'
+                    ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-pink-300 group-hover:shadow-md'
                 }`}
               />
             </div>
@@ -684,8 +607,8 @@ export default function CustomerForm({
                 disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
                 className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                   !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                    ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                    : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-rose-300 group-hover:shadow-md'
+                    ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-rose-300 group-hover:shadow-md'
                 }`}
               />
             </div>
@@ -705,8 +628,8 @@ export default function CustomerForm({
                   disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-teal-300 group-hover:shadow-md'
+                      ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-teal-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -718,12 +641,12 @@ export default function CustomerForm({
             <div className="space-y-4">
               <div className="border-2 border-gray-200 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-emerald-600 rounded-lg shadow-md">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  <h3 className="text-base font-bold text-emerald-600">
                     Location & Classification
                   </h3>
                 </div>
@@ -771,12 +694,12 @@ export default function CustomerForm({
             <div className="space-y-4">
               <div className="border-2 border-gray-200 rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-cyan-600 rounded-lg shadow-md">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                  <h3 className="text-base font-bold text-cyan-600">
                     Financial Information
                   </h3>
                 </div>
@@ -803,8 +726,8 @@ export default function CustomerForm({
               disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
               className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                 !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                  ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                  : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-emerald-300 group-hover:shadow-md'
+                  ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-emerald-300 group-hover:shadow-md'
               }`}
             />
           </div>
@@ -831,8 +754,8 @@ export default function CustomerForm({
               disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
               className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                 !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                  ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                  : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-cyan-300 group-hover:shadow-md'
+                  ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-cyan-300 group-hover:shadow-md'
               }`}
             />
           </div>
@@ -859,8 +782,8 @@ export default function CustomerForm({
               disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
               className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                 !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                  ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
-                  : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-sky-300 group-hover:shadow-md'
+                  ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-sky-300 group-hover:shadow-md'
               }`}
             />
           </div>
@@ -918,12 +841,12 @@ export default function CustomerForm({
               <div className="border-2 border-gray-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                    <div className="p-2 bg-purple-600 rounded-lg shadow-md">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>
-                    <h3 className="text-base font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    <h3 className="text-base font-bold text-purple-600">
                       Customer Terms
                     </h3>
                   </div>
@@ -931,10 +854,10 @@ export default function CustomerForm({
                     type="button"
                     onClick={addCustomerTerms}
                     disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                    className={`px-4 py-2 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                    className={`px-4 py-2 text-white font-semibold rounded-xl shadow-sm transition-colors flex items-center gap-2 ${
                       !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
-                        : 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
+                        ? 'bg-gray-500 cursor-not-allowed opacity-60'
+                        : 'bg-green-600 hover:bg-green-700'
                     }`}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -981,10 +904,10 @@ export default function CustomerForm({
                                   type="button"
                                   onClick={() => removeCustomerTerms(index)}
                                   disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                                  className={`p-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 flex items-center justify-center ${
+                                  className={`p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center ${
                                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                                      ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
-                                      : 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105'
+                                      ? 'bg-gray-500 cursor-not-allowed opacity-60'
+                                      : 'bg-red-600 hover:bg-red-700'
                                   }`}
                                   title="Remove"
                                 >
@@ -1008,12 +931,12 @@ export default function CustomerForm({
               <div className="border-2 border-gray-200 rounded-xl p-4">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg shadow-md">
+                    <div className="p-2 bg-orange-600 rounded-lg shadow-md">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     </div>
-                    <h3 className="text-base font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                    <h3 className="text-base font-bold text-orange-600">
                       Product Deals
                     </h3>
                   </div>
@@ -1021,10 +944,10 @@ export default function CustomerForm({
                     type="button"
                     onClick={addCustomerDeals}
                     disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                    className={`px-4 py-2 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                    className={`px-4 py-2 text-white font-semibold rounded-xl shadow-sm transition-colors flex items-center gap-2 ${
                       !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
-                        : 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
+                        ? 'bg-gray-500 cursor-not-allowed opacity-60'
+                        : 'bg-green-600 hover:bg-green-700'
                     }`}
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1083,10 +1006,10 @@ export default function CustomerForm({
                                   type="button"
                                   onClick={() => removeCustomerDeals(index)}
                                   disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                                  className={`p-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 flex items-center justify-center ${
+                                  className={`p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center ${
                                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                                      ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
-                                      : 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105'
+                                      ? 'bg-gray-500 cursor-not-allowed opacity-60'
+                                      : 'bg-red-600 hover:bg-red-700'
                                   }`}
                                   title="Remove"
                                 >
@@ -1108,7 +1031,7 @@ export default function CustomerForm({
 
         {/* Action Buttons */}
         {activeTab !== 'approval' && (
-          <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
+          <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
             {!isCreateMode && selectedCustomer?.status === StatusEnum.ACTIVE ? (
               <button
                 type="button"
@@ -1117,7 +1040,7 @@ export default function CustomerForm({
                   e.stopPropagation();
                   onDelete();
                 }}
-                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
+                className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1132,7 +1055,7 @@ export default function CustomerForm({
               {(isCreateMode || selectedCustomer?.status === StatusEnum.ACTIVE) && (
                 <button
                   type="submit"
-                  className="px-6 py-3 font-semibold rounded-xl shadow-lg transform transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:from-blue-600 hover:to-indigo-700 hover:scale-105"
+                  className="px-6 py-3 font-semibold rounded-xl shadow-sm transition-colors flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -1143,7 +1066,7 @@ export default function CustomerForm({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
+                className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center gap-2"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
