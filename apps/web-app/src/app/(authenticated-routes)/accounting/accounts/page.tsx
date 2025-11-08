@@ -1,21 +1,16 @@
 'use client';
 
-import { AccountApi, AccountsDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { AccountApi, AccountsDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { AccountHeader, AccountModal, AccountTable, DeleteConfirmationModal } from './components';
+import { AccountHeader, AccountTable } from './components';
 
 export default function AccountsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [accounts, setAccounts] = useState<AccountsDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -24,13 +19,6 @@ export default function AccountsPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedAccount, setSelectedAccount] = useState<AccountsDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch accounts from API
   const fetchAccounts = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -154,167 +142,15 @@ export default function AccountsPage() {
   };
 
   const handleRowClick = async (account: AccountsDto) => {
-    // Ensure we have a valid account object
-    if (!account || !account.accountingId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the account from the API
-      const latestAccount = await AccountApi.getAccountById(
-        account.accountingId,
-        userRole
-      );
-      
-      setSelectedAccount(latestAccount);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestAccount.status === StatusEnum.FOR_APPROVAL || latestAccount.status === StatusEnum.NEW_RECORD || latestAccount.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch {
-      setError('Failed to load account details. Please try again.');
-    } finally {
-      setIsLoading(false);
+    // Navigate to edit account page
+    if (account && account.accountingId) {
+      window.location.href = `/accounting/accounts/${account.accountingId}/edit`;
     }
   };
 
   const handleCreateClick = () => {
-    setSelectedAccount(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedAccount(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedAccount: AccountsDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new account
-        await AccountApi.createAccount({
-          accountName: updatedAccount.accountName,
-          accountType: updatedAccount.accountType,
-          changeReason: updatedAccount.changeReason,
-          subAccounts: updatedAccount.subAccounts,
-          status: updatedAccount.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Account created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchAccounts();
-      } else {
-        // Update existing account
-        const updatedRecord = await AccountApi.updateAccount(updatedAccount.accountingId, {
-          accountingId: updatedAccount.accountingId,
-          accountName: updatedAccount.accountName,
-          accountType: updatedAccount.accountType,
-          changeReason: updatedAccount.changeReason,
-          subAccounts: updatedAccount.subAccounts,
-          status: updatedAccount.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Account updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchAccounts();
-      }
-    } catch (error) {
-      console.error('Error saving account:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to save account. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to save account. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedAccount) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await AccountApi.deleteAccount(selectedAccount.accountingId, selectedAccount, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Account deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchAccounts();
-    } catch (error) {
-      console.error('Error deleting account:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to delete account. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to delete account. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create account page
+    window.location.href = '/accounting/accounts/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -325,76 +161,6 @@ export default function AccountsPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchAccounts(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedAccount) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await AccountApi.approveAccount(selectedAccount.accountingId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Account approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchAccounts();
-    } catch (error) {
-      console.error('Error approving account:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to approve account. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to approve account. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedAccount) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await AccountApi.denyAccount(selectedAccount.accountingId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Account denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchAccounts();
-    } catch (error) {
-      console.error('Error denying account:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to deny account. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to deny account. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -436,10 +202,7 @@ export default function AccountsPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <AccountHeader
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -461,10 +224,7 @@ export default function AccountsPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <AccountTable
           isLoading={isLoading}
           tableData={tableData}
@@ -479,31 +239,6 @@ export default function AccountsPage() {
           onNext={() => fetchAccounts('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <AccountModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedAccount={selectedAccount}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        account={selectedAccount}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

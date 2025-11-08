@@ -2,7 +2,7 @@
 
 import { ProductApi, ProductClassDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { ClassHeader, ClassModal, ClassTable, DeleteConfirmationModal } from './components';
+import { ClassHeader, ClassTable } from './components';
 
 export default function ProductClassesPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -24,12 +24,6 @@ export default function ProductClassesPage() {
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
 
-  // Modal and form state
-  const [selectedClass, setSelectedClass] = useState<ProductClassDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch classes from API
   const fetchClasses = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
@@ -153,140 +147,13 @@ export default function ProductClassesPage() {
   };
 
   const handleRowClick = async (productClass: ProductClassDto) => {
-    // Ensure we have a valid class object
-    if (!productClass || !productClass.productClassId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the class from the API
-      const latestClass = await ProductApi.getProductClassById(
-        productClass.productClassId,
-        userRole
-      );
-      
-      setSelectedClass(latestClass);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestClass.status === StatusEnum.FOR_APPROVAL || latestClass.status === StatusEnum.NEW_RECORD || latestClass.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch (err) {
-      setError('Failed to load class details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to edit class page
+    window.location.href = `/products/classes/${productClass.productClassId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedClass(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedClass(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedClass: ProductClassDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new class
-        const newClass = await ProductApi.createProductClass({
-          productClassName: updatedClass.productClassName,
-          status: updatedClass.status
-        }, userRole);
-        
-        // Refetch the classes to get the most up-to-date data
-        await fetchClasses();
-        
-        // Close modal after creation
-        handleCloseModal();
-      } else {
-        // Update existing class
-        const updatedRecord = await ProductApi.updateProductClass(updatedClass.productClassId, {
-          productClassId: updatedClass.productClassId,
-          productClassName: updatedClass.productClassName,
-          status: updatedClass.status
-        }, userRole);
-        
-        // Refetch the classes to get the most up-to-date data
-        await fetchClasses();
-        
-        // Update the selected class with the latest data
-        setSelectedClass(updatedRecord);
-        
-        // Close modal after successful update for all users
-        handleCloseModal();
-      }
-    } catch (error) {
-      setError('Failed to save class. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedClass) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await ProductApi.deleteProductClass(selectedClass, userRole);
-      
-      // Refetch the classes to get the most up-to-date data
-      await fetchClasses();
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-    } catch (error) {
-      setError('Failed to delete class. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create class page
+    window.location.href = '/products/classes/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -297,56 +164,6 @@ export default function ProductClassesPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchClasses(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedClass) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await ProductApi.approveProductClass(selectedClass.productClassId, userRole);
-      
-      // Refresh the classes list - use await to ensure it completes before closing modal
-      await fetchClasses();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (err) {
-      setError('Failed to approve class. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedClass) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await ProductApi.denyProductClass(selectedClass.productClassId, userRole);
-      
-      // Refresh the classes list - use await to ensure it completes before closing modal
-      await fetchClasses();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (err) {
-      setError('Failed to deny class. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -388,73 +205,38 @@ export default function ProductClassesPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
-        <ClassHeader
-          searchTerm={searchTerm}
-          onSearchChange={(value) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchTerm('');
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchClasses();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
-
-      {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
-        <ClassTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchTerm={searchTerm}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchClasses('prev', prevCursor)}
-          onNext={() => fetchClasses('next', nextCursor)}
-        />
-      </div>
-
-      {/* Edit/Create Modal */}
-      <ClassModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedClass={selectedClass}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
+      <ClassHeader
+        searchTerm={searchTerm}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          // Reset pagination when search term changes
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchTerm('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchClasses();
+        }}
+        onCreateClick={handleCreateClick}
       />
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        productClass={selectedClass}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
+      {/* Table */}
+      <ClassTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchTerm={searchTerm}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchClasses('prev', prevCursor)}
+        onNext={() => fetchClasses('next', nextCursor)}
       />
     </div>
   );

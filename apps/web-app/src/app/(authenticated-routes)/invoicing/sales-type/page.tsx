@@ -1,21 +1,16 @@
 'use client';
 
-import { SalesTypeApi, SalesTypeDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { SalesTypeApi, SalesTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { DeleteConfirmationModal, SalesTypeHeader, SalesTypeModal, SalesTypeTable } from './components';
+import { SalesTypeHeader, SalesTypeTable } from './components';
 
 export default function SalesTypePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [salesTypes, setSalesTypes] = useState<SalesTypeDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -24,13 +19,6 @@ export default function SalesTypePage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedSalesType, setSelectedSalesType] = useState<SalesTypeDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch sales types from API
   const fetchSalesTypes = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -153,174 +141,14 @@ export default function SalesTypePage() {
     );
   };
 
-  const handleRowClick = async (salesType: SalesTypeDto) => {
-    // Ensure we have a valid sales type object
-    if (!salesType || !salesType.salesTypeId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the sales type from the API
-      const latestSalesType = await SalesTypeApi.getSalesTypeById(
-        salesType.salesTypeId,
-        userRole
-      );
-      
-      setSelectedSalesType(latestSalesType);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestSalesType.status === StatusEnum.FOR_APPROVAL || latestSalesType.status === StatusEnum.NEW_RECORD || latestSalesType.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch {
-      setError('Failed to load sales type details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+  // Handle row click - navigate to edit page
+  const handleRowClick = (salesType: SalesTypeDto) => {
+    window.location.href = `/invoicing/sales-type/${salesType.salesTypeId}/edit`;
   };
 
+  // Handle create new sales type - navigate to create page
   const handleCreateClick = () => {
-    setSelectedSalesType(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedSalesType(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedSalesType: SalesTypeDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new sales type
-        await SalesTypeApi.createSalesType({
-          salesTypeName: updatedSalesType.salesTypeName,
-          allowDiscount: updatedSalesType.allowDiscount,
-          contractSales: updatedSalesType.contractSales,
-          defaultDiscount: updatedSalesType.defaultDiscount,
-          defaultTax: updatedSalesType.defaultTax,
-          incomeGenerating: updatedSalesType.incomeGenerating,
-          taxable: updatedSalesType.taxable,
-          status: updatedSalesType.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Sales Type created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchSalesTypes();
-      } else {
-        // Update existing sales type
-        const updatedRecord = await SalesTypeApi.updateSalesType(updatedSalesType.salesTypeId, {
-          salesTypeId: updatedSalesType.salesTypeId,
-          salesTypeName: updatedSalesType.salesTypeName,
-          allowDiscount: updatedSalesType.allowDiscount,
-          contractSales: updatedSalesType.contractSales,
-          defaultDiscount: updatedSalesType.defaultDiscount,
-          defaultTax: updatedSalesType.defaultTax,
-          incomeGenerating: updatedSalesType.incomeGenerating,
-          taxable: updatedSalesType.taxable,
-          status: updatedSalesType.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Sales Type updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchSalesTypes();
-      }
-    } catch (error) {
-      console.error('Error saving sales type:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to save sales type. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to save sales type. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedSalesType) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await SalesTypeApi.deleteSalesType(selectedSalesType, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Sales Type deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchSalesTypes();
-    } catch (error) {
-      console.error('Error deleting sales type:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to delete sales type. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to delete sales type. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    window.location.href = '/invoicing/sales-type/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -331,76 +159,6 @@ export default function SalesTypePage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchSalesTypes(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedSalesType) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await SalesTypeApi.approveSalesType(selectedSalesType.salesTypeId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Sales Type approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchSalesTypes();
-    } catch (error) {
-      console.error('Error approving sales type:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to approve sales type. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to approve sales type. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedSalesType) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await SalesTypeApi.denySalesType(selectedSalesType.salesTypeId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Sales Type denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchSalesTypes();
-    } catch (error) {
-      console.error('Error denying sales type:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to deny sales type. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to deny sales type. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -442,10 +200,7 @@ export default function SalesTypePage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <SalesTypeHeader
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -467,10 +222,7 @@ export default function SalesTypePage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <SalesTypeTable
           isLoading={isLoading}
           tableData={tableData}
@@ -485,31 +237,6 @@ export default function SalesTypePage() {
           onNext={() => fetchSalesTypes('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <SalesTypeModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedSalesType={selectedSalesType}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        salesType={selectedSalesType}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

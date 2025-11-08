@@ -74,12 +74,19 @@ export * from './lib/customer/town/create.town.dto';
 export * from './lib/customer/town/town.dto';
 
 //StockSchema
+export * from './lib/inventory/stock-delivery/create.stock-delivery.dto';
+export * from './lib/inventory/stock-delivery/delivery-details.dto';
+export * from './lib/inventory/stock-delivery/stock-delivery.dto';
+export * from './lib/inventory/stock-delivery/stock-delivery.filter.dto';
 export * from './lib/inventory/stock.type/create.stock.type.dto';
 export * from './lib/inventory/stock.type/stock.type.dto';
 export * from './lib/inventory/stock/create.stock.dto';
 export * from './lib/inventory/stock/stock.dto';
 export * from './lib/inventory/stock/stock.filter.dto';
 export * from './lib/inventory/stock/update.available.qty.dto';
+export * from './lib/inventory/supplier/create.supplier.dto';
+export * from './lib/inventory/supplier/supplier.dto';
+export * from './lib/inventory/supplier/supplier.filter.dto';
 
 //Invoicing
 export * from './lib/enums/invoice.detail.type.enum';

@@ -129,11 +129,11 @@
         "Disconnect Service",
         "Product Api Service",
         "Customer Api Service",
-        "InvenStotory Api Service",
         "Stock Api Service",
         "Invoicing Api Service",
         "Accounts Api Service",
-        "Accounting Api Service"
+        "Accounting Api Service",
+        "Inventory Api Service"
       ],
       "group": {
         "kind": "build",
@@ -202,16 +202,6 @@
       "problemMatcher": []
     },
     {
-      "label": "Inventory Api Service",
-      "type": "shell",
-      "command": "npx nx serve inventory-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
       "label": "Stock Api Service",
       "type": "shell",
       "command": "npx nx serve stock-api-service",
@@ -245,6 +235,16 @@
       "label": "Accounting Api Service",
       "type": "shell",
       "command": "npx nx serve accounting-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Inventory Api Service",
+      "type": "shell",
+      "command": "npx nx serve inventory-api-service",
       "presentation": {
         "reveal": "always",
         "panel": "new"

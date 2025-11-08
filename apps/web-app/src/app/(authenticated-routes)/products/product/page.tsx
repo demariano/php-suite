@@ -2,7 +2,7 @@
 
 import { ProductApi, ProductDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { DeleteConfirmationModal, ProductHeader, ProductModal, ProductTable } from './components';
+import { ProductHeader, ProductTable } from './components';
 
 export default function ProductsMainPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -24,12 +24,6 @@ export default function ProductsMainPage() {
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
 
-  // Modal and form state
-  const [selectedProduct, setSelectedProduct] = useState<ProductDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch products from API
   const fetchProducts = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
@@ -156,155 +150,13 @@ export default function ProductsMainPage() {
   };
 
   const handleRowClick = async (product: ProductDto) => {
-    // Ensure we have a valid product object
-    if (!product || !product.productId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the product from the API
-      const latestProduct = await ProductApi.getProductById(
-        product.productId,
-        userRole
-      );
-      
-      setSelectedProduct(latestProduct);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestProduct.status === StatusEnum.FOR_APPROVAL || latestProduct.status === StatusEnum.NEW_RECORD || latestProduct.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch (err) {
-      setError('Failed to load product details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to edit product page
+    window.location.href = `/products/product/${product.productId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedProduct(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedProduct(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedProduct: ProductDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new product
-        const newProduct = await ProductApi.createProduct({
-          productName: updatedProduct.productName,
-          productCategoryId: updatedProduct.productCategoryId,
-          productCategoryName: updatedProduct.productCategoryName,
-          productClassId: updatedProduct.productClassId,
-          productClassName: updatedProduct.productClassName,
-          criticalLevel: updatedProduct.criticalLevel,
-          productDeals: updatedProduct.productDeals,
-          productUnitPrice: updatedProduct.productUnitPrice,
-          changeReason: updatedProduct.changeReason
-        }, userRole);
-        
-        // Refetch the products to get the most up-to-date data
-        await fetchProducts();
-        
-        // Close modal after creation
-        handleCloseModal();
-      } else {
-        // Update existing product
-        const updatedRecord = await ProductApi.updateProduct(updatedProduct.productId, {
-          productId: updatedProduct.productId,
-          productName: updatedProduct.productName,
-          productCategoryId: updatedProduct.productCategoryId,
-          productCategoryName: updatedProduct.productCategoryName,
-          productClassId: updatedProduct.productClassId,
-          productClassName: updatedProduct.productClassName,
-          criticalLevel: updatedProduct.criticalLevel,
-          productDeals: updatedProduct.productDeals,
-          productUnitPrice: updatedProduct.productUnitPrice,
-          status: updatedProduct.status,
-          changeReason: updatedProduct.changeReason
-        }, userRole);
-        
-        // Refetch the products to get the most up-to-date data
-        await fetchProducts();
-        
-        // Update the selected product with the latest data
-        setSelectedProduct(updatedRecord);
-        
-        // Close modal after successful update for all users
-        handleCloseModal();
-      }
-    } catch (error) {
-      setError('Failed to save product. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedProduct) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await ProductApi.deleteProduct(selectedProduct, userRole);
-      
-      // Refetch the products to get the most up-to-date data
-      await fetchProducts();
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-    } catch (error) {
-      setError('Failed to delete product. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create product page
+    window.location.href = '/products/product/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -315,56 +167,6 @@ export default function ProductsMainPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchProducts(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedProduct) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await ProductApi.approveProduct(selectedProduct.productId, userRole);
-      
-      // Refresh the products list - use await to ensure it completes before closing modal
-      await fetchProducts();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (err) {
-      setError('Failed to approve product. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedProduct) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await ProductApi.denyProduct(selectedProduct.productId, userRole);
-      
-      // Refresh the products list - use await to ensure it completes before closing modal
-      await fetchProducts();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (err) {
-      setError('Failed to deny product. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -406,73 +208,38 @@ export default function ProductsMainPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
-        <ProductHeader
-          searchTerm={searchTerm}
-          onSearchChange={(value) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchTerm('');
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchProducts();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
-
-      {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
-        <ProductTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchTerm={searchTerm}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchProducts('prev', prevCursor)}
-          onNext={() => fetchProducts('next', nextCursor)}
-        />
-      </div>
-
-      {/* Edit/Create Modal */}
-      <ProductModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedProduct={selectedProduct}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
+      <ProductHeader
+        searchTerm={searchTerm}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          // Reset pagination when search term changes
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchTerm('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchProducts();
+        }}
+        onCreateClick={handleCreateClick}
       />
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        product={selectedProduct}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
+      {/* Table */}
+      <ProductTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchTerm={searchTerm}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchProducts('prev', prevCursor)}
+        onNext={() => fetchProducts('next', nextCursor)}
       />
     </div>
   );

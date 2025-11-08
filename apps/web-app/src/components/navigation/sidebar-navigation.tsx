@@ -153,6 +153,18 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
               route: "/inventory/stock-types", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Suppliers", 
+              route: "/inventory/suppliers", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Stock Delivery", 
+              route: "/inventory/stock-delivery", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             }
           ],
           isExpanded: false
@@ -258,6 +270,12 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
         { 
           label: "Settings", 
           route: "/settings", 
+          icon: File,
+          onClick: (route: string) => onNavigate?.(route)
+        },
+        { 
+          label: "UI Layout Testing", 
+          route: "/ui-layout-testing", 
           icon: File,
           onClick: (route: string) => onNavigate?.(route)
         }

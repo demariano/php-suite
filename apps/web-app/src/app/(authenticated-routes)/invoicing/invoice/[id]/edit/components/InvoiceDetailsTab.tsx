@@ -1,9 +1,12 @@
 'use client';
 
-import { InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, ProductDealQtyDto, StockApi, StockDto, useSessionStore } from '@data-access/index';
+import { InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, ProductDealQtyDto, ProductDto, ProductUnitDto, StockApi, StockDto, StockFilterDto, StockTypeDto, useSessionStore } from '@data-access/index';
 import { CustomerProductDealDto } from '@data-access/types/customer-product-deal.types';
 import { useState } from 'react';
-import StockSearchableSelectionModal from '../../../../../search-modals/StockSearchableSelectionModal';
+import DatePicker from '../../../../../components/DatePicker';
+import ProductSearchableSelectionModal from '../../../../../search-modals/ProductSearchableSelectionModal';
+import ProductUnitSearchableSelectionModal from '../../../../../search-modals/ProductUnitSearchableSelectionModal';
+import StockTypeSearchableSelectionModal from '../../../../../search-modals/StockTypeSearchableSelectionModal';
 
 interface InvoiceDetailsTabProps {
   formData: InvoiceDto;
@@ -15,16 +18,17 @@ interface InvoiceDetailsTabProps {
   isReadOnly?: boolean;
 }
 
-interface StockWithPricing extends StockDto {
-  cost?: number;
-  price?: number;
-}
-
 interface StockSelectionState {
-  selectedStock: StockWithPricing | null;
+  selectedProduct: ProductDto | null;
+  selectedProductUnit: ProductUnitDto | null;
+  selectedStockType: StockTypeDto | null;
+  lotNo: string;
+  expirationDate: string;
   selectedProductDeal: CustomerProductDealDto | null;
   quantity: number;
-  showStockModal: boolean;
+  showProductModal: boolean;
+  showProductUnitModal: boolean;
+  showStockTypeModal: boolean;
   showProductDealModal: boolean;
 }
 
@@ -39,24 +43,55 @@ export default function InvoiceDetailsTab({
 }: InvoiceDetailsTabProps) {
   const { setFlashNotification } = useSessionStore();
   const [stockSelection, setStockSelection] = useState<StockSelectionState>({
-    selectedStock: null,
+    selectedProduct: null,
+    selectedProductUnit: null,
+    selectedStockType: null,
+    lotNo: '',
+    expirationDate: '',
     selectedProductDeal: null,
     quantity: 0,
-    showStockModal: false,
+    showProductModal: false,
+    showProductUnitModal: false,
+    showStockTypeModal: false,
     showProductDealModal: false
   });
 
-  const handleAddStock = () => {
-    // Check if productPriceTypeId is selected before allowing stock selection
+  const handleProductSelect = (product: ProductDto) => {
+    setStockSelection(prev => ({
+      ...prev,
+      selectedProduct: product,
+      showProductModal: false
+    }));
+  };
+
+  const handleProductUnitSelect = (productUnit: ProductUnitDto) => {
+    setStockSelection(prev => ({
+      ...prev,
+      selectedProductUnit: productUnit,
+      showProductUnitModal: false
+    }));
+  };
+
+  const handleStockTypeSelect = (stockType: StockTypeDto) => {
+    setStockSelection(prev => ({
+      ...prev,
+      selectedStockType: stockType,
+      showStockTypeModal: false
+    }));
+  };
+
+
+  const handleAddDetailRecord = async () => {
+    // Check if productPriceTypeId is selected
     if (!formData.productPriceTypeId) {
       setFlashNotification({ 
         title: 'Selection Required', 
-        message: 'Please select a Product Price Type in the invoice details before selecting stock items.', 
+        message: 'Please select a Product Price Type in the invoice details before adding items.', 
         alertType: 'warning' 
       });
       return;
     }
-    
+
     // Check if contract sales is enabled but no contract is selected
     if (contractSales && !formData.contractId) {
       setFlashNotification({ 
@@ -66,37 +101,25 @@ export default function InvoiceDetailsTab({
       });
       return;
     }
-    
-    setStockSelection(prev => ({ ...prev, showStockModal: true }));
-  };
 
-  const handleStockSelect = async (stock: StockDto) => {
+    if (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
+        !stockSelection.selectedStockType || stockSelection.quantity <= 0) {
+      setFlashNotification({
+        title: 'Missing Information',
+        message: 'Please select product, product unit, stock type, and enter quantity.',
+        alertType: 'warning'
+      });
+      return;
+    }
+
+    // Fetch product details to get pricing
     try {
-      // Check if productPriceTypeId is selected
-      if (!formData.productPriceTypeId) {
-        setFlashNotification({ 
-          title: 'Selection Required', 
-          message: 'Please select a Product Price Type in the invoice details before selecting stock items.', 
-          alertType: 'warning' 
-        });
-        return;
-      }
-
-      // Fetch product details to get pricing
-      if (!stock.productId) {
-        setFlashNotification({ 
-          title: 'Error', 
-          message: 'Product ID is missing from selected stock', 
-          alertType: 'error' 
-        });
-        return;
-      }
-      const product = await ProductApi.getProductById(stock.productId);
+      const product = await ProductApi.getProductById(stockSelection.selectedProduct.productId || '');
       
       // Find matching price based on productUnitId and productPriceTypeId
       const matchingPrice = product.productUnitPrice?.find(
         (unitPrice) =>
-          unitPrice.productUnitId === stock.productUnitId &&
+          unitPrice.productUnitId === stockSelection.selectedProductUnit?.productUnitId &&
           unitPrice.productPriceTypeId === formData.productPriceTypeId
       );
       
@@ -108,56 +131,57 @@ export default function InvoiceDetailsTab({
         });
         return;
       }
-      
-      setStockSelection(prev => ({
-        ...prev,
-        selectedStock: { ...stock, cost: matchingPrice.cost, price: matchingPrice.price },
-        showStockModal: false
-      }));
-    } catch (error) {
-      console.error('Error fetching product details:', error);
-      setFlashNotification({ 
-        title: 'Error', 
-        message: 'Failed to fetch product pricing information', 
-        alertType: 'error' 
-      });
-    }
-  };
 
+      // Find stock by filter (product, unit, type, lot)
+      const filter: StockFilterDto = {
+        productName: stockSelection.selectedProduct.productName || '',
+        productUnitName: stockSelection.selectedProductUnit.productUnitName,
+        stockTypeName: stockSelection.selectedStockType.stockTypeName || '',
+        lotNo: stockSelection.lotNo || undefined,
+        status: 'ACTIVE'
+      };
 
-  const handleAddDetailRecord = async () => {
-    if (!stockSelection.selectedStock || stockSelection.quantity <= 0) {
-      return;
-    }
+      const stockResponse = await StockApi.getStocksByFilter(filter, 1);
+      let foundStock: StockDto | null = null;
 
-    // Calculate total quantity needed (including free items from deal)
-    let totalQuantityNeeded = stockSelection.quantity;
-    let freeItemQuantity = 0;
-    
-    if (contractSales && contractProductDealQty) {
-      // Use contract's productDealQty for all products
-      if (stockSelection.quantity >= (contractProductDealQty.minQty || 0)) {
-        freeItemQuantity = contractProductDealQty.additionalQty || 0;
-        totalQuantityNeeded += freeItemQuantity;
+      if (stockResponse.data && stockResponse.data.length > 0) {
+        // Find exact match
+        foundStock = stockResponse.data.find(stock => 
+          stock.productId === stockSelection.selectedProduct?.productId &&
+          stock.productUnitId === stockSelection.selectedProductUnit?.productUnitId &&
+          stock.stockTypeId === stockSelection.selectedStockType?.stockTypeId &&
+          stock.lotNo === stockSelection.lotNo
+        ) || stockResponse.data[0];
       }
-    } else if (stockSelection.selectedProductDeal && 
-        stockSelection.quantity >= (stockSelection.selectedProductDeal.minQty || 0)) {
-      // Use customer product deal
-      freeItemQuantity = stockSelection.selectedProductDeal.additionalQty || 0;
-      totalQuantityNeeded += freeItemQuantity;
-    }
 
-    // Fetch current stock to validate availability
-    try {
-      if (!stockSelection.selectedStock.stockId) {
+      if (!foundStock || !foundStock.stockId) {
         setFlashNotification({
-          title: 'Error',
-          message: 'Stock ID is missing from selected stock',
+          title: 'Stock Not Found',
+          message: 'No matching stock found. Please verify the product, unit, type, and lot number combination.',
           alertType: 'error'
         });
         return;
       }
-      const currentStock = await StockApi.getStockById(stockSelection.selectedStock.stockId);
+
+      // Calculate total quantity needed (including free items from deal)
+      let totalQuantityNeeded = stockSelection.quantity;
+      let freeItemQuantity = 0;
+      
+      if (contractSales && contractProductDealQty) {
+        // Use contract's productDealQty for all products
+        if (stockSelection.quantity >= (contractProductDealQty.minQty || 0)) {
+          freeItemQuantity = contractProductDealQty.additionalQty || 0;
+          totalQuantityNeeded += freeItemQuantity;
+        }
+      } else if (stockSelection.selectedProductDeal && 
+          stockSelection.quantity >= (stockSelection.selectedProductDeal.minQty || 0)) {
+        // Use customer product deal
+        freeItemQuantity = stockSelection.selectedProductDeal.additionalQty || 0;
+        totalQuantityNeeded += freeItemQuantity;
+      }
+
+      // Fetch current stock to validate availability
+      const currentStock = await StockApi.getStockById(foundStock.stockId);
       
       if (!currentStock || (currentStock.availableQuantity || 0) < totalQuantityNeeded) {
         setFlashNotification({
@@ -167,126 +191,113 @@ export default function InvoiceDetailsTab({
         });
         return;
       }
-    } catch (error) {
-      console.error('Error fetching stock details:', error);
-      setFlashNotification({
-        title: 'Error',
-        message: 'Failed to verify stock availability',
-        alertType: 'error'
-      });
-      return;
-    }
 
-    const cost = Math.round((stockSelection.selectedStock.cost || 0) * 100) / 100;
-    const price = Math.round((stockSelection.selectedStock.price || 0) * 100) / 100;
-    const amount = Math.round((stockSelection.quantity * price) * 100) / 100;
+      const cost = Math.round((matchingPrice.cost || 0) * 100) / 100;
+      const price = Math.round((matchingPrice.price || 0) * 100) / 100;
+      const amount = Math.round((stockSelection.quantity * price) * 100) / 100;
 
-    const newDetail: InvoiceDetailsDto = {
-      invoiceDetailId: `temp_${Date.now()}`,
-      productId: stockSelection.selectedStock.productId,
-      productName: stockSelection.selectedStock.productName,
-      productUnitId: stockSelection.selectedStock.productUnitId,
-      productUnitName: stockSelection.selectedStock.productUnitName,
-      stockTypeId: stockSelection.selectedStock.stockTypeId,
-      stockTypeName: stockSelection.selectedStock.stockTypeName,
-      lotNo: stockSelection.selectedStock.lotNo,
-      stockId: stockSelection.selectedStock.stockId,
-      qty: stockSelection.quantity,
-      productDealId: stockSelection.selectedProductDeal?.productDealId,
-      productDealName: stockSelection.selectedProductDeal?.productDealName,
-      price: price,
-      cost: cost,
-      amount: amount,
-      expiryDate: stockSelection.selectedStock.expirationDate,
-      invoiceDetailType: InvoiceDetailTypeEnum.REGULAR_ITEM
-    };
-
-    // Prevent duplicate regular items with the same product and lot number
-    const hasDuplicate = (formData.invoiceDetails || []).some(d =>
-      d.invoiceDetailType !== InvoiceDetailTypeEnum.FREE_ITEM &&
-      d.productId === newDetail.productId &&
-      d.lotNo === newDetail.lotNo
-    );
-    if (hasDuplicate) {
-      setFlashNotification({
-        title: 'Duplicate Item',
-        message: 'An item with the same product and lot is already added.',
-        alertType: 'warning'
-      });
-      return;
-    }
-
-    const updatedDetails = [...(formData.invoiceDetails || [])];
-    updatedDetails.push(newDetail);
-
-    // Check if we should add a free item
-    if (freeItemQuantity > 0) {
-      // Add free item
-      const freeItem: InvoiceDetailsDto = {
-        invoiceDetailId: `temp_${Date.now()}_free`,
-        productId: stockSelection.selectedStock.productId,
-        productName: stockSelection.selectedStock.productName,
-        productUnitId: stockSelection.selectedStock.productUnitId,
-        productUnitName: stockSelection.selectedStock.productUnitName,
-        stockTypeId: stockSelection.selectedStock.stockTypeId,
-        stockTypeName: stockSelection.selectedStock.stockTypeName,
-        lotNo: stockSelection.selectedStock.lotNo,
-        stockId: stockSelection.selectedStock.stockId,
-        qty: freeItemQuantity,
-        productDealId: contractSales ? formData.contractId : stockSelection.selectedProductDeal?.productDealId,
-        productDealName: contractSales ? formData.contractName : stockSelection.selectedProductDeal?.productDealName,
-        price: 0,
-        cost: 0,
-        amount: 0,
-        expiryDate: stockSelection.selectedStock.expirationDate,
-        invoiceDetailType: InvoiceDetailTypeEnum.FREE_ITEM
+      const newDetail: InvoiceDetailsDto = {
+        invoiceDetailId: `temp_${Date.now()}`,
+        productId: stockSelection.selectedProduct.productId || '',
+        productName: stockSelection.selectedProduct.productName || '',
+        productUnitId: stockSelection.selectedProductUnit.productUnitId,
+        productUnitName: stockSelection.selectedProductUnit.productUnitName,
+        stockTypeId: stockSelection.selectedStockType.stockTypeId || '',
+        stockTypeName: stockSelection.selectedStockType.stockTypeName || '',
+        lotNo: stockSelection.lotNo,
+        stockId: foundStock.stockId,
+        qty: stockSelection.quantity,
+        productDealId: stockSelection.selectedProductDeal?.productDealId,
+        productDealName: stockSelection.selectedProductDeal?.productDealName,
+        price: price,
+        cost: cost,
+        amount: amount,
+        expiryDate: stockSelection.expirationDate,
+        invoiceDetailType: InvoiceDetailTypeEnum.REGULAR_ITEM
       };
-      updatedDetails.push(freeItem);
-    }
 
-    // Reserve stock quantities
-    try {
-      if (!stockSelection.selectedStock.stockId) {
+      // Prevent duplicate regular items with the same product and lot number
+      const hasDuplicate = (formData.invoiceDetails || []).some(d =>
+        d.invoiceDetailType !== InvoiceDetailTypeEnum.FREE_ITEM &&
+        d.productId === newDetail.productId &&
+        d.lotNo === newDetail.lotNo
+      );
+      if (hasDuplicate) {
         setFlashNotification({
-          title: 'Error',
-          message: 'Stock ID is missing from selected stock',
-          alertType: 'error'
+          title: 'Duplicate Item',
+          message: 'An item with the same product and lot is already added.',
+          alertType: 'warning'
         });
         return;
       }
+
+      const updatedDetails = [...(formData.invoiceDetails || [])];
+      updatedDetails.push(newDetail);
+
+      // Check if we should add a free item
+      if (freeItemQuantity > 0) {
+        // Add free item
+        const freeItem: InvoiceDetailsDto = {
+          invoiceDetailId: `temp_${Date.now()}_free`,
+          productId: stockSelection.selectedProduct.productId || '',
+          productName: stockSelection.selectedProduct.productName || '',
+          productUnitId: stockSelection.selectedProductUnit.productUnitId,
+          productUnitName: stockSelection.selectedProductUnit.productUnitName,
+          stockTypeId: stockSelection.selectedStockType.stockTypeId || '',
+          stockTypeName: stockSelection.selectedStockType.stockTypeName || '',
+          lotNo: stockSelection.lotNo,
+          stockId: foundStock.stockId,
+          qty: freeItemQuantity,
+          productDealId: contractSales ? formData.contractId : stockSelection.selectedProductDeal?.productDealId,
+          productDealName: contractSales ? formData.contractName : stockSelection.selectedProductDeal?.productDealName,
+          price: 0,
+          cost: 0,
+          amount: 0,
+          expiryDate: stockSelection.expirationDate,
+          invoiceDetailType: InvoiceDetailTypeEnum.FREE_ITEM
+        };
+        updatedDetails.push(freeItem);
+      }
+
+      // Reserve stock quantities
       await StockApi.updateAvailableQuantity(
-        stockSelection.selectedStock.stockId,
+        foundStock.stockId,
         { qty: totalQuantityNeeded }
       );
+
+      const invoiceAmount = Math.round(updatedDetails.reduce((sum, detail) => sum + (detail.amount || 0), 0) * 100) / 100;
+      const taxAmount = Math.round((invoiceAmount * 0.1) * 100) / 100;
+      const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
+
+      onFormDataChange({
+        invoiceDetails: updatedDetails,
+        invoiceAmount,
+        taxAmount,
+        finalAmount
+      });
+
+      // Reset selection
+      setStockSelection({
+        selectedProduct: null,
+        selectedProductUnit: null,
+        selectedStockType: null,
+        lotNo: '',
+        expirationDate: '',
+        selectedProductDeal: null,
+        quantity: 0,
+        showProductModal: false,
+        showProductUnitModal: false,
+        showStockTypeModal: false,
+        showProductDealModal: false
+      });
     } catch (error) {
-      console.error('Error reserving stock:', error);
+      console.error('Error adding invoice detail:', error);
       setFlashNotification({
-        title: 'Stock Reservation Failed',
-        message: 'Failed to reserve stock quantities. Please try again.',
+        title: 'Error',
+        message: 'Failed to add invoice detail. Please try again.',
         alertType: 'error'
       });
-      return;
     }
-
-    const invoiceAmount = Math.round(updatedDetails.reduce((sum, detail) => sum + (detail.amount || 0), 0) * 100) / 100;
-    const taxAmount = Math.round((invoiceAmount * 0.1) * 100) / 100;
-    const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
-
-    onFormDataChange({
-      invoiceDetails: updatedDetails,
-      invoiceAmount,
-      taxAmount,
-      finalAmount
-    });
-
-    // Reset selection
-    setStockSelection({
-      selectedStock: null,
-      selectedProductDeal: null,
-      quantity: 0,
-      showStockModal: false,
-      showProductDealModal: false
-    });
   };
 
 
@@ -392,7 +403,7 @@ export default function InvoiceDetailsTab({
 
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr auto',
+            gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
             gap: '16px',
             alignItems: 'end'
           }}>
@@ -404,14 +415,18 @@ export default function InvoiceDetailsTab({
                 color: '#374151',
                 marginBottom: '8px'
               }}>
-                Stock Item
+                Product *
               </label>
               <input
                 type="text"
-                value={stockSelection.selectedStock?.productName || ''}
+                value={stockSelection.selectedProduct?.productName || ''}
                 readOnly
-                placeholder={formData.productPriceTypeId ? "Click to select stock" : "Select Product Price Type first"}
-                onClick={handleAddStock}
+                placeholder={formData.productPriceTypeId ? "Click to select product" : "Select Product Price Type first"}
+                onClick={() => {
+                  if (formData.productPriceTypeId) {
+                    setStockSelection(prev => ({ ...prev, showProductModal: true }));
+                  }
+                }}
                 disabled={!formData.productPriceTypeId || isReadOnly}
                 style={{
                   width: '100%',
@@ -435,6 +450,115 @@ export default function InvoiceDetailsTab({
                 color: '#374151',
                 marginBottom: '8px'
               }}>
+                Product Unit *
+              </label>
+              <input
+                type="text"
+                value={stockSelection.selectedProductUnit?.productUnitName || ''}
+                readOnly
+                placeholder="Click to select unit"
+                onClick={() => setStockSelection(prev => ({ ...prev, showProductUnitModal: true }))}
+                disabled={!formData.productPriceTypeId || isReadOnly}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: formData.productPriceTypeId ? '#f9fafb' : '#f3f4f6',
+                  color: formData.productPriceTypeId ? '#6b7280' : '#9ca3af',
+                  cursor: formData.productPriceTypeId ? 'pointer' : 'not-allowed',
+                  opacity: formData.productPriceTypeId ? 1 : 0.6
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Stock Type *
+              </label>
+              <input
+                type="text"
+                value={stockSelection.selectedStockType?.stockTypeName || ''}
+                readOnly
+                placeholder="Click to select type"
+                onClick={() => setStockSelection(prev => ({ ...prev, showStockTypeModal: true }))}
+                disabled={!formData.productPriceTypeId || isReadOnly}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  backgroundColor: formData.productPriceTypeId ? '#f9fafb' : '#f3f4f6',
+                  color: formData.productPriceTypeId ? '#6b7280' : '#9ca3af',
+                  cursor: formData.productPriceTypeId ? 'pointer' : 'not-allowed',
+                  opacity: formData.productPriceTypeId ? 1 : 0.6
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                LOT Number
+              </label>
+              <input
+                type="text"
+                value={stockSelection.lotNo}
+                onChange={(e) => setStockSelection(prev => ({ ...prev, lotNo: e.target.value }))}
+                disabled={!formData.productPriceTypeId || isReadOnly}
+                style={{
+                  width: '100%',
+                  padding: '12px 16px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  outline: 'none',
+                  backgroundColor: formData.productPriceTypeId ? 'white' : '#f3f4f6',
+                  opacity: formData.productPriceTypeId ? 1 : 0.6
+                }}
+                placeholder="Enter LOT number"
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
+                Expiration Date
+              </label>
+              <DatePicker
+                value={stockSelection.expirationDate}
+                onChange={(date) => setStockSelection(prev => ({ ...prev, expirationDate: date }))}
+                placeholder="Select expiration date"
+                disabled={!formData.productPriceTypeId || isReadOnly}
+              />
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
+                marginBottom: '8px'
+              }}>
                 Quantity *
               </label>
               <input
@@ -442,14 +566,16 @@ export default function InvoiceDetailsTab({
                 value={stockSelection.quantity}
                 onChange={(e) => setStockSelection(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
                 min="1"
-                disabled={isReadOnly}
+                disabled={!formData.productPriceTypeId || isReadOnly}
                 style={{
                   width: '100%',
                   padding: '12px 16px',
                   border: '1px solid #d1d5db',
                   borderRadius: '8px',
                   fontSize: '14px',
-                  outline: 'none'
+                  outline: 'none',
+                  backgroundColor: formData.productPriceTypeId ? 'white' : '#f3f4f6',
+                  opacity: formData.productPriceTypeId ? 1 : 0.6
                 }}
                 placeholder="Enter quantity"
               />
@@ -489,8 +615,8 @@ export default function InvoiceDetailsTab({
                   value={stockSelection.selectedProductDeal?.productDealId || ''}
                   onChange={(e) => {
                     const dealId = e.target.value;
-                    const filteredDeals = stockSelection.selectedStock 
-                      ? customerDeals.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                    const filteredDeals = stockSelection.selectedProduct 
+                      ? customerDeals.filter(deal => deal.productId === stockSelection.selectedProduct?.productId)
                       : [];
                     const selectedDeal = filteredDeals.find(deal => deal.productDealId === dealId);
                     setStockSelection(prev => ({
@@ -498,7 +624,7 @@ export default function InvoiceDetailsTab({
                       selectedProductDeal: selectedDeal || null
                     }));
                   }}
-                  disabled={!stockSelection.selectedStock}
+                  disabled={!stockSelection.selectedProduct}
                   style={{
                     width: '100%',
                     padding: '12px 16px',
@@ -506,16 +632,16 @@ export default function InvoiceDetailsTab({
                     borderRadius: '8px',
                     fontSize: '14px',
                     outline: 'none',
-                    backgroundColor: !stockSelection.selectedStock ? '#f9fafb' : 'white',
-                    color: !stockSelection.selectedStock ? '#6b7280' : '#1f2937',
-                    cursor: !stockSelection.selectedStock ? 'not-allowed' : 'pointer'
+                    backgroundColor: !stockSelection.selectedProduct ? '#f9fafb' : 'white',
+                    color: !stockSelection.selectedProduct ? '#6b7280' : '#1f2937',
+                    cursor: !stockSelection.selectedProduct ? 'not-allowed' : 'pointer'
                   }}
                 >
                   <option value="">
-                    {!stockSelection.selectedStock ? 'Select stock item first' : 'Select product deal'}
+                    {!stockSelection.selectedProduct ? 'Select product first' : 'Select product deal'}
                   </option>
-                  {stockSelection.selectedStock && customerDeals
-                    .filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                  {stockSelection.selectedProduct && customerDeals
+                    .filter(deal => deal.productId === stockSelection.selectedProduct?.productId)
                     .map((deal) => (
                       <option key={deal.productDealId} value={deal.productDealId}>
                         {deal.productDealName} (Min: {deal.minQty || 0}, Free: {deal.additionalQty || 0})
@@ -528,26 +654,32 @@ export default function InvoiceDetailsTab({
             <button
               type="button"
               onClick={handleAddDetailRecord}
-              disabled={!stockSelection.selectedStock || stockSelection.quantity <= 0 || isReadOnly}
+              disabled={!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
+                       !stockSelection.selectedStockType || stockSelection.quantity <= 0 || isReadOnly}
               style={{
                 padding: '12px 20px',
-                backgroundColor: (!stockSelection.selectedStock || stockSelection.quantity <= 0 || isReadOnly) ? '#9ca3af' : '#10b981',
+                backgroundColor: (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
+                                 !stockSelection.selectedStockType || stockSelection.quantity <= 0 || isReadOnly) ? '#9ca3af' : '#10b981',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: (!stockSelection.selectedStock || stockSelection.quantity <= 0 || isReadOnly) ? 'not-allowed' : 'pointer',
+                cursor: (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
+                         !stockSelection.selectedStockType || stockSelection.quantity <= 0 || isReadOnly) ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
                 fontWeight: '500',
                 transition: 'all 0.2s ease',
-                opacity: (!stockSelection.selectedStock || stockSelection.quantity <= 0) ? 0.7 : 1
+                opacity: (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
+                         !stockSelection.selectedStockType || stockSelection.quantity <= 0) ? 0.7 : 1
               }}
               onMouseEnter={(e) => {
-                if (stockSelection.selectedStock && stockSelection.quantity > 0) {
+                if (stockSelection.selectedProduct && stockSelection.selectedProductUnit && 
+                    stockSelection.selectedStockType && stockSelection.quantity > 0) {
                   e.currentTarget.style.backgroundColor = '#059669';
                 }
               }}
               onMouseLeave={(e) => {
-                if (stockSelection.selectedStock && stockSelection.quantity > 0) {
+                if (stockSelection.selectedProduct && stockSelection.selectedProductUnit && 
+                    stockSelection.selectedStockType && stockSelection.quantity > 0) {
                   e.currentTarget.style.backgroundColor = '#10b981';
                 }
               }}
@@ -808,13 +940,30 @@ export default function InvoiceDetailsTab({
         )}
       </div>
 
-      {/* Stock Selection Modal */}
-      <StockSearchableSelectionModal
-        show={stockSelection.showStockModal}
-        title="Select Stock Item"
-        selectedValue={stockSelection.selectedStock?.stockId || null}
-        onSelect={handleStockSelect}
-        onClose={() => setStockSelection(prev => ({ ...prev, showStockModal: false }))}
+      {/* Selection Modals */}
+      <ProductSearchableSelectionModal
+        show={stockSelection.showProductModal}
+        title="Select Product"
+        selectedValue={stockSelection.selectedProduct?.productId || null}
+        onSelect={handleProductSelect}
+        onClose={() => setStockSelection(prev => ({ ...prev, showProductModal: false }))}
+        skipDealSelection={true}
+      />
+
+      <ProductUnitSearchableSelectionModal
+        show={stockSelection.showProductUnitModal}
+        title="Select Product Unit"
+        selectedValue={stockSelection.selectedProductUnit?.productUnitId || null}
+        onSelect={handleProductUnitSelect}
+        onClose={() => setStockSelection(prev => ({ ...prev, showProductUnitModal: false }))}
+      />
+
+      <StockTypeSearchableSelectionModal
+        show={stockSelection.showStockTypeModal}
+        title="Select Stock Type"
+        selectedValue={stockSelection.selectedStockType?.stockTypeId || null}
+        onSelect={handleStockTypeSelect}
+        onClose={() => setStockSelection(prev => ({ ...prev, showStockTypeModal: false }))}
       />
 
     </div>

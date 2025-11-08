@@ -2,19 +2,15 @@
 
 import { ProductApi, ProductUnitDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { DeleteConfirmationModal, UnitHeader, UnitModal, UnitTable } from './components';
+import { UnitHeader, UnitTable } from './components';
 
 export default function ProductUnitsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [units, setUnits] = useState<ProductUnitDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<any>(undefined);
   const [prevCursor, setPrevCursor] = useState<any>(undefined);
@@ -23,13 +19,6 @@ export default function ProductUnitsPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedUnit, setSelectedUnit] = useState<ProductUnitDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
 
   // Fetch on initial load and when these dependencies change
@@ -149,121 +138,14 @@ export default function ProductUnitsPage() {
     );
   };
 
-  // Handle row click - use index to get original unit data
-  const handleRowClick = (unit: ProductUnitDto, index?: number) => {
-    // Get the original unit data from the units array instead of the transformed tableData
-    const originalUnit = typeof index === 'number' ? units[index] : unit;
-    setSelectedUnit(originalUnit);
-    setIsCreateMode(false);
-    
-    // Check if this is a pending record that needs admin approval
-    if ((originalUnit.status === StatusEnum.FOR_APPROVAL || originalUnit.status === StatusEnum.NEW_RECORD || originalUnit.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-      setActiveTab('approval');
-    } else {
-      setActiveTab('details');
-    }
-    
-    setShowEditModal(true);
+  // Handle row click - navigate to edit page
+  const handleRowClick = (unit: ProductUnitDto) => {
+    window.location.href = `/products/units/${unit.productUnitId}/edit`;
   };
 
-  // Handle create new unit
+  // Handle create new unit - navigate to create page
   const handleCreateUnit = () => {
-    setSelectedUnit(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedUnit(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedUnit: ProductUnitDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new unit
-        const newUnit = await ProductApi.createProductUnit({
-          productUnitName: updatedUnit.productUnitName,
-          status: updatedUnit.status
-        }, userRole);
-        
-        // Refetch the units to get the most up-to-date data
-        await fetchUnits();
-        
-        // Close modal after creation
-        handleCloseModal();
-      } else {
-        // Update existing unit
-        const updatedRecord = await ProductApi.updateProductUnit(updatedUnit.productUnitId, {
-          productUnitId: updatedUnit.productUnitId,
-          productUnitName: updatedUnit.productUnitName,
-          status: updatedUnit.status
-        }, userRole);
-        
-        // Refetch the units to get the most up-to-date data
-        await fetchUnits();
-        
-        // Update the selected unit with the latest data
-        setSelectedUnit(updatedRecord);
-        
-        // Close modal after successful update for all users
-        handleCloseModal();
-      }
-    } catch (error) {
-      setError('Failed to save unit. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedUnit) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await ProductApi.deleteProductUnit(selectedUnit, userRole);
-      
-      // Refetch the units to get the most up-to-date data
-      await fetchUnits();
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-    } catch (error) {
-      setError('Failed to delete unit. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    window.location.href = '/products/units/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -274,56 +156,6 @@ export default function ProductUnitsPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchUnits(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedUnit) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await ProductApi.approveProductUnit(selectedUnit.productUnitId, userRole);
-      
-      // Refresh the units list - use await to ensure it completes before closing modal
-      await fetchUnits();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (err) {
-      setError('Failed to approve unit. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedUnit) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await ProductApi.denyProductUnit(selectedUnit.productUnitId, userRole);
-      
-      // Refresh the units list - use await to ensure it completes before closing modal
-      await fetchUnits();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (err) {
-      setError('Failed to deny unit. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -370,10 +202,7 @@ export default function ProductUnitsPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <UnitHeader 
           searchTerm={searchTerm}
           onSearchChange={(value) => {
@@ -395,10 +224,7 @@ export default function ProductUnitsPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <UnitTable
           isLoading={isLoading}
           tableData={tableData}
@@ -413,31 +239,6 @@ export default function ProductUnitsPage() {
           onNext={() => fetchUnits('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <UnitModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedUnit={selectedUnit}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        productUnit={selectedUnit}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

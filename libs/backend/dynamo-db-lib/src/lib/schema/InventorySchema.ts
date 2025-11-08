@@ -62,6 +62,54 @@ export const InventorySchema = {
             GSI2PK: { type: String, value: 'STOCK_TYPE#${status}', hidden: false },
             GSI2SK: { type: String, value: '${stockTypeName}', hidden: false },
         },
+        Supplier: {
+            PK: { type: String, value: 'SUPPLIER', hidden: false },
+            SK: { type: String, value: '${supplierId}', hidden: false },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                required: false,
+            },
+            supplierId: { type: String, generate: 'ulid' },
+            supplierName: { type: String, required: false },
+            supplierAddress: { type: String, required: false },
+            supplierPhone: { type: String, required: false },
+            supplierEmail: { type: String, required: false },
+            supplierContactPerson: { type: String, required: false },
+            activityLogs: { type: Array },
+            forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
+            GSI1PK: { type: String, value: 'SUPPLIER', hidden: false },
+            GSI1SK: { type: String, value: '${supplierName}', hidden: false },
+            GSI2PK: { type: String, value: 'SUPPLIER#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${supplierName}', hidden: false },
+        },
+        StockDelivery: {
+            PK: { type: String, value: 'STOCK_DELIVERY', hidden: false },
+            SK: { type: String, value: '${stockDeliveryId}', hidden: false },
+            stockDeliveryId: { type: String, generate: 'ulid' },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                required: false,
+            },
+            forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
+            activityLogs: { type: Array },
+            deliveryDetails: { type: Array },
+            supplierId: { type: String, required: false },
+            supplierName: { type: String, required: false },
+            dateReceived: { type: String, required: false },
+            docno: { type: String, required: false },
+            GSI1PK: { type: String, value: 'STOCK_DELIVERY', hidden: false },
+            GSI1SK: { type: String, value: '${docno}', hidden: false },
+            GSI2PK: { type: String, value: 'STOCK_DELIVERY#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${docno}', hidden: false },
+            GSI3PK: { type: String, value: 'STOCK_DELIVERY#${supplierId}', hidden: false },
+            GSI3SK: { type: String, value: '${dateReceived}', hidden: false },
+            GSI4PK: { type: String, value: 'STOCK_DELIVERY', hidden: false },
+            GSI4SK: { type: String, value: '${dateReceived}', hidden: false },
+        },
     } as const,
     params: {
         isoDates: true,
@@ -71,3 +119,5 @@ export const InventorySchema = {
 
 export type StockDataType = Entity<typeof InventorySchema.models.Stock>;
 export type StockTypeDataType = Entity<typeof InventorySchema.models.StockType>;
+export type SupplierDataType = Entity<typeof InventorySchema.models.Supplier>;
+export type StockDeliveryDataType = Entity<typeof InventorySchema.models.StockDelivery>;

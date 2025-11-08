@@ -1,21 +1,16 @@
 'use client';
 
-import { ContractApi, ContractDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { ContractApi, ContractDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { ContractHeader, ContractModal, ContractTable, DeleteConfirmationModal } from './components';
+import { ContractHeader, ContractTable } from './components';
 
 export default function ContractsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [contracts, setContracts] = useState<ContractDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -24,13 +19,6 @@ export default function ContractsPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedContract, setSelectedContract] = useState<ContractDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch contracts from API
   const fetchContracts = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -93,11 +81,7 @@ export default function ContractsPage() {
       }
     } catch (error) {
       const errorMessage = extractErrorMessage(error, 'Failed to load contracts. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -158,192 +142,14 @@ export default function ContractsPage() {
     );
   };
 
-  const handleRowClick = async (contract: ContractDto) => {
-    // Ensure we have a valid contract object
-    if (!contract || !contract.contractId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the contract from the API
-      const latestContract = await ContractApi.getContractById(
-        contract.contractId
-      );
-      
-      setSelectedContract(latestContract);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestContract.status === StatusEnum.FOR_APPROVAL || latestContract.status === StatusEnum.NEW_RECORD || latestContract.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch (error) {
-      const errorMessage = extractErrorMessage(error, 'Failed to load contract details. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  // Handle row click - navigate to edit page
+  const handleRowClick = (contract: ContractDto) => {
+    window.location.href = `/invoicing/contract/${contract.contractId}/edit`;
   };
 
+  // Handle create new contract - navigate to create page
   const handleCreateClick = () => {
-    setSelectedContract(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedContract(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedContract: ContractDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new contract
-        await ContractApi.createContract({
-          contractNo: updatedContract.contractNo,
-          contractName: updatedContract.contractName,
-          customerId: updatedContract.customerId,
-          customerName: updatedContract.customerName,
-          startDate: updatedContract.startDate,
-          endDate: updatedContract.endDate,
-          contractAmount: updatedContract.contractAmount,
-          productDealId: updatedContract.productDealId,
-          productDealName: updatedContract.productDealName,
-          productDealQty: updatedContract.productDealQty,
-          deliveryStatus: updatedContract.deliveryStatus,
-          paymentStatus: updatedContract.paymentStatus,
-          deliveredAmount: updatedContract.deliveredAmount,
-          amountPaid: updatedContract.amountPaid,
-          status: updatedContract.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Contract created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchContracts();
-      } else {
-        // Update existing contract
-        const updatedRecord = await ContractApi.updateContract(updatedContract.contractId, {
-          contractId: updatedContract.contractId,
-          contractNo: updatedContract.contractNo,
-          customerId: updatedContract.customerId,
-          customerName: updatedContract.customerName,
-          contractName: updatedContract.contractName,
-          startDate: updatedContract.startDate,
-          endDate: updatedContract.endDate,
-          contractAmount: updatedContract.contractAmount,
-          productDealId: updatedContract.productDealId,
-          productDealName: updatedContract.productDealName,
-          productDealQty: updatedContract.productDealQty,
-          deliveryStatus: updatedContract.deliveryStatus,
-          paymentStatus: updatedContract.paymentStatus,
-          deliveredAmount: updatedContract.deliveredAmount,
-          amountPaid: updatedContract.amountPaid,
-          changeReason: updatedContract.changeReason,
-          status: updatedContract.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Contract updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchContracts();
-      }
-    } catch (error) {
-      console.error('Error saving contract:', error);
-      const errorMessage = extractErrorMessage(error, 'Failed to save contract. Please try again.');
-      setFlashNotification({
-        title: 'Error!',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedContract) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await ContractApi.deleteContract(selectedContract, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Contract deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchContracts();
-    } catch (error) {
-      console.error('Error deleting contract:', error);
-      const errorMessage = extractErrorMessage(error, 'Failed to delete contract. Please try again.');
-      setFlashNotification({
-        title: 'Error!',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    window.location.href = '/invoicing/contract/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -354,76 +160,6 @@ export default function ContractsPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchContracts(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedContract) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await ContractApi.approveContract(selectedContract.contractId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Contract approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchContracts();
-    } catch (error) {
-      console.error('Error approving contract:', error);
-      const errorMessage = extractErrorMessage(error, 'Failed to approve contract. Please try again.');
-      setFlashNotification({
-        title: 'Error!',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedContract) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await ContractApi.denyContract(selectedContract.contractId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Contract denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchContracts();
-    } catch (error) {
-      console.error('Error denying contract:', error);
-      const errorMessage = extractErrorMessage(error, 'Failed to deny contract. Please try again.');
-      setFlashNotification({
-        title: 'Error!',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Number formatting utility
@@ -458,10 +194,7 @@ export default function ContractsPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <ContractHeader
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -483,10 +216,7 @@ export default function ContractsPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <ContractTable
           isLoading={isLoading}
           tableData={tableData}
@@ -501,31 +231,6 @@ export default function ContractsPage() {
           onNext={() => fetchContracts('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <ContractModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedContract={selectedContract}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        contract={selectedContract}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

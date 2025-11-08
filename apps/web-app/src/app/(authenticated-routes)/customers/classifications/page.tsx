@@ -1,21 +1,16 @@
 'use client';
 
-import { CustomerClassificationApi, CustomerClassificationDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { CustomerClassificationApi, CustomerClassificationDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { CustomerClassificationHeader, CustomerClassificationModal, CustomerClassificationTable, DeleteConfirmationModal } from './components';
+import { CustomerClassificationHeader, CustomerClassificationTable } from './components';
 
 export default function CustomerClassificationsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerClassifications, setCustomerClassifications] = useState<CustomerClassificationDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -24,13 +19,6 @@ export default function CustomerClassificationsPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedCustomerClassification, setSelectedCustomerClassification] = useState<CustomerClassificationDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch customer classifications from API
   const fetchCustomerClassifications = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -154,161 +142,13 @@ export default function CustomerClassificationsPage() {
   };
 
   const handleRowClick = async (customerClassification: CustomerClassificationDto) => {
-    // Ensure we have a valid customer classification object
-    if (!customerClassification || !customerClassification.customerClassificationId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the customer classification from the API
-      const latestCustomerClassification = await CustomerClassificationApi.getCustomerClassificationById(
-        customerClassification.customerClassificationId,
-        userRole
-      );
-      
-      setSelectedCustomerClassification(latestCustomerClassification);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestCustomerClassification.status === StatusEnum.FOR_APPROVAL || latestCustomerClassification.status === StatusEnum.NEW_RECORD || latestCustomerClassification.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch {
-      setError('Failed to load customer classification details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to edit customer classification page
+    window.location.href = `/customers/classifications/${customerClassification.customerClassificationId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedCustomerClassification(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedCustomerClassification(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedCustomerClassification: CustomerClassificationDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new customer classification
-        await CustomerClassificationApi.createCustomerClassification({
-          customerClassificationName: updatedCustomerClassification.customerClassificationName,
-          status: updatedCustomerClassification.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Customer Classification created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchCustomerClassifications();
-      } else {
-        // Update existing customer classification
-        const updatedRecord = await CustomerClassificationApi.updateCustomerClassification(updatedCustomerClassification.customerClassificationId, {
-          customerClassificationId: updatedCustomerClassification.customerClassificationId,
-          customerClassificationName: updatedCustomerClassification.customerClassificationName,
-          status: updatedCustomerClassification.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Customer Classification updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchCustomerClassifications();
-      }
-    } catch (error) {
-      console.error('Error saving customer classification:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to save customer classification. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to save customer classification. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedCustomerClassification) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await CustomerClassificationApi.deleteCustomerClassification(selectedCustomerClassification, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Customer Classification deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchCustomerClassifications();
-    } catch (error) {
-      console.error('Error deleting customer classification:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to delete customer classification. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to delete customer classification. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create customer classification page
+    window.location.href = '/customers/classifications/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -319,76 +159,6 @@ export default function CustomerClassificationsPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchCustomerClassifications(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedCustomerClassification) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await CustomerClassificationApi.approveCustomerClassification(selectedCustomerClassification.customerClassificationId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Customer Classification approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchCustomerClassifications();
-    } catch (error) {
-      console.error('Error approving customer classification:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to approve customer classification. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to approve customer classification. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedCustomerClassification) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await CustomerClassificationApi.denyCustomerClassification(selectedCustomerClassification.customerClassificationId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Customer Classification denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchCustomerClassifications();
-    } catch (error) {
-      console.error('Error denying customer classification:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to deny customer classification. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to deny customer classification. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -430,10 +200,7 @@ export default function CustomerClassificationsPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <CustomerClassificationHeader
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -455,10 +222,7 @@ export default function CustomerClassificationsPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <CustomerClassificationTable
           isLoading={isLoading}
           tableData={tableData}
@@ -473,31 +237,6 @@ export default function CustomerClassificationsPage() {
           onNext={() => fetchCustomerClassifications('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <CustomerClassificationModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedCustomerClassification={selectedCustomerClassification}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        customerClassification={selectedCustomerClassification}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

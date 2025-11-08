@@ -9,6 +9,7 @@ interface ProductSearchableSelectionModalProps {
   selectedValue: string | null;
   onSelect: (product: ProductDto) => void;
   onClose: () => void;
+  skipDealSelection?: boolean;
 }
 
 interface ProductItem {
@@ -29,7 +30,8 @@ export default function ProductSearchableSelectionModal({
   title,
   selectedValue,
   onSelect,
-  onClose
+  onClose,
+  skipDealSelection = false
 }: ProductSearchableSelectionModalProps) {
   const [items, setItems] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -205,6 +207,21 @@ export default function ProductSearchableSelectionModal({
   };
 
   const handleProductSelect = (product: ProductItem) => {
+    // If skipDealSelection is true, always select product directly
+    if (skipDealSelection) {
+      const fullProduct: ProductDto = {
+        productId: product.productId,
+        productName: product.productName,
+        productCategoryName: product.productCategoryName,
+        productClassName: product.productClassName,
+        productDeals: product.productDeals || []
+      };
+      onSelect(fullProduct);
+      onClose();
+      return;
+    }
+
+    // Original behavior: show deals if available
     if (product.productDeals && product.productDeals.length > 0) {
       setSelectedProduct(product);
       setShowDeals(true);

@@ -112,6 +112,12 @@ const navigationModules = [
         route: "/settings", 
         icon: Settings,
         description: "System configuration"
+      },
+      { 
+        label: "UI Layout Testing", 
+        route: "/ui-layout-testing", 
+        icon: File,
+        description: "UI layout testing and development"
       }
     ]
   }

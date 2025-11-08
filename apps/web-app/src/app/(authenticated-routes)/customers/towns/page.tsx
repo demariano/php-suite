@@ -1,21 +1,16 @@
 'use client';
 
-import { StatusEnum, TownApi, TownDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { StatusEnum, TownApi, TownDto, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { DeleteConfirmationModal, TownHeader, TownModal, TownTable } from './components';
+import { TownHeader, TownTable } from './components';
 
 export default function CustomerTownsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerTowns, setCustomerTowns] = useState<TownDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -24,13 +19,6 @@ export default function CustomerTownsPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedTown, setSelectedTown] = useState<TownDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch customer towns from API
   const fetchCustomerTowns = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -156,165 +144,13 @@ export default function CustomerTownsPage() {
   };
 
   const handleRowClick = async (town: TownDto) => {
-    // Ensure we have a valid town object
-    if (!town || !town.townId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the town from the API
-      const latestTown = await TownApi.getTownById(
-        town.townId,
-        userRole
-      );
-      
-      setSelectedTown(latestTown);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestTown.status === StatusEnum.FOR_APPROVAL || latestTown.status === StatusEnum.NEW_RECORD || latestTown.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch {
-      setError('Failed to load town details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to edit town page
+    window.location.href = `/customers/towns/${town.townId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedTown(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedTown(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedTown: TownDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new town
-        await TownApi.createTown({
-          townName: updatedTown.townName,
-          areaId: updatedTown.areaId,
-          areaName: updatedTown.areaName,
-          status: updatedTown.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Town created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchCustomerTowns();
-      } else {
-        // Update existing town
-        const updatedRecord = await TownApi.updateTown(updatedTown.townId, {
-          townId: updatedTown.townId,
-          townName: updatedTown.townName,
-          areaId: updatedTown.areaId,
-          areaName: updatedTown.areaName,
-          status: updatedTown.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Town updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchCustomerTowns();
-      }
-    } catch (error) {
-      console.error('Error saving town:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to save town. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to save town. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedTown) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await TownApi.deleteTown(selectedTown, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Town deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchCustomerTowns();
-    } catch (error) {
-      console.error('Error deleting town:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to delete town. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to delete town. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create town page
+    window.location.href = '/customers/towns/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -325,76 +161,6 @@ export default function CustomerTownsPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchCustomerTowns(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedTown) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await TownApi.approveTown(selectedTown.townId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Town approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchCustomerTowns();
-    } catch (error) {
-      console.error('Error approving town:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to approve town. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to approve town. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedTown) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await TownApi.denyTown(selectedTown.townId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Town denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchCustomerTowns();
-    } catch (error) {
-      console.error('Error denying town:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to deny town. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to deny town. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -436,10 +202,7 @@ export default function CustomerTownsPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <TownHeader
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -461,10 +224,7 @@ export default function CustomerTownsPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <TownTable
           isLoading={isLoading}
           tableData={tableData}
@@ -479,31 +239,6 @@ export default function CustomerTownsPage() {
           onNext={() => fetchCustomerTowns('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <TownModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedTown={selectedTown}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        town={selectedTown}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

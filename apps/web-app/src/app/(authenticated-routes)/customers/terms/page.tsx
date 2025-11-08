@@ -1,21 +1,16 @@
 'use client';
 
-import { StatusEnum, TermsApi, TermsDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { StatusEnum, TermsApi, TermsDto, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { DeleteConfirmationModal, TermsHeader, TermsModal, TermsTable } from './components';
+import { TermsHeader, TermsTable } from './components';
 
 export default function TermsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [terms, setTerms] = useState<TermsDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -24,13 +19,6 @@ export default function TermsPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedTerms, setSelectedTerms] = useState<TermsDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch terms from API
   const fetchTerms = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -155,163 +143,13 @@ export default function TermsPage() {
   };
 
   const handleRowClick = async (terms: TermsDto) => {
-    // Ensure we have a valid terms object
-    if (!terms || !terms.termsId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the terms from the API
-      const latestTerms = await TermsApi.getTermsById(
-        terms.termsId,
-        userRole
-      );
-      
-      setSelectedTerms(latestTerms);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestTerms.status === StatusEnum.FOR_APPROVAL || latestTerms.status === StatusEnum.NEW_RECORD || latestTerms.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch {
-      setError('Failed to load terms details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to edit terms page
+    window.location.href = `/customers/terms/${terms.termsId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedTerms(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedTerms(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedTerms: TermsDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new terms
-        await TermsApi.createTerms({
-          termsName: updatedTerms.termsName,
-          days: updatedTerms.days,
-          status: updatedTerms.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Terms created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchTerms();
-      } else {
-        // Update existing terms
-        const updatedRecord = await TermsApi.updateTerms(updatedTerms.termsId, {
-          termsId: updatedTerms.termsId,
-          termsName: updatedTerms.termsName,
-          days: updatedTerms.days,
-          status: updatedTerms.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Terms updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchTerms();
-      }
-    } catch (error) {
-      console.error('Error saving terms:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to save terms. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to save terms. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedTerms) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await TermsApi.deleteTerms(selectedTerms, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Terms deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchTerms();
-    } catch (error) {
-      console.error('Error deleting terms:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to delete terms. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to delete terms. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create terms page
+    window.location.href = '/customers/terms/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -322,76 +160,6 @@ export default function TermsPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchTerms(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedTerms) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await TermsApi.approveTerms(selectedTerms.termsId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Terms approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchTerms();
-    } catch (error) {
-      console.error('Error approving terms:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to approve terms. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to approve terms. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedTerms) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await TermsApi.denyTerms(selectedTerms.termsId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Terms denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchTerms();
-    } catch (error) {
-      console.error('Error denying terms:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to deny terms. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to deny terms. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -433,10 +201,7 @@ export default function TermsPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <TermsHeader
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -458,10 +223,7 @@ export default function TermsPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <TermsTable
           isLoading={isLoading}
           tableData={tableData}
@@ -476,31 +238,6 @@ export default function TermsPage() {
           onNext={() => fetchTerms('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <TermsModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedTerms={selectedTerms}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        terms={selectedTerms}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

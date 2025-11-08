@@ -2,7 +2,7 @@
 
 import { ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { CategoryHeader, CategoryModal, CategoryTable, DeleteConfirmationModal } from './components';
+import { CategoryHeader, CategoryTable } from './components';
 
 export default function ProductCategoriesPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,12 +25,6 @@ export default function ProductCategoriesPage() {
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
 
-  // Modal and form state
-  const [selectedCategory, setSelectedCategory] = useState<ProductCategoryDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch categories from API
   const fetchCategories = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
@@ -154,161 +148,13 @@ export default function ProductCategoriesPage() {
   };
 
   const handleRowClick = async (category: ProductCategoryDto) => {
-    // Ensure we have a valid category object
-    if (!category || !category.productCategoryId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the category from the API
-      const latestCategory = await ProductApi.getProductCategoryById(
-        category.productCategoryId,
-        userRole
-      );
-      
-      setSelectedCategory(latestCategory);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestCategory.status === StatusEnum.FOR_APPROVAL || latestCategory.status === StatusEnum.NEW_RECORD || latestCategory.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch (err) {
-      setError('Failed to load category details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to edit category page
+    window.location.href = `/products/categories/${category.productCategoryId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedCategory(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedCategory(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedCategory: ProductCategoryDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new category
-        await ProductApi.createProductCategory({
-          productCategoryName: updatedCategory.productCategoryName,
-          status: updatedCategory.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Product Category created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchCategories();
-      } else {
-        // Update existing category
-        const updatedRecord = await ProductApi.updateProductCategory(updatedCategory.productCategoryId, {
-          productCategoryId: updatedCategory.productCategoryId,
-          productCategoryName: updatedCategory.productCategoryName,
-          status: updatedCategory.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Product Category updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchCategories();
-      }
-    } catch (error) {
-      console.error('Error saving category:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to save category. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to save category. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedCategory) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await ProductApi.deleteProductCategory(selectedCategory, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Product Category deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchCategories();
-    } catch (error) {
-      console.error('Error deleting category:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to delete category. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to delete category. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create category page
+    window.location.href = '/products/categories/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -319,76 +165,6 @@ export default function ProductCategoriesPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchCategories(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedCategory) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await ProductApi.approveProductCategory(selectedCategory.productCategoryId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Product Category approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchCategories();
-    } catch (error) {
-      console.error('Error approving category:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to approve category. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to approve category. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedCategory) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await ProductApi.denyProductCategory(selectedCategory.productCategoryId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Product Category denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchCategories();
-    } catch (error) {
-      console.error('Error denying category:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to deny category. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to deny category. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -430,73 +206,38 @@ export default function ProductCategoriesPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
-        <CategoryHeader
-          searchTerm={searchTerm}
-          onSearchChange={(value) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchTerm('');
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchCategories();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
-
-      {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
-        <CategoryTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchTerm={searchTerm}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchCategories('prev', prevCursor)}
-          onNext={() => fetchCategories('next', nextCursor)}
-        />
-      </div>
-
-      {/* Edit/Create Modal */}
-      <CategoryModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedCategory={selectedCategory}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
+      <CategoryHeader
+        searchTerm={searchTerm}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          // Reset pagination when search term changes
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchTerm('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchCategories();
+        }}
+        onCreateClick={handleCreateClick}
       />
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        category={selectedCategory}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
+      {/* Table */}
+      <CategoryTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchTerm={searchTerm}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchCategories('prev', prevCursor)}
+        onNext={() => fetchCategories('next', nextCursor)}
       />
     </div>
   );

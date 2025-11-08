@@ -1,21 +1,16 @@
 'use client';
 
-import { AreaApi, AreaDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { AreaApi, AreaDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { AreaHeader, AreaModal, AreaTable, DeleteConfirmationModal } from './components';
+import { AreaHeader, AreaTable } from './components';
 
 export default function CustomerAreasPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerAreas, setCustomerAreas] = useState<AreaDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -24,13 +19,6 @@ export default function CustomerAreasPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedArea, setSelectedArea] = useState<AreaDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs' | 'towns'>('details');
 
   // Fetch customer areas from API
   const fetchCustomerAreas = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -154,165 +142,13 @@ export default function CustomerAreasPage() {
   };
 
   const handleRowClick = async (area: AreaDto) => {
-    // Ensure we have a valid area object
-    if (!area || !area.areaId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the area from the API
-      const latestArea = await AreaApi.getAreaById(
-        area.areaId,
-        userRole
-      );
-      
-      setSelectedArea(latestArea);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestArea.status === StatusEnum.FOR_APPROVAL || latestArea.status === StatusEnum.NEW_RECORD || latestArea.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch {
-      setError('Failed to load area details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to edit area page
+    window.location.href = `/customers/areas/${area.areaId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedArea(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedArea(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedArea: AreaDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new area
-        await AreaApi.createArea({
-          areaName: updatedArea.areaName,
-          territoryManagerId: updatedArea.territoryManagerId,
-          territoryManagerName: updatedArea.territoryManagerName,
-          status: updatedArea.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Area created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchCustomerAreas();
-      } else {
-        // Update existing area
-        const updatedRecord = await AreaApi.updateArea(updatedArea.areaId, {
-          areaId: updatedArea.areaId,
-          areaName: updatedArea.areaName,
-          territoryManagerId: updatedArea.territoryManagerId,
-          territoryManagerName: updatedArea.territoryManagerName,
-          status: updatedArea.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Area updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchCustomerAreas();
-      }
-    } catch (error) {
-      console.error('Error saving area:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to save area. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to save area. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedArea) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await AreaApi.deleteArea(selectedArea, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Area deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchCustomerAreas();
-    } catch (error) {
-      console.error('Error deleting area:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to delete area. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to delete area. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create area page
+    window.location.href = '/customers/areas/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -323,76 +159,6 @@ export default function CustomerAreasPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchCustomerAreas(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedArea) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await AreaApi.approveArea(selectedArea.areaId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Area approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchCustomerAreas();
-    } catch (error) {
-      console.error('Error approving area:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to approve area. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to approve area. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedArea) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await AreaApi.denyArea(selectedArea.areaId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Area denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchCustomerAreas();
-    } catch (error) {
-      console.error('Error denying area:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to deny area. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to deny area. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -434,10 +200,7 @@ export default function CustomerAreasPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <AreaHeader
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -459,10 +222,7 @@ export default function CustomerAreasPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <AreaTable
           isLoading={isLoading}
           tableData={tableData}
@@ -477,31 +237,6 @@ export default function CustomerAreasPage() {
           onNext={() => fetchCustomerAreas('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <AreaModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedArea={selectedArea}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        area={selectedArea}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

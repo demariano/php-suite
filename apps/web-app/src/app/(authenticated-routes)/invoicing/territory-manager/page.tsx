@@ -1,21 +1,16 @@
 'use client';
 
-import { StatusEnum, TerritoryManagerApi, TerritoryManagerDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { StatusEnum, TerritoryManagerApi, TerritoryManagerDto, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { DeleteConfirmationModal, TerritoryManagerHeader, TerritoryManagerModal, TerritoryManagerTable } from './components';
+import { TerritoryManagerHeader, TerritoryManagerTable } from './components';
 
 export default function TerritoryManagerPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [territoryManagers, setTerritoryManagers] = useState<TerritoryManagerDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -24,13 +19,6 @@ export default function TerritoryManagerPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedTerritoryManager, setSelectedTerritoryManager] = useState<TerritoryManagerDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs' | 'areas'>('details');
 
   // Fetch territory managers from API
   const fetchTerritoryManagers = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -153,164 +141,15 @@ export default function TerritoryManagerPage() {
     );
   };
 
-  const handleRowClick = async (territoryManager: TerritoryManagerDto) => {
-    // Ensure we have a valid territory manager object
+  const handleRowClick = (territoryManager: TerritoryManagerDto) => {
     if (!territoryManager || !territoryManager.territoryManagerId) {
       return;
     }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the territory manager from the API
-      const latestTerritoryManager = await TerritoryManagerApi.getTerritoryManagerById(
-        territoryManager.territoryManagerId,
-        userRole
-      );
-      
-      setSelectedTerritoryManager(latestTerritoryManager);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestTerritoryManager.status === StatusEnum.FOR_APPROVAL || latestTerritoryManager.status === StatusEnum.NEW_RECORD || latestTerritoryManager.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch {
-      setError('Failed to load territory manager details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    window.location.href = `/invoicing/territory-manager/${territoryManager.territoryManagerId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedTerritoryManager(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedTerritoryManager(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedTerritoryManager: TerritoryManagerDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new territory manager
-        await TerritoryManagerApi.createTerritoryManager({
-          territoryManagerName: updatedTerritoryManager.territoryManagerName,
-          contactNo: updatedTerritoryManager.contactNo,
-          status: updatedTerritoryManager.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Territory Manager created successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list for new records
-        handleCloseModal();
-        await fetchTerritoryManagers();
-      } else {
-        // Update existing territory manager
-        const updatedRecord = await TerritoryManagerApi.updateTerritoryManager(updatedTerritoryManager.territoryManagerId, {
-          territoryManagerId: updatedTerritoryManager.territoryManagerId,
-          territoryManagerName: updatedTerritoryManager.territoryManagerName,
-          contactNo: updatedTerritoryManager.contactNo,
-          status: updatedTerritoryManager.status
-        }, userRole);
-        
-        setFlashNotification({
-          title: 'Success!',
-          message: 'Territory Manager updated successfully!',
-          alertType: 'success'
-        });
-        
-        // Close modal and refresh list after successful update
-        handleCloseModal();
-        await fetchTerritoryManagers();
-      }
-    } catch (error) {
-      console.error('Error saving territory manager:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to save territory manager. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to save territory manager. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedTerritoryManager) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await TerritoryManagerApi.deleteTerritoryManager(selectedTerritoryManager, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Territory Manager deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-      await fetchTerritoryManagers();
-    } catch (error) {
-      console.error('Error deleting territory manager:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to delete territory manager. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to delete territory manager. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    window.location.href = '/invoicing/territory-manager/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -321,76 +160,6 @@ export default function TerritoryManagerPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchTerritoryManagers(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedTerritoryManager) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await TerritoryManagerApi.approveTerritoryManager(selectedTerritoryManager.territoryManagerId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Territory Manager approved successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchTerritoryManagers();
-    } catch (error) {
-      console.error('Error approving territory manager:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to approve territory manager. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to approve territory manager. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedTerritoryManager) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await TerritoryManagerApi.denyTerritoryManager(selectedTerritoryManager.territoryManagerId, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Territory Manager denied successfully!',
-        alertType: 'success'
-      });
-      
-      // Close the modal and refresh the list
-      handleCloseModal();
-      await fetchTerritoryManagers();
-    } catch (error) {
-      console.error('Error denying territory manager:', error);
-      setFlashNotification({
-        title: 'Error!',
-        message: 'Failed to deny territory manager. Please try again.',
-        alertType: 'error'
-      });
-      setError('Failed to deny territory manager. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -432,73 +201,38 @@ export default function TerritoryManagerPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
-        <TerritoryManagerHeader
-          searchTerm={searchTerm}
-          onSearchChange={(value: string) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchTerm('');
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchTerritoryManagers();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
-
-      {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
-        <TerritoryManagerTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchTerm={searchTerm}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchTerritoryManagers('prev', prevCursor)}
-          onNext={() => fetchTerritoryManagers('next', nextCursor)}
-        />
-      </div>
-
-      {/* Edit/Create Modal */}
-      <TerritoryManagerModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedTerritoryManager={selectedTerritoryManager}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
+      <TerritoryManagerHeader
+        searchTerm={searchTerm}
+        onSearchChange={(value: string) => {
+          setSearchTerm(value);
+          // Reset pagination when search term changes
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchTerm('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchTerritoryManagers();
+        }}
+        onCreateClick={handleCreateClick}
       />
 
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        territoryManager={selectedTerritoryManager}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
+      {/* Table */}
+      <TerritoryManagerTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchTerm={searchTerm}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchTerritoryManagers('prev', prevCursor)}
+        onNext={() => fetchTerritoryManagers('next', nextCursor)}
       />
     </div>
   );

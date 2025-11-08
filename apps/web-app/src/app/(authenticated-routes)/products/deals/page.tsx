@@ -2,19 +2,15 @@
 
 import { ProductApi, ProductDealDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { DealHeader, DealModal, DealTable, DeleteConfirmationModal } from './components';
+import { DealHeader, DealTable } from './components';
 
 export default function ProductDealsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [deals, setDeals] = useState<ProductDealDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -22,13 +18,6 @@ export default function ProductDealsPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedDeal, setSelectedDeal] = useState<ProductDealDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch on initial load and when these dependencies change
   useEffect(() => {
@@ -143,124 +132,14 @@ export default function ProductDealsPage() {
     );
   };
 
-  // Handle row click - use index to get original deal data
-  const handleRowClick = (deal: ProductDealDto, index?: number) => {
-    // Get the original deal data from the deals array instead of the transformed tableData
-    const originalDeal = typeof index === 'number' ? deals[index] : deal;
-    setSelectedDeal(originalDeal);
-    setIsCreateMode(false);
-    
-    // Check if this is a pending record that needs admin approval
-    if ((originalDeal.status === StatusEnum.FOR_APPROVAL || originalDeal.status === StatusEnum.NEW_RECORD || originalDeal.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-      setActiveTab('approval');
-    } else {
-      setActiveTab('details');
-    }
-    
-    setShowEditModal(true);
+  // Handle row click - navigate to edit page
+  const handleRowClick = (deal: ProductDealDto) => {
+    window.location.href = `/products/deals/${deal.productDealId}/edit`;
   };
 
-  // Handle create new deal
+  // Handle create new deal - navigate to create page
   const handleCreateDeal = () => {
-    setSelectedDeal(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedDeal(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedDeal: ProductDealDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new deal
-        await ProductApi.createProductDeal({
-          productDealName: updatedDeal.productDealName,
-          minQty: updatedDeal.minQty,
-          additionalQty: updatedDeal.additionalQty,
-          status: updatedDeal.status
-        }, userRole);
-        
-        // Refetch the deals to get the most up-to-date data
-        await fetchDeals();
-        
-        // Close modal after creation
-        handleCloseModal();
-      } else {
-        // Update existing deal
-        const updatedRecord = await ProductApi.updateProductDeal(updatedDeal.productDealId, {
-          productDealId: updatedDeal.productDealId,
-          productDealName: updatedDeal.productDealName,
-          minQty: updatedDeal.minQty,
-          additionalQty: updatedDeal.additionalQty,
-          status: updatedDeal.status
-        }, userRole);
-        
-        // Refetch the deals to get the most up-to-date data
-        await fetchDeals();
-        
-        // Update the selected deal with the latest data
-        setSelectedDeal(updatedRecord);
-        
-        // Close modal after successful update for all users
-        handleCloseModal();
-      }
-    } catch {
-      setError('Failed to save deal. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedDeal) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await ProductApi.deleteProductDeal(selectedDeal, userRole);
-      
-      // Refetch the deals to get the most up-to-date data
-      await fetchDeals();
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-    } catch {
-      setError('Failed to delete deal. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    window.location.href = '/products/deals/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -270,56 +149,6 @@ export default function ProductDealsPage() {
     setPrevCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchDeals(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedDeal) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await ProductApi.approveProductDeal(selectedDeal.productDealId, userRole);
-      
-      // Refresh the deals list - use await to ensure it completes before closing modal
-      await fetchDeals();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch {
-      setError('Failed to approve deal. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedDeal) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await ProductApi.denyProductDeal(selectedDeal.productDealId, userRole);
-      
-      // Refresh the deals list - use await to ensure it completes before closing modal
-      await fetchDeals();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch {
-      setError('Failed to deny deal. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -368,10 +197,7 @@ export default function ProductDealsPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <DealHeader 
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -391,10 +217,7 @@ export default function ProductDealsPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <DealTable
           isLoading={isLoading}
           tableData={tableData}
@@ -409,31 +232,6 @@ export default function ProductDealsPage() {
           onNext={() => fetchDeals('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <DealModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedDeal={selectedDeal}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        productDeal={selectedDeal}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

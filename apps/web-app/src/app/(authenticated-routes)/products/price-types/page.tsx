@@ -2,19 +2,15 @@
 
 import { ProductApi, ProductPriceTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { DeleteConfirmationModal, PriceTypeHeader, PriceTypeModal, PriceTypeTable } from './components/index';
+import { PriceTypeHeader, PriceTypeTable } from './components/index';
 
 export default function ProductPriceTypesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [priceTypes, setPriceTypes] = useState<ProductPriceTypeDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -22,13 +18,6 @@ export default function ProductPriceTypesPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedPriceType, setSelectedPriceType] = useState<ProductPriceTypeDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch price types from API
   const fetchPriceTypes = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -147,144 +136,14 @@ export default function ProductPriceTypesPage() {
     );
   };
 
-  const handleRowClick = async (priceType: ProductPriceTypeDto) => {
-    // Ensure we have a valid price type object
-    if (!priceType || !priceType.productPriceTypeId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the price type from the API
-      const latestPriceType = await ProductApi.getProductPriceTypeById(
-        priceType.productPriceTypeId,
-        userRole
-      );
-      
-      setSelectedPriceType(latestPriceType);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestPriceType.status === StatusEnum.FOR_APPROVAL || latestPriceType.status === StatusEnum.NEW_RECORD || latestPriceType.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch (error) {
-      console.error('Error loading price type details:', error);
-      setError('Failed to load price type details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+  // Handle row click - navigate to edit page
+  const handleRowClick = (priceType: ProductPriceTypeDto) => {
+    window.location.href = `/products/price-types/${priceType.productPriceTypeId}/edit`;
   };
 
+  // Handle create new price type - navigate to create page
   const handleCreateClick = () => {
-    setSelectedPriceType(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedPriceType(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedPriceType: ProductPriceTypeDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new price type
-        await ProductApi.createProductPriceType({
-          productPriceTypeName: updatedPriceType.productPriceTypeName,
-          status: updatedPriceType.status
-        }, userRole);
-        
-        // Refetch the price types to get the most up-to-date data
-        await fetchPriceTypes();
-        
-        // Close modal after creation
-        handleCloseModal();
-      } else {
-        // Update existing price type
-        const updatedRecord = await ProductApi.updateProductPriceType(updatedPriceType.productPriceTypeId, {
-          productPriceTypeId: updatedPriceType.productPriceTypeId,
-          productPriceTypeName: updatedPriceType.productPriceTypeName,
-          status: updatedPriceType.status
-        }, userRole);
-        
-        // Refetch the price types to get the most up-to-date data
-        await fetchPriceTypes();
-        
-        // Update the selected price type with the latest data
-        setSelectedPriceType(updatedRecord);
-        
-        // Close modal after successful update for all users
-        handleCloseModal();
-      }
-    } catch (error) {
-      console.error('Error saving price type:', error);
-      setError('Failed to save price type. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedPriceType) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await ProductApi.deleteProductPriceType(selectedPriceType, userRole);
-      
-      // Refetch the price types to get the most up-to-date data
-      await fetchPriceTypes();
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error deleting price type:', error);
-      setError('Failed to delete price type. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    window.location.href = '/products/price-types/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -294,58 +153,6 @@ export default function ProductPriceTypesPage() {
     setPrevCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchPriceTypes(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedPriceType) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await ProductApi.approveProductPriceType(selectedPriceType.productPriceTypeId, userRole);
-      
-      // Refresh the price types list - use await to ensure it completes before closing modal
-      await fetchPriceTypes();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error approving price type:', error);
-      setError('Failed to approve price type. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedPriceType) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await ProductApi.denyProductPriceType(selectedPriceType.productPriceTypeId, userRole);
-      
-      // Refresh the price types list - use await to ensure it completes before closing modal
-      await fetchPriceTypes();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (error) {
-      console.error('Error denying price type:', error);
-      setError('Failed to deny price type. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -387,10 +194,7 @@ export default function ProductPriceTypesPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <PriceTypeHeader
           searchTerm={searchTerm}
           onSearchChange={(value: string) => {
@@ -410,10 +214,7 @@ export default function ProductPriceTypesPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <PriceTypeTable
           isLoading={isLoading}
           tableData={tableData}
@@ -428,31 +229,6 @@ export default function ProductPriceTypesPage() {
           onNext={() => fetchPriceTypes('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <PriceTypeModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedPriceType={selectedPriceType}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        priceType={selectedPriceType}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }

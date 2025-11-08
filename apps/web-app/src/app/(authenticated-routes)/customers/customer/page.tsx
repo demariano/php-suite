@@ -2,7 +2,7 @@
 
 import { CustomerApi, CustomerDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
-import { CustomerHeader, CustomerModal, CustomerTable, DeleteConfirmationModal } from './components';
+import { CustomerHeader, CustomerTable } from './components';
 
 
 export default function CustomersMainPage() {
@@ -10,12 +10,8 @@ export default function CustomersMainPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [customers, setCustomers] = useState<CustomerDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<any>(undefined);
   const [prevCursor, setPrevCursor] = useState<any>(undefined);
@@ -24,13 +20,6 @@ export default function CustomersMainPage() {
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
-
-  // Modal and form state
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerDto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [isCreateMode, setIsCreateMode] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
 
   // Fetch customers from API
   const fetchCustomers = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
@@ -156,179 +145,13 @@ export default function CustomersMainPage() {
   };
 
   const handleRowClick = async (customer: CustomerDto) => {
-    // Ensure we have a valid customer object
-    if (!customer || !customer.customerId) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Fetch the latest version of the customer from the API
-      const latestCustomer = await CustomerApi.getCustomerById(
-        customer.customerId,
-        userRole
-      );
-      
-      setSelectedCustomer(latestCustomer);
-      setIsCreateMode(false);
-      
-      // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-      if ((latestCustomer.status === StatusEnum.FOR_APPROVAL || latestCustomer.status === StatusEnum.NEW_RECORD || latestCustomer.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-        setActiveTab('approval');
-      } else {
-        // Default to details tab
-        setActiveTab('details');
-      }
-      
-      setShowEditModal(true);
-    } catch (err) {
-      setError('Failed to load customer details. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // Navigate to edit customer page
+    window.location.href = `/customers/customer/${customer.customerId}/edit`;
   };
 
   const handleCreateClick = () => {
-    setSelectedCustomer(null);
-    setIsCreateMode(true);
-    setActiveTab('details');
-    setShowEditModal(true);
-  };
-
-  const handleCloseModal = () => {
-    setShowEditModal(false);
-    setShowDeleteConfirm(false); // Ensure delete confirmation is also closed
-    setSelectedCustomer(null);
-    setIsCreateMode(false);
-    setActiveTab('details');
-    setSuccessMessage(null); // Clear any success messages when closing the modal
-  };
-
-  const handleSaveChanges = async (updatedCustomer: CustomerDto) => {
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      if (isCreateMode) {
-        // Create new customer
-        const newCustomer = await CustomerApi.createCustomer({
-          customerName: updatedCustomer.customerName,
-          email: updatedCustomer.email,
-          address1: updatedCustomer.address1,
-          address2: updatedCustomer.address2,
-          balance: updatedCustomer.balance,
-          contactNo: updatedCustomer.contactNo,
-          contactPerson: updatedCustomer.contactPerson,
-          townId: updatedCustomer.townId,
-          townName: updatedCustomer.townName,
-          creditLimit: updatedCustomer.creditLimit,
-          customerCredit: updatedCustomer.customerCredit,
-          tinNumber: updatedCustomer.tinNumber,
-          areaId: updatedCustomer.areaId,
-          areaName: updatedCustomer.areaName,
-          customerClassificationId: updatedCustomer.customerClassificationId,
-          customerClassificationName: updatedCustomer.customerClassificationName,
-          customerTypeId: updatedCustomer.customerTypeId,
-          customerTypeName: updatedCustomer.customerTypeName,
-          changeReason: updatedCustomer.changeReason,
-          customerTerms: updatedCustomer.customerTerms,
-          customerProductDeals: updatedCustomer.customerProductDeals
-        }, userRole);
-        
-        // Refetch the customers to get the most up-to-date data
-        await fetchCustomers();
-        
-        // Close modal after creation
-        handleCloseModal();
-      } else {
-        // Update existing customer
-        const updatedRecord = await CustomerApi.updateCustomer(updatedCustomer.customerId, {
-          customerId: updatedCustomer.customerId,
-          customerName: updatedCustomer.customerName,
-          email: updatedCustomer.email,
-          address1: updatedCustomer.address1,
-          address2: updatedCustomer.address2,
-          balance: updatedCustomer.balance,
-          contactNo: updatedCustomer.contactNo,
-          contactPerson: updatedCustomer.contactPerson,
-          townId: updatedCustomer.townId,
-          townName: updatedCustomer.townName,
-          creditLimit: updatedCustomer.creditLimit,
-          customerCredit: updatedCustomer.customerCredit,
-          tinNumber: updatedCustomer.tinNumber,
-          areaId: updatedCustomer.areaId,
-          areaName: updatedCustomer.areaName,
-          customerClassificationId: updatedCustomer.customerClassificationId,
-          customerClassificationName: updatedCustomer.customerClassificationName,
-          customerTypeId: updatedCustomer.customerTypeId,
-          customerTypeName: updatedCustomer.customerTypeName,
-          status: updatedCustomer.status,
-          changeReason: updatedCustomer.changeReason,
-          customerTerms: updatedCustomer.customerTerms,
-          customerProductDeals: updatedCustomer.customerProductDeals
-        }, userRole);
-        
-        // Refetch the customers to get the most up-to-date data
-        await fetchCustomers();
-        
-        // Update the selected customer with the latest data
-        setSelectedCustomer(updatedRecord);
-        
-        // Close modal after successful update for all users
-        handleCloseModal();
-      }
-    } catch (error) {
-      setError('Failed to save customer. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-
-  const handleDeleteClick = () => {
-    setShowDeleteConfirm(true);
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!selectedCustomer) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await CustomerApi.deleteCustomer(selectedCustomer, userRole);
-      
-      // Refetch the customers to get the most up-to-date data
-      await fetchCustomers();
-      
-      setShowDeleteConfirm(false);
-      handleCloseModal();
-    } catch (error) {
-      setError('Failed to delete customer. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDeleteCancel = () => {
-    setShowDeleteConfirm(false);
+    // Navigate to create customer page
+    window.location.href = '/customers/customer/create';
   };
 
   // Handle page size change - reset pagination and fetch fresh data
@@ -339,56 +162,6 @@ export default function CustomersMainPage() {
     setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchCustomers(undefined, undefined, newPageSize);
-  };
-  
-  const handleApproveRecord = async () => {
-    if (!selectedCustomer) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      await CustomerApi.approveCustomer(selectedCustomer.customerId, userRole);
-      
-      // Refresh the customers list - use await to ensure it completes before closing modal
-      await fetchCustomers();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (err) {
-      setError('Failed to approve customer. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDenyRecord = async () => {
-    if (!selectedCustomer) return;
-    
-    try {
-      setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      await CustomerApi.denyCustomer(selectedCustomer.customerId, userRole);
-      
-      // Refresh the customers list - use await to ensure it completes before closing modal
-      await fetchCustomers();
-      
-      // Close the modal
-      handleCloseModal();
-    } catch (err) {
-      setError('Failed to deny customer. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   // Transform data for table display
@@ -430,10 +203,7 @@ export default function CustomersMainPage() {
       </div>
 
       {/* Header */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <CustomerHeader
           searchTerm={searchTerm}
           onSearchChange={(value) => {
@@ -455,10 +225,7 @@ export default function CustomersMainPage() {
       </div>
 
       {/* Table */}
-      <div 
-        className={showEditModal || showDeleteConfirm ? '!opacity-50 transition-opacity duration-200' : 'transition-opacity duration-200'}
-        style={{ opacity: showEditModal || showDeleteConfirm ? 0.5 : 1 }}
-      >
+      <div>
         <CustomerTable
           isLoading={isLoading}
           tableData={tableData}
@@ -473,31 +240,6 @@ export default function CustomersMainPage() {
           onNext={() => fetchCustomers('next', nextCursor)}
         />
       </div>
-
-      {/* Edit/Create Modal */}
-      <CustomerModal
-        show={showEditModal}
-        isCreateMode={isCreateMode}
-        selectedCustomer={selectedCustomer}
-        activeTab={activeTab}
-        successMessage={successMessage}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        onClose={handleCloseModal}
-        onTabChange={setActiveTab}
-        onSave={handleSaveChanges}
-        onDelete={handleDeleteClick}
-        onApprove={handleApproveRecord}
-        onDeny={handleDenyRecord}
-      />
-
-      {/* Delete Confirmation Modal */}
-      <DeleteConfirmationModal
-        show={showDeleteConfirm}
-        customer={selectedCustomer}
-        onConfirm={handleDeleteConfirm}
-        onCancel={handleDeleteCancel}
-      />
     </div>
   );
 }
