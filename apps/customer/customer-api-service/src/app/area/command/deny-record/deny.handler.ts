@@ -1,7 +1,6 @@
 import { UserCognito } from '@auth-guard-lib';
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
-import { ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
-import { AreaDto } from '@dto';
+import { AreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -69,10 +68,7 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDenial(
-        existingRecord: AreaDto,
-        user: UserCognito
-    ): Promise<ResponseDto<AreaDto>> {
+    private async processDenial(existingRecord: AreaDto, user: UserCognito): Promise<ResponseDto<AreaDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyArea(existingRecord, user);
@@ -88,10 +84,7 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
     /**
      * Denies an area for approval
      */
-    private async denyArea(
-        existingRecord: AreaDto,
-        user: UserCognito
-    ): Promise<ResponseDto<AreaDto>> {
+    private async denyArea(existingRecord: AreaDto, user: UserCognito): Promise<ResponseDto<AreaDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
@@ -104,6 +97,9 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
 
+        // Reset changeReason after clearing forApprovalVersion
+        existingRecord.changeReason = null;
+
         // Update record in database
         const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);
 
@@ -115,6 +111,8 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
      * Denies deletion of an area
      */
     private async denyDeletion(existingRecord: AreaDto): Promise<ResponseDto<AreaDto>> {
+        // Reset changeReason when denying deletion
+        existingRecord.changeReason = null;
         this.logger.log(`Area deletion denied: ${existingRecord.areaId}`);
         existingRecord.status = StatusEnum.ACTIVE;
         const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);
@@ -125,6 +123,8 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
      * Deletes an area when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: AreaDto): Promise<ResponseDto<AreaDto>> {
+        // Reset changeReason before deleting (for consistency)
+        existingRecord.changeReason = null;
         this.logger.log(`Area deleted: ${existingRecord.areaId}`);
         await this.areaDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<AreaDto>(existingRecord, HTTP_STATUS_OK);

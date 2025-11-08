@@ -1,10 +1,9 @@
 'use client';
 
-import { AreaApi, AreaDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { AreaApi, AreaDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AreaForm from '../../components/AreaForm';
-import AreaTownsTab from '../../components/AreaTownsTab';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
 interface EditAreaPageProps {
@@ -16,7 +15,8 @@ interface EditAreaPageProps {
 export default function EditAreaPage({ params }: EditAreaPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedArea, setSelectedArea] = useState<AreaDto | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs' | 'towns'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -80,7 +80,8 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
         areaName: area.areaName,
         territoryManagerId: area.territoryManagerId,
         territoryManagerName: area.territoryManagerName,
-        status: area.status
+        status: area.status,
+        changeReason: area.changeReason
       }, userRole);
       
       setSelectedArea(updatedArea);
@@ -108,14 +109,19 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    if (!selectedArea) {
+      return;
+    }
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!selectedArea) {
       return;
     }
     
-    if (!confirm('Are you sure you want to delete this area?')) {
-      return;
-    }
+    setShowDeleteModal(false);
     
     try {
       setIsLoading(true);
@@ -232,7 +238,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
 
   if (!selectedArea && !isLoading) {
     return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+      <div className="p-6 space-y-6">
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
           <span>Area not found</span>
         </div>
@@ -242,64 +248,142 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
 
   // Render approval tab content
   const renderApprovalTab = () => {
-    if (!selectedArea) return null;
+    if (!selectedArea || !selectedArea.forApprovalVersion) return null;
+    
+    const approvalData = selectedArea.forApprovalVersion;
+    
+    // Helper function to normalize values for comparison
+    const normalizeValue = (val: unknown): string => {
+      if (val === null || val === undefined) return '';
+      if (val === '') return '';
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? '' : trimmed;
+      }
+      if (typeof val === 'number') return String(val);
+      if (typeof val === 'boolean') return String(val);
+      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+        return JSON.stringify(val);
+      }
+      return String(val).trim();
+    };
+    
+    // Helper function to check if a field has changed
+    const isFieldChanged = (fieldName: string): boolean => {
+      if (!selectedArea?.forApprovalVersion) return false;
+      
+      const originalValue = (selectedArea as unknown as Record<string, unknown>)[fieldName];
+      const newValue = (selectedArea.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
+      
+      if (!(fieldName in selectedArea.forApprovalVersion)) return false;
+      
+      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
+        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+      }
+      
+      const normalizedOriginal = normalizeValue(originalValue);
+      const normalizedNew = normalizeValue(newValue);
+      
+      const hasChanged = normalizedOriginal !== normalizedNew;
+      
+      return hasChanged;
+    };
+    
+    // Helper function to format display value
+    const formatValue = (value: unknown): string => {
+      if (value === null || value === undefined) return '-';
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (typeof value === 'number') return value.toString();
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    };
+    
+    // Helper function to render read-only field with highlighting
+    const renderReadOnlyField = (label: string, value: unknown, colorClass: string, fieldName?: string) => {
+      const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+      
+      return (
+        <div className="group">
+          <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+            {label}
+          </label>
+          <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+            fieldChanged 
+              ? 'border-blue-500 bg-blue-50 text-gray-700' 
+              : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500'
+          }`}>
+            {formatValue(value)}
+          </div>
+        </div>
+      );
+    };
     
     return (
-      <div>
-        <div className="mb-5">
-          {(selectedArea.status === StatusEnum.FOR_APPROVAL || selectedArea.status === StatusEnum.NEW_RECORD) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-              <span className="text-yellow-600 text-base">ℹ️</span>
-              <span className="text-yellow-800 text-sm">
-                These are the proposed changes awaiting approval
-              </span>
+      <div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 shadow-lg">
+        {/* Change Reason and Modification Made */}
+        {selectedArea?.changeReason && (
+          <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-5 shadow-md mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <h4 className="text-base font-bold text-gray-700">
+                Change Reason and Modification Made
+              </h4>
             </div>
-          )}
-          
-          {selectedArea?.forApprovalVersion ? (
-            <div style={{
-              backgroundColor: '#f8fafc',
-              border: '2px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: '0 0 16px 0'
-              }}>
-                Pending Approval Details
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Review the pending changes above. Use the buttons below to approve or deny.
-              </p>
+            <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">
+              {selectedArea.changeReason}
             </div>
-          ) : (
-            <p className="text-gray-500 italic">
-              No pending approval changes
-            </p>
-          )}
-        </div>
+          </div>
+        )}
         
-        <div className="flex justify-between mt-6">
+        {/* Area Information Section */}
+        <div className="space-y-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Area Information
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {renderReadOnlyField('Area Name', approvalData.areaName, 'bg-blue-500', 'areaName')}
+              {renderReadOnlyField('Territory Manager', approvalData.territoryManagerName, 'bg-indigo-500', 'territoryManagerName')}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
           {isAdminUser && (selectedArea?.status === StatusEnum.FOR_APPROVAL || selectedArea?.status === StatusEnum.NEW_RECORD || selectedArea?.status === StatusEnum.FOR_DELETION) ? (
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={handleDeny}
                 disabled={isLoading}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
                 {isLoading ? 'Processing...' : 'Deny Changes'}
               </button>
               <button
                 type="button"
                 onClick={handleApprove}
                 disabled={isLoading}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-xl shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
                 {isLoading ? 'Processing...' : 'Approve Changes'}
               </button>
             </div>
@@ -310,8 +394,11 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
           </button>
         </div>
@@ -335,7 +422,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 <div 
                   key={index} 
                   className={`py-2 ${
-                    index < selectedArea.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
+                    selectedArea.activityLogs && index < selectedArea.activityLogs.length - 1 ? 'border-b border-gray-200' : ''
                   }`}
                 >
                   {log}
@@ -363,9 +450,9 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-6 space-y-6">
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -392,117 +479,92 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
 
       {/* Area Form with Tabs */}
       {selectedArea && (
-        <div>
-          {/* Tab Navigation */}
-          <div style={{
-            display: 'flex',
-            borderBottom: '2px solid #e5e7eb',
-            marginBottom: '20px',
-            backgroundColor: '#f8fafc',
-            borderRadius: '8px 8px 0 0',
-            padding: '4px'
-          }}>
-            <button
-              onClick={() => setActiveTab('details')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
-                color: activeTab === 'details' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'details' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                marginRight: '4px'
-              }}
-            >
-              Details
-            </button>
+        <div className="flex justify-center">
+          <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
+            {/* Tab Navigation */}
+            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 rounded-t-xl p-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                    activeTab === 'details'
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 transform scale-105'
+                      : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-blue-600'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Area Information
+                  </span>
+                </button>
+                
+                {selectedArea.status !== StatusEnum.ACTIVE && (
+                  <button
+                    onClick={() => setActiveTab('approval')}
+                    className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                      activeTab === 'approval'
+                        ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/50 transform scale-105'
+                        : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-teal-600'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Pending Changes
+                    </span>
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                    activeTab === 'logs'
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/50 transform scale-105'
+                      : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-green-600'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Activity Logs
+                  </span>
+                </button>
+              </div>
+            </div>
             
-            {selectedArea.status !== StatusEnum.ACTIVE && (
-              <button
-                onClick={() => setActiveTab('approval')}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
-                  color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: activeTab === 'approval' ? '600' : '500',
-                  transition: 'all 0.2s ease',
-                  boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                  marginRight: '4px'
-                }}
-              >
-                Approval Version
-              </button>
-            )}
-            
-            <button
-              onClick={() => setActiveTab('towns')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'towns' ? 'white' : 'transparent',
-                color: activeTab === 'towns' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'towns' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'towns' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                marginRight: '4px'
-              }}
-            >
-              Towns
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('logs')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
-                color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'logs' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-              }}
-            >
-              Activity Logs
-            </button>
-          </div>
-          
-          {/* Tab Content */}
-          <div>
-            {activeTab === 'details' && (
-              <AreaForm
-                isCreateMode={false}
-                selectedArea={selectedArea}
-                successMessage={null}
-                onSave={handleSave}
-                onDelete={handleDelete}
-                onCancel={handleCancel}
-              />
-            )}
-            
-            {activeTab === 'approval' && renderApprovalTab()}
-            
-            {activeTab === 'towns' && (
-              <AreaTownsTab area={selectedArea} />
-            )}
-            
-            {activeTab === 'logs' && renderLogsTab()}
+            {/* Tab Content */}
+            <div className="p-6 bg-white">
+              {activeTab === 'details' && (
+                <AreaForm
+                  isCreateMode={false}
+                  selectedArea={selectedArea}
+                  successMessage={null}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                  onCancel={handleCancel}
+                  isAdminUser={isAdminUser}
+                  areaId={selectedArea.areaId}
+                />
+              )}
+              
+              {activeTab === 'approval' && renderApprovalTab()}
+              
+              {activeTab === 'logs' && renderLogsTab()}
+            </div>
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        show={showDeleteModal}
+        area={selectedArea}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </div>
   );
 }

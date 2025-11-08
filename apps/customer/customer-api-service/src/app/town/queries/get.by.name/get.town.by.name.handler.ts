@@ -57,7 +57,7 @@ export class GetTownByNameHandler implements IQueryHandler<GetTownByNameQuery> {
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<TownDto>> {
-        const towns = await this.townDatabaseService.findRecordContainingName(limit, name, direction, cursorPointer);
+        const towns = await this.townDatabaseService.findRecordsByNamePagination(limit, name, direction, cursorPointer);
 
         if (!towns || towns.data.length === 0) {
             return new PageDto<TownDto>([], null, null);

@@ -3,8 +3,8 @@
 import { SalesTypeApi, SalesTypeDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import SalesTypeForm from '../../components/SalesTypeForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import SalesTypeForm from '../../components/SalesTypeForm';
 
 interface EditSalesTypePageProps {
   params: {

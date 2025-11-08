@@ -3,8 +3,8 @@
 import { extractErrorMessage, ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import CategoryForm from './components/CategoryForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import CategoryForm from './components/CategoryForm';
 
 interface EditCategoryPageProps {
   params: {

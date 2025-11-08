@@ -1,11 +1,14 @@
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
 import { AreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateAreaCommand } from './update.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(UpdateAreaCommand)
 export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
@@ -107,17 +110,38 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
             existingRecord.towns = command.areaDto.towns;
             existingRecord.territoryManagerId = command.areaDto.territoryManagerId;
             existingRecord.territoryManagerName = command.areaDto.territoryManagerName;
+            // Clear changeReason for admin users
+            existingRecord.changeReason = undefined;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Area updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
             existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+
+            // Detect field changes and combine with user's changeReason
+            const changes = detectFieldChanges(existingRecord, command.areaDto);
+            const formattedChanges = formatFieldChanges(changes);
+            const combinedReason = command.areaDto.changeReason
+                ? `${command.areaDto.changeReason}\n\n${formattedChanges}`
+                : formattedChanges;
+            existingRecord.changeReason = combinedReason;
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Area updated by ${command.user.username} for approval`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+            existingRecord.activityLogs.push(activityLogMessage);
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
             existingRecord.forApprovalVersion = {
                 ...existingRecord.forApprovalVersion,
                 areaName: command.areaDto.areaName,

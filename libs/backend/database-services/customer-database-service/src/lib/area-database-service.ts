@@ -249,6 +249,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.territoryManagerId = record.territoryManagerId ? record.territoryManagerId : '';
         dto.territoryManagerName = record.territoryManagerName ? record.territoryManagerName : '';
+        dto.changeReason = record.changeReason ? record.changeReason : undefined;
         return dto;
     }
 
@@ -279,6 +280,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             forApprovalVersion: dto.forApprovalVersion,
             territoryManagerId: dto.territoryManagerId,
             territoryManagerName: dto.territoryManagerName,
+            changeReason: dto.changeReason,
         };
         return areaData;
     }

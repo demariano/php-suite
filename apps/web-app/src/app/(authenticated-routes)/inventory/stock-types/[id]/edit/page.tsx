@@ -1,10 +1,10 @@
 'use client';
 
-import { StockTypeApi, StockTypeDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { StatusEnum, StockTypeApi, StockTypeDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import StockTypeForm from '../../components/StockTypeForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import StockTypeForm from '../../components/StockTypeForm';
 
 interface EditStockTypePageProps {
   params: {

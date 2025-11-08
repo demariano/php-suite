@@ -1,0 +1,9 @@
+{
+  "name": "field-change-utils-lib",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/backend/field-change-utils-lib/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project field-change-utils-lib --web",
+  "targets": {}
+}

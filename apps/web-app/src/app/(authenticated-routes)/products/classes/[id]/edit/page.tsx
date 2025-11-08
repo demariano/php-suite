@@ -3,8 +3,8 @@
 import { extractErrorMessage, ProductApi, ProductClassDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import ClassForm from './components/ClassForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import ClassForm from './components/ClassForm';
 
 interface EditClassPageProps {
   params: {

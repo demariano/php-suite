@@ -1,9 +1,9 @@
 'use client';
 
-import { DeliveryDetailsDto, StockDeliveryDto, StatusEnum, useSessionStore } from '@data-access/index';
+import { StatusEnum, StockDeliveryDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import StockDeliveryDetailsTab from './StockDeliveryDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
+import StockDeliveryDetailsTab from './StockDeliveryDetailsTab';
 
 interface StockDeliveryFormProps {
   isCreateMode: boolean;

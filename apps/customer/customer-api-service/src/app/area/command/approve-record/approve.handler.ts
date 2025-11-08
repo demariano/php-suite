@@ -102,6 +102,9 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
         existingRecord.territoryManagerName = forApprovalVersion.territoryManagerName as string;
         existingRecord.forApprovalVersion = {};
 
+        // Reset changeReason after applying changes
+        existingRecord.changeReason = null;
+
         // Update record in database
         const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);
 
@@ -113,6 +116,8 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
      * Approves deletion of an area
      */
     private async approveDeletion(existingRecord: AreaDto): Promise<ResponseDto<AreaDto>> {
+        // Reset changeReason before deleting
+        existingRecord.changeReason = null;
         await this.areaDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Area deletion approved: ${existingRecord.areaId}`);

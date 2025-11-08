@@ -1,11 +1,13 @@
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
 import { AreaDto, CreateAreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateAreaCommand } from './create.command';
 
 // Constants
 const HTTP_STATUS_CREATED = 201;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(CreateAreaCommand)
 export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
@@ -88,6 +90,7 @@ export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
                     timeZone: 'Asia/Manila',
                 })}, Area created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
+            command.areaDto.activityLogs = reduceArrayContents(command.areaDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to NEW_RECORD
             command.areaDto.status = StatusEnum.NEW_RECORD;
@@ -97,6 +100,7 @@ export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
                     timeZone: 'Asia/Manila',
                 })}, Area created by ${command.user.username} for approval`
             );
+            command.areaDto.activityLogs = reduceArrayContents(command.areaDto.activityLogs, ACTIVITY_LOGS_LIMIT);
             command.areaDto.forApprovalVersion = {};
             command.areaDto.forApprovalVersion.areaName = command.areaDto.areaName;
             command.areaDto.forApprovalVersion.towns = command.areaDto.towns;

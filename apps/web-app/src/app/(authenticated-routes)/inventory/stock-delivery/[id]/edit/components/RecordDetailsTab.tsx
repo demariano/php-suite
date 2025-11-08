@@ -1,6 +1,6 @@
 'use client';
 
-import { StockDeliveryDto, StatusEnum, SupplierDto, useSessionStore } from '@data-access/index';
+import { StatusEnum, StockDeliveryDto, SupplierDto, useSessionStore } from '@data-access/index';
 import { useState } from 'react';
 import DatePicker from '../../../../../components/DatePicker';
 import SupplierSearchableSelectionModal from '../../../../../search-modals/SupplierSearchableSelectionModal';

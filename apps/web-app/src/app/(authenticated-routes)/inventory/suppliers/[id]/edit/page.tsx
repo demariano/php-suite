@@ -1,10 +1,10 @@
 'use client';
 
-import { SupplierApi, SupplierDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { StatusEnum, SupplierApi, SupplierDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import SupplierForm from '../../components/SupplierForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import SupplierForm from '../../components/SupplierForm';
 
 interface EditSupplierPageProps {
   params: {

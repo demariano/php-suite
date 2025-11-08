@@ -62,10 +62,13 @@ export default function CreateTownPage() {
     // Not applicable for create mode
   };
 
+  // Check if user is admin or super admin
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-6 space-y-6">
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -84,14 +87,38 @@ export default function CreateTownPage() {
       </div>
 
       {/* Town Form */}
-      <TownForm
-        isCreateMode={true}
-        selectedTown={null}
-        successMessage={null}
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onCancel={handleCancel}
-      />
+      <div className="flex justify-center">
+        <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
+          {/* Tab Navigation */}
+          <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 rounded-t-xl p-2">
+            <div className="flex gap-2">
+              <button
+                className="px-5 py-3 rounded-lg font-semibold text-sm bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 transform scale-105"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Town Information
+                </span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Tab Content */}
+          <div className="p-6 bg-white">
+            <TownForm
+              isCreateMode={true}
+              selectedTown={null}
+              successMessage={null}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onCancel={handleCancel}
+              isAdminUser={isAdminUser}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

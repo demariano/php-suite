@@ -83,6 +83,8 @@ export class DenyCustomerHandler implements ICommandHandler<DenyCustomerCommand>
             updatedCustomer.status = StatusEnum.ACTIVE;
             // Clear forApprovalVersion
             updatedCustomer.forApprovalVersion = undefined;
+            // Reset changeReason
+            updatedCustomer.changeReason = null;
         } else if (existingCustomer.status === StatusEnum.FOR_DELETION) {
             // Revert deletion request
             updatedCustomer.status = StatusEnum.ACTIVE;

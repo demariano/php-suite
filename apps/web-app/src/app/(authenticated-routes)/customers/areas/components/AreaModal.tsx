@@ -72,8 +72,8 @@ export default function AreaModal({
         backgroundColor: 'white',
         borderRadius: '8px',
         padding: '24px',
-        width: '500px',
-        maxWidth: '90vw',
+        width: '900px',
+        maxWidth: '95vw',
         maxHeight: '90vh',
         overflow: 'auto',
         boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
@@ -144,7 +144,7 @@ export default function AreaModal({
               }
             }}
           >
-            Details
+            Area Information
           </button>
           
           {!isCreateMode && selectedArea && (
@@ -257,6 +257,7 @@ export default function AreaModal({
               onSave={onSave}
               onDelete={onDelete}
               onCancel={onClose}
+              isAdminUser={isAdminUser}
             />
           )}
           
@@ -270,6 +271,56 @@ export default function AreaModal({
                     <span className="text-yellow-800 text-sm">
                       These are the proposed changes awaiting approval
                     </span>
+                  </div>
+                )}
+                
+                {/* Change Reason Display */}
+                {selectedArea.changeReason && (
+                  <div style={{
+                    marginBottom: '20px'
+                  }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      marginBottom: '12px'
+                    }}>
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: '#f59e0b',
+                        borderRadius: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: 'white',
+                        fontSize: '12px',
+                        fontWeight: 'bold'
+                      }}>
+                        📝
+                      </div>
+                      <h4 style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#92400e',
+                        margin: 0
+                      }}>
+                        Change Reason and Modification Made
+                      </h4>
+                    </div>
+                    <div style={{
+                      padding: '12px 16px',
+                      backgroundColor: 'white',
+                      border: '1px solid #f59e0b',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontFamily: 'monospace',
+                      color: '#92400e',
+                      lineHeight: '1.6',
+                      whiteSpace: 'pre-wrap'
+                    }}>
+                      {selectedArea.changeReason}
+                    </div>
                   </div>
                 )}
                 

@@ -313,12 +313,34 @@ export class CustomerController {
     @Get('name/:name')
     @ApiOperation({
         summary: 'Get customers by name',
-        description: 'Retrieves customers that contain the specified name in their customer name.',
+        description: 'Retrieves customers that contain the specified name in their customer name with pagination support.',
     })
     @ApiParam({
         name: 'name',
         description: 'Customer name to search for',
         example: 'John',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: false,
+        description: 'Number of records to return (1-100)',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination',
+        example: 'cursor_abc123',
     })
     @ApiQuery({
         name: 'userRole',
@@ -330,12 +352,28 @@ export class CustomerController {
     })
     @ApiResponse({
         status: 200,
-        description: 'Customers retrieved successfully',
-        type: [CustomerDto],
+        description: 'Customers retrieved successfully with pagination',
+        schema: {
+            type: 'object',
+            properties: {
+                data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/CustomerDto' },
+                },
+                nextCursorPointer: { type: 'object' },
+                prevCursorPointer: { type: 'object' },
+            },
+        },
     })
-    getByName(@Param('name') name: string, @Query('userRole') userRole: string) {
+    getByName(
+        @Param('name') name: string,
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string,
+        @Query('userRole') userRole?: string
+    ) {
         // Note: userRole is included for Swagger consistency but not used in query endpoints
-        const query = new GetCustomerByNameQuery(name);
+        const query = new GetCustomerByNameQuery(name, limit, direction, cursorPointer);
         return this.queryBus.execute(query);
     }
 

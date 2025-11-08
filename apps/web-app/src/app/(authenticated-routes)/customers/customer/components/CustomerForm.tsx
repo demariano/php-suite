@@ -13,9 +13,6 @@ import {
 } from '../../../search-modals';
 import SelectionField from './SelectionField';
 
-// Types for inner tabs
-type InnerTabType = 'record-details' | 'customer-terms' | 'product-deals';
-
 interface CustomerTermsDetailsDto {
   termsId: string;
   termsName?: string;
@@ -65,8 +62,6 @@ export default function CustomerForm({
   const [userHasMadeSelections, setUserHasMadeSelections] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   
-  // Inner tabs state
-  const [activeInnerTab, setActiveInnerTab] = useState<InnerTabType>('record-details');
   const [customerTerms, setCustomerTerms] = useState<CustomerTermsDetailsDto[]>([]);
   const [customerDeals, setCustomerDeals] = useState<CustomerDealsDetailsDto[]>([]);
   
@@ -537,71 +532,22 @@ export default function CustomerForm({
         </div>
       )}
       
-      {/* Details Container with Inner Tabs */}
+      {/* Details Container */}
       <div className="space-y-6">
-        {/* Inner Tabs Navigation */}
-        <div className="flex gap-2 border-b-2 border-gray-200 pb-2 mb-6">
-          {[
-            { 
-              id: 'record-details', 
-              label: 'Record Details', 
-              icon: (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              )
-            },
-            { 
-              id: 'customer-terms', 
-              label: 'Customer Terms', 
-              icon: (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              )
-            },
-            { 
-              id: 'product-deals', 
-              label: 'Product Deals', 
-              icon: (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              )
-            }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveInnerTab(tab.id as InnerTabType)}
-              className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
-                activeInnerTab === tab.id
-                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 transform scale-105'
-                  : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-blue-600'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Tab Content */}
-        {activeInnerTab === 'record-details' && (
-          <div className="space-y-6 animate-fadeIn">
             {/* Basic Information Section */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+              <div className="border-2 border-gray-200 rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    Basic Information
+                  </h3>
                 </div>
-                <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  Basic Information
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Customer Name */}
               <div className="group">
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
@@ -686,22 +632,25 @@ export default function CustomerForm({
                 />
               </div>
             </div>
+              </div>
             </div>
 
             {/* Address Information Section */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
+              <div className="border-2 border-gray-200 rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                    Address Information
+                  </h3>
                 </div>
-                <h3 className="text-base font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-                  Address Information
-                </h3>
-              </div>
-              <div className="group">
+                <div className="space-y-4">
+                <div className="group">
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-pink-500 rounded-full"></span>
                 Address 1
@@ -761,21 +710,24 @@ export default function CustomerForm({
                   }`}
                 />
               </div>
+              </div>
+            </div>
             </div>
 
             {/* Location & Classification Section */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  </svg>
+              <div className="border-2 border-gray-200 rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                    Location & Classification
+                  </h3>
                 </div>
-                <h3 className="text-base font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                  Location & Classification
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <SelectionField
               label="Area"
               selectedItem={selectedArea}
@@ -812,21 +764,23 @@ export default function CustomerForm({
               disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
             />
               </div>
-            </div>
+                </div>
+              </div>
 
             {/* Financial Information Section */}
             <div className="space-y-4">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-md">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+              <div className="border-2 border-gray-200 rounded-xl p-4">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-md">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-base font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                    Financial Information
+                  </h3>
                 </div>
-                <h3 className="text-base font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
-                  Financial Information
-                </h3>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="group">
             <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
@@ -911,225 +865,249 @@ export default function CustomerForm({
             />
           </div>
         </div>
-        </div>
-
-        {/* Change Reason and Modification Made Field - Only show for non-create mode and non-admin users */}
-        {!isCreateMode && !isAdminUser && (
-          <div style={{ marginTop: '24px', marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Change Reason and Modification Made
-            </label>
-            <textarea
-              name="changeReason"
-              value={formData.changeReason}
-              onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
-              placeholder="Please explain the reason for this change..."
-              rows={3}
-              disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none',
-                backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-                color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-                transition: 'all 0.2s ease',
-                resize: 'vertical',
-                minHeight: '80px',
-                cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-              }}
-              required={!isAdminUser}
-            />
-            <div style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              marginTop: '4px'
-            }}>
-              This field is required when making changes to the customer record.
+              </div>
             </div>
-          </div>
-        )}
+
+            {/* Change Reason and Modification Made Field - Only show for non-create mode and non-admin users */}
+            {!isCreateMode && !isAdminUser && (
+              <div style={{ marginTop: '24px', marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  color: '#374151',
+                  marginBottom: '8px'
+                }}>
+                  Change Reason and Modification Made
+                </label>
+                <textarea
+                  name="changeReason"
+                  value={formData.changeReason}
+                  onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+                  placeholder="Please explain the reason for this change..."
+                  rows={3}
+                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    border: '2px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    outline: 'none',
+                    backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
+                    color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
+                    transition: 'all 0.2s ease',
+                    resize: 'vertical',
+                    minHeight: '80px',
+                    cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
+                  }}
+                  required={!isAdminUser}
+                />
+                <div style={{
+                  fontSize: '12px',
+                  color: '#6b7280',
+                  marginTop: '4px'
+                }}>
+                  This field is required when making changes to the customer record.
+                </div>
+              </div>
+            )}
+
+            {/* Customer Terms Section */}
+            <div className="space-y-4">
+              <div className="border-2 border-gray-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-base font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                      Customer Terms
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCustomerTerms}
+                    disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                    className={`px-4 py-2 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                      !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
+                        : 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Terms
+                  </button>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                  {customerTerms.length === 0 ? (
+                    <div className="p-10 text-center text-gray-500 text-base">
+                      No customer terms added yet. Click &quot;Add Terms&quot; to get started.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead className="bg-white border-b border-gray-200">
+                          <tr>
+                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                              Terms Name
+                            </th>
+                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                              Days
+                            </th>
+                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {customerTerms.map((term, index) => (
+                            <tr 
+                              key={index}
+                              className="transition-all duration-200 bg-white hover:bg-gray-50"
+                            >
+                              <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                {term.termsName || 'Unnamed Terms'}
+                              </td>
+                              <td className="px-6 py-5 text-sm text-gray-600">
+                                {term.days || 0}
+                              </td>
+                              <td className="px-6 py-5">
+                                <button
+                                  type="button"
+                                  onClick={() => removeCustomerTerms(index)}
+                                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                                  className={`p-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 flex items-center justify-center ${
+                                    !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                                      ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
+                                      : 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105'
+                                  }`}
+                                  title="Remove"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Product Deals Section */}
+            <div className="space-y-4">
+              <div className="border-2 border-gray-200 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg shadow-md">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-base font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                      Product Deals
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addCustomerDeals}
+                    disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                    className={`px-4 py-2 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                      !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
+                        : 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
+                    }`}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Deal
+                  </button>
+                </div>
+                <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                  {customerDeals.length === 0 ? (
+                    <div className="p-10 text-center text-gray-500 text-base">
+                      No customer deals added yet. Click &quot;Add Deal&quot; to get started.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead className="bg-white border-b border-gray-200">
+                          <tr>
+                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                              Product Name
+                            </th>
+                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                              Product Deal Name
+                            </th>
+                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                              Minimum Quantity
+                            </th>
+                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                              Additional Quantity
+                            </th>
+                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                          {customerDeals.map((deal, index) => (
+                            <tr 
+                              key={index}
+                              className="transition-all duration-200 bg-white hover:bg-gray-50"
+                            >
+                              <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                {deal.productName || '-'}
+                              </td>
+                              <td className="px-6 py-5 text-sm text-gray-600">
+                                {deal.productDealName || '-'}
+                              </td>
+                              <td className="px-6 py-5 text-sm text-gray-600">
+                                {deal.minQty || 0}
+                              </td>
+                              <td className="px-6 py-5 text-sm text-gray-600">
+                                {deal.additionalQty || 0}
+                              </td>
+                              <td className="px-6 py-5">
+                                <button
+                                  type="button"
+                                  onClick={() => removeCustomerDeals(index)}
+                                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                                  className={`p-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 flex items-center justify-center ${
+                                    !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                                      ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
+                                      : 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105'
+                                  }`}
+                                  title="Remove"
+                                >
+                                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
       </div>
-        )}
-
-        {/* Customer Terms Tab */}
-        {activeInnerTab === 'customer-terms' && (
-          <div className="space-y-6 animate-fadeIn">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-                  Customer Terms
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={addCustomerTerms}
-                disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                className={`px-4 py-2 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
-                  !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
-                    : 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
-                }`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Terms
-              </button>
-            </div>
-
-            {customerTerms.length === 0 ? (
-              <div className="text-center py-12 px-6 bg-gradient-to-br from-gray-50 to-white border-2 border-dashed border-gray-300 rounded-xl">
-                <div className="text-4xl mb-4">📋</div>
-                <p className="text-gray-600 font-medium">No customer terms added yet. Click &quot;Add Terms&quot; to get started.</p>
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                {customerTerms.map((term, index) => (
-                  <div key={index} className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-200">
-                    <div className="flex justify-between items-center mb-4">
-                      <h5 className="text-base font-bold text-gray-900">
-                        {term.termsName || 'Unnamed Terms'}
-                      </h5>
-                      <button
-                        type="button"
-                        onClick={() => removeCustomerTerms(index)}
-                        disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                        className={`p-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 flex items-center justify-center ${
-                          !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                            ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
-                            : 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105'
-                        }`}
-                        title="Remove"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="group">
-                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                          Days
-                        </label>
-                        <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-700 font-medium shadow-sm">
-                          {term.days || 0}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Product Deals Tab */}
-        {activeInnerTab === 'product-deals' && (
-          <div className="space-y-6 animate-fadeIn">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg shadow-md">
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                  Product Deals
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={addCustomerDeals}
-                disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                className={`px-4 py-2 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
-                  !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
-                    : 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
-                }`}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Deal
-              </button>
-            </div>
-
-            {customerDeals.length === 0 ? (
-              <div className="text-center py-12 px-6 bg-gradient-to-br from-gray-50 to-white border-2 border-dashed border-gray-300 rounded-xl">
-                <div className="text-4xl mb-4">🎯</div>
-                <p className="text-gray-600 font-medium">No customer deals added yet. Click &quot;Add Deal&quot; to get started.</p>
-              </div>
-            ) : (
-              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                {customerDeals.map((deal, index) => (
-                  <div key={index} className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-200">
-                    <div className="flex justify-between items-center mb-4">
-                      <h5 className="text-base font-bold text-gray-900">
-                        {deal.productName && deal.productName !== deal.productDealName ? `${deal.productName} - ${deal.productDealName || 'Unnamed Deal'}` : (deal.productDealName || 'Unnamed Deal')}
-                      </h5>
-                      <button
-                        type="button"
-                        onClick={() => removeCustomerDeals(index)}
-                        disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                        className={`p-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 flex items-center justify-center ${
-                          !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
-                            ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
-                            : 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105'
-                        }`}
-                        title="Remove"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="group">
-                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
-                          Minimum Quantity
-                        </label>
-                        <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-700 font-medium shadow-sm">
-                          {deal.minQty || 0}
-                        </div>
-                      </div>
-                      
-                      <div className="group">
-                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-                          Additional Quantity
-                        </label>
-                        <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-700 font-medium shadow-sm">
-                          {deal.additionalQty || 0}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
 
         {/* Action Buttons */}
-        {activeTab !== 'approval' && activeInnerTab === 'record-details' && (
+        {activeTab !== 'approval' && (
           <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
             {!isCreateMode && selectedCustomer?.status === StatusEnum.ACTIVE ? (
               <button
@@ -1175,7 +1153,6 @@ export default function CustomerForm({
             </div>
           </div>
         )}
-      </div>
      </form>
 
      {/* Searchable Selection Modals */}

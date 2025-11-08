@@ -1,11 +1,14 @@
 import { TownDatabaseServiceAbstract } from '@customer-database-service';
 import { ErrorResponseDto, ResponseDto, StatusEnum, TownDto, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateTownCommand } from './update.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(UpdateTownCommand)
 export class UpdateTownHandler implements ICommandHandler<UpdateTownCommand> {
@@ -93,17 +96,38 @@ export class UpdateTownHandler implements ICommandHandler<UpdateTownCommand> {
             existingRecord.townName = command.townDto.townName;
             existingRecord.areaId = command.townDto.areaId;
             existingRecord.areaName = command.townDto.areaName;
+            // Clear changeReason for admin users
+            existingRecord.changeReason = undefined;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Town updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
             existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+
+            // Detect field changes and combine with user's changeReason
+            const changes = detectFieldChanges(existingRecord, command.townDto);
+            const formattedChanges = formatFieldChanges(changes);
+            const combinedReason = command.townDto.changeReason
+                ? `${command.townDto.changeReason}\n\n${formattedChanges}`
+                : formattedChanges;
+            existingRecord.changeReason = combinedReason;
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Town updated by ${command.user.username} for approval`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+            existingRecord.activityLogs.push(activityLogMessage);
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
             existingRecord.forApprovalVersion = {
                 ...existingRecord.forApprovalVersion,
                 townName: command.townDto.townName,

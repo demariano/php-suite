@@ -123,6 +123,7 @@ export const CustomerSchema = {
             forApprovalVersion: { type: Object },
             territoryManagerId: { type: String, required: false },
             territoryManagerName: { type: String, required: false },
+            changeReason: { type: String, required: false },
             GSI1PK: { type: String, value: 'AREA', hidden: false },
             GSI1SK: { type: String, value: '${areaName}', hidden: false },
             GSI2PK: { type: String, value: 'AREA#${status}', hidden: false },
@@ -139,6 +140,7 @@ export const CustomerSchema = {
             townName: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],

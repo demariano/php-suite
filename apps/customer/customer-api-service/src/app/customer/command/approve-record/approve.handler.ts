@@ -83,14 +83,17 @@ export class ApproveCustomerHandler implements ICommandHandler<ApproveCustomerCo
                 Object.assign(updatedCustomer, existingCustomer.forApprovalVersion);
                 updatedCustomer.forApprovalVersion = undefined;
             }
+            // Reset changeReason after applying changes
+            updatedCustomer.changeReason = null;
         } else if (existingCustomer.status === StatusEnum.FOR_APPROVAL) {
             updatedCustomer.status = StatusEnum.ACTIVE;
-            updatedCustomer.changeReason = '';
             // Apply forApprovalVersion if it exists
             if (existingCustomer.forApprovalVersion) {
                 Object.assign(updatedCustomer, existingCustomer.forApprovalVersion);
                 updatedCustomer.forApprovalVersion = undefined;
             }
+            // Reset changeReason after applying changes
+            updatedCustomer.changeReason = null;
         } else if (existingCustomer.status === StatusEnum.FOR_DELETION) {
             return await this.customerDatabaseService.deleteRecord(updatedCustomer);
         }

@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useMemo } from 'react';
-import { Input } from '@components-web';
-import { Add, Search, ArrowDown } from '@components-web';
+import { Add, ArrowDown, Input, Search } from '@components-web';
+import { useMemo, useState } from 'react';
 
 // Sales Order Data Type
 interface SalesOrder {
@@ -170,7 +169,7 @@ export default function UILayoutTestingPage() {
 
   // Filter and sort orders
   const filteredAndSortedOrders = useMemo(() => {
-    let filtered = orders.filter(order => {
+    const filtered = orders.filter(order => {
       const searchText = filterText.toLowerCase();
       return (
         order.orderNumber.toLowerCase().includes(searchText) ||

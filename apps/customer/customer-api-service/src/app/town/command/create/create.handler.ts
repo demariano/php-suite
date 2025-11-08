@@ -1,11 +1,13 @@
 import { TownDatabaseServiceAbstract } from '@customer-database-service';
 import { ErrorResponseDto, ResponseDto, StatusEnum, TownDto, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateTownCommand } from './create.command';
 
 // Constants
 const HTTP_STATUS_CREATED = 201;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(CreateTownCommand)
 export class CreateTownHandler implements ICommandHandler<CreateTownCommand> {
@@ -75,6 +77,7 @@ export class CreateTownHandler implements ICommandHandler<CreateTownCommand> {
                     timeZone: 'Asia/Manila',
                 })}, Town created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
+            command.townDto.activityLogs = reduceArrayContents(command.townDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to NEW_RECORD
             command.townDto.status = StatusEnum.NEW_RECORD;
@@ -84,6 +87,7 @@ export class CreateTownHandler implements ICommandHandler<CreateTownCommand> {
                     timeZone: 'Asia/Manila',
                 })}, Town created by ${command.user.username} for approval`
             );
+            command.townDto.activityLogs = reduceArrayContents(command.townDto.activityLogs, ACTIVITY_LOGS_LIMIT);
             command.townDto.forApprovalVersion = {};
             command.townDto.forApprovalVersion.townName = command.townDto.townName;
             command.townDto.forApprovalVersion.areaId = command.townDto.areaId;

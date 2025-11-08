@@ -104,6 +104,9 @@ export class DenyTownHandler implements ICommandHandler<DenyTownCommand> {
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
 
+        // Reset changeReason after clearing forApprovalVersion
+        existingRecord.changeReason = null;
+
         // Update record in database
         const updatedRecord = await this.townDatabaseService.updateRecord(existingRecord);
 
@@ -115,6 +118,8 @@ export class DenyTownHandler implements ICommandHandler<DenyTownCommand> {
      * Denies deletion of a town
      */
     private async denyDeletion(existingRecord: TownDto): Promise<ResponseDto<TownDto>> {
+        // Reset changeReason before reverting status
+        existingRecord.changeReason = null;
         this.logger.log(`Town deletion denied: ${existingRecord.townId}`);
         existingRecord.status = StatusEnum.ACTIVE;
         const updatedRecord = await this.townDatabaseService.updateRecord(existingRecord);
@@ -125,6 +130,8 @@ export class DenyTownHandler implements ICommandHandler<DenyTownCommand> {
      * Deletes a town when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: TownDto): Promise<ResponseDto<TownDto>> {
+        // Reset changeReason before deleting (for consistency)
+        existingRecord.changeReason = null;
         this.logger.log(`Town deleted: ${existingRecord.townId}`);
         await this.townDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<TownDto>(existingRecord, HTTP_STATUS_OK);

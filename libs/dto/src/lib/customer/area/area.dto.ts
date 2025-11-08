@@ -26,4 +26,7 @@ export class AreaDto {
 
     @ApiProperty()
     territoryManagerName?: string;
+
+    @ApiProperty()
+    changeReason?: string;
 }

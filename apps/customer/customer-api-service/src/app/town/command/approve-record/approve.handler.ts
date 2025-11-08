@@ -105,7 +105,11 @@ export class ApproveTownHandler implements ICommandHandler<ApproveTownCommand> {
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.townName = forApprovalVersion.townName as string;
         existingRecord.areaId = forApprovalVersion.areaId as string;
+        existingRecord.areaName = forApprovalVersion.areaName as string;
         existingRecord.forApprovalVersion = {};
+
+        // Reset changeReason after applying changes
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.townDatabaseService.updateRecord(existingRecord);
@@ -118,6 +122,8 @@ export class ApproveTownHandler implements ICommandHandler<ApproveTownCommand> {
      * Approves deletion of a town
      */
     private async approveDeletion(existingRecord: TownDto): Promise<ResponseDto<TownDto>> {
+        // Reset changeReason before deleting
+        existingRecord.changeReason = null;
         await this.townDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Town deletion approved: ${existingRecord.townId}`);

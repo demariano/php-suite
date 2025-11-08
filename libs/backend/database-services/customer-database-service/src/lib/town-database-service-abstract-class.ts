@@ -14,6 +14,13 @@ export abstract class TownDatabaseServiceAbstract {
 
     abstract findRecordByName(name: string): Promise<TownDto | null>;
 
+    abstract findRecordsByNamePagination(
+        limit: number,
+        name: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<TownDto>>;
+
     abstract updateRecord(townData: TownDto): Promise<TownDto>;
 
     abstract findRecordByStatusAndAreaId(status: string, areaId: string): Promise<TownDto[] | null>;

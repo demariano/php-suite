@@ -4,6 +4,7 @@ import { CustomerApi, CustomerDto, extractErrorMessage, StatusEnum, useEnv, useL
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import CustomerForm from '../../components/CustomerForm';
+import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
 interface EditCustomerPageProps {
   params: {
@@ -15,6 +16,7 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -124,14 +126,19 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
+    if (!selectedCustomer) {
+      return;
+    }
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
     if (!selectedCustomer) {
       return;
     }
     
-    if (!confirm('Are you sure you want to delete this customer?')) {
-      return;
-    }
+    setShowDeleteModal(false);
     
     try {
       setIsLoading(true);
@@ -262,6 +269,79 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
     
     const approvalData = selectedCustomer.forApprovalVersion;
     
+    // Helper function to normalize values for comparison
+    const normalizeValue = (val: any): string => {
+      if (val === null || val === undefined) return '';
+      if (val === '') return '';
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? '' : trimmed;
+      }
+      if (typeof val === 'number') return String(val);
+      if (typeof val === 'boolean') return String(val);
+      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+        return JSON.stringify(val);
+      }
+      return String(val).trim();
+    };
+    
+    // Helper function to check if arrays have changes
+    const hasArrayChanges = (fieldName: string): boolean => {
+      if (!selectedCustomer?.forApprovalVersion) return false;
+      const originalValue = (selectedCustomer as any)[fieldName];
+      const newValue = (selectedCustomer.forApprovalVersion as any)[fieldName];
+      
+      if (!originalValue && !newValue) return false;
+      if (!originalValue || !newValue) return true;
+      if (!Array.isArray(originalValue) || !Array.isArray(newValue)) return false;
+      
+      // Normalize arrays for comparison (exclude metadata fields)
+      const normalizeArray = (arr: any[], idField: string) => {
+        return arr.map(item => {
+          const normalized: any = {};
+          Object.keys(item).forEach(key => {
+            if (key !== 'activityLogs' && key !== 'forApprovalVersion') {
+              normalized[key] = item[key];
+            }
+          });
+          return normalized;
+        }).sort((a, b) => (a[idField] || '').localeCompare(b[idField] || ''));
+      };
+      
+      if (fieldName === 'customerTerms') {
+        const normalizedOriginal = normalizeArray(originalValue, 'termsId');
+        const normalizedNew = normalizeArray(newValue, 'termsId');
+        return JSON.stringify(normalizedOriginal) !== JSON.stringify(normalizedNew);
+      } else if (fieldName === 'customerProductDeals') {
+        const normalizedOriginal = normalizeArray(originalValue, 'productDealId');
+        const normalizedNew = normalizeArray(newValue, 'productDealId');
+        return JSON.stringify(normalizedOriginal) !== JSON.stringify(normalizedNew);
+      }
+      
+      return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+    };
+    
+    // Helper function to check if a field has changed
+    const isFieldChanged = (fieldName: string): boolean => {
+      if (!selectedCustomer?.forApprovalVersion) return false;
+      
+      const originalValue = (selectedCustomer as any)[fieldName];
+      const newValue = (selectedCustomer.forApprovalVersion as any)[fieldName];
+      
+      if (!(fieldName in selectedCustomer.forApprovalVersion)) return false;
+      
+      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
+        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+      }
+      
+      const normalizedOriginal = normalizeValue(originalValue);
+      const normalizedNew = normalizeValue(newValue);
+      
+      const hasChanged = normalizedOriginal !== normalizedNew;
+      
+      return hasChanged;
+    };
+    
     // Helper function to format display value
     const formatValue = (value: any): string => {
       if (value === null || value === undefined) return '-';
@@ -271,18 +351,26 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
       return String(value);
     };
     
-    // Helper function to render read-only field
-    const renderReadOnlyField = (label: string, value: any, colorClass: string) => (
-      <div className="group">
-        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-          <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
-          {label}
-        </label>
-        <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed">
-          {formatValue(value)}
+    // Helper function to render read-only field with highlighting
+    const renderReadOnlyField = (label: string, value: any, colorClass: string, fieldName?: string) => {
+      const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+      
+      return (
+        <div className="group">
+          <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+            {label}
+          </label>
+          <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+            fieldChanged 
+              ? 'border-blue-500 bg-blue-50 text-gray-700' 
+              : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500'
+          }`}>
+            {formatValue(value)}
+          </div>
         </div>
-      </div>
-    );
+      );
+    };
     
     return (
       <div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 shadow-lg">
@@ -307,167 +395,276 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
         
         {/* Basic Information Section */}
         <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
+          <div className="border-2 border-gray-200 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                Basic Information
+              </h3>
             </div>
-            <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              Basic Information
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {renderReadOnlyField('Customer Name', approvalData.customerName, 'bg-blue-500')}
-            {renderReadOnlyField('Email', approvalData.email, 'bg-indigo-500')}
-            {renderReadOnlyField('Contact Number', approvalData.contactNo, 'bg-purple-500')}
-            {renderReadOnlyField('Contact Person', approvalData.contactPerson, 'bg-green-500')}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {renderReadOnlyField('Customer Name', approvalData.customerName, 'bg-blue-500', 'customerName')}
+            {renderReadOnlyField('Email', approvalData.email, 'bg-indigo-500', 'email')}
+            {renderReadOnlyField('Contact Number', approvalData.contactNo, 'bg-purple-500', 'contactNo')}
+            {renderReadOnlyField('Contact Person', approvalData.contactPerson, 'bg-green-500', 'contactPerson')}
+            </div>
           </div>
         </div>
 
         {/* Address Information Section */}
         <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
+          <div className="border-2 border-gray-200 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                Address Information
+              </h3>
             </div>
-            <h3 className="text-base font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
-              Address Information
-            </h3>
-          </div>
-          <div className="space-y-4">
-            {renderReadOnlyField('Address 1', approvalData.address1, 'bg-pink-500')}
-            {renderReadOnlyField('Address 2', approvalData.address2, 'bg-rose-500')}
-            {renderReadOnlyField('TIN Number', approvalData.tinNumber, 'bg-teal-500')}
+            <div className="space-y-4">
+            {renderReadOnlyField('Address 1', approvalData.address1, 'bg-pink-500', 'address1')}
+            {renderReadOnlyField('Address 2', approvalData.address2, 'bg-rose-500', 'address2')}
+            {renderReadOnlyField('TIN Number', approvalData.tinNumber, 'bg-teal-500', 'tinNumber')}
+            </div>
           </div>
         </div>
 
         {/* Location & Classification Section */}
         <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-              </svg>
+          <div className="border-2 border-gray-200 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                Location & Classification
+              </h3>
             </div>
-            <h3 className="text-base font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              Location & Classification
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {renderReadOnlyField('Area', approvalData.areaName, 'bg-emerald-500')}
-            {renderReadOnlyField('Town', approvalData.townName, 'bg-teal-500')}
-            {renderReadOnlyField('Customer Classification', approvalData.customerClassificationName, 'bg-green-500')}
-            {renderReadOnlyField('Customer Type', approvalData.customerTypeName, 'bg-cyan-500')}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {renderReadOnlyField('Area', approvalData.areaName, 'bg-emerald-500', 'areaName')}
+            {renderReadOnlyField('Town', approvalData.townName, 'bg-teal-500', 'townName')}
+            {renderReadOnlyField('Customer Classification', approvalData.customerClassificationName, 'bg-green-500', 'customerClassificationName')}
+            {renderReadOnlyField('Customer Type', approvalData.customerTypeName, 'bg-cyan-500', 'customerTypeName')}
+            </div>
           </div>
         </div>
 
         {/* Financial Information Section */}
         <div className="space-y-4">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          <div className="border-2 border-gray-200 rounded-xl p-4">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                Financial Information
+              </h3>
             </div>
-            <h3 className="text-base font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
-              Financial Information
-            </h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {renderReadOnlyField('Balance', approvalData.balance, 'bg-emerald-500')}
-            {renderReadOnlyField('Credit Limit', approvalData.creditLimit, 'bg-cyan-500')}
-            {renderReadOnlyField('Customer Credit', approvalData.customerCredit, 'bg-sky-500')}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {renderReadOnlyField('Balance', approvalData.balance, 'bg-emerald-500', 'balance')}
+            {renderReadOnlyField('Credit Limit', approvalData.creditLimit, 'bg-cyan-500', 'creditLimit')}
+            {renderReadOnlyField('Customer Credit', approvalData.customerCredit, 'bg-sky-500', 'customerCredit')}
+            </div>
           </div>
         </div>
             
             {/* Customer Terms */}
-            {selectedCustomer.forApprovalVersion.customerTerms && Array.isArray(selectedCustomer.forApprovalVersion.customerTerms) && selectedCustomer.forApprovalVersion.customerTerms.length > 0 && (
-              <div className="mt-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <h4 className="text-base font-bold text-gray-700">
-                    Customer Terms
-                  </h4>
-                </div>
-                <div className="space-y-4">
-                  {(selectedCustomer.forApprovalVersion.customerTerms as any[]).map((term: any, index: number) => (
-                    <div key={index} className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-4 shadow-sm">
-                      <div className="mb-3">
-                        <h5 className="text-sm font-bold text-gray-900 mb-2">
-                          {term.termsName || 'Unnamed Terms'}
-                        </h5>
+            {(() => {
+              const termsChanged = hasArrayChanges('customerTerms');
+              const originalTerms = selectedCustomer.customerTerms;
+              const newTerms = selectedCustomer.forApprovalVersion.customerTerms;
+              const originalHasItems = originalTerms && Array.isArray(originalTerms) && originalTerms.length > 0;
+              const newHasItems = newTerms && Array.isArray(newTerms) && newTerms.length > 0;
+              const allRemoved = originalHasItems && !newHasItems;
+              
+              // Render if there are changes OR if new array has items
+              if (!termsChanged && !newHasItems) return null;
+              
+              return (
+                <div className="mt-6">
+                  <div className="border-2 border-gray-200 rounded-xl p-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="group">
-                          <label className="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-2">
-                            <span className="w-1 h-1 bg-purple-500 rounded-full"></span>
-                            Days
-                          </label>
-                          <div className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-xs bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed">
-                            {term.days || 0}
-                          </div>
+                      <h4 className={`text-base font-bold ${termsChanged ? 'px-3 py-1 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700' : 'text-gray-700'}`}>
+                        Customer Terms
+                      </h4>
+                    </div>
+                  {allRemoved ? (
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-500 rounded-lg">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-amber-800">
+                            All Customer Terms records have been removed
+                          </p>
+                          <p className="text-xs text-amber-700 mt-1">
+                            {originalTerms.length} record{originalTerms.length !== 1 ? 's' : ''} will be deleted upon approval
+                          </p>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                      {!newHasItems ? (
+                        <div className="p-10 text-center text-gray-500 text-base">
+                          No customer terms in pending changes.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse">
+                            <thead className="bg-white border-b border-gray-200">
+                              <tr>
+                                <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                  Terms Name
+                                </th>
+                                <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                  Days
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {(newTerms as any[]).map((term: any, index: number) => (
+                                <tr 
+                                  key={index}
+                                  className="transition-all duration-200 bg-white hover:bg-gray-50"
+                                >
+                                  <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                    {term.termsName || 'Unnamed Terms'}
+                                  </td>
+                                  <td className="px-6 py-5 text-sm text-gray-600">
+                                    {term.days || 0}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
             
             {/* Product Deals */}
-            {selectedCustomer.forApprovalVersion.customerProductDeals && Array.isArray(selectedCustomer.forApprovalVersion.customerProductDeals) && selectedCustomer.forApprovalVersion.customerProductDeals.length > 0 && (
-              <div className="mt-6">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg shadow-md">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <h4 className="text-base font-bold text-gray-700">
-                    Product Deals
-                  </h4>
-                </div>
-                <div className="space-y-4">
-                  {(selectedCustomer.forApprovalVersion.customerProductDeals as any[]).map((deal: any, index: number) => (
-                    <div key={index} className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-4 shadow-sm">
-                      <div className="mb-3">
-                        <h5 className="text-sm font-bold text-gray-900 mb-2">
-                          {deal.productName && deal.productName !== deal.productDealName ? `${deal.productName} - ${deal.productDealName || 'Unnamed Deal'}` : (deal.productDealName || 'Unnamed Deal')}
-                        </h5>
+            {(() => {
+              const dealsChanged = hasArrayChanges('customerProductDeals');
+              const originalDeals = selectedCustomer.customerProductDeals;
+              const newDeals = selectedCustomer.forApprovalVersion.customerProductDeals;
+              const originalHasItems = originalDeals && Array.isArray(originalDeals) && originalDeals.length > 0;
+              const newHasItems = newDeals && Array.isArray(newDeals) && newDeals.length > 0;
+              const allRemoved = originalHasItems && !newHasItems;
+              
+              // Render if there are changes OR if new array has items
+              if (!dealsChanged && !newHasItems) return null;
+              
+              return (
+                <div className="mt-6">
+                  <div className="border-2 border-gray-200 rounded-xl p-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg shadow-md">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="group">
-                          <label className="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-2">
-                            <span className="w-1 h-1 bg-orange-500 rounded-full"></span>
-                            Minimum Quantity
-                          </label>
-                          <div className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-xs bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed">
-                            {deal.minQty || 0}
-                          </div>
+                      <h4 className={`text-base font-bold ${dealsChanged ? 'px-3 py-1 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700' : 'text-gray-700'}`}>
+                        Product Deals
+                      </h4>
+                    </div>
+                  {allRemoved ? (
+                    <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-amber-500 rounded-lg">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
                         </div>
-                        <div className="group">
-                          <label className="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-2">
-                            <span className="w-1 h-1 bg-amber-500 rounded-full"></span>
-                            Additional Quantity
-                          </label>
-                          <div className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-xs bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed">
-                            {deal.additionalQty || 0}
-                          </div>
+                        <div>
+                          <p className="text-sm font-semibold text-amber-800">
+                            All Product Deals records have been removed
+                          </p>
+                          <p className="text-xs text-amber-700 mt-1">
+                            {originalDeals.length} record{originalDeals.length !== 1 ? 's' : ''} will be deleted upon approval
+                          </p>
                         </div>
                       </div>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                      {!newHasItems ? (
+                        <div className="p-10 text-center text-gray-500 text-base">
+                          No customer deals in pending changes.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full border-collapse">
+                            <thead className="bg-white border-b border-gray-200">
+                              <tr>
+                                <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                  Product Name
+                                </th>
+                                <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                  Product Deal Name
+                                </th>
+                                <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                  Minimum Quantity
+                                </th>
+                                <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                  Additional Quantity
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                              {(newDeals as any[]).map((deal: any, index: number) => (
+                                <tr 
+                                  key={index}
+                                  className="transition-all duration-200 bg-white hover:bg-gray-50"
+                                >
+                                  <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                    {deal.productName || '-'}
+                                  </td>
+                                  <td className="px-6 py-5 text-sm text-gray-600">
+                                    {deal.productDealName || '-'}
+                                  </td>
+                                  <td className="px-6 py-5 text-sm text-gray-600">
+                                    {deal.minQty || 0}
+                                  </td>
+                                  <td className="px-6 py-5 text-sm text-gray-600">
+                                    {deal.additionalQty || 0}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
         {/* Action Buttons */}
         <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
@@ -677,6 +874,13 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
           </div>
         </div>
       )}
+
+      <DeleteConfirmationModal
+        show={showDeleteModal}
+        customer={selectedCustomer}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </div>
   );
 }

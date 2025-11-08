@@ -228,20 +228,167 @@ export default function CustomerModal({
           )}
           
           {/* Approval Version Tab */}
-          {activeTab === 'approval' && !isCreateMode && selectedCustomer && (
-            <div>
-              <div className="mb-5">
-                {(selectedCustomer.status === StatusEnum.FOR_APPROVAL || selectedCustomer.status === StatusEnum.NEW_RECORD) && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-                    <span className="text-yellow-600 text-base">ℹ️</span>
-                    <span className="text-yellow-800 text-sm">
-                      These are the proposed changes awaiting approval
-                    </span>
-                  </div>
-                )}
+          {activeTab === 'approval' && !isCreateMode && selectedCustomer && (() => {
+            // DEBUG: Log the full customer data structure
+            console.log('=== APPROVAL TAB DEBUG ===');
+            console.log('selectedCustomer:', selectedCustomer);
+            console.log('selectedCustomer.forApprovalVersion:', selectedCustomer.forApprovalVersion);
+            console.log('selectedCustomer keys:', Object.keys(selectedCustomer));
+            if (selectedCustomer.forApprovalVersion) {
+              console.log('forApprovalVersion keys:', Object.keys(selectedCustomer.forApprovalVersion));
+            }
+            
+            // DEBUG: Log specific fields we're checking
+            console.log('=== FIELD VALUES DEBUG ===');
+            console.log('contactNo - original:', selectedCustomer.contactNo, 'type:', typeof selectedCustomer.contactNo);
+            console.log('contactNo - new:', selectedCustomer.forApprovalVersion?.contactNo, 'type:', typeof selectedCustomer.forApprovalVersion?.contactNo);
+            console.log('tinNumber - original:', selectedCustomer.tinNumber, 'type:', typeof selectedCustomer.tinNumber);
+            console.log('tinNumber - new:', selectedCustomer.forApprovalVersion?.tinNumber, 'type:', typeof selectedCustomer.forApprovalVersion?.tinNumber);
+            console.log('customerName - original:', selectedCustomer.customerName, 'type:', typeof selectedCustomer.customerName);
+            console.log('customerName - new:', selectedCustomer.forApprovalVersion?.customerName, 'type:', typeof selectedCustomer.forApprovalVersion?.customerName);
+            
+            // Helper function to normalize values for comparison
+            const normalizeValue = (val: any): string => {
+              // Handle null and undefined
+              if (val === null || val === undefined) return '';
+              
+              // Handle empty string
+              if (val === '') return '';
+              
+              // Handle strings - trim whitespace
+              if (typeof val === 'string') {
+                const trimmed = val.trim();
+                return trimmed === '' ? '' : trimmed;
+              }
+              
+              // Handle numbers - convert to string
+              if (typeof val === 'number') {
+                return String(val);
+              }
+              
+              // Handle booleans
+              if (typeof val === 'boolean') {
+                return String(val);
+              }
+              
+              // Handle arrays and objects - stringify for comparison
+              if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+                return JSON.stringify(val);
+              }
+              
+              // Fallback: convert to string and trim
+              return String(val).trim();
+            };
 
-                {/* Change Reason and Modification Made - Highlighted field */}
-                {selectedCustomer?.changeReason && (
+            // Helper function to check if a field has changed
+            const isFieldChanged = (fieldName: string): boolean => {
+              if (!selectedCustomer?.forApprovalVersion) return false;
+              
+              // Get original value from the main customer object
+              const originalValue = (selectedCustomer as any)[fieldName];
+              // Get new value from forApprovalVersion
+              const newValue = (selectedCustomer.forApprovalVersion as any)[fieldName];
+              
+              // Debug logging (can be removed after testing)
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`[isFieldChanged] ${fieldName}:`, {
+                  original: originalValue,
+                  new: newValue,
+                  originalType: typeof originalValue,
+                  newType: typeof newValue,
+                  originalInObject: fieldName in selectedCustomer,
+                  newInForApproval: fieldName in selectedCustomer.forApprovalVersion
+                });
+              }
+              
+              // If newValue doesn't exist in forApprovalVersion, field hasn't changed
+              if (!(fieldName in selectedCustomer.forApprovalVersion)) return false;
+              
+              // Handle array comparison
+              if (Array.isArray(originalValue) && Array.isArray(newValue)) {
+                const changed = JSON.stringify(originalValue) !== JSON.stringify(newValue);
+                if (process.env.NODE_ENV === 'development' && changed) {
+                  console.log(`[isFieldChanged] ${fieldName} ARRAY CHANGED`);
+                }
+                return changed;
+              }
+              
+              // Normalize and compare
+              const normalizedOriginal = normalizeValue(originalValue);
+              const normalizedNew = normalizeValue(newValue);
+              
+              const hasChanged = normalizedOriginal !== normalizedNew;
+              
+              // Debug logging for comparison result
+              if (process.env.NODE_ENV === 'development') {
+                if (hasChanged) {
+                  console.log(`[isFieldChanged] ${fieldName} CHANGED:`, {
+                    normalizedOriginal: `"${normalizedOriginal}"`,
+                    normalizedNew: `"${normalizedNew}"`,
+                    originalRaw: originalValue,
+                    newRaw: newValue
+                  });
+                } else {
+                  console.log(`[isFieldChanged] ${fieldName} NOT CHANGED:`, {
+                    normalizedOriginal: `"${normalizedOriginal}"`,
+                    normalizedNew: `"${normalizedNew}"`
+                  });
+                }
+              }
+              
+              return hasChanged;
+            };
+
+            // Helper function to check if arrays have changes
+            const hasArrayChanges = (fieldName: string): boolean => {
+              if (!selectedCustomer?.forApprovalVersion) return false;
+              const originalValue = (selectedCustomer as any)[fieldName];
+              const newValue = (selectedCustomer.forApprovalVersion as any)[fieldName];
+              
+              if (!originalValue && !newValue) return false;
+              if (!originalValue || !newValue) return true;
+              if (!Array.isArray(originalValue) || !Array.isArray(newValue)) return false;
+              
+              // Normalize arrays for comparison (exclude metadata fields)
+              const normalizeArray = (arr: any[], idField: string) => {
+                return arr.map(item => {
+                  const normalized: any = {};
+                  Object.keys(item).forEach(key => {
+                    if (key !== 'activityLogs' && key !== 'forApprovalVersion') {
+                      normalized[key] = item[key];
+                    }
+                  });
+                  return normalized;
+                }).sort((a, b) => (a[idField] || '').localeCompare(b[idField] || ''));
+              };
+              
+              if (fieldName === 'customerTerms') {
+                const normalizedOriginal = normalizeArray(originalValue, 'termsId');
+                const normalizedNew = normalizeArray(newValue, 'termsId');
+                return JSON.stringify(normalizedOriginal) !== JSON.stringify(normalizedNew);
+              } else if (fieldName === 'customerProductDeals') {
+                const normalizedOriginal = normalizeArray(originalValue, 'productDealId');
+                const normalizedNew = normalizeArray(newValue, 'productDealId');
+                return JSON.stringify(normalizedOriginal) !== JSON.stringify(normalizedNew);
+              }
+              
+              return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+            };
+
+            return (
+              <div>
+                <div className="mb-5">
+                  {(selectedCustomer.status === StatusEnum.FOR_APPROVAL || selectedCustomer.status === StatusEnum.NEW_RECORD) && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
+                      <span className="text-yellow-600 text-base">ℹ️</span>
+                      <span className="text-yellow-800 text-sm">
+                        These are the proposed changes awaiting approval
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Change Reason and Modification Made - Highlighted field */}
+                  {selectedCustomer?.changeReason && (
                   <div style={{
                     backgroundColor: '#fef3c7',
                     border: '2px solid #f59e0b',
@@ -353,17 +500,153 @@ export default function CustomerModal({
                           style={{
                             width: '100%',
                             padding: '12px 16px',
-                            border: '2px solid #d1d5db',
+                            border: isFieldChanged('customerName') ? '2px solid #3b82f6' : '2px solid #d1d5db',
                             borderRadius: '8px',
                             fontSize: '14px',
                             outline: 'none',
-                            backgroundColor: '#f9fafb',
+                            backgroundColor: isFieldChanged('customerName') ? '#eff6ff' : '#f9fafb',
                             color: '#6b7280',
                             fontWeight: '500'
                           }}
                         />
                       </div>
                     )}
+
+                    {/* Email */}
+                    {selectedCustomer.forApprovalVersion.email !== undefined && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '8px'
+                        }}>
+                          Email
+                        </label>
+                        <input
+                          type="text"
+                          value={String(selectedCustomer.forApprovalVersion.email ?? '')}
+                          readOnly
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: isFieldChanged('email') ? '2px solid #3b82f6' : '2px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            backgroundColor: isFieldChanged('email') ? '#eff6ff' : '#f9fafb',
+                            color: '#6b7280',
+                            fontWeight: '500'
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Contact Number */}
+                    {selectedCustomer.forApprovalVersion.contactNo !== undefined && (() => {
+                      const contactNoChanged = isFieldChanged('contactNo');
+                      console.log('=== CONTACT NUMBER RENDER DEBUG ===');
+                      console.log('contactNoChanged result:', contactNoChanged);
+                      console.log('Will apply blue border:', contactNoChanged);
+                      return (
+                        <div style={{ marginBottom: '20px' }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#374151',
+                            marginBottom: '8px'
+                          }}>
+                            Contact Number
+                          </label>
+                          <input
+                            type="text"
+                            value={String(selectedCustomer.forApprovalVersion.contactNo ?? '')}
+                            readOnly
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: contactNoChanged ? '2px solid #3b82f6' : '2px solid #d1d5db',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              outline: 'none',
+                              backgroundColor: contactNoChanged ? '#eff6ff' : '#f9fafb',
+                              color: '#6b7280',
+                              fontWeight: '500'
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
+
+                    {/* Contact Person */}
+                    {selectedCustomer.forApprovalVersion.contactPerson !== undefined && (
+                      <div style={{ marginBottom: '20px' }}>
+                        <label style={{
+                          display: 'block',
+                          fontSize: '14px',
+                          fontWeight: '600',
+                          color: '#374151',
+                          marginBottom: '8px'
+                        }}>
+                          Contact Person
+                        </label>
+                        <input
+                          type="text"
+                          value={String(selectedCustomer.forApprovalVersion.contactPerson ?? '')}
+                          readOnly
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px',
+                            border: isFieldChanged('contactPerson') ? '2px solid #3b82f6' : '2px solid #d1d5db',
+                            borderRadius: '8px',
+                            fontSize: '14px',
+                            outline: 'none',
+                            backgroundColor: isFieldChanged('contactPerson') ? '#eff6ff' : '#f9fafb',
+                            color: '#6b7280',
+                            fontWeight: '500'
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* TIN Number */}
+                    {selectedCustomer.forApprovalVersion.tinNumber !== undefined && (() => {
+                      const tinNumberChanged = isFieldChanged('tinNumber');
+                      console.log('=== TIN NUMBER RENDER DEBUG ===');
+                      console.log('tinNumberChanged result:', tinNumberChanged);
+                      console.log('Will apply blue border:', tinNumberChanged);
+                      return (
+                        <div style={{ marginBottom: '20px' }}>
+                          <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '600',
+                            color: '#374151',
+                            marginBottom: '8px'
+                          }}>
+                            TIN Number
+                          </label>
+                          <input
+                            type="text"
+                            value={String(selectedCustomer.forApprovalVersion.tinNumber ?? '')}
+                            readOnly
+                            style={{
+                              width: '100%',
+                              padding: '12px 16px',
+                              border: tinNumberChanged ? '2px solid #3b82f6' : '2px solid #d1d5db',
+                              borderRadius: '8px',
+                              fontSize: '14px',
+                              outline: 'none',
+                              backgroundColor: tinNumberChanged ? '#eff6ff' : '#f9fafb',
+                              color: '#6b7280',
+                              fontWeight: '500'
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
                     
                     {/* Status */}
                     {selectedCustomer.forApprovalVersion.status !== undefined && (
@@ -398,12 +681,22 @@ export default function CustomerModal({
 
                     {/* Customer Terms */}
                     {selectedCustomer.forApprovalVersion.customerTerms && selectedCustomer.forApprovalVersion.customerTerms.length > 0 && (
-                      <div style={{ marginBottom: '20px' }}>
+                      <div style={{ 
+                        marginBottom: '20px',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '12px',
+                        padding: '16px'
+                      }}>
                         <h4 style={{
                           fontSize: '16px',
                           fontWeight: '600',
                           color: '#1f2937',
-                          marginBottom: '16px'
+                          marginBottom: '16px',
+                          padding: hasArrayChanges('customerTerms') ? '8px 12px' : '0',
+                          backgroundColor: hasArrayChanges('customerTerms') ? '#eff6ff' : 'transparent',
+                          borderRadius: hasArrayChanges('customerTerms') ? '6px' : '0',
+                          border: hasArrayChanges('customerTerms') ? '2px solid #3b82f6' : 'none',
+                          display: 'inline-block'
                         }}>
                           Customer Terms
                         </h4>
@@ -459,12 +752,22 @@ export default function CustomerModal({
 
                     {/* Product Deals */}
                     {selectedCustomer.forApprovalVersion.customerProductDeals && selectedCustomer.forApprovalVersion.customerProductDeals.length > 0 && (
-                      <div style={{ marginBottom: '20px' }}>
+                      <div style={{ 
+                        marginBottom: '20px',
+                        border: '2px solid #e5e7eb',
+                        borderRadius: '12px',
+                        padding: '16px'
+                      }}>
                         <h4 style={{
                           fontSize: '16px',
                           fontWeight: '600',
                           color: '#1f2937',
-                          marginBottom: '16px'
+                          marginBottom: '16px',
+                          padding: hasArrayChanges('customerProductDeals') ? '8px 12px' : '0',
+                          backgroundColor: hasArrayChanges('customerProductDeals') ? '#eff6ff' : 'transparent',
+                          borderRadius: hasArrayChanges('customerProductDeals') ? '6px' : '0',
+                          border: hasArrayChanges('customerProductDeals') ? '2px solid #3b82f6' : 'none',
+                          display: 'inline-block'
                         }}>
                           Product Deals
                         </h4>
@@ -547,9 +850,21 @@ export default function CustomerModal({
                     {/* Other fields that might be in forApprovalVersion */}
                     {Object.entries(selectedCustomer.forApprovalVersion).map(([key, value]) => {
                       // Skip the fields we've already handled
-                      if (key === 'customerName' || key === 'status' || key === 'customerTerms' || key === 'customerProductDeals') {
+                      if (key === 'customerName' || key === 'status' || key === 'customerTerms' || key === 'customerProductDeals' || 
+                          key === 'email' || key === 'contactNo' || key === 'contactPerson' || key === 'tinNumber') {
                         return null;
                       }
+                      
+                      // Get original and new values
+                      const originalValue = (selectedCustomer as any)[key];
+                      const newValue = value;
+                      
+                      // Use the shared normalizeValue function
+                      const normalizedOriginal = normalizeValue(originalValue);
+                      const normalizedNew = normalizeValue(newValue);
+                      
+                      // Check if field has changed
+                      const fieldChanged = normalizedOriginal !== normalizedNew;
                       
                       return (
                         <div key={key} style={{ marginBottom: '20px' }}>
@@ -565,16 +880,16 @@ export default function CustomerModal({
                           </label>
                           <input
                             type="text"
-                            value={String(value)}
+                            value={String(value ?? '')}
                             readOnly
                             style={{
                               width: '100%',
                               padding: '12px 16px',
-                              border: '2px solid #d1d5db',
+                              border: fieldChanged ? '2px solid #3b82f6' : '2px solid #d1d5db',
                               borderRadius: '8px',
                               fontSize: '14px',
                               outline: 'none',
-                              backgroundColor: '#f9fafb',
+                              backgroundColor: fieldChanged ? '#eff6ff' : '#f9fafb',
                               color: '#6b7280',
                               fontWeight: '500'
                             }}
@@ -669,6 +984,8 @@ export default function CustomerModal({
                 </div>
               </div>
             </div>
+            );
+          })()}
           )}
           
           {/* Activity Logs Tab */}

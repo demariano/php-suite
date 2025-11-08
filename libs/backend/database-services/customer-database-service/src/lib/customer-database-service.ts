@@ -182,6 +182,42 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         );
     }
 
+    async findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<CustomerDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.customerTable.find(
+            {
+                GSI1PK: `CUSTOMER`,
+                ...(name != null && name.trim() !== '' ? { GSI1SK: { begins: name.trim() } } : {}),
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
     async findRecordsByPagination(
         limit: number,
         direction: string,

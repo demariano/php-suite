@@ -3,8 +3,8 @@
 import { AreaApi, AreaDto, StatusEnum, TerritoryManagerApi, TerritoryManagerDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import TerritoryManagerForm from '../../components/TerritoryManagerForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import TerritoryManagerForm from '../../components/TerritoryManagerForm';
 
 interface EditTerritoryManagerPageProps {
   params: {

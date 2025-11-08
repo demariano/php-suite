@@ -13,6 +13,7 @@ export interface AreaDto {
     forApprovalVersion?: Record<string, unknown>;
     territoryManagerId?: string;
     territoryManagerName?: string;
+    changeReason?: string;
 }
 
 export interface CreateAreaDto {
