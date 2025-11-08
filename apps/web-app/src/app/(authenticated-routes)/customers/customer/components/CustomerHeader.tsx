@@ -1,5 +1,8 @@
 'use client';
 
+import { Input } from '@components-web';
+import { Add, Search } from '@components-web';
+
 interface CustomerHeaderProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -14,122 +17,47 @@ export default function CustomerHeader({
   onCreateClick
 }: CustomerHeaderProps) {
   return (
-    <div style={{ marginBottom: '24px' }}>
-      <h1 style={{
-        fontSize: '32px',
-        fontWeight: '700',
-        marginBottom: '24px',
-        color: '#1f2937'
-      }}>
-        Customers
-      </h1>
-
-      {/* Search and Actions */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px',
-        flexDirection: window.innerWidth < 640 ? 'column' : 'row',
-        gap: '16px'
-      }}>
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'center',
-          flexDirection: window.innerWidth < 640 ? 'column' : 'row',
-          width: window.innerWidth < 640 ? '100%' : 'auto'
-        }}>
-          {/* Search Input */}
-          <div style={{ position: 'relative', width: window.innerWidth < 640 ? '100%' : '288px' }}>
-            <input
-              type="text"
-              placeholder="Search by name"
-              value={searchTerm}
-              onChange={(e) => onSearchChange(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px 10px 36px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none',
-                backgroundColor: 'white'
-              }}
-            />
-            <div style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#6b7280'
-            }}>
-              🔍
-            </div>
-          </div>
-
-          {/* Refresh Button */}
-          <button
-            onClick={onRefresh}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: 'white',
-              color: '#374151',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '18px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transition: 'all 0.2s ease',
-              width: window.innerWidth < 640 ? '100%' : 'auto'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-              e.currentTarget.style.borderColor = '#9ca3af';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'white';
-              e.currentTarget.style.borderColor = '#d1d5db';
-            }}
-            title="Refresh"
-          >
-            ↻
-          </button>
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3 flex-1 max-w-md">
+        <div className="flex-1">
+          <Input
+            placeholder="Filter customers"
+            value={searchTerm}
+            onChange={(val) => onSearchChange(val as string)}
+            leftIcon={Search}
+          />
         </div>
-
-        {/* Add Customer Button */}
-        <button 
-          onClick={onCreateClick}
-          style={{
-            padding: '10px 16px',
-            backgroundColor: '#e5e7eb',
-            color: '#1f2937',
-            border: '2px solid #9ca3af',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            transition: 'all 0.2s ease',
-            width: window.innerWidth < 640 ? '100%' : 'auto'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#d1d5db';
-            e.currentTarget.style.borderColor = '#6b7280';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = '#e5e7eb';
-            e.currentTarget.style.borderColor = '#9ca3af';
-          }}
+        <button
+          onClick={onRefresh}
+          className="p-2 hover:bg-gray-100 rounded-md transition-colors duration-200 border border-gray-300 bg-white"
+          title="Refresh"
         >
-          <span style={{ fontSize: '18px' }}>+</span>
-          Add Customer
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="text-gray-600"
+          >
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+            <path d="M21 3v5h-5" />
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+            <path d="M3 21v-5h5" />
+          </svg>
         </button>
       </div>
+      <button
+        onClick={onCreateClick}
+        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      >
+        <Add size={18} />
+        New customer
+      </button>
     </div>
   );
 }

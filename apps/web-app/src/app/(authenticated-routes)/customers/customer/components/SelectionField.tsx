@@ -17,6 +17,11 @@ export default function SelectionField({
   buttonText,
   disabled = false
 }: SelectionFieldProps) {
+  // Check if label indicates required field (has asterisk)
+  const isRequired = label.includes('*');
+  // Remove asterisk from label text to avoid duplication
+  const labelText = label.replace(/\*+$/, '').trim();
+  
   return (
     <div style={{ marginBottom: '20px' }}>
       <label style={{
@@ -26,8 +31,8 @@ export default function SelectionField({
         color: '#374151',
         marginBottom: '8px'
       }}>
-        {label}
-        {label.includes('*') && (
+        {labelText}
+        {isRequired && (
           <span style={{ color: '#dc2626', marginLeft: '4px' }}>*</span>
         )}
       </label>
@@ -52,7 +57,7 @@ export default function SelectionField({
             outline: 'none',
             transition: 'all 0.2s ease'
           }}
-          placeholder={disabled ? "Please select an area first" : `Click to select ${label.toLowerCase().replace('*', '').trim()}`}
+          placeholder={disabled ? "Please select an area first" : `Click to select ${labelText.toLowerCase()}`}
           onMouseEnter={(e) => {
             if (!disabled) {
               e.currentTarget.style.borderColor = '#3b82f6';

@@ -12,11 +12,10 @@ module.exports = {
         ...createGlobPatternsForDependencies(__dirname),
     ],
     theme: {
-        colors: {
-            ...colors,
-            transparent: 'transparent'
-        },
         extend: {
+            colors: {
+                ...colors,
+            },
             fontFamily: {
                 // Declare fontFamily if app uses multiple font family
                 // proximaNova: ['Proxima Nova', ...defaultTheme.fontFamily.serif],

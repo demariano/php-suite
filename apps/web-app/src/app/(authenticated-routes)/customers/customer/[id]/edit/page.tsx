@@ -258,97 +258,241 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
 
   // Render approval tab content (similar to CustomerModal)
   const renderApprovalTab = () => {
-    if (!selectedCustomer) return null;
+    if (!selectedCustomer || !selectedCustomer.forApprovalVersion) return null;
+    
+    const approvalData = selectedCustomer.forApprovalVersion;
+    
+    // Helper function to format display value
+    const formatValue = (value: any): string => {
+      if (value === null || value === undefined) return '-';
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (typeof value === 'number') return value.toString();
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    };
+    
+    // Helper function to render read-only field
+    const renderReadOnlyField = (label: string, value: any, colorClass: string) => (
+      <div className="group">
+        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+          <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+          {label}
+        </label>
+        <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed">
+          {formatValue(value)}
+        </div>
+      </div>
+    );
     
     return (
-      <div>
-        <div className="mb-5">
-          {(selectedCustomer.status === StatusEnum.FOR_APPROVAL || selectedCustomer.status === StatusEnum.NEW_RECORD) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-              <span className="text-yellow-600 text-base">ℹ️</span>
-              <span className="text-yellow-800 text-sm">
-                These are the proposed changes awaiting approval
-              </span>
-            </div>
-          )}
-
-          {/* Change Reason */}
-          {selectedCustomer?.changeReason && (
-            <div style={{
-              backgroundColor: '#fef3c7',
-              border: '2px solid #f59e0b',
-              borderRadius: '8px',
-              padding: '16px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-            }}>
-              <h4 style={{
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#92400e',
-                margin: '0 0 12px 0'
-              }}>
-                Change Reason
-              </h4>
-              <div style={{
-                padding: '12px 16px',
-                backgroundColor: 'white',
-                border: '1px solid #f59e0b',
-                borderRadius: '6px',
-                fontSize: '14px',
-                color: '#92400e',
-                lineHeight: '1.5',
-                whiteSpace: 'pre-wrap'
-              }}>
-                {selectedCustomer.changeReason}
+      <div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-gradient-to-br from-white to-gray-50 shadow-lg">
+        {/* Change Reason and Modification Made */}
+        {selectedCustomer?.changeReason && (
+          <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-5 shadow-md mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
               </div>
+              <h4 className="text-base font-bold text-gray-700">
+                Change Reason and Modification Made
+              </h4>
             </div>
-          )}
-          
-          {selectedCustomer?.forApprovalVersion ? (
-            <div style={{
-              backgroundColor: '#f8fafc',
-              border: '2px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: '0 0 16px 0'
-              }}>
-                Pending Approval Details
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Review the pending changes above. Use the buttons below to approve or deny.
-              </p>
+            <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">
+              {selectedCustomer.changeReason}
             </div>
-          ) : (
-            <p className="text-gray-500 italic">
-              No pending approval changes
-            </p>
-          )}
-        </div>
+          </div>
+        )}
         
-        <div className="flex justify-between mt-6">
+        {/* Basic Information Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Basic Information
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {renderReadOnlyField('Customer Name', approvalData.customerName, 'bg-blue-500')}
+            {renderReadOnlyField('Email', approvalData.email, 'bg-indigo-500')}
+            {renderReadOnlyField('Contact Number', approvalData.contactNo, 'bg-purple-500')}
+            {renderReadOnlyField('Contact Person', approvalData.contactPerson, 'bg-green-500')}
+          </div>
+        </div>
+
+        {/* Address Information Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+              Address Information
+            </h3>
+          </div>
+          <div className="space-y-4">
+            {renderReadOnlyField('Address 1', approvalData.address1, 'bg-pink-500')}
+            {renderReadOnlyField('Address 2', approvalData.address2, 'bg-rose-500')}
+            {renderReadOnlyField('TIN Number', approvalData.tinNumber, 'bg-teal-500')}
+          </div>
+        </div>
+
+        {/* Location & Classification Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+              Location & Classification
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {renderReadOnlyField('Area', approvalData.areaName, 'bg-emerald-500')}
+            {renderReadOnlyField('Town', approvalData.townName, 'bg-teal-500')}
+            {renderReadOnlyField('Customer Classification', approvalData.customerClassificationName, 'bg-green-500')}
+            {renderReadOnlyField('Customer Type', approvalData.customerTypeName, 'bg-cyan-500')}
+          </div>
+        </div>
+
+        {/* Financial Information Section */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+              Financial Information
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {renderReadOnlyField('Balance', approvalData.balance, 'bg-emerald-500')}
+            {renderReadOnlyField('Credit Limit', approvalData.creditLimit, 'bg-cyan-500')}
+            {renderReadOnlyField('Customer Credit', approvalData.customerCredit, 'bg-sky-500')}
+          </div>
+        </div>
+            
+            {/* Customer Terms */}
+            {selectedCustomer.forApprovalVersion.customerTerms && Array.isArray(selectedCustomer.forApprovalVersion.customerTerms) && selectedCustomer.forApprovalVersion.customerTerms.length > 0 && (
+              <div className="mt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-base font-bold text-gray-700">
+                    Customer Terms
+                  </h4>
+                </div>
+                <div className="space-y-4">
+                  {(selectedCustomer.forApprovalVersion.customerTerms as any[]).map((term: any, index: number) => (
+                    <div key={index} className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-4 shadow-sm">
+                      <div className="mb-3">
+                        <h5 className="text-sm font-bold text-gray-900 mb-2">
+                          {term.termsName || 'Unnamed Terms'}
+                        </h5>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="group">
+                          <label className="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-2">
+                            <span className="w-1 h-1 bg-purple-500 rounded-full"></span>
+                            Days
+                          </label>
+                          <div className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-xs bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed">
+                            {term.days || 0}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Product Deals */}
+            {selectedCustomer.forApprovalVersion.customerProductDeals && Array.isArray(selectedCustomer.forApprovalVersion.customerProductDeals) && selectedCustomer.forApprovalVersion.customerProductDeals.length > 0 && (
+              <div className="mt-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg shadow-md">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <h4 className="text-base font-bold text-gray-700">
+                    Product Deals
+                  </h4>
+                </div>
+                <div className="space-y-4">
+                  {(selectedCustomer.forApprovalVersion.customerProductDeals as any[]).map((deal: any, index: number) => (
+                    <div key={index} className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-4 shadow-sm">
+                      <div className="mb-3">
+                        <h5 className="text-sm font-bold text-gray-900 mb-2">
+                          {deal.productName && deal.productName !== deal.productDealName ? `${deal.productName} - ${deal.productDealName || 'Unnamed Deal'}` : (deal.productDealName || 'Unnamed Deal')}
+                        </h5>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="group">
+                          <label className="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-2">
+                            <span className="w-1 h-1 bg-orange-500 rounded-full"></span>
+                            Minimum Quantity
+                          </label>
+                          <div className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-xs bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed">
+                            {deal.minQty || 0}
+                          </div>
+                        </div>
+                        <div className="group">
+                          <label className="block text-xs font-bold text-gray-600 mb-1 flex items-center gap-2">
+                            <span className="w-1 h-1 bg-amber-500 rounded-full"></span>
+                            Additional Quantity
+                          </label>
+                          <div className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-xs bg-gradient-to-br from-gray-50 to-white text-gray-500 font-medium shadow-sm cursor-not-allowed">
+                            {deal.additionalQty || 0}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
           {isAdminUser && (selectedCustomer?.status === StatusEnum.FOR_APPROVAL || selectedCustomer?.status === StatusEnum.NEW_RECORD || selectedCustomer?.status === StatusEnum.FOR_DELETION) ? (
-            <div style={{ display: 'flex', gap: '12px' }}>
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={handleDeny}
                 disabled={isLoading}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
                 {isLoading ? 'Processing...' : 'Deny Changes'}
               </button>
               <button
                 type="button"
                 onClick={handleApprove}
                 disabled={isLoading}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:from-blue-600 hover:to-indigo-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
                 {isLoading ? 'Processing...' : 'Approve Changes'}
               </button>
             </div>
@@ -359,8 +503,11 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
           </button>
         </div>
@@ -373,37 +520,47 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
     if (!selectedCustomer) return null;
     
     return (
-      <div>
-        <div className="mb-5">
-          <h3 className="text-base font-semibold text-gray-800 mb-3">
-            Recent Activity
+      <div className="space-y-6 animate-fadeIn">
+        <div className="flex items-center gap-3 mb-6 pb-4 border-b-2 border-gradient-to-r from-green-200 to-emerald-200">
+          <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg shadow-md">
+            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <h3 className="text-xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+            Activity Logs
           </h3>
-          {selectedCustomer?.activityLogs && selectedCustomer.activityLogs.length > 0 ? (
-            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-              {selectedCustomer.activityLogs.map((log, index) => (
-                <div 
-                  key={index} 
-                  className={`py-2 ${
-                    index < selectedCustomer.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                  }`}
-                >
-                  {log}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 italic">
-              No activity logs available
-            </p>
-          )}
         </div>
         
-        <div className="flex justify-end mt-6">
+        {selectedCustomer?.activityLogs && selectedCustomer.activityLogs.length > 0 ? (
+          <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-xl p-6 shadow-lg max-h-96 overflow-y-auto">
+            {selectedCustomer.activityLogs.map((log, index) => (
+              <div 
+                key={index} 
+                className={`py-3 ${
+                  index < selectedCustomer.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
+                }`}
+              >
+                <p className="text-sm text-gray-700">{log}</p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-gray-500 italic">
+            No activity logs available
+          </p>
+        )}
+
+        {/* Action Buttons */}
+        <div className="flex justify-end items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
           </button>
         </div>
@@ -412,9 +569,9 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-6 space-y-6">
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -441,93 +598,82 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
 
       {/* Customer Form with Tabs */}
       {selectedCustomer && (
-        <div>
-          {/* Tab Navigation */}
-          <div style={{
-            display: 'flex',
-            borderBottom: '2px solid #e5e7eb',
-            marginBottom: '20px',
-            backgroundColor: '#f8fafc',
-            borderRadius: '8px 8px 0 0',
-            padding: '4px'
-          }}>
-            <button
-              onClick={() => setActiveTab('details')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
-                color: activeTab === 'details' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'details' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                marginRight: '4px'
-              }}
-            >
-              Details
-            </button>
+        <div className="flex justify-center">
+          <div className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
+            {/* Tab Navigation */}
+            <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b-2 border-blue-200 rounded-t-xl p-2">
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                    activeTab === 'details'
+                      ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 transform scale-105'
+                      : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-blue-600'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Customer Information
+                  </span>
+                </button>
+                
+                {selectedCustomer.status !== StatusEnum.ACTIVE && (
+                  <button
+                    onClick={() => setActiveTab('approval')}
+                    className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                      activeTab === 'approval'
+                        ? 'bg-gradient-to-r from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/50 transform scale-105'
+                        : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-teal-600'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Pending Changes
+                    </span>
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 ${
+                    activeTab === 'logs'
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/50 transform scale-105'
+                      : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-green-600'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Activity Logs
+                  </span>
+                </button>
+              </div>
+            </div>
             
-            {selectedCustomer.status !== StatusEnum.ACTIVE && (
-              <button
-                onClick={() => setActiveTab('approval')}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
-                  color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: activeTab === 'approval' ? '600' : '500',
-                  transition: 'all 0.2s ease',
-                  boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                  marginRight: '4px'
-                }}
-              >
-                Approval Version
-              </button>
-            )}
-            
-            <button
-              onClick={() => setActiveTab('logs')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
-                color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'logs' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-              }}
-            >
-              Activity Logs
-            </button>
-          </div>
-          
-          {/* Tab Content */}
-          <div>
-            {activeTab === 'details' && (
-              <CustomerForm
-                isCreateMode={false}
-                selectedCustomer={selectedCustomer}
-                successMessage={null}
-                isAdminUser={isAdminUser}
-                activeTab="details"
-                onSave={handleSave}
-                onDelete={handleDelete}
-                onCancel={handleCancel}
-              />
-            )}
-            
-            {activeTab === 'approval' && renderApprovalTab()}
-            
-            {activeTab === 'logs' && renderLogsTab()}
+            {/* Tab Content */}
+            <div className="p-6 bg-white">
+              {activeTab === 'details' && (
+                <CustomerForm
+                  isCreateMode={false}
+                  selectedCustomer={selectedCustomer}
+                  successMessage={null}
+                  isAdminUser={isAdminUser}
+                  activeTab="details"
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                  onCancel={handleCancel}
+                />
+              )}
+              
+              {activeTab === 'approval' && renderApprovalTab()}
+              
+              {activeTab === 'logs' && renderLogsTab()}
+            </div>
           </div>
         </div>
       )}

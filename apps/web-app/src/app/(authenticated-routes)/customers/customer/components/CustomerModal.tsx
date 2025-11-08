@@ -143,7 +143,7 @@ export default function CustomerModal({
               }
             }}
           >
-            Details
+            Customer Information
           </button>
           
           {!isCreateMode && selectedCustomer && selectedCustomer.status !== StatusEnum.ACTIVE && (
@@ -240,7 +240,7 @@ export default function CustomerModal({
                   </div>
                 )}
 
-                {/* Change Reason - Highlighted field */}
+                {/* Change Reason and Modification Made - Highlighted field */}
                 {selectedCustomer?.changeReason && (
                   <div style={{
                     backgroundColor: '#fef3c7',
@@ -276,7 +276,7 @@ export default function CustomerModal({
                         color: '#92400e',
                         margin: 0
                       }}>
-                        Change Reason
+                        Change Reason and Modification Made
                       </h4>
                     </div>
                     <div style={{
@@ -284,9 +284,10 @@ export default function CustomerModal({
                       backgroundColor: 'white',
                       border: '1px solid #f59e0b',
                       borderRadius: '6px',
-                      fontSize: '14px',
+                      fontSize: '13px',
+                      fontFamily: 'monospace',
                       color: '#92400e',
-                      lineHeight: '1.5',
+                      lineHeight: '1.6',
                       whiteSpace: 'pre-wrap'
                     }}>
                       {selectedCustomer.changeReason}

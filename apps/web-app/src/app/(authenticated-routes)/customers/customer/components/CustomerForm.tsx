@@ -384,6 +384,67 @@ export default function CustomerForm({
     setCustomerDeals(customerDeals.filter((_, i) => i !== index));
   };
 
+  // Status badge helper function with enhanced styling and readable text
+  const getStatusBadge = (status: StatusEnum) => {
+    // Convert status enum to readable text
+    const getStatusText = (s: StatusEnum): string => {
+      switch (s) {
+        case StatusEnum.ACTIVE:
+          return 'Active';
+        case StatusEnum.FOR_APPROVAL:
+          return 'For Approval';
+        case StatusEnum.FOR_DELETION:
+          return 'For Deletion';
+        case StatusEnum.NEW_RECORD:
+          return 'New Record';
+        default:
+          return s;
+      }
+    };
+
+    const statusText = getStatusText(status);
+    
+    // Enhanced styling with shadows and better colors
+    let badgeClasses = "";
+    let dotColor = "";
+    let bgColor = "";
+    let textColor = "";
+    
+    if (status === StatusEnum.ACTIVE) {
+      badgeClasses = "bg-gradient-to-r from-green-400 to-emerald-500 text-white shadow-lg shadow-green-500/50";
+      dotColor = "bg-white";
+      bgColor = "#10b981";
+      textColor = "#ffffff";
+    } else if (status === StatusEnum.FOR_APPROVAL) {
+      badgeClasses = "bg-gradient-to-r from-yellow-400 to-amber-500 text-white shadow-lg shadow-yellow-500/50";
+      dotColor = "bg-white";
+      bgColor = "#f59e0b";
+      textColor = "#ffffff";
+    } else if (status === StatusEnum.FOR_DELETION) {
+      badgeClasses = "bg-gradient-to-r from-red-400 to-rose-500 text-white shadow-lg shadow-red-500/50";
+      dotColor = "bg-white";
+      bgColor = "#ef4444";
+      textColor = "#ffffff";
+    } else if (status === StatusEnum.NEW_RECORD) {
+      badgeClasses = "bg-gradient-to-r from-blue-400 to-indigo-500 text-white shadow-lg shadow-blue-500/50";
+      dotColor = "bg-white";
+      bgColor = "#3b82f6";
+      textColor = "#ffffff";
+    } else {
+      badgeClasses = "bg-gradient-to-r from-gray-400 to-gray-500 text-white shadow-lg shadow-gray-500/50";
+      dotColor = "bg-white";
+      bgColor = "#6b7280";
+      textColor = "#ffffff";
+    }
+    
+    return (
+      <span className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold ${badgeClasses}`} style={{ backgroundColor: bgColor, color: textColor }}>
+        <span className={`w-2 h-2 rounded-full ${dotColor}`}></span>
+        {statusText}
+      </span>
+    );
+  };
+
   return (
     <>
     <form onSubmit={handleSubmit}>
@@ -460,117 +521,66 @@ export default function CustomerForm({
         </div>
       )}
       
-      {/* Pending approval or deletion warning - hide on approval tab since changeReason is already shown */}
-      {!isCreateMode && selectedCustomer && activeTab !== 'approval' &&
-       (selectedCustomer.status === StatusEnum.FOR_APPROVAL || selectedCustomer.status === StatusEnum.NEW_RECORD || selectedCustomer.status === StatusEnum.FOR_DELETION) && (
-        <div style={{
-          backgroundColor: '#fef3c7',
-          border: '2px solid #f59e0b',
-          borderRadius: '8px',
-          padding: '16px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          animation: 'pulse 2s infinite'
-        }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            backgroundColor: '#f59e0b',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}>
-            ⚠
+      {/* Status Display for Edit Mode - Prominently displayed at top */}
+      {!isCreateMode && selectedCustomer && (
+        <div className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-4 shadow-md mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-rose-500 to-pink-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div className="flex items-center">
+              {getStatusBadge(selectedCustomer.status || StatusEnum.ACTIVE)}
+            </div>
           </div>
-          <span style={{
-            color: '#92400e',
-            fontSize: '14px',
-            fontWeight: '600'
-          }}>
-            {selectedCustomer.status === StatusEnum.FOR_DELETION 
-              ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-              : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-          </span>
         </div>
       )}
       
       {/* Details Container with Inner Tabs */}
-      <div style={{
-        backgroundColor: '#f8fafc',
-        border: '2px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '20px',
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          marginBottom: '20px'
-        }}>
-          <div style={{
-            width: '20px',
-            height: '20px',
-            backgroundColor: '#3b82f6',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontSize: '12px',
-            fontWeight: 'bold'
-          }}>
-            📋
-          </div>
-          <h3 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            margin: 0
-          }}>
-            Customer Details
-          </h3>
-        </div>
-
+      <div className="space-y-6">
         {/* Inner Tabs Navigation */}
-        <div style={{
-          display: 'flex',
-          borderBottom: '2px solid #e2e8f0',
-          marginBottom: '20px'
-        }}>
+        <div className="flex gap-2 border-b-2 border-gray-200 pb-2 mb-6">
           {[
-            { id: 'record-details', label: 'Record Details', icon: '📝' },
-            { id: 'customer-terms', label: 'Customer Terms', icon: '📋' },
-            { id: 'product-deals', label: 'Product Deals', icon: '🎯' }
+            { 
+              id: 'record-details', 
+              label: 'Record Details', 
+              icon: (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              )
+            },
+            { 
+              id: 'customer-terms', 
+              label: 'Customer Terms', 
+              icon: (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              )
+            },
+            { 
+              id: 'product-deals', 
+              label: 'Product Deals', 
+              icon: (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              )
+            }
           ].map((tab) => (
             <button
               key={tab.id}
               type="button"
               onClick={() => setActiveInnerTab(tab.id as InnerTabType)}
-              style={{
-                padding: '12px 20px',
-                border: 'none',
-                backgroundColor: activeInnerTab === tab.id ? '#3b82f6' : 'transparent',
-                color: activeInnerTab === tab.id ? 'white' : '#6b7280',
-                borderBottom: activeInnerTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.2s ease'
-              }}
+              className={`px-5 py-3 rounded-lg font-semibold text-sm transition-all duration-300 flex items-center gap-2 ${
+                activeInnerTab === tab.id
+                  ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/50 transform scale-105'
+                  : 'bg-white/60 text-gray-600 hover:bg-white/80 hover:text-blue-600'
+              }`}
             >
-              <span>{tab.icon}</span>
+              {tab.icon}
               {tab.label}
             </button>
           ))}
@@ -578,415 +588,332 @@ export default function CustomerForm({
 
         {/* Tab Content */}
         {activeInnerTab === 'record-details' && (
-          <div>
-        {/* Basic Information */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Customer Name *
-          </label>
-          <input
-            type="text"
-            name="customerName"
-            value={formData.customerName}
-            onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
-            placeholder={isCreateMode ? 'Enter customer name' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
+          <div className="space-y-6 animate-fadeIn">
+            {/* Basic Information Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                  Basic Information
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Customer Name */}
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                  Customer Name
+                </label>
+                <input
+                  type="text"
+                  name="customerName"
+                  value={formData.customerName}
+                  onChange={(e) => setFormData(prev => ({ ...prev, customerName: e.target.value }))}
+                  placeholder={isCreateMode ? 'Enter customer name' : ''}
+                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                  className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                  }`}
+                />
+              </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Email
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-            placeholder={isCreateMode ? 'Enter email address' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
+              {/* Email */}
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span>
+                  Email
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                  placeholder={isCreateMode ? 'Enter email address' : ''}
+                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                  className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-indigo-300 group-hover:shadow-md'
+                  }`}
+                />
+              </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Contact Number
-          </label>
-          <input
-            type="tel"
-            name="contactNo"
-            value={formData.contactNo}
-            onChange={(e) => setFormData(prev => ({ ...prev, contactNo: e.target.value }))}
-            placeholder={isCreateMode ? 'Enter contact number' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
+              {/* Contact Number */}
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+                  Contact Number
+                </label>
+                <input
+                  type="tel"
+                  name="contactNo"
+                  value={formData.contactNo}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contactNo: e.target.value }))}
+                  placeholder={isCreateMode ? 'Enter contact number' : ''}
+                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                  className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-purple-300 group-hover:shadow-md'
+                  }`}
+                />
+              </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Contact Person
-          </label>
-          <input
-            type="text"
-            name="contactPerson"
-            value={formData.contactPerson}
-            onChange={(e) => setFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
-            placeholder={isCreateMode ? 'Enter contact person' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
-
-        {/* Address Information */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Address 1
-          </label>
-          <input
-            type="text"
-            name="address1"
-            value={formData.address1}
-            onChange={(e) => setFormData(prev => ({ ...prev, address1: e.target.value }))}
-            placeholder={isCreateMode ? 'Enter address 1' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Address 2
-          </label>
-          <input
-            type="text"
-            name="address2"
-            value={formData.address2}
-            onChange={(e) => setFormData(prev => ({ ...prev, address2: e.target.value }))}
-            placeholder={isCreateMode ? 'Enter address 2' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
-
-        {/* Selection Fields */}
-        <SelectionField
-          label="Area *"
-          selectedItem={selectedArea}
-          onSelect={() => setShowAreaModal(true)}
-          onClear={handleClearArea}
-          buttonText="Select Area"
-        />
-
-        <SelectionField
-          label="Town *"
-          selectedItem={selectedTown}
-          onSelect={() => setShowTownModal(true)}
-          onClear={handleClearTown}
-          buttonText="Select Town"
-          disabled={!selectedArea}
-        />
-
-        <SelectionField
-          label="Customer Classification *"
-          selectedItem={selectedClassification}
-          onSelect={() => setShowClassificationModal(true)}
-          onClear={handleClearClassification}
-          buttonText="Select Classification"
-        />
-
-        <SelectionField
-          label="Customer Type *"
-          selectedItem={selectedType}
-          onSelect={() => setShowTypeModal(true)}
-          onClear={handleClearType}
-          buttonText="Select Type"
-        />
-
-        {/* Financial Information */}
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Balance
-          </label>
-          <input
-            type="text"
-            name="balance"
-            value={balanceFormatting.value}
-            onChange={(e) => {
-              balanceFormatting.onChange(e);
-              setFormData(prev => ({ ...prev, balance: e.target.value }));
-            }}
-            onFocus={balanceFormatting.onFocus}
-            onBlur={(e) => {
-              balanceFormatting.onBlur(e);
-              setFormData(prev => ({ ...prev, balance: balanceFormatting.numericValue.toString() }));
-            }}
-            placeholder={isCreateMode ? 'Enter balance' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Credit Limit
-          </label>
-          <input
-            type="text"
-            name="creditLimit"
-            value={creditLimitFormatting.value}
-            onChange={(e) => {
-              creditLimitFormatting.onChange(e);
-              setFormData(prev => ({ ...prev, creditLimit: e.target.value }));
-            }}
-            onFocus={creditLimitFormatting.onFocus}
-            onBlur={(e) => {
-              creditLimitFormatting.onBlur(e);
-              setFormData(prev => ({ ...prev, creditLimit: creditLimitFormatting.numericValue.toString() }));
-            }}
-            placeholder={isCreateMode ? 'Enter credit limit' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Customer Credit
-          </label>
-          <input
-            type="text"
-            name="customerCredit"
-            value={customerCreditFormatting.value}
-            onChange={(e) => {
-              customerCreditFormatting.onChange(e);
-              setFormData(prev => ({ ...prev, customerCredit: e.target.value }));
-            }}
-            onFocus={customerCreditFormatting.onFocus}
-            onBlur={(e) => {
-              customerCreditFormatting.onBlur(e);
-              setFormData(prev => ({ ...prev, customerCredit: customerCreditFormatting.numericValue.toString() }));
-            }}
-            placeholder={isCreateMode ? 'Enter customer credit' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            TIN Number
-          </label>
-          <input
-            type="text"
-            name="tinNumber"
-            value={formData.tinNumber}
-            onChange={(e) => setFormData(prev => ({ ...prev, tinNumber: e.target.value }))}
-            placeholder={isCreateMode ? 'Enter TIN number' : ''}
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-          />
-        </div>
-
-        {/* Status Display for Edit Mode */}
-        {!isCreateMode && selectedCustomer && (
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Status
-            </label>
-            <div style={{
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              backgroundColor: '#f9fafb',
-              color: '#6b7280',
-              fontWeight: '500'
-            }}>
-              {selectedCustomer.status || 'ACTIVE'}
+              {/* Contact Person */}
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                  Contact Person
+                </label>
+                <input
+                  type="text"
+                  name="contactPerson"
+                  value={formData.contactPerson}
+                  onChange={(e) => setFormData(prev => ({ ...prev, contactPerson: e.target.value }))}
+                  placeholder={isCreateMode ? 'Enter contact person' : ''}
+                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                  className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-green-300 group-hover:shadow-md'
+                  }`}
+                />
+              </div>
             </div>
-          </div>
-        )}
+            </div>
 
-        {/* Change Reason Field - Only show for non-create mode and non-admin users */}
+            {/* Address Information Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-pink-500 to-rose-600 rounded-lg shadow-md">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold bg-gradient-to-r from-pink-600 to-rose-600 bg-clip-text text-transparent">
+                  Address Information
+                </h3>
+              </div>
+              <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-pink-500 rounded-full"></span>
+                Address 1
+              </label>
+              <input
+                type="text"
+                name="address1"
+                value={formData.address1}
+                onChange={(e) => setFormData(prev => ({ ...prev, address1: e.target.value }))}
+                placeholder={isCreateMode ? 'Enter address 1' : ''}
+                disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                  !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                    ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                    : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-pink-300 group-hover:shadow-md'
+                }`}
+              />
+            </div>
+
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+                Address 2
+              </label>
+              <input
+                type="text"
+                name="address2"
+                value={formData.address2}
+                onChange={(e) => setFormData(prev => ({ ...prev, address2: e.target.value }))}
+                placeholder={isCreateMode ? 'Enter address 2' : ''}
+                disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                  !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                    ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                    : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-rose-300 group-hover:shadow-md'
+                }`}
+              />
+            </div>
+
+              {/* TIN Number */}
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                  TIN Number
+                </label>
+                <input
+                  type="text"
+                  name="tinNumber"
+                  value={formData.tinNumber}
+                  onChange={(e) => setFormData(prev => ({ ...prev, tinNumber: e.target.value }))}
+                  placeholder={isCreateMode ? 'Enter TIN number' : ''}
+                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                  className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                      ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-teal-300 group-hover:shadow-md'
+                  }`}
+                />
+              </div>
+            </div>
+
+            {/* Location & Classification Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  Location & Classification
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SelectionField
+              label="Area"
+              selectedItem={selectedArea}
+              onSelect={() => setShowAreaModal(true)}
+              onClear={handleClearArea}
+              buttonText="Select Area"
+              disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+            />
+
+            <SelectionField
+              label="Town"
+              selectedItem={selectedTown}
+              onSelect={() => setShowTownModal(true)}
+              onClear={handleClearTown}
+              buttonText="Select Town"
+              disabled={(!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) || !selectedArea}
+            />
+
+            <SelectionField
+              label="Customer Classification"
+              selectedItem={selectedClassification}
+              onSelect={() => setShowClassificationModal(true)}
+              onClear={handleClearClassification}
+              buttonText="Select Classification"
+              disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+            />
+
+            <SelectionField
+              label="Customer Type"
+              selectedItem={selectedType}
+              onSelect={() => setShowTypeModal(true)}
+              onClear={handleClearType}
+              buttonText="Select Type"
+              disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+            />
+              </div>
+            </div>
+
+            {/* Financial Information Section */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-lg shadow-md">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold bg-gradient-to-r from-cyan-600 to-blue-600 bg-clip-text text-transparent">
+                  Financial Information
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+              Balance
+            </label>
+            <input
+              type="text"
+              name="balance"
+              value={balanceFormatting.value}
+              onChange={(e) => {
+                balanceFormatting.onChange(e);
+                setFormData(prev => ({ ...prev, balance: e.target.value }));
+              }}
+              onFocus={balanceFormatting.onFocus}
+              onBlur={(e) => {
+                balanceFormatting.onBlur(e);
+                setFormData(prev => ({ ...prev, balance: balanceFormatting.numericValue.toString() }));
+              }}
+              placeholder={isCreateMode ? 'Enter balance' : ''}
+              disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+              className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                  ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                  : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-emerald-300 group-hover:shadow-md'
+              }`}
+            />
+          </div>
+
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+              Credit Limit
+            </label>
+            <input
+              type="text"
+              name="creditLimit"
+              value={creditLimitFormatting.value}
+              onChange={(e) => {
+                creditLimitFormatting.onChange(e);
+                setFormData(prev => ({ ...prev, creditLimit: e.target.value }));
+              }}
+              onFocus={creditLimitFormatting.onFocus}
+              onBlur={(e) => {
+                creditLimitFormatting.onBlur(e);
+                setFormData(prev => ({ ...prev, creditLimit: creditLimitFormatting.numericValue.toString() }));
+              }}
+              placeholder={isCreateMode ? 'Enter credit limit' : ''}
+              disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+              className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                  ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                  : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-cyan-300 group-hover:shadow-md'
+              }`}
+            />
+          </div>
+
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-sky-500 rounded-full"></span>
+              Customer Credit
+            </label>
+            <input
+              type="text"
+              name="customerCredit"
+              value={customerCreditFormatting.value}
+              onChange={(e) => {
+                customerCreditFormatting.onChange(e);
+                setFormData(prev => ({ ...prev, customerCredit: e.target.value }));
+              }}
+              onFocus={customerCreditFormatting.onFocus}
+              onBlur={(e) => {
+                customerCreditFormatting.onBlur(e);
+                setFormData(prev => ({ ...prev, customerCredit: customerCreditFormatting.numericValue.toString() }));
+              }}
+              placeholder={isCreateMode ? 'Enter customer credit' : ''}
+              disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+              className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                  ? 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-500 cursor-not-allowed'
+                  : 'border-gray-200 bg-gradient-to-br from-gray-50 to-white text-gray-700 group-hover:border-sky-300 group-hover:shadow-md'
+              }`}
+            />
+          </div>
+        </div>
+        </div>
+
+        {/* Change Reason and Modification Made Field - Only show for non-create mode and non-admin users */}
         {!isCreateMode && !isAdminUser && (
           <div style={{ marginTop: '24px', marginBottom: '20px' }}>
             <label style={{
@@ -996,7 +923,7 @@ export default function CustomerForm({
               color: '#374151',
               marginBottom: '8px'
             }}>
-              Change Reason *
+              Change Reason and Modification Made
             </label>
             <textarea
               name="changeReason"
@@ -1035,141 +962,72 @@ export default function CustomerForm({
 
         {/* Customer Terms Tab */}
         {activeInnerTab === 'customer-terms' && (
-          <div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px'
-            }}>
-              <h4 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: 0
-              }}>
-                Customer Terms
-              </h4>
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  Customer Terms
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={addCustomerTerms}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#059669';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#10b981';
-                }}
+                disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                className={`px-4 py-2 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                  !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
+                }`}
               >
-                <span>+</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
                 Add Terms
               </button>
             </div>
 
             {customerTerms.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px',
-                color: '#6b7280',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '2px dashed #d1d5db'
-              }}>
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>📋</div>
-                <p>No customer terms added yet. Click &quot;Add Terms&quot; to get started.</p>
+              <div className="text-center py-12 px-6 bg-gradient-to-br from-gray-50 to-white border-2 border-dashed border-gray-300 rounded-xl">
+                <div className="text-4xl mb-4">📋</div>
+                <p className="text-gray-600 font-medium">No customer terms added yet. Click &quot;Add Terms&quot; to get started.</p>
               </div>
             ) : (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '16px',
-                maxHeight: '400px',
-                overflowY: 'auto',
-                paddingRight: '8px'
-              }}>
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                 {customerTerms.map((term, index) => (
-                  <div key={index} style={{
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    backgroundColor: 'white'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '16px'
-                    }}>
-                      <h5 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        margin: 0
-                      }}>
+                  <div key={index} className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-200">
+                    <div className="flex justify-between items-center mb-4">
+                      <h5 className="text-base font-bold text-gray-900">
                         {term.termsName || 'Unnamed Terms'}
                       </h5>
                       <button
                         type="button"
                         onClick={() => removeCustomerTerms(index)}
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#b91c1c';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                        }}
+                        disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                        className={`p-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 flex items-center justify-center ${
+                          !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                            ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
+                            : 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105'
+                        }`}
+                        title="Remove"
                       >
-                        <span>🗑️</span>
-                        Remove
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '4px'
-                        }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="group">
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
                           Days
                         </label>
-                        <div style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          backgroundColor: '#f9fafb',
-                          color: '#374151'
-                        }}>
+                        <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-700 font-medium shadow-sm">
                           {term.days || 0}
                         </div>
                       </div>
@@ -1183,164 +1041,82 @@ export default function CustomerForm({
 
         {/* Product Deals Tab */}
         {activeInnerTab === 'product-deals' && (
-          <div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px'
-            }}>
-              <h4 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: 0
-              }}>
-                Product Deals
-              </h4>
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-to-br from-orange-500 to-amber-600 rounded-lg shadow-md">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
+                  Product Deals
+                </h3>
+              </div>
               <button
                 type="button"
                 onClick={addCustomerDeals}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#059669';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#10b981';
-                }}
+                disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                className={`px-4 py-2 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 flex items-center gap-2 ${
+                  !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                    ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
+                    : 'bg-gradient-to-r from-green-500 to-emerald-600 shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 hover:from-green-600 hover:to-emerald-700 transform hover:scale-105'
+                }`}
               >
-                <span>+</span>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
                 Add Deal
               </button>
             </div>
 
             {customerDeals.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px',
-                color: '#6b7280',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '2px dashed #d1d5db'
-              }}>
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎯</div>
-                <p>No customer deals added yet. Click &quot;Add Deal&quot; to get started.</p>
+              <div className="text-center py-12 px-6 bg-gradient-to-br from-gray-50 to-white border-2 border-dashed border-gray-300 rounded-xl">
+                <div className="text-4xl mb-4">🎯</div>
+                <p className="text-gray-600 font-medium">No customer deals added yet. Click &quot;Add Deal&quot; to get started.</p>
               </div>
             ) : (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '16px',
-                maxHeight: '400px',
-                overflowY: 'auto',
-                paddingRight: '8px'
-              }}>
+              <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
                 {customerDeals.map((deal, index) => (
-                  <div key={index} style={{
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    backgroundColor: 'white'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '16px'
-                    }}>
-                      <h5 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        margin: 0
-                      }}>
+                  <div key={index} className="bg-gradient-to-br from-white to-gray-50 border-2 border-gray-200 rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-200">
+                    <div className="flex justify-between items-center mb-4">
+                      <h5 className="text-base font-bold text-gray-900">
                         {deal.productName && deal.productName !== deal.productDealName ? `${deal.productName} - ${deal.productDealName || 'Unnamed Deal'}` : (deal.productDealName || 'Unnamed Deal')}
                       </h5>
                       <button
                         type="button"
                         onClick={() => removeCustomerDeals(index)}
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#b91c1c';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                        }}
+                        disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                        className={`p-2 text-white font-semibold rounded-lg shadow-md transition-all duration-200 flex items-center justify-center ${
+                          !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                            ? 'bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed opacity-60'
+                            : 'bg-gradient-to-r from-red-500 to-red-600 shadow-red-500/30 hover:shadow-lg hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105'
+                        }`}
+                        title="Remove"
                       >
-                        <span>🗑️</span>
-                        Remove
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                     
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '4px'
-                        }}>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="group">
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-orange-500 rounded-full"></span>
                           Minimum Quantity
                         </label>
-                        <div style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          backgroundColor: '#f9fafb',
-                          color: '#374151'
-                        }}>
+                        <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-700 font-medium shadow-sm">
                           {deal.minQty || 0}
                         </div>
                       </div>
                       
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '4px'
-                        }}>
+                      <div className="group">
+                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
                           Additional Quantity
                         </label>
-                        <div style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          backgroundColor: '#f9fafb',
-                          color: '#374151'
-                        }}>
+                        <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gradient-to-br from-gray-50 to-white text-gray-700 font-medium shadow-sm">
                           {deal.additionalQty || 0}
                         </div>
                       </div>
@@ -1351,115 +1127,55 @@ export default function CustomerForm({
             )}
           </div>
         )}
-      </div>
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginTop: '24px'
-      }}>
-        {/* Hide all buttons on approval tab - let modal handle buttons */}
-        {activeTab === 'approval' ? (
-          <div></div>
-        ) : (
-          <>
-            {!isCreateMode && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onDelete();
-            }}
-            disabled={selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: selectedCustomer?.status !== StatusEnum.ACTIVE ? 'transparent' : '#dc2626',
-              color: selectedCustomer?.status !== StatusEnum.ACTIVE ? '#9ca3af' : 'white',
-              border: selectedCustomer?.status !== StatusEnum.ACTIVE ? '1px solid #d1d5db' : 'none',
-              borderRadius: '6px',
-              cursor: selectedCustomer?.status !== StatusEnum.ACTIVE ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: selectedCustomer?.status !== StatusEnum.ACTIVE ? 0.5 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (selectedCustomer?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#b91c1c';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (selectedCustomer?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#dc2626';
-              }
-            }}
-          >
-            Delete
-          </button>
+        {/* Action Buttons */}
+        {activeTab !== 'approval' && activeInnerTab === 'record-details' && (
+          <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gradient-to-r from-gray-200 to-gray-100">
+            {!isCreateMode && selectedCustomer?.status === StatusEnum.ACTIVE ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold rounded-xl shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+              </button>
+            ) : (
+              <div></div>
+            )}
+            
+            <div className="flex gap-3 items-center">
+              {(isCreateMode || selectedCustomer?.status === StatusEnum.ACTIVE) && (
+                <button
+                  type="submit"
+                  className="px-6 py-3 font-semibold rounded-xl shadow-lg transform transition-all duration-200 flex items-center gap-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-blue-500/30 hover:shadow-xl hover:shadow-blue-500/40 hover:from-blue-600 hover:to-indigo-700 hover:scale-105"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isCreateMode ? 'Create Customer' : 'Save Changes'}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onCancel}
+                className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
-        
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          marginLeft: 'auto'
-        }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: 'transparent',
-              color: '#6b7280',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 0.7 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (isCreateMode || selectedCustomer?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (isCreateMode || selectedCustomer?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-              }
-            }}
-          >
-            {isCreateMode ? 'Create Customer' : 'Save Changes'}
-          </button>
-        </div>
-          </>
-        )}
-       </div>
+      </div>
      </form>
 
      {/* Searchable Selection Modals */}
