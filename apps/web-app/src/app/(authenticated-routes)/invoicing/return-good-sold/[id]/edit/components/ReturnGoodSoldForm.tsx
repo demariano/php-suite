@@ -2,7 +2,6 @@
 
 import { ReturnGoodSoldDto, StatusEnum, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import ActivityLogsTab from './ActivityLogsTab';
 import InvoiceDetailsTab from './InvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
 
