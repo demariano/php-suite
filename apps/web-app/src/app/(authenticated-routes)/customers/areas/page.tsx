@@ -113,6 +113,9 @@ export default function CustomerAreasPage() {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery]);
 
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+  const canCreateArea = isAdminUser;
+
   const headers = [
     { key: 'areaName', label: 'NAME' },
     { key: 'status', label: 'STATUS' }
@@ -186,10 +189,10 @@ export default function CustomerAreasPage() {
   }) || [];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
@@ -201,7 +204,7 @@ export default function CustomerAreasPage() {
       )}
 
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -215,44 +218,42 @@ export default function CustomerAreasPage() {
         </nav>
       </div>
 
-      {/* Header */}
-      <div>
-        <AreaHeader
-          searchQuery={searchQuery}
-          onSearchChange={(value: string) => {
-            setSearchQuery(value);
-            // Reset pagination when search query changes
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchQuery('');
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchCustomerAreas();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
+      {/* Header Bar */}
+      <AreaHeader
+        searchQuery={searchQuery}
+        onSearchChange={(value: string) => {
+          setSearchQuery(value);
+          // Reset pagination when search query changes
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchQuery('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchCustomerAreas();
+        }}
+        onCreateClick={handleCreateClick}
+        isLoading={isLoading}
+        canCreate={canCreateArea}
+      />
 
       {/* Table */}
-      <div>
-        <AreaTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchQuery={searchQuery}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchCustomerAreas('prev', prevCursor)}
-          onNext={() => fetchCustomerAreas('next', nextCursor)}
-        />
-      </div>
+      <AreaTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchQuery={searchQuery}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchCustomerAreas('prev', prevCursor)}
+        onNext={() => fetchCustomerAreas('next', nextCursor)}
+      />
     </div>
   );
 }

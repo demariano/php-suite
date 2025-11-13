@@ -9,6 +9,7 @@ export interface CustomerTypeDto {
     status?: StatusEnum;
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    changeReason?: string;
 }
 
 export interface CreateCustomerTypeDto {

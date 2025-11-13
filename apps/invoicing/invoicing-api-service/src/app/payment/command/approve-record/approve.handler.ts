@@ -95,13 +95,14 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
     private async approvePayment(existingRecord: PaymentDto, user: UserCognito): Promise<ResponseDto<PaymentDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Payment approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
@@ -117,8 +118,10 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         existingRecord.chequeClearStatus = forApprovalVersion.chequeClearStatus as ChequeClearStatusEnum;
         existingRecord.paymentDetails = forApprovalVersion.paymentDetails as PaymentDetailsDto[];
         existingRecord.paymentInvoiceDetails = forApprovalVersion.paymentInvoiceDetails as PaymentInvoiceDetailsDto[];
-        existingRecord.changeReason = null;
+        // Clear forApprovalVersion (set to {})
         existingRecord.forApprovalVersion = {};
+        // Reset changeReason to null (NOT undefined) AFTER applying forApprovalVersion
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.paymentDatabaseService.updateRecord(existingRecord);
@@ -131,6 +134,8 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
      * Approves deletion of a payment
      */
     private async approveDeletion(existingRecord: PaymentDto): Promise<ResponseDto<PaymentDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
         await this.paymentDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Payment deletion approved: ${existingRecord.paymentId}`);

@@ -86,15 +86,19 @@ export class DenySalesTypeHandler implements ICommandHandler<DenySalesTypeComman
     private async denySalesType(existingRecord: SalesTypeDto, user: any): Promise<ResponseDto<SalesTypeDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Sales type denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        
+        // Clear forApprovalVersion first, then reset changeReason
         existingRecord.forApprovalVersion = {};
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);
@@ -107,9 +111,21 @@ export class DenySalesTypeHandler implements ICommandHandler<DenySalesTypeComman
      * Denies deletion of a sales type
      */
     private async denyDeletion(existingRecord: SalesTypeDto): Promise<ResponseDto<SalesTypeDto>> {
-        this.logger.log(`Sales type deletion denied: ${existingRecord.salesTypeId}`);
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Sales type deletion denied, status reverted to ${StatusEnum.ACTIVE}`
+        );
+        
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        
         const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);
+        this.logger.log(`Sales type deletion denied: ${existingRecord.salesTypeId}`);
         return new ResponseDto<SalesTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }
 

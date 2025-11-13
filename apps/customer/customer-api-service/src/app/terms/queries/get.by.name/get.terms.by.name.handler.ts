@@ -57,7 +57,7 @@ export class GetTermsByNameHandler implements IQueryHandler<GetTermsByNameQuery>
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<TermsDto>> {
-        const terms = await this.termsDatabaseService.findRecordContainingName(limit, name, direction, cursorPointer);
+        const terms = await this.termsDatabaseService.findRecordsByNamePagination(limit, direction, cursorPointer, name);
 
         if (!terms || terms.data.length === 0) {
             return new PageDto<TermsDto>([], null, null);

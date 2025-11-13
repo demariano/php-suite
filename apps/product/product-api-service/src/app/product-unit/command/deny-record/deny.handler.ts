@@ -82,34 +82,60 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
     }
 
     /**
-     * Approves a product unit for approval
+     * Denies a product unit for approval
      */
     private async denyProductUnit(
         existingRecord: ProductUnitDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductUnitDto>> {
-        // Update status and add activity log
-        existingRecord.status = StatusEnum.ACTIVE;
-        existingRecord.activityLogs.push(`Product unit denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`);
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        // Clear forApprovalVersion
         existingRecord.forApprovalVersion = {};
+
+        // Reset changeReason to null after clearing forApprovalVersion
+        existingRecord.changeReason = null;
+
+        // Revert to ACTIVE status
+        existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product unit denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         // Update record in database
         const updatedRecord = await this.productUnitDatabaseService.updateRecord(existingRecord);
 
-        this.logger.log(`Product unit approved successfully: ${existingRecord.productUnitId}`);
+        this.logger.log(`Product unit denied successfully: ${existingRecord.productUnitId}`);
         return new ResponseDto<ProductUnitDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
-     * Approves deletion of a product unit
+     * Denies deletion of a product unit
      */
     private async denyDeletion(existingRecord: ProductUnitDto): Promise<ResponseDto<ProductUnitDto>> {
-        this.logger.log(`Product unit deletion approved: ${existingRecord.productUnitId}`);
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
+
+        // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product unit deletion denied`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+        // Update record in database
         const updatedRecord = await this.productUnitDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product unit deletion denied: ${existingRecord.productUnitId}`);
         return new ResponseDto<ProductUnitDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -117,6 +143,9 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
      * Deletes a product unit when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: ProductUnitDto): Promise<ResponseDto<ProductUnitDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+
         this.logger.log(`Product unit deleted: ${existingRecord.productUnitId}`);
         await this.productUnitDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<ProductUnitDto>(existingRecord, HTTP_STATUS_OK);

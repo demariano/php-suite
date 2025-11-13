@@ -86,13 +86,14 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
     private async approveInvoice(existingRecord: InvoiceDto, user: UserCognito): Promise<ResponseDto<InvoiceDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Invoice approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
@@ -119,6 +120,7 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         existingRecord.invoiceDetails = forApprovalVersion.invoiceDetails as InvoiceDetailsDto[];
         existingRecord.contractSales = forApprovalVersion.contractSales as boolean;
         existingRecord.forApprovalVersion = {};
+        // Reset changeReason to null AFTER applying forApprovalVersion
         existingRecord.changeReason = null;
 
         // Update record in database

@@ -3,7 +3,7 @@
 import { extractErrorMessage, ProductApi, ProductDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import ProductForm from '../[id]/edit/components/ProductForm';
+import ProductForm from '../components/ProductForm';
 
 export default function CreateProductPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -79,27 +79,25 @@ export default function CreateProductPage() {
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Breadcrumbs */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
+    <div className="p-4 sm:p-6 space-y-6">
+      <div>
+        <nav className="flex items-center gap-2 text-sm text-gray-500">
+          <a href="/dashboard" className="text-blue-600 hover:text-blue-700">
             Home
           </a>
-          <span className="text-gray-400">/</span>
-          <a href="/products" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
+          <span>/</span>
+          <a href="/products" className="text-blue-600 hover:text-blue-700">
             Products
           </a>
-          <span className="text-gray-400">/</span>
-          <a href="/products/product" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
+          <span>/</span>
+          <a href="/products/product" className="text-blue-600 hover:text-blue-700">
             Product
           </a>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Create</span>
+          <span>/</span>
+          <span className="text-gray-800 font-medium">Create</span>
         </nav>
       </div>
 
-      {/* Product Form */}
       <ProductForm
         isCreateMode={true}
         selectedProduct={null}
@@ -107,7 +105,7 @@ export default function CreateProductPage() {
         isAdminUser={isAdminUser}
         isLoading={isLoading}
         activeTab="details"
-        onTabChange={() => {}} // Not used in create mode
+        onTabChange={() => {}}
         onSave={handleSave}
         onDelete={handleDelete}
         onApprove={handleApprove}

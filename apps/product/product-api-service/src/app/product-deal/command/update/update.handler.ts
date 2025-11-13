@@ -1,5 +1,6 @@
 import { ErrorResponseDto, ProductDealDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductDealDatabaseServiceAbstract } from '@product-database-service';
@@ -30,9 +31,6 @@ export class UpdateProductDealHandler implements ICommandHandler<UpdateProductDe
 
             // Update status and activity logs based on permissions
             this.updateProductDealStatus(existingRecord, command, hasApprovalPermission);
-
-            // Optimize activity logs
-            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
             // Update record in database
             const updatedRecord = await this.productDealDatabaseService.updateRecord(existingRecord);
@@ -82,28 +80,67 @@ export class UpdateProductDealHandler implements ICommandHandler<UpdateProductDe
         hasApprovalPermission: boolean
     ): void {
         if (hasApprovalPermission) {
-            // User can approve directly - set to ACTIVE
+            // User can approve directly - update the existing record
             existingRecord.status = StatusEnum.ACTIVE;
+            existingRecord.productDealName = command.productDealDto.productDealName;
             existingRecord.additionalQty = command.productDealDto.additionalQty;
             existingRecord.minQty = command.productDealDto.minQty;
-            existingRecord.productDealName = command.productDealDto.productDealName;
-            existingRecord.activityLogs.push(
-                `Date: ${new Date().toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila',
-                })}, Product deal updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
-            );
+            // Clear changeReason for admin users since changes are applied directly
+            existingRecord.changeReason = undefined;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product deal updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
+            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
-            // User needs approval - set to FOR_APPROVAL
+            // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            existingRecord.forApprovalVersion = {};
-            existingRecord.forApprovalVersion.productDealName = command.productDealDto.productDealName;
-            existingRecord.forApprovalVersion.additionalQty = command.productDealDto.additionalQty;
-            existingRecord.forApprovalVersion.minQty = command.productDealDto.minQty;
-            existingRecord.activityLogs.push(
-                `Date: ${new Date().toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila',
-                })}, Product deal updated by ${command.user.username} for approval`
-            );
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+
+            // Detect field changes
+            const fieldChanges = detectFieldChanges(existingRecord, command.productDealDto);
+            const formattedChanges = formatFieldChanges(fieldChanges);
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product deal updated by ${command.user.username} for approval`;
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs.push(activityLogMessage);
+
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Preserve user's manually entered changeReason and combine with auto-generated changes
+            const userChangeReason = command.productDealDto.changeReason?.trim();
+            if (userChangeReason && formattedChanges) {
+                // User provided changeReason and we have formatted changes - combine them
+                existingRecord.changeReason = `${userChangeReason}\n\n${formattedChanges}`;
+            } else if (userChangeReason) {
+                // User provided changeReason but no formatted changes - use user's input
+                existingRecord.changeReason = userChangeReason;
+            } else if (formattedChanges) {
+                // No user input but we have formatted changes - use formatted changes
+                existingRecord.changeReason = formattedChanges;
+            } else {
+                // No user input and no formatted changes
+                existingRecord.changeReason = undefined;
+            }
+
+            // Store new values in forApprovalVersion (keep original values in main fields)
+            existingRecord.forApprovalVersion = {
+                ...existingRecord.forApprovalVersion,
+                productDealName: command.productDealDto.productDealName,
+                additionalQty: command.productDealDto.additionalQty,
+                minQty: command.productDealDto.minQty,
+            };
         }
     }
 

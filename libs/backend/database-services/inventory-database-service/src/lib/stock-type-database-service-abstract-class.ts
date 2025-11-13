@@ -5,11 +5,11 @@ export abstract class StockTypeDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<StockTypeDto | null>;
 
-    abstract findRecordContainingName(
+    abstract findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<StockTypeDto>>;
 
     abstract findRecordByName(name: string): Promise<StockTypeDto | null>;

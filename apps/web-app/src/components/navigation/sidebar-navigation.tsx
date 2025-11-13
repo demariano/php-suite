@@ -50,25 +50,25 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
             },
             { 
               label: "Classes", 
-              route: "/products/classes", 
+              route: "/products/product-class", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
             },
             { 
               label: "Units", 
-              route: "/products/units", 
+              route: "/products/product-unit", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
             },
             { 
               label: "Price Types", 
-              route: "/products/price-types", 
+              route: "/products/product-price-type", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
             },
             { 
               label: "Deals", 
-              route: "/products/deals", 
+              route: "/products/product-deal", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
             }

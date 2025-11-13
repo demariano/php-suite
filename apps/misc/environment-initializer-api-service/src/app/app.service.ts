@@ -372,12 +372,14 @@ export class AppService {
         const townData = new TownDto();
         townData.townName = 'Town 1';
         townData.areaId = areaRecord1.areaId;
+        townData.areaName = areaRecord1.areaName;
         townData.status = StatusEnum.ACTIVE;
         const townRecord1 = await this.townDatabaseService.createRecord(townData);
 
         const townData2 = new TownDto();
         townData2.townName = 'Town 2';
         townData2.areaId = areaRecord2.areaId;
+        townData2.areaName = areaRecord2.areaName;
         townData2.status = StatusEnum.ACTIVE;
         const townRecord2 = await this.townDatabaseService.createRecord(townData2);
 

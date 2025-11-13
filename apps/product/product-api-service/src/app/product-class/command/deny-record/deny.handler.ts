@@ -85,36 +85,60 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
     }
 
     /**
-     * Approves a product class for approval
+     * Denies a product class for approval
      */
     private async denyProductClass(
         existingRecord: ProductClassDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductClassDto>> {
-        // Update status and add activity log
-        existingRecord.status = StatusEnum.ACTIVE;
-        existingRecord.activityLogs.push(
-            `Product class denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
-        );
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        // Clear forApprovalVersion
         existingRecord.forApprovalVersion = {};
+
+        // Reset changeReason to null after clearing forApprovalVersion
+        existingRecord.changeReason = null;
+
+        // Revert to ACTIVE status
+        existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product class denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         // Update record in database
         const updatedRecord = await this.productClassDatabaseService.updateRecord(existingRecord);
 
-        this.logger.log(`Product class approved successfully: ${existingRecord.productClassId}`);
+        this.logger.log(`Product class denied successfully: ${existingRecord.productClassId}`);
         return new ResponseDto<ProductClassDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
-     * Approves deletion of a product class
+     * Denies deletion of a product class
      */
     private async denyDeletion(existingRecord: ProductClassDto): Promise<ResponseDto<ProductClassDto>> {
-        this.logger.log(`Product class deletion approved: ${existingRecord.productClassId}`);
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
+
+        // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product class deletion denied`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+        // Update record in database
         const updatedRecord = await this.productClassDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product class deletion denied: ${existingRecord.productClassId}`);
         return new ResponseDto<ProductClassDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -122,6 +146,9 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
      * Deletes a product class when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: ProductClassDto): Promise<ResponseDto<ProductClassDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+
         this.logger.log(`Product class deleted: ${existingRecord.productClassId}`);
         await this.productClassDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<ProductClassDto>(existingRecord, HTTP_STATUS_OK);

@@ -15,6 +15,7 @@ export interface SalesTypeDto {
     taxable?: boolean;
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    changeReason?: string;
 }
 
 export interface CreateSalesTypeDto {

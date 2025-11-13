@@ -23,10 +23,10 @@ export const ROUTES = {
     // Product Management
     PRODUCTS: '/products',
     PRODUCT_CATEGORIES: '/products/categories',
-    PRODUCT_CLASSES: '/products/classes',
-    PRODUCT_UNITS: '/products/units',
-    PRODUCT_PRICE_TYPES: '/products/price-types',
-    PRODUCT_DEALS: '/products/deals',
+    PRODUCT_CLASSES: '/products/product-class',
+    PRODUCT_UNITS: '/products/product-unit',
+    PRODUCT_PRICE_TYPES: '/products/product-price-type',
+    PRODUCT_DEALS: '/products/product-deal',
 
     // Customer Management
     CUSTOMERS: '/customers',

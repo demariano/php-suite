@@ -32,7 +32,7 @@ class ContractApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
-        return await this.axiosInstance.get(`/contract?${params.toString()}`);
+        return await this.axiosInstance.get(`/contracts?${params.toString()}`);
     };
 
     public getContractsByStatus = async (
@@ -59,15 +59,15 @@ class ContractApi extends AxiosConfig {
             params.append('customerId', customerId);
         }
 
-        return await this.axiosInstance.get(`/contract/status?${params.toString()}`);
+        return await this.axiosInstance.get(`/contracts/status?${params.toString()}`);
     };
 
     public getContractById = async (id: string): Promise<ContractDto> => {
-        return await this.axiosInstance.get(`/contract/${id}`);
+        return await this.axiosInstance.get(`/contracts/${id}`);
     };
 
     public getContractByContractNo = async (contractNo: string): Promise<ContractDto> => {
-        return await this.axiosInstance.get(`/contract/no/${contractNo}`);
+        return await this.axiosInstance.get(`/contracts/no/${contractNo}`);
     };
 
     public getContractsContainingContractNo = async (
@@ -88,7 +88,7 @@ class ContractApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
-        return await this.axiosInstance.get(`/contract/search/${contractNo}?${params.toString()}`);
+        return await this.axiosInstance.get(`/contracts/search/${contractNo}?${params.toString()}`);
     };
 
     public getContractsByCustomerId = async (
@@ -109,11 +109,11 @@ class ContractApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
-        return await this.axiosInstance.get(`/contract/customer/${customerId}?${params.toString()}`);
+        return await this.axiosInstance.get(`/contracts/customer/${customerId}?${params.toString()}`);
     };
 
     public getPendingPaymentContracts = async (customerId: string): Promise<ContractDto[]> => {
-        return await this.axiosInstance.get(`/contract/customer/${customerId}/pending-payment`);
+        return await this.axiosInstance.get(`/contracts/customer/${customerId}/pending-payment`);
     };
 
     public createContract = async (contract: CreateContractDto, userRole?: string): Promise<ContractDto> => {
@@ -124,7 +124,7 @@ class ContractApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/contract?${queryString}` : '/contract';
+        const url = queryString ? `/contracts?${queryString}` : '/contracts';
 
         return await this.axiosInstance.post(url, contract);
     };
@@ -141,7 +141,7 @@ class ContractApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/contract/${id}?${queryString}` : `/contract/${id}`;
+        const url = queryString ? `/contracts/${id}?${queryString}` : `/contracts/${id}`;
 
         return await this.axiosInstance.put(url, contract);
     };
@@ -155,8 +155,8 @@ class ContractApi extends AxiosConfig {
 
         const queryString = params.toString();
         const url = queryString
-            ? `/contract/${contract.contractId}?${queryString}`
-            : `/contract/${contract.contractId}`;
+            ? `/contracts/${contract.contractId}?${queryString}`
+            : `/contracts/${contract.contractId}`;
 
         return await this.axiosInstance.delete(url, { data: contract });
     };
@@ -169,7 +169,7 @@ class ContractApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/contract/${id}/approve?${queryString}` : `/contract/${id}/approve`;
+        const url = queryString ? `/contracts/${id}/approve?${queryString}` : `/contracts/${id}/approve`;
 
         return await this.axiosInstance.post(url);
     };
@@ -182,7 +182,7 @@ class ContractApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/contract/${id}/deny?${queryString}` : `/contract/${id}/deny`;
+        const url = queryString ? `/contracts/${id}/deny?${queryString}` : `/contracts/${id}/deny`;
 
         return await this.axiosInstance.post(url);
     };

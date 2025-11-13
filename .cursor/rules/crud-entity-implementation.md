@@ -4,6 +4,44 @@
 
 This document captures the complete implementation patterns from the customer module to guide implementation of similar CRUD operations for other entities. The patterns cover backend database services, API handlers, DTOs, frontend API calls, and UI/UX components.
 
+**IMPORTANT: Mobile-First Approach**: All UI components MUST be mobile responsive following the patterns established in the Customer module. Every section in this document includes mobile responsiveness requirements. When implementing a new entity, use the Customer module (`apps/web-app/src/app/(authenticated-routes)/customers/customer/`) as the reference implementation for mobile patterns.
+
+### How to Use This Guide
+
+1. **Start with the workflow map (Table&nbsp;1)** to understand the order of execution from schema design to UI polish.  
+2. **Complete each layer sequentially** (Sections 1 → 4 → 5), using the naming/table references to derive file paths and symbol names deterministically.  
+3. **Consult Business Logic tables (Section 6)** whenever a rule depends on role, status, or approval state.  
+4. **Run through the Implementation Checklist (Section 7)** and confirm every item by cross-checking the referenced section anchors.  
+5. **Use Important Notes (Section 8)** as runtime assertions—if any note cannot be satisfied, pause and correct the earlier steps.
+
+### Table 1. End-to-End Workflow Snapshot
+
+| Stage | Section Reference | Primary Output | Required File/Folder Pattern |
+| --- | --- | --- | --- |
+| Schema & DB contract | §1.1–§1.4 | `{Entity}Schema`, DTO conversions | `libs/backend/dynamo-db-lib/src/lib/schema/{Entity}Schema.ts` |
+| Database service API | §1.2–§1.8 | `{entity}-database-service.ts` with pagination/filter methods | `libs/backend/database-services/{entity}-database-service/` |
+| CQRS command/query surface | §2.2–§2.3 | `create/update/delete/approve/deny` handlers + queries | `apps/{entity}/{entity}-api-service/src/app/{entity}/**/*` |
+| Transport & DTOs | §3 | Shared DTOs + frontend types | `libs/dto/src/lib/{entity}/**/*`, `libs/frontend/data-access/src/types/{entity}.types.ts` |
+| Frontend data access | §4 | `{Entity}MainApi` class | `libs/frontend/data-access/src/api/{entity}-main.api.ts` |
+| UI composition | §5 | Page, form, modal, tab components | `apps/web-app/src/app/(authenticated-routes)/{entities}/{entity}/**/*` |
+| Business rules | §6 | Status + permission enforcement | Referenced inside handlers/forms |
+| Final validation | §7 | Completed checklist | N/A (apply to repo state) |
+
+### Naming & Placeholder Conventions
+
+| Placeholder | Expected Transform | Example Input → Output |
+| --- | --- | --- |
+| `{Entity}` | PascalCase singular | `customer` → `Customer` |
+| `{entity}` | camelCase singular | `customer` → `customer` |
+| `{Entities}` | PascalCase plural | `customer` → `Customers` |
+| `{entities}` | kebab-case plural folder segment | `customer` → `customers` |
+| `{entityId}` | camelCase identifier | `customer` → `customerId` |
+| `{Entity}Schema.ts` | PascalCase file | `customer` → `CustomerSchema.ts` |
+| `{entity}-api-service` | kebab-case app name | `area` → `area-api-service` |
+| Status enum values | Upper snake case with display text via `getStatusText()` | `FOR_APPROVAL` → `"For Approval"` |
+
+Always derive new symbols using the transforms above; never invent additional casing rules. When generating files, ensure directory names match the plural kebab-case form (`{entities}`) and filenames consistently reuse the PascalCase or kebab-case variant listed here.
+
 ## 1. Database Services Layer
 
 ### 1.1 Schema Definition
@@ -36,9 +74,9 @@ This document captures the complete implementation patterns from the customer mo
   - `findAllEntitiesBy{RelatedEntity}Id(id: string): Promise<EntityDto[]>` (for relationships, non-paginated)
   - `deleteRecord(dto: EntityDto): Promise<EntityDto>`
   - `deleteAllRecords(): Promise<void>`
-  - `convertToDto(record): Promise<EntityDto>` - Must map `changeReason` from database record: `changeReason: record.changeReason ? record.changeReason : undefined`
+  - `convertToDto(record): Promise<EntityDto>` - **CRITICAL**: Must map `changeReason` from database record. If TypeScript doesn't recognize `changeReason` on the record type, use type assertion: `changeReason: (record as EntityDataType & { changeReason?: string }).changeReason || undefined`
   - `convertToDtoList(records): Promise<EntityDto[]>`
-  - `convertToDataType(dto): Promise<EntityDataType>` - Must include `changeReason` in the data type: `changeReason: dto.changeReason`
+  - `convertToDataType(dto): Promise<EntityDataType>` - **CRITICAL**: Must include `changeReason` in the data type: `changeReason: dto.changeReason`. This ensures the field is persisted to the database.
 
 ### 1.3 Create Method - Index Setup
 
@@ -56,10 +94,11 @@ GSI3SK: dto.nameField,
 
 ### 1.4 Update Method - Index Setup
 
-When updating, ensure all indexes are updated in `convertToDataType`:
+When updating, ensure all indexes are updated in `updateRecord` method:
 
 - Recalculate all GSI values based on current field values
 - Maintain consistency with create method pattern
+- **CRITICAL**: Explicitly set `changeReason` on the record before calling `update()`: `record.changeReason = dto.changeReason`. This ensures the field is persisted even if `convertToDataType` is called separately.
 
 ### 1.5 Delete Methods
 
@@ -327,7 +366,7 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 ### 5.1 Table Page
 
 - Location: `apps/web-app/src/app/(authenticated-routes)/{entities}/{entity}/page.tsx`
-- Main container: `<div className="p-6 space-y-6">` (NOT full-width gradient background)
+- Main container: `<div className="p-4 sm:p-6 space-y-6">` (NOT full-width gradient background)
 - **IMPORTANT**: Page should NOT use full-width background gradients or any gradient styling. Use solid colors only.
 - State management:
   - `isLoading`, `error`, `entities` array
@@ -364,12 +403,17 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - `onSearchChange: (value: string) => void`
   - `onRefresh: () => void`
   - `onCreateClick: () => void`
+  - Optional `isLoading` + `canCreate` flags keep APIs aligned with Area patterns.
 - Structure:
-  - Container: `<div className="flex items-center justify-between">`
-  - Search section: `<div className="flex items-center gap-3 flex-1 max-w-md">`
+  - Wrapper: `<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">`
+  - Search cluster: `<div className="flex w-full items-center gap-3 sm:flex-1 sm:max-w-md">`
   - Input: Use `<Input>` component with `leftIcon={Search}` and `placeholder="Filter {entities}"`
-  - Refresh button: `<button className="p-2 hover:bg-gray-100 rounded-md transition-colors duration-200 border border-gray-300 bg-white">` with refresh SVG icon
-  - Create button: `<button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">` with `<Add size={18} />` icon
+  - Refresh button: `<button type="button" className="p-2 rounded-md border border-gray-300 bg-white transition-colors duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60">` with refresh SVG icon
+  - Create button: `<button className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">` with `<Add size={18} />` icon
+- Button logic:
+  - Render the refresh button flush right within the search cluster and keep it always visible; disable it (via `disabled`, `aria-disabled`) while `isLoading` to prevent double fetches.
+  - Place the create button after the search cluster; show it only when the signed-in user has create permission (e.g., `permissions.canCreate{Entity}` or user role ADMIN/SUPER_ADMIN). Hide it entirely for read-only users instead of disabling.
+  - When the header supports BYPASS_AUTH, pass `userRole` from the parent into both refresh and create handlers so button clicks always respect the selected role.
 
 #### 5.1.2 Table Component
 
@@ -387,27 +431,32 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - `onPrevious: () => void`
   - `onNext: () => void`
 - Styling:
-  - Table container: `<div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">`
+  - Desktop table container: `<div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">`
+  - Mobile list container: `<div className="sm:hidden space-y-4">` where each record renders as `<div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-2">`
   - Table header: `<thead className="bg-blue-600 border-b border-blue-700">`
   - Header cells: `<th className="px-6 py-4 text-left text-white font-semibold text-xs uppercase tracking-wider">`
   - Table rows: `<tr className="cursor-pointer transition-all duration-200 bg-white hover:bg-gray-50">`
   - Table cells: `<td className="px-6 py-5 text-sm font-medium text-gray-900">` or `text-gray-600` for secondary data
-  - Pagination container: `<div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-6 py-4 shadow-sm mt-6">`
-  - Pagination buttons: Use disabled states with gray styling (`border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50` when disabled)
+  - Pagination container: `<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm mt-6">`
+  - Pagination buttons: Use disabled states with gray styling (`border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50` when disabled) and stack inside `<div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">`
+- Button logic:
+  - Keep the table body free of inline action buttons; rely on `onRowClick` to open the edit page so the entire row acts as the call-to-action.
+  - In the pagination footer place the `Previous` button on the left and the `Next` button on the right; disable (`disabled` + subdued styling) when `prevCursor` or `nextCursor` is falsy respectively.
+  - Surface a compact page-size selector (if enabled) between the pagination buttons; changes should immediately call `onPageSizeChange` and reset the cursor pointers.
 
 ### 5.2 Detail/Edit Page
 
 - Location: `apps/web-app/src/app/(authenticated-routes)/{entities}/{entity}/[id]/edit/page.tsx`
-- Main container: `<div className="p-6 space-y-6">`
+- Main container: `<div className="p-4 sm:p-6 space-y-6">`
 - Form wrapper: `<div className="flex justify-center">`
-- Card container: `<div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">`
+- Card container: `<div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">`
 - Tabs:
   - Details tab: Main form (named after entity with status, e.g., "Customer Information - Active", "Area Information - For Approval")
   - Approval tab: Only shown when status is not ACTIVE (shows pending changes)
   - Activity Logs tab: Shows activity logs array
 - Tab Navigation:
-  - Container: `<div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2">`
-  - Buttons container: `<div className="flex gap-2">`
+  - Container: `<div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">`
+  - Buttons container: `<div className="flex gap-2 flex-nowrap">`
   - **Main Details Tab**:
     - Tab name format: `"{Entity} Information - {Status}"` (e.g., "Customer Information - Active")
     - Status shown as plain text in tab name (no badge)
@@ -417,6 +466,7 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
       - FOR_DELETION: `bg-red-600 text-white shadow-sm`
       - NEW_RECORD: `bg-blue-600 text-white shadow-sm`
     - Inactive state: `bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900`
+    - Button class should include `flex-shrink-0` so tabs stay readable on narrow screens.
     - Helper functions required:
       - `getStatusText(status: StatusEnum): string` - Converts status enum to readable text
       - `getTabColorClasses(status: StatusEnum, isActive: boolean): string` - Returns appropriate color classes based on status and active state
@@ -425,7 +475,7 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
     - Inactive tab button: `className="px-5 py-3 rounded-lg font-semibold text-sm bg-white text-gray-600 hover:bg-gray-100 hover:text-blue-600 transition-colors duration-200"`
   - Tab button content: `<span className="flex items-center gap-2">` with SVG icon and text
   - Tab icons: Document icon for details, checkmark icon for approval, list icon for logs
-- Tab content wrapper: `<div className="p-6 bg-white">`
+- Tab content wrapper: `<div className="p-4 sm:p-6 bg-white">`
 - Approval Tab Logic:
   - **FOR_DELETION Status**: When status is FOR_DELETION, `forApprovalVersion` will be empty. Instead of showing approval version fields, display a deletion message:
     - Show a red-themed warning box with deletion icon
@@ -441,11 +491,14 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 - Activity Logs Tab:
   - Display logs in scrollable container
   - Format: Simple list with border separators
-- Button Logic:
-  - Save: Only enabled when status is ACTIVE (for non-admin) or always (for admin)
-  - Delete: Always available (triggers delete confirmation modal)
-  - Approve/Deny: Only shown for admin users when status requires approval
-  - Cancel: Navigate back to list
+- Action bar layout:
+  - Render a footer action bar inside the tab content using `<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-8 pt-6 border-t-2 border-gray-200">` so buttons stay anchored to the card bottom while stacking naturally on mobile.
+  - Place destructive actions (Delete or Deny) on the first slot of the container and keep primary/secondary actions grouped together (Cancel → Save/Approve). Ensure each button uses `w-full sm:w-auto` so they stretch on phones.
+- Button logic:
+  - Save: Show on the right group for both admins and regular users; disable (`disabled` + `aria-disabled`) when the form is pristine or when a submit mutation is pending. For non-admins disable whenever `status !== StatusEnum.ACTIVE`.
+  - Delete: Render on the left only when the record exists (`!isCreateMode`) and the current status is `ACTIVE`. Clicking must trigger the delete confirmation modal and never run delete immediately.
+  - Approve/Deny: Only show for admin users when the current status is `NEW_RECORD`, `FOR_APPROVAL`, or `FOR_DELETION`. Use context-specific button labels (`Approve Changes`, `Approve Deletion`, etc.) and disable while mutation is in-flight.
+  - Cancel: Always visible on the right group; cancel navigates back to the list and should close any pending modals before routing.
 
 #### 5.2.1 Approval Tab Implementation
 
@@ -471,17 +524,21 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - Header: Icon + title with solid color styling
   - Content: `<div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-500 font-medium shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">`
 - Section structure:
-  - Container: `<div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-white shadow-sm">`
+  - Container: `<div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-4 sm:p-6 bg-white shadow-sm">`
   - Section header: `<div className="border-2 border-gray-200 rounded-xl p-4">` with icon box and solid color title
   - Field grid: `<div className="grid grid-cols-1 md:grid-cols-2 gap-6">`
 - Read-only field styling:
   - Changed field: `border-blue-500 bg-blue-50 text-gray-700`
   - Unchanged field: `border-gray-200 bg-gray-50 text-gray-500`
 - Action buttons:
-  - Container: `<div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">`
-  - Deny button: `className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"`
-  - Approve button: `className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors duration-200 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"`
-  - Cancel button: `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center gap-2"`
+  - Container: `<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-8 pt-6 border-t-2 border-gray-200">`
+  - Deny button: `className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"`
+  - Approve button: `className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"`
+  - Cancel button: `className="w-full sm:w-auto px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center justify-center gap-2"`
+  - Button logic:
+    - For `FOR_DELETION`, relabel buttons to `Deny Deletion` / `Approve Deletion`, keep them visible only to admin users, and display the cancel button for all roles.
+    - For `FOR_APPROVAL` and `NEW_RECORD`, keep the cancel button visible for all roles, render approve/deny buttons only when `isAdminUser` is true, and disable them when no pending changes remain.
+    - Always wire action buttons to close the tab’s local modal state and re-fetch entity data after the command bus resolves.
 
 #### 5.2.2 Activity Logs Tab
 
@@ -493,15 +550,19 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 
 - Location: `apps/web-app/src/app/(authenticated-routes)/{entities}/{entity}/create/page.tsx`
 - Same structure as edit page:
-  - Main container: `<div className="p-6 space-y-6">`
+  - Main container: `<div className="p-4 sm:p-6 space-y-6">`
   - Form wrapper: `<div className="flex justify-center">`
-  - Card container: `<div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">`
-  - Tab navigation container: `<div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2">`
+  - Card container: `<div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">`
+  - Tab navigation container: `<div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">`
   - Only one tab (Details/Information tab)
-  - Tab button is always active (no onClick handler needed, same styling as active tab)
-  - Tab content wrapper: `<div className="p-6 bg-white">`
+  - Tab button is always active (no onClick handler needed, same styling as active tab) and should include `flex-shrink-0` when rendered inside a flex row.
+  - Tab content wrapper: `<div className="p-4 sm:p-6 bg-white">`
   - `isCreateMode={true}`
   - Navigate to list after successful create
+- Button logic:
+  - Use the same footer action bar pattern as the edit page but only render the right-side group with Cancel and Save buttons.
+  - Cancel: Always visible; returns to the entity list without saving.
+  - Save: Enabled once required fields pass validation; disable and show a loading indicator while the create mutation is in progress.
 
 ### 5.4 Form Component
 
@@ -516,6 +577,13 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - `isAdminUser: boolean`
   - `activeTab: 'details' | 'approval'`
   - `{entity}Id?: string` - For fetching related entities (e.g., `areaId` for fetching towns)
+- Form state handling:
+  - Maintain a `userHasMadeSelections` (or similarly named) flag that flips after the user edits any controlled field or selection. Guard the initial hydration `useEffect` with this flag so the form only seeds default values once and never overwrites user-entered data during prop changes or background refreshes.
+  - Keep controlled `formData` state for text/number inputs and ensure any derived field (like computed payload arrays) also lives in component state so validation can run locally before submission.
+  - Store selected related entities as `{ id, name }` objects; this keeps display labels and ids together for quick payload assembly.
+- Submission status rules:
+  - When creating records, follow the approval workflow: default `status` to `NEW_RECORD` for users without approval permission and to `ACTIVE` for admins/super-admins. Let the backend enforce the final state after permission checks instead of forcing every create payload to `ACTIVE`.
+  - When updating records, preserve the incoming `status` unless the command handler explicitly transitions it (e.g., non-admin edits move to `FOR_APPROVAL`); avoid unconditionally resetting to `ACTIVE`.
 
 #### 5.4.1 Status Badge Display
 
@@ -525,22 +593,37 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 
 #### 5.4.2 Section Structure
 
-- Main container: `<div className="space-y-6">`
-- Each section: `<div className="space-y-4">`
-- Section container: `<div className="border-2 border-gray-200 rounded-xl p-4">`
-- Section header:
-  - Container: `<div className="flex items-center gap-3 mb-4">`
-  - Icon box: `<div className="p-2 bg-{color}-600 rounded-lg shadow-sm">` with white SVG icon
-  - Title: `<h3 className="text-base font-bold text-{color}-600">`
-- Field grid: `<div className="grid grid-cols-1 md:grid-cols-2 gap-6">`
-- Field group: `<div className="group">`
-- Label: `<label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">` with colored dot `<span className="w-1.5 h-1.5 bg-{color}-500 rounded-full"></span>`
-- Input: `<input className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200" />`
-- Disabled input: `className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium shadow-sm bg-gray-50 text-gray-500 cursor-not-allowed"`
-- Textarea: Same classes as input
-- Change reason field: Only show for `!isCreateMode && !isAdminUser`
-- Change reason textarea: Same styling as regular textarea
-- Change reason helper text: `<div className="text-xs text-gray-500 mt-2">This field is required when making changes to the {entity} record.</div>`
+Use the canonical blueprint below verbatim for every form section. Adjust only the dynamic props (`icon`, `sectionTitle`, `label`, `disabled`).
+
+```tsx
+<div className="space-y-6">
+  <section className="space-y-4">
+    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+      <header className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">{icon}</div>
+        <h3 className="text-base font-bold text-blue-600 m-0">{sectionTitle}</h3>
+      </header>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="group">
+          <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+            {label}
+          </label>
+          <input
+            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+            disabled={disabled}
+          />
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+```
+
+- Apply `border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed` when `disabled` is true.
+- Mirror the same classes for `<textarea>` elements.
+- Render the change reason block only when `!isCreateMode && !isAdminUser`, using the same container and appending helper text (`"This field is required when making changes to the {entity} record."`).
+- Wrap any wide child content (inner tables, charts, key-value grids) with `<div className="overflow-x-auto">` so the layout stays usable on narrow screens.
 
 #### 5.4.3 Related Entities Integration
 
@@ -549,15 +632,31 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 - Only show in edit mode when `{entity}Id` exists
 - Use same section styling pattern as other sections
 - Display related entities in a table or list within the section
+- Data loading pattern:
+  - Load related collections through dedicated API helpers that can query across the relevant statuses in parallel (e.g., `Promise.all` for ACTIVE, FOR_APPROVAL, FOR_DELETION). Merge the results into a single array before rendering so grouping logic runs on a consistent shape.
+  - Include `NEW_RECORD` in the status fetch set so pending creations appear alongside other states in review flows.
+  - Surface loading spinners, error banners, and empty-state placeholders within the section so the user always understands the fetch status.
+  - Group records by `StatusEnum` before rendering; display each group with a colored heading and reuse the status badge helper to keep styling consistent.
+  - When no related records exist, render a muted informational card rather than an empty table to reinforce that the fetch succeeded.
+- Status badge rendering:
+  - Reuse the same `getStatusText()` helper from the list/table page before printing status labels inside related-entity tables. Do not render raw enum strings (e.g., `FOR_APPROVAL`) directly in the UI.
+- Tabs & secondary panes:
+  - Apply the shared blue accent to every tabbed section (approval details, activity logs, related collections) so the experience stays uniform. When rendering section headers or icon boxes inside these tabs, continue using `bg-blue-600` and `text-blue-600`.
 
 #### 5.4.4 Action Buttons
 
-- Container: `<div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">`
-- Delete button (left side, only when status is ACTIVE): `className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center gap-2"`
+- Container: `<div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">`
+- Delete button (left side, only when status is ACTIVE): `className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"`
 - Delete button onClick: Must call `onDelete()` handler (NOT directly delete), which should show the delete confirmation modal
-- Save button (right side): `className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-sm hover:bg-blue-700 transition-colors duration-200 flex items-center gap-2"`
-- Cancel button (right side, next to Save): `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center gap-2"`
+- When Delete is hidden, use a spacer: `<div className="hidden sm:block" />` to maintain layout on desktop
+- Right-side button group: `<div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">`
+- Save button (inside right group): `className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"`
+- Cancel button (inside right group, next to Save): `className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"`
 - Button icons: Use SVG icons for each button type
+- Visibility rules:
+  - In create mode render only Save and Cancel; hide the Delete button entirely (use spacer on desktop).
+  - When `!isAdminUser` lock Save in disabled state unless `status === StatusEnum.ACTIVE` and the form has changes plus a filled `changeReason`.
+  - Surface additional inline approve/deny buttons from the approval tab via props instead of duplicating them in the form body to avoid conflicting call-to-actions.
 
 #### 5.4.5 Delete Confirmation Modal Component
 
@@ -572,7 +671,7 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - Early return if `!show` or entity is null
 - Structure:
   - Overlay: `<div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] p-4">` (use `z-[1001]` for Area pattern, `z-[1000]` for Customer pattern)
-  - Modal container: `<div className="bg-white rounded-xl p-6 w-full max-w-md shadow-lg">` (add `mx-4` for Customer pattern)
+  - Modal container: `<div className="bg-white rounded-xl p-4 sm:p-6 w-full max-w-md shadow-lg">` (add `mx-4` for Customer pattern)
   - Header section:
     - Container: `<div className="flex items-center gap-3 mb-4">`
     - Warning icon: `<div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-600 text-xl">⚠️</div>`
@@ -581,6 +680,10 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - Buttons container: `<div className="flex gap-3 justify-end">`
   - Cancel button: `className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 flex items-center gap-2"`
   - Delete button: `className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center gap-2"`
+- Button logic:
+  - Keep the Cancel button first in the button group so it sits closest to the dialog edge; it should close the modal without side effects.
+  - Disable the Delete button and show a spinner when the delete mutation is pending to prevent duplicate submissions.
+  - Only render the modal when `show === true` and a valid entity object is supplied; this prevents accidental deletion prompts when the form is still loading.
 
 #### 5.4.6 Form Fields and Validation
 
@@ -592,11 +695,26 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 - Validation:
   - Client-side validation before submit
   - Display validation errors
+  - Deduplicate nested arrays (terms, deals, etc.) by id before submitting; build composite keys (e.g., `productId|productDealId`) when uniqueness depends on multiple fields.
+  - Show validation errors inside a persistent banner near the top of the form. List each issue so the user can resolve them sequentially before resubmitting.
 - Inner Tables (if applicable):
   - Manage arrays (e.g., customerTerms, customerProductDeals)
   - Add/remove functionality
   - Modal for adding items
   - Table display with edit/delete actions
+
+#### 5.4.7 Selection Modal Workflow
+
+- Trigger selection modals from within the form using dedicated buttons or `SelectionField` components; opening the modal should set a `show{Entity}Modal` flag to `true`.
+- When the user confirms a choice, emit the selected record, close the modal, and update the `{ id, name }` pair in form state. Clear any prior validation errors related to missing selections at the same time.
+- Provide a clear mechanism to clear selections (`onClear`) so users can remove mistaken choices; when parent selections change (e.g., choosing a new Area), automatically reset dependent selections (e.g., Town) to avoid stale references.
+- For list-based modals that allow adding multiple items (terms, deals), enforce uniqueness on insert and immediately surface an inline validation message if the user attempts to add a duplicate.
+
+#### 5.4.8 Numeric Field Formatting
+
+- Wrap monetary or numeric inputs with shared formatting hooks (such as `useNumberFormatting`) so values stay human-readable while still posting numeric payloads.
+- The hook should expose `value`, `onChange`, `onBlur`, and `onFocus` handlers that convert between formatted strings and raw numbers; wire these handlers into the controlled input and keep the formatted value in component state.
+- Re-run formatting logic in the form’s hydration effect so persisted decimal values render consistently when editing existing records.
 
 ### 5.5 Table Component
 
@@ -643,40 +761,291 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
   - Show in sections within form
   - Add/Edit/Delete actions per row
 
+### 5.8 Mobile Responsiveness Guidelines
+
+**MANDATORY**: All CRUD flows MUST be mobile responsive. These rules ensure usability on phones and small tablets. **Reference Implementation**: Use the Customer module (`apps/web-app/src/app/(authenticated-routes)/customers/customer/`) as the pattern for all mobile responsive implementations.
+
+Adhere to these rules so CRUD flows remain usable on phones and small tablets:
+
+- **Breakpoints**: Treat Tailwind's `sm:` breakpoint (640px) as the pivot. Default layouts should stack vertically, then fan out via `sm:`/`md:` classes on larger screens. **CRITICAL**: JavaScript media queries MUST use `640px` (not `1024px`) to match Tailwind's `sm:` breakpoint.
+- **Spacing**: Use `p-4 sm:p-6` for cards/sections and keep `space-y-6` wrappers to preserve breathing room on small screens. Never use fixed `p-6` without responsive variants.
+- **Headers**: Wrap header bars with `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`. Make CTA buttons `w-full sm:w-auto` and keep refresh buttons accessible with `disabled:cursor-not-allowed disabled:opacity-60`.
+- **Buttons**: Group action bars with `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between` so buttons stack on mobile and align horizontally on desktop. Individual buttons should use `w-full sm:w-auto`. Ensure touch targets (`py-3 px-4`) meet the 44px guideline.
+- **Tables**: Pair a desktop table (`hidden sm:block overflow-x-auto`) with a mobile card list (`sm:hidden space-y-4`). Display label/value pairs inside each card so data remains readable without horizontal scrolling. **Both layouts are required** - do not implement only one.
+- **Pagination**: Wrap pagination controls with `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`. Stack navigation buttons using `flex w-full flex-col gap-2 sm:w-auto sm:flex-row` inside the control group.
+- **Tabs**: Place tab buttons inside an `overflow-x-auto` container with `flex-nowrap` and `flex-shrink-0` button classes to enable horizontal swiping on narrow screens. Tab content should use `p-4 sm:p-6` for responsive padding.
+- **Modals**: Let dialogs expand edge-to-edge on phones via `w-full max-w-md sm:max-w-lg` and add `p-4` overlay padding so content never touches device edges.
+- **Inner tables/lists**: Guard wide grids with `<div className="overflow-x-auto">` to enable horizontal scroll without padding hacks.
+- **Typography**: Maintain readable body sizes (`text-sm` minimum), rely on `font-medium`/`font-semibold` for emphasis, and avoid shrinking text below 14px.
+- **Z-index and Pointer Events**: Follow the exact z-index hierarchy (z-0, z-40, z-[60], z-[70], z-[80]) and pointer-events management patterns documented in section 5.9 to prevent interaction blocking issues.
+
+### 5.9 Mobile Navigation Sidebar
+
+The authenticated layout includes a collapsible sidebar navigation that must work correctly across all device orientations and screen sizes.
+
+#### 5.9.1 Breakpoint Strategy
+
+- **Critical**: JavaScript media queries MUST use `640px` to match Tailwind's `sm:` breakpoint exactly.
+- **Mobile Mode** (`<640px`): Sidebar is hidden by default, requires burger menu toggle, burger icon visible.
+- **Desktop Mode** (`>=640px`): Sidebar is always visible, burger icon hidden, no toggle required.
+- **Implementation**: Use `window.matchMedia('(min-width: 640px)')` in JavaScript, and `sm:` classes in Tailwind.
+
+#### 5.9.2 Z-Index Hierarchy
+
+Establish a clear z-index layering to prevent interaction blocking. **CRITICAL**: These values must be followed exactly to prevent click-blocking issues.
+
+- **Page Content**: `z-0` (lowest layer, default)
+- **Sidebar Overlay** (backdrop): `z-40` - Below header and sidebar, only visible when sidebar is open
+- **Sidebar Wrapper**: `z-[60]` - Highest layer when open, `pointer-events-none` when closed
+- **Mobile Header** (burger menu): `z-[70]` - Always above overlay and sidebar when closed
+- **Header Interactive Elements** (burger button, profile menu): `z-[80]` - Highest, always clickable
+
+**Implementation Pattern** (Reference: Customer module):
+```tsx
+// Page content wrapper
+<div className="relative z-0 h-screen w-full overflow-y-auto ...">
+
+// Mobile header (fixed to viewport, always on top when scrolling)
+<div className="fixed top-0 left-0 right-0 z-[70] bg-secondaryNeutral-50 shadow-md sm:hidden">
+  <div className="flex items-center justify-between px-4 py-4">
+    <button className="relative z-[80] ...">Burger Icon</button>
+    <div className="relative z-[80]"><ProfileHeaderMenu /></div>
+  </div>
+</div>
+
+// Content wrapper (with top padding to account for fixed header)
+<div className="pt-20 sm:pt-8">
+  {children}
+</div>
+
+// Sidebar overlay (only when sidebar is open on mobile)
+<div className="fixed inset-0 z-40 bg-slate-900/40 sm:hidden pointer-events-none opacity-0" />
+// When open: pointer-events-auto opacity-100
+
+// Sidebar wrapper (highest when mobile, normal on desktop)
+<div className={classNames(
+  'sm:z-auto',
+  !isToggleDisabled ? 'fixed inset-y-0 left-0 z-[60]' : '',
+  !isToggleDisabled && !isOpen ? 'pointer-events-none' : ''
+)}>
+  <aside className={classNames(
+    '...',
+    !isToggleDisabled && !isOpen ? 'pointer-events-none' : 'pointer-events-auto'
+  )}>
+    Sidebar Content
+  </aside>
+</div>
+```
+
+#### 5.9.3 Pointer Events Management
+
+**CRITICAL**: Proper pointer-events management prevents all interaction blocking issues in portrait mode.
+
+- **Overlay when closed**: `pointer-events-none opacity-0` - Does not block interactions
+- **Overlay when open**: `pointer-events-auto opacity-100` - Blocks background clicks, closes sidebar
+- **Sidebar wrapper when closed**: `pointer-events-none` - Prevents wrapper from blocking clicks even when translated off-screen
+- **Sidebar content when closed**: `pointer-events-none` - Prevents sidebar content from blocking interactions
+- **Sidebar content when open**: `pointer-events-auto` - Ensures buttons/links are clickable
+- **Header buttons**: Always have `relative z-[80]` to ensure they're above all overlays and sidebar
+
+#### 5.9.4 Fixed Header Behavior
+
+**CRITICAL**: The mobile header MUST use `fixed` positioning (not `sticky`) because it's inside a scrollable container. `sticky` positions relative to the nearest scrolling ancestor, while `fixed` positions relative to the viewport.
+
+- Mobile header uses `fixed top-0 left-0 right-0 z-[70]` to stay at the top of the viewport when scrolling (must be above sidebar `z-[60]`)
+- Header must have solid background (`bg-secondaryNeutral-50`) to prevent content showing through
+- Header shadow (`shadow-md`) provides visual separation from content
+- Interactive elements (burger button, profile menu) need `relative z-[80]` to stay clickable above everything
+- Content wrapper must have top padding (`pt-20` on mobile, `sm:pt-8` on desktop) to account for the fixed header height
+- Header container should NOT have `overflow-hidden` or other properties that might interfere with fixed positioning
+
+**Implementation Pattern**:
+```tsx
+// Mobile header (fixed to viewport top)
+<div className="fixed top-0 left-0 right-0 z-[70] bg-secondaryNeutral-50 shadow-md sm:hidden">
+  <div className="flex items-center justify-between px-4 py-4">
+    <button className="relative z-[80] ...">Burger Icon</button>
+    <div className="relative z-[80]"><ProfileHeaderMenu /></div>
+  </div>
+</div>
+
+// Content wrapper (with top padding to account for fixed header)
+<div className="pt-20 sm:pt-8">
+  {children}
+</div>
+```
+
+#### 5.9.5 Landscape Mode Handling
+
+- **Portrait phones** (`<640px`): Burger icon visible, sidebar toggleable
+- **Landscape phones/tablets** (`640px-1023px`): Sidebar always open (desktop behavior), burger hidden
+- **Desktop** (`>=1024px`): Sidebar always open, burger hidden
+- The `640px` breakpoint ensures consistent behavior: mobile toggle below, always-visible above
+
+#### 5.9.6 Common Issues and Solutions
+
+- **Burger icon not clickable**: Ensure header has `z-[70]` and button has `relative z-[80]`. Check that sidebar wrapper has `pointer-events-none` when closed.
+- **Buttons/inputs not clickable**: 
+  - Check sidebar wrapper has `pointer-events-none` when closed
+  - Check sidebar content has `pointer-events-none` when closed
+  - Verify overlay is `pointer-events-none` when sidebar is closed
+  - Ensure no invisible elements are covering the content area
+- **Header floats when scrolling**: Use `fixed top-0 left-0 right-0 z-[70]` (not `sticky`) with solid background (`bg-secondaryNeutral-50`) and shadow. The header must be `fixed` because it's inside a scrollable container. Add `pt-20` padding to content wrapper on mobile to account for header height.
+- **Sidebar not visible in landscape**: Verify breakpoint is `640px` (not `1024px`) in JavaScript media query
+- **Overlay blocks header**: Ensure overlay `z-40` is below header `z-[70]`
+- **Content area blocked**: Ensure content wrapper has `z-0` and sidebar wrapper has `pointer-events-none` when closed
+
+### 5.10 Mobile Responsiveness Implementation Checklist
+
+**Reference Implementation**: Always use the Customer module (`apps/web-app/src/app/(authenticated-routes)/customers/customer/`) as the reference for mobile patterns.
+
+Before marking any entity implementation as complete, verify all mobile responsiveness requirements:
+
+#### 5.10.1 Page-Level Mobile Requirements
+
+- [ ] **Main container**: Uses `p-4 sm:p-6` for responsive padding (not fixed `p-6`)
+- [ ] **Card containers**: Use `w-full sm:max-w-4xl` for responsive width constraints
+- [ ] **No fixed widths**: All containers use responsive classes, no `width: 500px` or similar
+- [ ] **Content wrapper**: Has `z-0` to ensure proper stacking context
+
+#### 5.10.2 Header Component Mobile Requirements
+
+- [ ] **Wrapper**: Uses `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`
+- [ ] **Search input**: Full width on mobile (`w-full sm:flex-1 sm:max-w-md`)
+- [ ] **Create button**: Full width on mobile (`w-full sm:w-auto`)
+- [ ] **Refresh button**: Always accessible, disabled state uses `disabled:cursor-not-allowed disabled:opacity-60`
+- [ ] **Button stacking**: Buttons stack vertically on mobile, horizontally on desktop
+
+#### 5.10.3 Table Component Mobile Requirements
+
+- [ ] **Desktop table**: Uses `hidden sm:block` to hide on mobile
+- [ ] **Mobile cards**: Uses `sm:hidden space-y-4` to show only on mobile
+- [ ] **Card layout**: Each mobile card displays label/value pairs in readable format
+- [ ] **Pagination**: Uses `flex flex-col gap-3 sm:flex-row` for responsive stacking
+- [ ] **Page size selector**: Full width on mobile (`w-full sm:w-auto`)
+- [ ] **Navigation buttons**: Stack vertically on mobile (`flex-col sm:flex-row`)
+
+#### 5.10.4 Form Component Mobile Requirements
+
+- [ ] **Section containers**: Use `p-4 sm:p-6` for responsive padding
+- [ ] **Field grids**: Use `grid grid-cols-1 md:grid-cols-2 gap-6` (single column on mobile)
+- [ ] **Action buttons**: Container uses `flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between`
+- [ ] **Delete button**: Full width on mobile (`w-full sm:w-auto`)
+- [ ] **Button group**: Right-side buttons use `flex w-full flex-col gap-2 sm:w-auto sm:flex-row`
+- [ ] **Spacer div**: Uses `hidden sm:block` when delete button is hidden
+- [ ] **Inner tables**: Wrapped in `<div className="overflow-x-auto">` for horizontal scroll on mobile
+
+#### 5.10.5 Detail/Edit Page Mobile Requirements
+
+- [ ] **Main container**: Uses `p-4 sm:p-6 space-y-6`
+- [ ] **Card container**: Uses `w-full sm:max-w-4xl`
+- [ ] **Tab navigation**: Container has `overflow-x-auto` for horizontal scrolling
+- [ ] **Tab buttons**: Use `flex-shrink-0` to prevent squishing
+- [ ] **Tab content**: Uses `p-4 sm:p-6 bg-white`
+- [ ] **Approval tab buttons**: Use `w-full sm:w-auto` for responsive width
+- [ ] **Activity logs**: Scrollable container with proper mobile padding
+
+#### 5.10.6 Create Page Mobile Requirements
+
+- [ ] **Main container**: Uses `p-4 sm:p-6 space-y-6`
+- [ ] **Card container**: Uses `w-full sm:max-w-4xl`
+- [ ] **Tab navigation**: Same responsive patterns as edit page
+- [ ] **Tab content**: Uses `p-4 sm:p-6 bg-white`
+
+#### 5.10.7 Navigation Sidebar Mobile Requirements
+
+- [ ] **Breakpoint**: JavaScript uses `640px` (not `1024px`) to match Tailwind `sm:`
+- [ ] **Z-index hierarchy**: 
+  - Content: `z-0`
+  - Overlay: `z-40`
+  - Sidebar: `z-[60]`
+  - Header: `z-[70]`
+  - Header buttons: `z-[80]`
+- [ ] **Pointer events**: Sidebar wrapper and content have `pointer-events-none` when closed
+- [ ] **Fixed header**: Uses `fixed top-0 left-0 right-0 z-[70]` (not `sticky`) with solid background
+- [ ] **Content padding**: Content wrapper has `pt-20 sm:pt-8` to account for fixed header height
+- [ ] **Burger button**: Has `relative z-[80]` to stay clickable
+- [ ] **Overlay**: Only visible when sidebar is open, `pointer-events-none` when closed
+
+#### 5.10.8 Testing Checklist
+
+Test all of the following in portrait mode (`<640px` width):
+
+- [ ] Burger icon is clickable and opens sidebar
+- [ ] Header stays at top when scrolling (sticky behavior)
+- [ ] All buttons are clickable (create, save, cancel, delete, etc.)
+- [ ] All text inputs are clickable and focusable
+- [ ] Table displays as cards (not hidden table)
+- [ ] Pagination buttons stack vertically
+- [ ] Form sections stack properly
+- [ ] Action buttons stack vertically
+- [ ] Tabs scroll horizontally if needed
+- [ ] No elements are blocked by overlays or sidebars
+
+Test all of the following in landscape mode (`>=640px` width):
+
+- [ ] Sidebar is visible (not hidden)
+- [ ] Burger icon is hidden (not visible)
+- [ ] Desktop table is visible (not mobile cards)
+- [ ] All responsive patterns work correctly
+- [ ] Navigation is accessible
+
+#### 5.10.9 Common Mobile Issues to Avoid
+
+- ❌ **Fixed padding**: Using `p-6` instead of `p-4 sm:p-6`
+- ❌ **Fixed widths**: Using `w-96` or `max-w-md` without responsive variants
+- ❌ **Missing mobile layouts**: Only implementing desktop table, no mobile cards
+- ❌ **Button overflow**: Buttons not stacking on mobile, causing horizontal scroll
+- ❌ **Z-index conflicts**: Elements blocking interactions due to incorrect z-index
+- ❌ **Pointer events**: Sidebar or overlay blocking clicks when closed
+- ❌ **Breakpoint mismatch**: JavaScript using `1024px` while Tailwind uses `sm:` (640px)
+- ❌ **Missing overflow-x-auto**: Wide content causing horizontal scroll issues
+
 ## 6. Business Logic Patterns
 
-### 6.1 Status Management
+### 6.1 Status Management Matrix
 
-- `ACTIVE`: Record is live and can be edited (by admin) or updated for approval (by regular user)
-- `NEW_RECORD`: Created by regular user, awaiting approval
-- `FOR_APPROVAL`: Updated by regular user, awaiting approval
-- `FOR_DELETION`: Marked for deletion, awaiting approval
-- `DRAFT`: Optional draft state
+| Status | Assigned By | Trigger Condition | Required Follow-up | References |
+| --- | --- | --- | --- | --- |
+| `ACTIVE` | System/admin | Admin create/update, approval success | Clear `changeReason`, trim activity logs | §2.2.1, §2.2.2, §2.2.4 |
+| `NEW_RECORD` | System | Non-admin create | Populate `forApprovalVersion` with full payload, await approval | §2.2.1 |
+| `FOR_APPROVAL` | System | Non-admin update | Persist original fields, write diffs to `forApprovalVersion` | §2.2.2 |
+| `FOR_DELETION` | System/admin | Delete requested | Log deletion reason, await approve/deny | §2.2.3 |
+| `DRAFT` | Explicit feature toggle | Draft workflows only | Treat as non-approved; exclude from active lists | §6.1 |
 
-### 6.2 Permission Logic
+### 6.2 Permission Logic Table
 
-- Admin/SuperAdmin: Can approve, deny, create/update/delete directly (status becomes ACTIVE immediately)
-- Regular User: Creates/updates go to NEW_RECORD or FOR_APPROVAL, requires admin approval
+| Role | Create | Update | Approve/Deny | Delete | Status Outcome |
+| --- | --- | --- | --- | --- | --- |
+| `ADMIN` / `SUPER_ADMIN` | Direct persist | Direct persist | Allowed | Hard delete when approved | Remains `ACTIVE` unless set explicitly |
+| Non-admin | Approval flow | Approval flow | Not allowed | Request only | Moves to `NEW_RECORD`, `FOR_APPROVAL`, `FOR_DELETION` |
 
-### 6.3 Field Change Tracking
+### 6.3 Field Change Tracking Blueprint
 
-- **IMPORTANT**: `detectFieldChanges()` and `formatFieldChanges()` MUST be imported from `@field-change-utils-lib`
-- Use `detectFieldChanges()` utility for automatic change detection
-- Configure `arrayIdFields` for array comparison (e.g., `{ customerTerms: 'termsId' }`)
-- Combine user-provided `changeReason` with auto-generated changes:
-  - Format: `${userChangeReason}\n\n${formattedChanges}` if user provided reason
-  - Format: just `formattedChanges` if no user reason
-- **CRITICAL**: Formatted changes MUST be appended to activity log messages for non-admin updates
-- Store in `forApprovalVersion` when user lacks approval permission
+```ts
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 
-### 6.4 Activity Logs
+const changes = detectFieldChanges(existingRecord, command.dto, {
+  arrayIdFields: { customerTerms: 'termsId', customerProductDeals: 'productDealId' },
+});
+const formattedChanges = formatFieldChanges(changes);
+const combinedReason = command.dto.changeReason
+  ? `${command.dto.changeReason}\n\n${formattedChanges}`
+  : formattedChanges;
+```
 
-- Limit to last 10 entries using `reduceArrayContents(activityLogs, 10)`
-- **IMPORTANT**: Limit is applied AFTER adding new log entries
-- Format: `Date: {timestamp}, {action} by {username} {additional info}`
-- Format for non-admin updates: `Date: {timestamp}, {Entity} updated by {username} for approval - {formattedChanges}`
-- Timezone: Asia/Manila
-- **CRITICAL**: Activity logs MUST include field change details when applicable (for non-admin updates)
+- Persist `combinedReason` to `changeReason`.
+- Append `formattedChanges` to the non-admin activity log entry (`activityLogMessage += \` - ${formattedChanges}\``).
+- Skip persistence when `changes` is empty to prevent noise.
+- Store `forApprovalVersion` only when the user lacks approval permission.
+
+### 6.4 Activity Log Rules
+
+| Step | Action | Enforcement |
+| --- | --- | --- |
+| Add entry | Push new log entry with formatted text (`Date: …`) | Always use timezone `Asia/Manila` |
+| Trim entries | Call `reduceArrayContents(activityLogs, 10)` | Invoke **after** pushing the new entry |
+| Non-admin updates | Append formatted change summary | Mandatory (see §6.3) |
 
 ### 6.5 Inner Tables (Nested Arrays)
 
@@ -697,73 +1066,116 @@ Examples that DON'T need filters: CustomerType, CustomerClassification (simple i
 - Reset timing: AFTER applying/clearing `forApprovalVersion`, not before
 - Display: Shown in approval tab as read-only field with special styling
 
+**Database Service Requirements** (CRITICAL - Common source of bugs):
+
+1. **Schema Definition** (§1.1): Must include `changeReason: { type: String, required: false }` in the DynamoDB schema model definition. Without this, the field cannot be stored in the database.
+
+2. **convertToDto Method** (§1.2): Must map `changeReason` from database record to DTO. If TypeScript doesn't recognize the property (common after schema updates), use type assertion: `changeReason: (record as EntityDataType & { changeReason?: string }).changeReason || undefined`
+
+3. **convertToDataType Method** (§1.2): Must include `changeReason: dto.changeReason` when converting DTO to database format. This ensures the field is included in the database record.
+
+4. **updateRecord Method** (§1.4): Must explicitly set `changeReason` on the record object before calling `update()`: `record.changeReason = dto.changeReason`. This is critical because even if `convertToDataType` includes it, the explicit assignment ensures it's not lost during the update operation.
+
+**Verification Checklist**:
+- [ ] Schema includes `changeReason` field definition
+- [ ] `convertToDto` maps `changeReason` (with type assertion if needed)
+- [ ] `convertToDataType` includes `changeReason` in returned object
+- [ ] `updateRecord` explicitly sets `changeReason` before calling `update()`
+- [ ] DTO includes `changeReason?: string` with `@ApiProperty()` decorator
+- [ ] Frontend types include `changeReason?: string` in EntityDto interface
+
 ## 7. Implementation Checklist
 
 When implementing a new entity:
 
 ### Backend
 
-- [ ] Create schema in `libs/backend/dynamo-db-lib/src/lib/schema/`
-- [ ] Add `changeReason` field to schema definition (`{ type: String, required: false }`)
-- [ ] Create database service abstract class
-- [ ] Implement database service with all methods
-- [ ] Update `convertToDto()` to map `changeReason` field
-- [ ] Update `convertToDataType()` to include `changeReason` field
-- [ ] Set up GSI indexes correctly in create/update
-- [ ] Create DTOs (EntityDto, CreateEntityDto, FilterDto if needed)
-- [ ] Add `changeReason?: string` to EntityDto with `@ApiProperty()` decorator
-- [ ] Create command handlers (create, update, delete, approve, deny)
-- [ ] Add activity log limiting in create handler using `reduceArrayContents()`
-- [ ] Add field change detection and formatting in update handler
-- [ ] Ensure activity logs include formatted changes for non-admin updates
-- [ ] Reset `changeReason` to `null` in approve handler AFTER applying forApprovalVersion
-- [ ] Reset `changeReason` to `null` in deny handler AFTER clearing forApprovalVersion
-- [ ] Use `null` (not `undefined`) for changeReason reset
-- [ ] Create query handlers (getById, getByName, getPagination, getByStatusPagination)
-- [ ] Create controller with all endpoints
-- [ ] Create module with all providers
-- [ ] Test duplicate checking logic
-- [ ] Test pagination (with and without cursors)
-- [ ] Test approval/deny workflows
+- [ ] Create schema in `libs/backend/dynamo-db-lib/src/lib/schema/` (see §1.1)
+- [ ] Add `changeReason` field to schema definition (`{ type: String, required: false }`) (see §1.1)
+- [ ] Create database service abstract class (see §1.2)
+- [ ] Implement database service with all methods (see §1.2–§1.8)
+- [ ] Update `convertToDto()` to map `changeReason` field with type assertion if TypeScript doesn't recognize it (see §1.2, §6.6)
+- [ ] Update `convertToDataType()` to include `changeReason` field in returned object (see §1.2, §6.6)
+- [ ] Update `updateRecord()` to explicitly set `changeReason` on record before calling `update()` (see §1.4, §6.6)
+- [ ] Set up GSI indexes correctly in create/update (see §1.3–§1.4)
+- [ ] Create DTOs (EntityDto, CreateEntityDto, FilterDto if needed) (see §3)
+- [ ] Add `changeReason?: string` to EntityDto with `@ApiProperty()` decorator (see §3.1)
+- [ ] Create command handlers (create, update, delete, approve, deny) (see §2.2)
+- [ ] Add activity log limiting in create handler using `reduceArrayContents()` (see §2.2.1, §6.4)
+- [ ] Add field change detection and formatting in update handler (see §2.2.2, §6.3)
+- [ ] Ensure activity logs include formatted changes for non-admin updates (see §6.3–§6.4)
+- [ ] Reset `changeReason` to `null` in approve handler AFTER applying forApprovalVersion (see §2.2.4)
+- [ ] Reset `changeReason` to `null` in deny handler AFTER clearing forApprovalVersion (see §2.2.5)
+- [ ] Use `null` (not `undefined`) for changeReason reset (see §2.2.4–§2.2.5)
+- [ ] Create query handlers (getById, getByName, getPagination, getByStatusPagination) (see §2.3)
+- [ ] Create controller with all endpoints (see §2.4)
+- [ ] Create module with all providers (see §2.1)
+- [ ] Test duplicate checking logic (see §1.7, §2.2.1)
+- [ ] Test pagination (with and without cursors) (see §1.6, §2.3, §4.1)
+- [ ] Test approval/deny workflows (see §2.2.4–§2.2.5, §6.1–§6.4)
 
 ### Frontend
 
-- [ ] Create types in `libs/frontend/data-access/src/types/`
-- [ ] Add `changeReason?: string` to frontend EntityDto interface
-- [ ] Create API service in `libs/frontend/data-access/src/api/`
-- [ ] Create table page with search (use `searchQuery` not `searchTerm`)
-- [ ] Use `p-6 space-y-6` for main container (NOT full-width gradient)
-- [ ] Implement `getStatusText()` helper function to convert enum values to readable text
-- [ ] Update `getStatusBadge()` function to use `getStatusText()` for status display
-- [ ] Create Header component using Input component with Search icon
-- [ ] Create Header component using Add icon for create button
-- [ ] Create table component using blue header (`bg-blue-600`)
-- [ ] Create table component using `rounded-xl` and `shadow-lg`
-- [ ] Create detail/edit page with tabs
-- [ ] Edit page uses centered container with `max-w-4xl`
-- [ ] Tab navigation uses solid color background with icons
-- [ ] Main Details tab includes status in tab name (e.g., "Customer Information - Active")
-- [ ] Main Details tab color changes based on status when active (green/yellow/red/blue)
-- [ ] Implement `getStatusText()` and `getTabColorClasses()` helper functions
-- [ ] Create form component
-- [ ] Form uses section-based layout with solid color icon boxes
-- [ ] Status badge NOT displayed in form (status is shown in tab name instead)
-- [ ] Related entities integrated into main form (not separate tab)
-- [ ] Change reason field shown for non-admin users in edit mode
-- [ ] Approval tab checks status first (FOR_DELETION shows deletion message, not approval version)
-- [ ] Approval tab includes helper functions (normalizeValue, isFieldChanged, formatValue, renderReadOnlyField) for FOR_APPROVAL/NEW_RECORD
-- [ ] Approval tab uses read-only fields with change highlighting for FOR_APPROVAL/NEW_RECORD
-- [ ] Approval tab buttons use solid color styling
-- [ ] Activity logs tab displays logs in scrollable container
-- [ ] Create Delete Confirmation Modal component
-- [ ] Delete button triggers confirmation modal (not direct delete)
-- [ ] Modal width is 900px (if using modal component)
-- [ ] All buttons use consistent solid color styling
-- [ ] Implement inner tables if needed
-- [ ] Test all CRUD operations
-- [ ] Test approval/deny flows
-- [ ] Test pagination
-- [ ] Test search functionality
+- [ ] Create types in `libs/frontend/data-access/src/types/` (see §3.4)
+- [ ] Add `changeReason?: string` to frontend EntityDto interface (see §3.4)
+- [ ] Create API service in `libs/frontend/data-access/src/api/` (see §4.1)
+- [ ] Create table page with search (use `searchQuery` not `searchTerm`) (see §5.1)
+- [ ] Use `p-4 sm:p-6 space-y-6` for main container (NOT full-width gradient, MUST be mobile responsive) (see §5.1, §5.8)
+- [ ] Implement `getStatusText()` helper function to convert enum values to readable text (see §5.1)
+- [ ] Update `getStatusBadge()` function to use `getStatusText()` for status display (see §5.1)
+- [ ] Create Header component using Input component with Search icon (see §5.1.1)
+- [ ] Create Header component using Add icon for create button (see §5.1.1)
+- [ ] Create table component using blue header (`bg-blue-600`) (see §5.1.2)
+- [ ] Create table component using `rounded-xl` and `shadow-lg` (see §5.1.2)
+- [ ] Create detail/edit page with tabs (see §5.2)
+- [ ] Edit page uses centered container with `w-full sm:max-w-4xl` (see §5.2, §5.10.5)
+- [ ] Tab navigation uses solid color background with icons (see §5.2)
+- [ ] Main Details tab includes status in tab name (e.g., "Customer Information - Active") (see §5.2)
+- [ ] Main Details tab color changes based on status when active (green/yellow/red/blue) (see §5.2)
+- [ ] Implement `getStatusText()` and `getTabColorClasses()` helper functions (see §5.2)
+- [ ] Create form component (see §5.4)
+- [ ] Form uses section-based layout with solid color icon boxes (see §5.4.2)
+- [ ] Status badge NOT displayed in form (status is shown in tab name instead) (see §5.4.1)
+- [ ] Related entities integrated into main form (not separate tab) (see §5.4.3)
+- [ ] Change reason field shown for non-admin users in edit mode (see §5.4.2, §5.4.3)
+- [ ] Approval tab checks status first (FOR_DELETION shows deletion message, not approval version) (see §5.2.1)
+- [ ] Approval tab includes helper functions (normalizeValue, isFieldChanged, formatValue, renderReadOnlyField) for FOR_APPROVAL/NEW_RECORD (see §5.2.1)
+- [ ] Approval tab uses read-only fields with change highlighting for FOR_APPROVAL/NEW_RECORD (see §5.2.1)
+- [ ] Approval tab buttons use solid color styling (see §5.2.1)
+- [ ] Activity logs tab displays logs in scrollable container (see §5.2.2)
+- [ ] Create Delete Confirmation Modal component (see §5.4.5)
+- [ ] Delete button triggers confirmation modal (not direct delete) (see §5.4.5)
+- [ ] Modal width is 900px (if using modal component) (see §5.6)
+- [ ] All buttons use consistent solid color styling (see §5.7)
+- [ ] Implement inner tables if needed (see §5.4.6, §6.5)
+- [ ] Test all CRUD operations (see §5–§6)
+- [ ] Test approval/deny flows (see §5.2, §6.1–§6.4)
+- [ ] Test pagination (see §4.1, §5.1.2)
+- [ ] Test search functionality (see §5.1.1)
+
+### Mobile Responsiveness
+
+**CRITICAL**: All UI components MUST be mobile responsive. Use the Customer module as the reference implementation.
+
+- [ ] **Page-level**: Main containers use `p-4 sm:p-6` (not fixed `p-6`) (see §5.10.1)
+- [ ] **Page-level**: Card containers use `w-full sm:max-w-4xl` (see §5.10.1)
+- [ ] **Header**: Wrapper uses `flex flex-col gap-3 sm:flex-row` (see §5.10.2)
+- [ ] **Header**: Create button uses `w-full sm:w-auto` (see §5.10.2)
+- [ ] **Table**: Desktop table uses `hidden sm:block` (see §5.10.3)
+- [ ] **Table**: Mobile cards use `sm:hidden space-y-4` (see §5.10.3)
+- [ ] **Table**: Pagination uses `flex flex-col gap-3 sm:flex-row` (see §5.10.3)
+- [ ] **Form**: Section containers use `p-4 sm:p-6` (see §5.10.4)
+- [ ] **Form**: Action buttons container uses `flex flex-col gap-3 sm:flex-row` (see §5.10.4)
+- [ ] **Form**: Delete button uses `w-full sm:w-auto` (see §5.10.4)
+- [ ] **Form**: Button group uses `flex w-full flex-col gap-2 sm:w-auto sm:flex-row` (see §5.10.4)
+- [ ] **Detail/Edit page**: Tab navigation has `overflow-x-auto` (see §5.10.5)
+- [ ] **Detail/Edit page**: Tab buttons use `flex-shrink-0` (see §5.10.5)
+- [ ] **Navigation sidebar**: JavaScript breakpoint uses `640px` (not `1024px`) (see §5.10.7)
+- [ ] **Navigation sidebar**: Z-index hierarchy follows exact values (z-0, z-40, z-[60], z-[70], z-[80]) (see §5.10.7)
+- [ ] **Navigation sidebar**: Pointer events properly managed (see §5.10.7)
+- [ ] **Testing**: All portrait mode tests pass (see §5.10.8)
+- [ ] **Testing**: All landscape mode tests pass (see §5.10.8)
+- [ ] **Reference**: Customer module patterns followed exactly (see §5.10)
 
 ## 8. Important Notes
 
@@ -789,13 +1201,19 @@ When implementing a new entity:
 
 9. **Inner Tables**: If entity has nested arrays, implement full CRUD for those arrays with proper change tracking.
 
-10. **changeReason Field**: Must be included in all entity DTOs, schemas, and database services. Reset to `null` (not `undefined`) in approve/deny handlers AFTER applying/clearing forApprovalVersion.
+10. **changeReason Field**: Must be included in all entity DTOs, schemas, and database services. **CRITICAL**: Ensure `changeReason` is:
+    - Defined in DynamoDB schema (`{ type: String, required: false }`)
+    - Mapped in `convertToDto()` (use type assertion if TypeScript doesn't recognize it)
+    - Included in `convertToDataType()` return object
+    - Explicitly set in `updateRecord()` before calling `update()`
+    - Reset to `null` (not `undefined`) in approve/deny handlers AFTER applying/clearing forApprovalVersion
+    - See §6.6 for complete verification checklist
 
 11. **Activity Log Formatting**: Activity logs for non-admin updates MUST include formatted field changes. Append ` - ${formattedChanges}` to the activity log message.
 
 12. **Frontend Variable Naming**: Always use `searchQuery` (not `searchTerm`) for search state variables throughout frontend code.
 
-13. **Form Layout**: Forms must use centered container with `max-w-4xl`, section-based layout with solid color icon boxes, and related entities integrated into main form sections (not separate tabs).
+13. **Form Layout**: Forms must use centered container with `w-full sm:max-w-4xl` (mobile responsive), section-based layout with solid color icon boxes, and related entities integrated into main form sections (not separate tabs). All section containers must use `p-4 sm:p-6` for responsive padding.
 
 14. **Tab Navigation**: Tab navigation must use solid color backgrounds (`bg-gray-50`), icons in tab buttons, and proper active/inactive states with simple hover transitions.
 
@@ -814,4 +1232,6 @@ When implementing a new entity:
 21. **Status Text Conversion**: Status badges in table pages must display readable text (e.g., "Active", "For Approval") instead of raw enum values (e.g., "ACTIVE", "FOR_APPROVAL"). Implement `getStatusText()` helper function in table page components to convert enum values, and use it in `getStatusBadge()` function. This ensures consistent, user-friendly status display across all table views.
 
 22. **FOR_DELETION Status in Approval Tab**: When a record has FOR_DELETION status, the `forApprovalVersion` field will be empty. The approval tab MUST check the status first and display a deletion message instead of trying to render empty approval version fields. Show a red-themed warning box with deletion icon, message, deletion reason (if exists), and "Deny Deletion"/"Approve Deletion" buttons for admin users.
+
+23. **Mobile Responsiveness is Mandatory**: All UI components MUST be mobile responsive following the patterns established in the Customer module. Every page, component, and layout must work correctly in both portrait mode (`<640px`) and landscape mode (`>=640px`). Use the Customer module (`apps/web-app/src/app/(authenticated-routes)/customers/customer/`) as the reference implementation. See section 5.10 for the complete mobile responsiveness checklist and requirements.
 

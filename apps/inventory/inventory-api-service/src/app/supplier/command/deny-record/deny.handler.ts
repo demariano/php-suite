@@ -90,9 +90,11 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
     private async denySupplier(existingRecord: SupplierDto, user: UserCognito): Promise<ResponseDto<SupplierDto>> {
         // Clear forApprovalVersion and revert to ACTIVE
         existingRecord.forApprovalVersion = {};
+        
+        // Reset changeReason to null after clearing forApprovalVersion
+        existingRecord.changeReason = null;
+        
         existingRecord.status = StatusEnum.ACTIVE;
-        // Clear changeReason after denial
-        existingRecord.changeReason = '';
 
         // Add activity log
         const activityLog = `Date: ${new Date().toLocaleString('en-US', {
@@ -113,10 +115,11 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
      * Denies deletion of a supplier record
      */
     private async denyDeletion(existingRecord: SupplierDto): Promise<ResponseDto<SupplierDto>> {
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
+        
         // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
-        // Clear changeReason after denial
-        existingRecord.changeReason = '';
 
         // Add activity log
         const activityLog = `Date: ${new Date().toLocaleString('en-US', {
@@ -137,6 +140,9 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
      * Deletes a supplier when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: SupplierDto): Promise<ResponseDto<SupplierDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+        
         this.logger.log(`Supplier deleted: ${existingRecord.supplierId}`);
         await this.supplierDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<SupplierDto>(existingRecord, HTTP_STATUS_OK);

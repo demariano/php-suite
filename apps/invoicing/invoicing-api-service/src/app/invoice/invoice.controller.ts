@@ -14,8 +14,8 @@ import { GetPendingPaymentInvoicesQuery } from './queries/get.pending.payment.in
 import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
-@ApiTags('Invoice')
-@Controller('invoice')
+@ApiTags('invoices')
+@Controller('invoices')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(CognitoAuthGuard)
 export class InvoiceController {
@@ -302,7 +302,7 @@ export class InvoiceController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -327,7 +327,7 @@ export class InvoiceController {
             type: 'object',
             properties: {
                 statusCode: { type: 'number', example: 200 },
-                body: {
+                data: {
                     type: 'object',
                     properties: {
                         data: {
@@ -353,9 +353,9 @@ export class InvoiceController {
     })
     getByDocno(
         @Param('docno') docno: string,
-        @Query('limit') limit: number,
-        @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation

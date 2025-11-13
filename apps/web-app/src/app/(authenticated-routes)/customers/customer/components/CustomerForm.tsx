@@ -459,7 +459,7 @@ export default function CustomerForm({
       <div className="space-y-6">
             {/* Basic Information Section */}
             <div className="space-y-4">
-              <div className="border-2 border-gray-200 rounded-xl p-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -495,7 +495,7 @@ export default function CustomerForm({
               {/* Email */}
               <div className="group">
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                   Email
                 </label>
                 <input
@@ -508,7 +508,7 @@ export default function CustomerForm({
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                       ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-indigo-300 group-hover:shadow-md'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -516,7 +516,7 @@ export default function CustomerForm({
               {/* Contact Number */}
               <div className="group">
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                   Contact Number
                 </label>
                 <input
@@ -529,7 +529,7 @@ export default function CustomerForm({
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                       ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-purple-300 group-hover:shadow-md'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -537,7 +537,7 @@ export default function CustomerForm({
               {/* Contact Person */}
               <div className="group">
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                   Contact Person
                 </label>
                 <input
@@ -550,7 +550,7 @@ export default function CustomerForm({
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                       ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-green-300 group-hover:shadow-md'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -560,22 +560,22 @@ export default function CustomerForm({
 
             {/* Address Information Section */}
             <div className="space-y-4">
-              <div className="border-2 border-gray-200 rounded-xl p-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-pink-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-bold text-pink-600">
+                  <h3 className="text-base font-bold text-blue-600">
                     Address Information
                   </h3>
                 </div>
                 <div className="space-y-4">
                 <div className="group">
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-pink-500 rounded-full"></span>
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                 Address 1
               </label>
               <input
@@ -588,14 +588,14 @@ export default function CustomerForm({
                 className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                   !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                     ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-pink-300 group-hover:shadow-md'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
                 }`}
               />
             </div>
 
             <div className="group">
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                 Address 2
               </label>
               <input
@@ -608,7 +608,7 @@ export default function CustomerForm({
                 className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                   !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                     ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-rose-300 group-hover:shadow-md'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
                 }`}
               />
             </div>
@@ -616,7 +616,7 @@ export default function CustomerForm({
               {/* TIN Number */}
               <div className="group">
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                  <span className="w-1.5 h-1.5 bg-teal-500 rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                   TIN Number
                 </label>
                 <input
@@ -629,7 +629,7 @@ export default function CustomerForm({
                   className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                     !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                       ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-teal-300 group-hover:shadow-md'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
                   }`}
                 />
               </div>
@@ -639,14 +639,14 @@ export default function CustomerForm({
 
             {/* Location & Classification Section */}
             <div className="space-y-4">
-              <div className="border-2 border-gray-200 rounded-xl p-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-emerald-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-bold text-emerald-600">
+                  <h3 className="text-base font-bold text-blue-600">
                     Location & Classification
                   </h3>
                 </div>
@@ -692,21 +692,21 @@ export default function CustomerForm({
 
             {/* Financial Information Section */}
             <div className="space-y-4">
-              <div className="border-2 border-gray-200 rounded-xl p-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-cyan-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                     <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                   </div>
-                  <h3 className="text-base font-bold text-cyan-600">
+                  <h3 className="text-base font-bold text-blue-600">
                     Financial Information
                   </h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="group">
             <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               Balance
             </label>
             <input
@@ -727,14 +727,14 @@ export default function CustomerForm({
               className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                 !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                   ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-emerald-300 group-hover:shadow-md'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
               }`}
             />
           </div>
 
           <div className="group">
             <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               Credit Limit
             </label>
             <input
@@ -755,14 +755,14 @@ export default function CustomerForm({
               className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                 !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                   ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-cyan-300 group-hover:shadow-md'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
               }`}
             />
           </div>
 
           <div className="group">
             <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-sky-500 rounded-full"></span>
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               Customer Credit
             </label>
             <input
@@ -783,7 +783,7 @@ export default function CustomerForm({
               className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
                 !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
                   ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-sky-300 group-hover:shadow-md'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
               }`}
             />
           </div>
@@ -838,15 +838,15 @@ export default function CustomerForm({
 
             {/* Customer Terms Section */}
             <div className="space-y-4">
-              <div className="border-2 border-gray-200 rounded-xl p-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-purple-600 rounded-lg shadow-md">
+                    <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     </div>
-                    <h3 className="text-base font-bold text-purple-600">
+                    <h3 className="text-base font-bold text-blue-600">
                       Customer Terms
                     </h3>
                   </div>
@@ -928,15 +928,15 @@ export default function CustomerForm({
 
             {/* Product Deals Section */}
             <div className="space-y-4">
-              <div className="border-2 border-gray-200 rounded-xl p-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-orange-600 rounded-lg shadow-md">
+                    <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                       <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                       </svg>
                     </div>
-                    <h3 className="text-base font-bold text-orange-600">
+                    <h3 className="text-base font-bold text-blue-600">
                       Product Deals
                     </h3>
                   </div>
@@ -1031,7 +1031,7 @@ export default function CustomerForm({
 
         {/* Action Buttons */}
         {activeTab !== 'approval' && (
-          <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
+          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
             {!isCreateMode && selectedCustomer?.status === StatusEnum.ACTIVE ? (
               <button
                 type="button"
@@ -1040,24 +1040,24 @@ export default function CustomerForm({
                   e.stopPropagation();
                   onDelete();
                 }}
-                className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors flex items-center gap-2"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
                 Delete
               </button>
             ) : (
-              <div></div>
+              <div className="hidden sm:block" />
             )}
-            
-            <div className="flex gap-3 items-center">
+
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
               {(isCreateMode || selectedCustomer?.status === StatusEnum.ACTIVE) && (
                 <button
                   type="submit"
-                  className="px-6 py-3 font-semibold rounded-xl shadow-sm transition-colors flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-700"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   {isCreateMode ? 'Create Customer' : 'Save Changes'}
@@ -1066,9 +1066,9 @@ export default function CustomerForm({
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center gap-2"
+                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
                 Cancel

@@ -115,9 +115,25 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
      * Denies deletion of a stock delivery
      */
     private async denyDeletion(existingRecord: StockDeliveryDto): Promise<ResponseDto<StockDeliveryDto>> {
-        this.logger.log(`Stock delivery deletion denied: ${existingRecord.stockDeliveryId}`);
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
+        
+        // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Stock delivery deletion denied`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+        // Update record in database
         const updatedRecord = await this.stockDeliveryDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Stock delivery deletion denied: ${existingRecord.stockDeliveryId}`);
         return new ResponseDto<StockDeliveryDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -125,6 +141,9 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
      * Deletes a stock delivery when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: StockDeliveryDto): Promise<ResponseDto<StockDeliveryDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+        
         this.logger.log(`Stock delivery deleted: ${existingRecord.stockDeliveryId}`);
         await this.stockDeliveryDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<StockDeliveryDto>(existingRecord, HTTP_STATUS_OK);

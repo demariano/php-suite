@@ -16,6 +16,7 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCustomerClassification, setSelectedCustomerClassification] = useState<CustomerClassificationDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -77,7 +78,8 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
       const updatedCustomerClassification = await CustomerClassificationApi.updateCustomerClassification(params.id, {
         customerClassificationId: customerClassification.customerClassificationId,
         customerClassificationName: customerClassification.customerClassificationName,
-        status: customerClassification.status
+        status: customerClassification.status,
+        changeReason: customerClassification.changeReason
       }, userRole);
       
       setSelectedCustomerClassification(updatedCustomerClassification);
@@ -105,17 +107,21 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedCustomerClassification) {
       return;
     }
-    
-    if (!confirm('Are you sure you want to delete this customer classification?')) {
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedCustomerClassification) {
       return;
     }
     
     try {
       setIsLoading(true);
+      setShowDeleteModal(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
       // This prevents role parameter leakage in production
@@ -227,10 +233,46 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
     router.push('/customers/classifications');
   };
 
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
+
+  // Helper function to get tab color based on status
+  const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+    
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'bg-green-600 text-white shadow-sm';
+      case StatusEnum.FOR_APPROVAL:
+        return 'bg-yellow-500 text-white shadow-sm';
+      case StatusEnum.FOR_DELETION:
+        return 'bg-red-600 text-white shadow-sm';
+      case StatusEnum.NEW_RECORD:
+        return 'bg-blue-600 text-white shadow-sm';
+      default:
+        return 'bg-gray-500 text-white shadow-sm';
+    }
+  };
+
   if (!selectedCustomerClassification && !isLoading) {
     return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>Customer Classification not found</span>
         </div>
       </div>
@@ -241,74 +283,227 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
   const renderApprovalTab = () => {
     if (!selectedCustomerClassification) return null;
     
-    return (
-      <div>
-        <div className="mb-5">
-          {(selectedCustomerClassification.status === StatusEnum.FOR_APPROVAL || selectedCustomerClassification.status === StatusEnum.NEW_RECORD) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-              <span className="text-yellow-600 text-base">ℹ️</span>
-              <span className="text-yellow-800 text-sm">
-                These are the proposed changes awaiting approval
-              </span>
+    // If status is FOR_DELETION, show deletion message instead of approval version
+    if (selectedCustomerClassification.status === StatusEnum.FOR_DELETION) {
+      return (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="rounded-xl border-2 border-red-300 bg-red-50 p-6 shadow-sm sm:p-8">
+            <div className="mb-4 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600">
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-red-800">Record Marked for Deletion</h3>
+                <p className="mt-1 text-sm text-red-700">This record has been marked for deletion and is awaiting approval.</p>
+              </div>
             </div>
-          )}
-          
-          {selectedCustomerClassification?.forApprovalVersion ? (
-            <div style={{
-              backgroundColor: '#f8fafc',
-              border: '2px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: '0 0 16px 0'
-              }}>
-                Pending Approval Details
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Review the pending changes above. Use the buttons below to approve or deny.
-              </p>
-            </div>
-          ) : (
-            <p className="text-gray-500 italic">
-              No pending approval changes
-            </p>
-          )}
+            {selectedCustomerClassification.changeReason && (
+              <div className="mt-6 rounded-lg border-2 border-red-200 bg-white p-4">
+                <p className="text-sm font-semibold text-gray-700 mb-2">Deletion Reason:</p>
+                <p className="mt-2 whitespace-pre-wrap font-mono text-sm text-gray-600 leading-relaxed">{selectedCustomerClassification.changeReason}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            {isAdminUser ? (
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleDeny}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Deny Deletion'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Approve Deletion'}
+                </button>
+              </div>
+            ) : (
+              <div className="hidden sm:block" />
+            )}
+            
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
+            </button>
+          </div>
         </div>
+      );
+    }
+    
+    // For FOR_APPROVAL and NEW_RECORD, show approval version
+    if (!selectedCustomerClassification.forApprovalVersion) return null;
+    
+    const approvalData = selectedCustomerClassification.forApprovalVersion;
+    
+    // Helper function to normalize values for comparison
+    const normalizeValue = (val: unknown): string => {
+      if (val === null || val === undefined) return '';
+      if (val === '') return '';
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? '' : trimmed;
+      }
+      if (typeof val === 'number') return String(val);
+      if (typeof val === 'boolean') return String(val);
+      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+        return JSON.stringify(val);
+      }
+      return String(val).trim();
+    };
+    
+    // Helper function to check if a field has changed
+    const isFieldChanged = (fieldName: string): boolean => {
+      if (!selectedCustomerClassification?.forApprovalVersion) return false;
+      
+      const originalValue = (selectedCustomerClassification as unknown as Record<string, unknown>)[fieldName];
+      const newValue = (selectedCustomerClassification.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
+      
+      if (!(fieldName in selectedCustomerClassification.forApprovalVersion)) return false;
+      
+      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
+        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+      }
+      
+      const normalizedOriginal = normalizeValue(originalValue);
+      const normalizedNew = normalizeValue(newValue);
+      
+      const hasChanged = normalizedOriginal !== normalizedNew;
+      
+      return hasChanged;
+    };
+    
+    // Helper function to format display value
+    const formatValue = (value: unknown): string => {
+      if (value === null || value === undefined) return '-';
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (typeof value === 'number') return value.toString();
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    };
+    
+    // Helper function to render read-only field with highlighting
+    const renderReadOnlyField = (label: string, value: unknown, colorClass: string, fieldName?: string) => {
+      const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+      
+      return (
+        <div className="group">
+          <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+            <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+            {label}
+          </label>
+          <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+            fieldChanged 
+              ? 'border-blue-500 bg-blue-50 text-gray-700' 
+              : 'border-gray-200 bg-gray-50 text-gray-500'
+          }`}>
+            {formatValue(value)}
+          </div>
+        </div>
+      );
+    };
+    
+    return (
+      <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
+        {/* Change Reason and Modification Made */}
+        {selectedCustomerClassification?.changeReason && (
+          <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <h4 className="m-0 text-base font-bold text-blue-600">
+                Change Reason and Modification Made
+              </h4>
+            </div>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
+              {selectedCustomerClassification.changeReason}
+            </div>
+          </div>
+        )}
         
-        <div className="flex justify-between mt-6">
-          {isAdminUser && (selectedCustomerClassification?.status === StatusEnum.FOR_APPROVAL || selectedCustomerClassification?.status === StatusEnum.NEW_RECORD || selectedCustomerClassification?.status === StatusEnum.FOR_DELETION) ? (
-            <div style={{ display: 'flex', gap: '12px' }}>
+        {/* Classification Information Section */}
+        <div className="space-y-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-blue-600">
+                Classification Information
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 gap-6">
+              {renderReadOnlyField('Classification Name', approvalData.customerClassificationName, 'bg-blue-500', 'customerClassificationName')}
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          {isAdminUser && selectedCustomerClassification && ([StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(selectedCustomerClassification.status as StatusEnum)) ? (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <button
                 type="button"
                 onClick={handleDeny}
                 disabled={isLoading}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
                 {isLoading ? 'Processing...' : 'Deny Changes'}
               </button>
               <button
                 type="button"
                 onClick={handleApprove}
                 disabled={isLoading}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
                 {isLoading ? 'Processing...' : 'Approve Changes'}
               </button>
             </div>
           ) : (
-            <div></div>
+            <div className="hidden sm:block" />
           )}
           
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
           </button>
         </div>
@@ -321,37 +516,48 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
     if (!selectedCustomerClassification) return null;
     
     return (
-      <div>
-        <div className="mb-5">
-          <h3 className="text-base font-semibold text-gray-800 mb-3">
-            Recent Activity
-          </h3>
+      <div className="space-y-6 animate-fadeIn">
+        <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="m-0 text-base font-bold text-blue-600">
+              Activity Logs
+            </h3>
+          </div>
+          
           {selectedCustomerClassification?.activityLogs && selectedCustomerClassification.activityLogs.length > 0 ? (
-            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-              {selectedCustomerClassification.activityLogs.map((log, index) => (
-                <div 
-                  key={index} 
-                  className={`py-2 ${
-                    index < selectedCustomerClassification.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                  }`}
-                >
-                  {log}
-                </div>
-              ))}
+            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
+              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
+                {selectedCustomerClassification.activityLogs.map((log, index) => (
+                  <li 
+                    key={index} 
+                    className="px-4 py-3"
+                  >
+                    {log}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : (
-            <p className="text-gray-500 italic">
+            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
               No activity logs available
             </p>
           )}
         </div>
         
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
           >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
           </button>
         </div>
@@ -360,9 +566,15 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
+      <DeleteConfirmationModal
+        show={showDeleteModal}
+        customerClassification={selectedCustomerClassification}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -389,77 +601,69 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
 
       {/* Customer Classification Form with Tabs */}
       {selectedCustomerClassification && (
-        <div>
-          {/* Tab Navigation */}
-          <div style={{
-            display: 'flex',
-            borderBottom: '2px solid #e5e7eb',
-            marginBottom: '20px',
-            backgroundColor: '#f8fafc',
-            borderRadius: '8px 8px 0 0',
-            padding: '4px'
-          }}>
-            <button
-              onClick={() => setActiveTab('details')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
-                color: activeTab === 'details' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'details' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                marginRight: '4px'
-              }}
-            >
-              Details
-            </button>
+        <div className="flex justify-center">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
+            {/* Tab Navigation */}
+            <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
+              <div className="flex gap-2 flex-nowrap">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                    getTabColorClasses(selectedCustomerClassification.status || StatusEnum.ACTIVE, activeTab === 'details')
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Classification Information
+                    {selectedCustomerClassification && (
+                      <>
+                        <span className="mx-1">-</span>
+                        <span>{getStatusText(selectedCustomerClassification.status || StatusEnum.ACTIVE)}</span>
+                      </>
+                    )}
+                  </span>
+                </button>
+                
+                {selectedCustomerClassification.status !== StatusEnum.ACTIVE && (
+                  <button
+                    onClick={() => setActiveTab('approval')}
+                    className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                      activeTab === 'approval'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Pending Changes
+                    </span>
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                    activeTab === 'logs'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Activity Logs
+                  </span>
+                </button>
+              </div>
+            </div>
             
-            {selectedCustomerClassification.status !== StatusEnum.ACTIVE && (
-              <button
-                onClick={() => setActiveTab('approval')}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
-                  color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: activeTab === 'approval' ? '600' : '500',
-                  transition: 'all 0.2s ease',
-                  boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                  marginRight: '4px'
-                }}
-              >
-                Approval Version
-              </button>
-            )}
-            
-            <button
-              onClick={() => setActiveTab('logs')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
-                color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'logs' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-              }}
-            >
-              Activity Logs
-            </button>
-          </div>
-          
-          {/* Tab Content */}
-          <div>
+            {/* Tab Content */}
+            <div className="bg-white p-4 sm:p-6">
             {activeTab === 'details' && (
               <CustomerClassificationForm
                 isCreateMode={false}
@@ -468,16 +672,17 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
                 onSave={handleSave}
                 onDelete={handleDelete}
                 onCancel={handleCancel}
+                isAdminUser={isAdminUser}
               />
             )}
             
-            {activeTab === 'approval' && renderApprovalTab()}
-            
-            {activeTab === 'logs' && renderLogsTab()}
+              {activeTab === 'approval' && renderApprovalTab()}
+              
+              {activeTab === 'logs' && renderLogsTab()}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
-

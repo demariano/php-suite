@@ -57,6 +57,9 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
 
     async updateRecord(dto: VoucherDto): Promise<VoucherDto> {
         const voucherRecord: VoucherDataType = await this.convertToDataType(dto);
+
+        voucherRecord.changeReason = dto.changeReason;
+
         const updatedVoucherRecord: VoucherDataType = await this.voucherTable.update(voucherRecord);
         return await this.convertToDto(updatedVoucherRecord);
     }
@@ -286,7 +289,7 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
         dto.customerName = record.customerName ? record.customerName : undefined;
         dto.areaId = record.areaId ? record.areaId : undefined;
         dto.areaName = record.areaName ? record.areaName : undefined;
-        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.changeReason = (record as VoucherDataType & { changeReason?: string }).changeReason || undefined;
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.remarks = record.remarks ? record.remarks : '';
         dto.voucherDetails = record.voucherDetails ? record.voucherDetails : [];

@@ -144,8 +144,6 @@ class ProductMainApi extends AxiosConfig {
             params.append('userRole', userRole);
         }
 
-        console.log('product', product);
-
         const queryString = params.toString();
         const url = queryString ? `/products/${id}?${queryString}` : `/products/${id}`;
 

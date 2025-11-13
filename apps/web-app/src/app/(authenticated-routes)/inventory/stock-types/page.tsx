@@ -6,7 +6,7 @@ import { StockTypeHeader, StockTypeTable } from './components';
 
 export default function StockTypePage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [stockTypes, setStockTypes] = useState<StockTypeDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { env } = useEnv();
@@ -40,10 +40,10 @@ export default function StockTypePage() {
       // Use custom page size if provided, otherwise use state page size
       const currentPageSize = customPageSize ?? pageSize;
       
-      // If search term exists, use search API, otherwise use regular pagination API
-      if (searchTerm && searchTerm.trim() !== '') {
+      // If search query exists, use search API, otherwise use regular pagination API
+      if (searchQuery && searchQuery.trim() !== '') {
         response = await StockTypeApi.getStockTypesByName(
-          searchTerm.trim(),
+          searchQuery.trim(),
           currentPageSize,
           direction,
           serializedCursor,
@@ -99,10 +99,10 @@ export default function StockTypePage() {
     fetchStockTypes();
   }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
-  // Debounce search term changes (but not on initial mount with empty search)
+  // Debounce search query changes (but not on initial mount with empty search)
   useEffect(() => {
-    // Only debounce if there's actually a search term
-    if (searchTerm === '') {
+    // Only debounce if there's actually a search query
+    if (searchQuery === '') {
       return; // Skip - initial load is handled by the other useEffect
     }
 
@@ -111,32 +111,47 @@ export default function StockTypePage() {
     }, 500); // 500ms delay
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchQuery]);
 
   const headers = [
     { key: 'stockTypeName', label: 'NAME' },
     { key: 'status', label: 'STATUS' }
   ];
 
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
+
   const getStatusBadge = (status: StatusEnum) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
+    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm";
     
     let colorClasses = "";
     if (status === StatusEnum.ACTIVE) {
-      colorClasses = "!bg-green-100 !text-green-800";
+      colorClasses = "bg-green-600 text-white";
     } else if (status === StatusEnum.FOR_APPROVAL) {
-      colorClasses = "!bg-yellow-100 !text-yellow-800";
+      colorClasses = "bg-yellow-500 text-white";
     } else if (status === StatusEnum.FOR_DELETION) {
-      colorClasses = "!bg-red-100 !text-red-800";
+      colorClasses = "bg-red-600 text-white";
     } else if (status === StatusEnum.NEW_RECORD) {
-      colorClasses = "!bg-blue-100 !text-blue-800";
+      colorClasses = "bg-blue-600 text-white";
     } else {
-      colorClasses = "!bg-gray-100 !text-gray-600";
+      colorClasses = "bg-gray-600 text-white";
     }
     
     return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
+      <span className={`${baseClasses} ${colorClasses}`}>
+        {getStatusText(status)}
       </span>
     );
   };
@@ -170,7 +185,7 @@ export default function StockTypePage() {
   }) || [];
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
@@ -202,16 +217,16 @@ export default function StockTypePage() {
       {/* Header */}
       <div>
         <StockTypeHeader
-          searchTerm={searchTerm}
+          searchQuery={searchQuery}
           onSearchChange={(value: string) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
+            setSearchQuery(value);
+            // Reset pagination when search query changes
             setCurrentCursor(undefined);
             setNextCursor(undefined);
             setPrevCursor(undefined);
           }}
           onRefresh={() => {
-            setSearchTerm('');
+            setSearchQuery('');
             setCurrentCursor(undefined);
             setNextCursor(undefined);
             setPrevCursor(undefined);
@@ -227,7 +242,7 @@ export default function StockTypePage() {
           isLoading={isLoading}
           tableData={tableData}
           headers={headers}
-          searchTerm={searchTerm}
+          searchQuery={searchQuery}
           onRowClick={handleRowClick}
           pageSize={pageSize}
           onPageSizeChange={handlePageSizeChange}

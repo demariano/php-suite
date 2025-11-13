@@ -6,7 +6,7 @@ interface CustomerTypeTableProps {
   isLoading: boolean;
   tableData: any[];
   headers: { key: string; label: string }[];
-  searchTerm: string;
+  searchQuery: string;
   onRowClick: (customerType: CustomerTypeDto) => void;
   pageSize: number;
   onPageSizeChange: (size: number) => void;
@@ -20,7 +20,7 @@ export default function CustomerTypeTable({
   isLoading,
   tableData,
   headers,
-  searchTerm,
+  searchQuery,
   onRowClick,
   pageSize,
   onPageSizeChange,
@@ -30,58 +30,95 @@ export default function CustomerTypeTable({
   onNext
 }: CustomerTypeTableProps) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-      {isLoading ? (
-        <div className="p-10 text-center text-gray-500 text-base">
-          Loading customer types...
-        </div>
-      ) : (
-        <div className="overflow-x-auto" style={{ backgroundColor: 'white' }}>
-          <table className="w-full border-collapse min-w-full" style={{ backgroundColor: 'white' }}>
-            <thead className="bg-white border-b border-gray-200">
-              <tr>
-                {headers.map((header, index) => (
-                  <th key={header.key} className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {header.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody style={{ backgroundColor: 'white' }}>
-              {tableData.length > 0 ? tableData.map((customerType, index) => (
-                <tr 
-                  key={customerType.customerTypeId}
-                  onClick={() => onRowClick(customerType)}
-                  className="cursor-pointer border-b border-row-separator transition-colors duration-200 hover:bg-gray-50"
-                  style={{ borderBottomWidth: '1px', backgroundColor: 'white' }}
-                >
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900" style={{ backgroundColor: 'white' }}>
-                    {customerType.customerTypeName}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4" style={{ backgroundColor: 'white' }}>
-                    {customerType.status}
-                  </td>
+    <>
+      {/* Table */}
+      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg">
+        {isLoading ? (
+          <div className="p-10 text-center text-base text-gray-500">
+            Loading customer types...
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead className="border-b border-blue-700 bg-blue-600">
+                <tr>
+                  {headers.map((header) => (
+                    <th key={header.key} className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white">
+                      {header.label}
+                    </th>
+                  ))}
                 </tr>
-            )) : (
-              <tr>
-                <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                  {searchTerm ? `No customer types found matching "${searchTerm}"` : 'No customer types found'}
-                </td>
-              </tr>
-            )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {tableData.length > 0 ? (
+                  tableData.map((customerType) => (
+                    <tr
+                      key={customerType.customerTypeId}
+                      onClick={() => onRowClick(customerType)}
+                      className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
+                    >
+                      <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                        {customerType.customerTypeName || '-'}
+                      </td>
+                      <td className="px-6 py-5">{customerType.status}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
+                      {searchQuery ? `No customer types found matching "${searchQuery}"` : 'No customer types found'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Mobile Cards */}
+      {!isLoading && (
+        <div className="space-y-4 sm:hidden">
+          {tableData.length > 0 ? (
+            tableData.map((customerType) => (
+              <button
+                key={customerType.customerTypeId}
+                type="button"
+                onClick={() => onRowClick(customerType)}
+                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">
+                      {customerType.customerTypeName || '-'}
+                    </h3>
+                  </div>
+                  <div>{customerType.status}</div>
+                </div>
+              </button>
+            ))
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
+              {searchQuery ? `No customer types found matching "${searchQuery}"` : 'No customer types found'}
+            </div>
+          )}
         </div>
       )}
-      
-      {/* Custom Pagination */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-3 sm:px-6 py-4 sm:py-5 border-t border-gray-200 bg-gray-50">
-        <div className="flex items-center gap-3">
-          <span className="text-gray-500 text-sm font-medium">Rows per page:</span>
-          <select 
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm outline-none bg-white cursor-pointer min-w-15 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+
+      {isLoading && (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm sm:hidden">
+          Loading customer types...
+        </div>
+      )}
+
+      {/* Pagination */}
+      <div className="mt-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <span className="text-sm font-medium text-gray-600">Rows per page:</span>
+          <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
           >
             <option value="10">10</option>
             <option value="20">20</option>
@@ -89,78 +126,31 @@ export default function CustomerTypeTable({
             <option value="100">100</option>
           </select>
         </div>
-        
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button 
-            style={{
-              padding: '8px 16px',
-              backgroundColor: prevCursor ? 'white' : 'transparent',
-              color: prevCursor ? '#374151' : '#9ca3af',
-              border: prevCursor ? '1px solid #d1d5db' : '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: prevCursor ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: prevCursor ? 1 : 0.5,
-              boxShadow: prevCursor ? '0 1px 3px 0 rgba(0, 0, 0, 0.1)' : 'none'
-            }}
-            disabled={!prevCursor}
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <button
             onClick={onPrevious}
-            onMouseEnter={(e) => {
-              if (prevCursor) {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-                e.currentTarget.style.borderColor = '#9ca3af';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (prevCursor) {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
-              }
-            }}
+            disabled={!prevCursor}
+            className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
+              !prevCursor
+                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-300'
+                : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+            }`}
           >
-            <span className="hidden sm:inline">Previous</span>
-            <span className="sm:hidden">Prev</span>
+            Previous
           </button>
-          <button 
-            style={{
-              padding: '8px 16px',
-              backgroundColor: nextCursor ? 'white' : 'transparent',
-              color: nextCursor ? '#374151' : '#9ca3af',
-              border: nextCursor ? '1px solid #d1d5db' : '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: nextCursor ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: nextCursor ? 1 : 0.5,
-              boxShadow: nextCursor ? '0 1px 3px 0 rgba(0, 0, 0, 0.1)' : 'none'
-            }}
-            disabled={!nextCursor}
+          <button
             onClick={onNext}
-            onMouseEnter={(e) => {
-              if (nextCursor) {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-                e.currentTarget.style.borderColor = '#9ca3af';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (nextCursor) {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
-              }
-            }}
+            disabled={!nextCursor}
+            className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
+              !nextCursor
+                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-300'
+                : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
+            }`}
           >
-            <span className="hidden sm:inline">Next</span>
-            <span className="sm:hidden">Next</span>
+            Next
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

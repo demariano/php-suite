@@ -62,11 +62,11 @@ export class GetCustomerTypeByNameHandler implements IQueryHandler<GetCustomerTy
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<CustomerTypeDto>> {
-        const customerTypes = await this.customerTypeDatabaseService.findRecordContainingName(
+        const customerTypes = await this.customerTypeDatabaseService.findRecordsByNamePagination(
             limit,
-            name,
             direction,
-            cursorPointer
+            cursorPointer,
+            name
         );
 
         if (!customerTypes || customerTypes.data.length === 0) {

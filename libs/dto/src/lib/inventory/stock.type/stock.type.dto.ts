@@ -25,4 +25,7 @@ export class StockTypeDto {
         required: false,
     })
     forApprovalVersion?: Record<string, unknown>;
+
+    @ApiProperty()
+    changeReason?: string;
 }

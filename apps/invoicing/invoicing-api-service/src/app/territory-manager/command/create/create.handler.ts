@@ -1,11 +1,12 @@
 import { ErrorResponseDto, ResponseDto, StatusEnum, TerritoryManagerDto, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { TerritoryManagerDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateTerritoryManagerCommand } from './create.command';
 
 // Constants
-
+const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreateTerritoryManagerCommand)
@@ -60,7 +61,6 @@ export class CreateTerritoryManagerHandler implements ICommandHandler<CreateTerr
      * Checks if user has permission to approve updates directly
      */
     private hasApprovalPermission(userRoles?: string[]): boolean {
-        console.log('userRoles', userRoles);
         if (!userRoles || userRoles.length === 0) {
             return false;
         }
@@ -72,7 +72,6 @@ export class CreateTerritoryManagerHandler implements ICommandHandler<CreateTerr
      * Updates territory manager status and activity logs based on user permissions
      */
     private updateTerritoryManagerStatus(command: CreateTerritoryManagerCommand, hasApprovalPermission: boolean): void {
-        console.log('hasApprovalPermission', hasApprovalPermission);
         if (hasApprovalPermission) {
             // User can approve directly - set to ACTIVE
             command.territoryManagerDto.status = StatusEnum.ACTIVE;
@@ -82,6 +81,8 @@ export class CreateTerritoryManagerHandler implements ICommandHandler<CreateTerr
                     timeZone: 'Asia/Manila',
                 })}, Territory manager created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
+            // Limit activity logs to last 10 entries
+            command.territoryManagerDto.activityLogs = reduceArrayContents(command.territoryManagerDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to NEW_RECORD
             command.territoryManagerDto.status = StatusEnum.NEW_RECORD;
@@ -91,6 +92,8 @@ export class CreateTerritoryManagerHandler implements ICommandHandler<CreateTerr
                     timeZone: 'Asia/Manila',
                 })}, Territory manager created by ${command.user.username} for approval`
             );
+            // Limit activity logs to last 10 entries
+            command.territoryManagerDto.activityLogs = reduceArrayContents(command.territoryManagerDto.activityLogs, ACTIVITY_LOGS_LIMIT);
             command.territoryManagerDto.forApprovalVersion = {};
             command.territoryManagerDto.forApprovalVersion.territoryManagerName =
                 command.territoryManagerDto.territoryManagerName;

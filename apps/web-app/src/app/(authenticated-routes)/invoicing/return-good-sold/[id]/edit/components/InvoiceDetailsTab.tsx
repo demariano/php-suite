@@ -280,15 +280,7 @@ export default function InvoiceDetailsTab({
   const getDetailTypeBadge = (type?: InvoiceDetailTypeEnum) => {
     if (type === InvoiceDetailTypeEnum.FREE_ITEM) {
       return (
-        <span style={{
-          backgroundColor: '#10b981',
-          color: 'white',
-          padding: '2px 8px',
-          borderRadius: '4px',
-          fontSize: '10px',
-          fontWeight: '600',
-          marginLeft: '8px'
-        }}>
+        <span className="ml-2 bg-green-500 text-white px-2 py-0.5 rounded text-[10px] font-semibold">
           FREE
         </span>
       );
@@ -297,230 +289,125 @@ export default function InvoiceDetailsTab({
   };
 
   return (
-    <div>
-      <h3 style={{
-        fontSize: '18px',
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: '20px'
-      }}>
-        Invoice Details
-      </h3>
-
-      {/* Original Invoice Details */}
-      <div style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        overflow: 'hidden',
-        marginBottom: '24px'
-      }}>
-        <div style={{
-          backgroundColor: '#f8fafc',
-          padding: '12px 16px',
-          borderBottom: '1px solid #e5e7eb'
-        }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            margin: 0
-          }}>
-            Original Invoice Details ({formData.originalInvoiceDetails?.length || 0} items)
-          </h4>
+    <div className="space-y-6">
+      {/* Original Invoice Details Section */}
+      <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-gray-50 border-b-2 border-gray-200 p-3 sm:p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h4 className="text-base font-bold text-blue-600 m-0">
+              Original Invoice Details ({formData.originalInvoiceDetails?.length || 0} items)
+            </h4>
+          </div>
         </div>
 
         {formData.originalInvoiceDetails && formData.originalInvoiceDetails.length > 0 ? (
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          <div className="max-h-[400px] overflow-y-auto">
             {formData.originalInvoiceDetails.map((detail: any, index: number) => (
               <div
                 key={detail.invoiceDetailId || index}
-                style={{
-                  padding: '16px',
-                  borderBottom: '1px solid #e5e7eb',
-                  backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#d1fae5' : (index % 2 === 0 ? 'white' : '#f9fafb')
-                }}
+                className={`p-4 border-b border-gray-200 ${
+                  detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM 
+                    ? 'bg-green-50' 
+                    : index % 2 === 0 
+                      ? 'bg-white' 
+                      : 'bg-gray-50'
+                }`}
               >
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: isReadOnly ? '2fr 1fr 1fr 1fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
-                  gap: '16px',
-                  alignItems: 'center'
-                }}>
-                  <div>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#1f2937',
-                      marginBottom: '4px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}>
+                <div className={`grid gap-4 items-center ${
+                  isReadOnly 
+                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-7' 
+                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-8'
+                }`}>
+                  <div className="sm:col-span-2">
+                    <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
                       {detail.productName}
                       {getDetailTypeBadge(detail.invoiceDetailType)}
                     </div>
-                    <div style={{
-                      fontSize: '12px',
-                      color: '#6b7280'
-                    }}>
+                    <div className="text-xs text-gray-600">
                       {detail.lotNo && `Lot: ${detail.lotNo}`}
                       {detail.stockTypeName && ` • ${detail.stockTypeName}`}
                     </div>
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Qty
                     </label>
                     <input
                       type="number"
                       value={detail.qty || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-600"
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Price
                     </label>
                     <input
                       type="number"
                       value={detail.price || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f0fdf4' : '#f9fafb',
-                        color: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#10b981' : '#6b7280',
-                        fontWeight: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '600' : 'normal'
-                      }}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                        detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM
+                          ? 'bg-green-50 text-green-600 font-semibold'
+                          : 'bg-gray-50 text-gray-600'
+                      }`}
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Cost
                     </label>
                     <input
                       type="number"
                       value={detail.cost || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-600"
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Amount
                     </label>
                     <input
                       type="number"
                       value={detail.amount || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f0fdf4' : '#f9fafb',
-                        color: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#10b981' : '#6b7280',
-                        fontWeight: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '600' : '500'
-                      }}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                        detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM
+                          ? 'bg-green-50 text-green-600 font-semibold'
+                          : 'bg-gray-50 text-gray-600 font-medium'
+                      }`}
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Expiry Date
                     </label>
                     <input
                       type="date"
                       value={detail.expiryDate || ''}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-600"
                     />
                   </div>
 
                   {!isReadOnly && (
-                    <div>
+                    <div className="flex justify-end">
                       <button
                         type="button"
                         onClick={() => handleCopyToModified(detail)}
-                        style={{
-                          padding: '8px 12px',
-                          backgroundColor: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#2563eb';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#3b82f6';
-                        }}
+                        className="px-3 py-2 bg-blue-600 text-white border-none rounded-lg cursor-pointer text-xs font-semibold transition-all duration-200 hover:bg-blue-700 shadow-sm"
                       >
                         Copy
                       </button>
@@ -531,49 +418,31 @@ export default function InvoiceDetailsTab({
             ))}
           </div>
         ) : (
-          <div style={{
-            padding: '40px',
-            textAlign: 'center',
-            color: '#6b7280'
-          }}>
-            <p>No original invoice details</p>
-            <p style={{ fontSize: '14px', marginTop: '4px' }}>Select an invoice to load details</p>
+          <div className="p-10 text-center text-gray-500">
+            <p className="text-base">No original invoice details</p>
+            <p className="text-sm mt-1">Select an invoice to load details</p>
           </div>
         )}
       </div>
 
       {/* Add Stock Item Section */}
       {!isReadOnly && (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          padding: '20px',
-          marginBottom: '24px'
-        }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '16px'
-          }}>
-            Add Stock Item
-          </h4>
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 bg-gray-50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-green-600 rounded-lg shadow-sm text-white">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <h4 className="text-base font-bold text-blue-600 m-0">
+              Add Stock Item
+            </h4>
+          </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr auto',
-            gap: '16px',
-            alignItems: 'end'
-          }}>
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
                 Stock Item
               </label>
               <input
@@ -583,28 +452,17 @@ export default function InvoiceDetailsTab({
                 placeholder={formData.invoiceId ? "Click to select stock" : "Select invoice first"}
                 onClick={handleAddStock}
                 disabled={!formData.invoiceId}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: formData.invoiceId ? '#f9fafb' : '#f3f4f6',
-                  color: formData.invoiceId ? '#6b7280' : '#9ca3af',
-                  cursor: formData.invoiceId ? 'pointer' : 'not-allowed',
-                  opacity: formData.invoiceId ? 1 : 0.6
-                }}
+                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                  formData.invoiceId
+                    ? 'border-gray-200 bg-white text-gray-700 cursor-pointer hover:border-blue-300 hover:shadow-md'
+                    : 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                }`}
               />
             </div>
 
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
                 Quantity *
               </label>
               <input
@@ -612,26 +470,14 @@ export default function InvoiceDetailsTab({
                 value={stockSelection.quantity}
                 onChange={(e) => setStockSelection(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
                 min="1"
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none'
-                }}
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 outline-none"
                 placeholder="Enter quantity"
               />
             </div>
 
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
                 Product Price Type
               </label>
               <input
@@ -639,16 +485,7 @@ export default function InvoiceDetailsTab({
                 value={formData.productPriceTypeName || 'Not selected'}
                 readOnly
                 disabled
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: '#f9fafb',
-                  color: formData.productPriceTypeName ? '#6b7280' : '#9ca3af',
-                  cursor: 'not-allowed'
-                }}
+                className="w-full px-4 py-3 border-2 border-gray-200 bg-gray-50 text-gray-500 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed"
               />
             </div>
 
@@ -656,28 +493,11 @@ export default function InvoiceDetailsTab({
               type="button"
               onClick={handleAddDetailRecord}
               disabled={!stockSelection.selectedStock || stockSelection.quantity <= 0}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: (!stockSelection.selectedStock || stockSelection.quantity <= 0) ? '#9ca3af' : '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: (!stockSelection.selectedStock || stockSelection.quantity <= 0) ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: (!stockSelection.selectedStock || stockSelection.quantity <= 0) ? 0.7 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (stockSelection.selectedStock && stockSelection.quantity > 0) {
-                  e.currentTarget.style.backgroundColor = '#059669';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (stockSelection.selectedStock && stockSelection.quantity > 0) {
-                  e.currentTarget.style.backgroundColor = '#10b981';
-                }
-              }}
+              className={`px-4 py-3 text-white border-none rounded-xl cursor-pointer text-sm font-semibold transition-all duration-200 shadow-sm ${
+                !stockSelection.selectedStock || stockSelection.quantity <= 0
+                  ? 'bg-gray-400 cursor-not-allowed opacity-70'
+                  : 'bg-green-600 hover:bg-green-700'
+              }`}
             >
               Add Detail
             </button>
@@ -685,247 +505,134 @@ export default function InvoiceDetailsTab({
         </div>
       )}
 
-      {/* Modified Invoice Details */}
-      <div style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          backgroundColor: '#f8fafc',
-          padding: '12px 16px',
-          borderBottom: '1px solid #e5e7eb'
-        }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            margin: 0
-          }}>
-            Modified Invoice Details ({formData.modifiedInvoiceDetails?.length || 0} items)
-          </h4>
+      {/* Modified Invoice Details Section */}
+      <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-gray-50 border-b-2 border-gray-200 p-3 sm:p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <h4 className="text-base font-bold text-blue-600 m-0">
+              Modified Invoice Details ({formData.modifiedInvoiceDetails?.length || 0} items)
+            </h4>
+          </div>
         </div>
 
         {formData.modifiedInvoiceDetails && formData.modifiedInvoiceDetails.length > 0 ? (
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          <div className="max-h-[400px] overflow-y-auto">
             {formData.modifiedInvoiceDetails.map((detail: any, index: number) => (
               <div
                 key={detail.invoiceDetailId || index}
-                style={{
-                  padding: '16px',
-                  borderBottom: '1px solid #e5e7eb',
-                  backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#d1fae5' : (index % 2 === 0 ? 'white' : '#f9fafb')
-                }}
+                className={`p-4 border-b border-gray-200 ${
+                  detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM 
+                    ? 'bg-green-50' 
+                    : index % 2 === 0 
+                      ? 'bg-white' 
+                      : 'bg-gray-50'
+                }`}
               >
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: isReadOnly ? '2fr 1fr 1fr 1fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
-                  gap: '16px',
-                  alignItems: 'center'
-                }}>
-                  <div>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#1f2937',
-                      marginBottom: '4px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}>
+                <div className={`grid gap-4 items-center ${
+                  isReadOnly 
+                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-7' 
+                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-8'
+                }`}>
+                  <div className="sm:col-span-2">
+                    <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
                       {detail.productName}
                       {getDetailTypeBadge(detail.invoiceDetailType)}
                     </div>
-                    <div style={{
-                      fontSize: '12px',
-                      color: '#6b7280'
-                    }}>
+                    <div className="text-xs text-gray-600">
                       {detail.lotNo && `Lot: ${detail.lotNo}`}
                       {detail.stockTypeName && ` • ${detail.stockTypeName}`}
                     </div>
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Qty
                     </label>
                     <input
                       type="number"
                       value={detail.qty || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-600"
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Price
                     </label>
                     <input
                       type="number"
                       value={detail.price || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f0fdf4' : '#f9fafb',
-                        color: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#10b981' : '#6b7280',
-                        fontWeight: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '600' : 'normal'
-                      }}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                        detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM
+                          ? 'bg-green-50 text-green-600 font-semibold'
+                          : 'bg-gray-50 text-gray-600'
+                      }`}
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Cost
                     </label>
                     <input
                       type="number"
                       value={detail.cost || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-600"
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Amount
                     </label>
                     <input
                       type="number"
                       value={detail.amount || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f0fdf4' : '#f9fafb',
-                        color: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#10b981' : '#6b7280',
-                        fontWeight: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '600' : '500'
-                      }}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-lg text-sm ${
+                        detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM
+                          ? 'bg-green-50 text-green-600 font-semibold'
+                          : 'bg-gray-50 text-gray-600 font-medium'
+                      }`}
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Expiry Date
                     </label>
                     <input
                       type="date"
                       value={detail.expiryDate || ''}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-gray-50 text-gray-600"
                     />
                   </div>
 
                   {!isReadOnly && (
-                    <div>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleEditModified(index)}
-                          style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#2563eb';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#3b82f6';
-                          }}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteModified(index)}
-                          style={{
-                            padding: '8px 12px',
-                            backgroundColor: '#dc2626',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#b91c1c';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#dc2626';
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </div>
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEditModified(index)}
+                        className="px-3 py-2 bg-blue-600 text-white border-none rounded-lg cursor-pointer text-xs font-semibold transition-all duration-200 hover:bg-blue-700 shadow-sm"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteModified(index)}
+                        className="px-3 py-2 bg-red-600 text-white border-none rounded-lg cursor-pointer text-xs font-semibold transition-all duration-200 hover:bg-red-700 shadow-sm"
+                      >
+                        Delete
+                      </button>
                     </div>
                   )}
                 </div>
@@ -933,13 +640,9 @@ export default function InvoiceDetailsTab({
             ))}
           </div>
         ) : (
-          <div style={{
-            padding: '40px',
-            textAlign: 'center',
-            color: '#6b7280'
-          }}>
-            <p>No modified invoice details</p>
-            <p style={{ fontSize: '14px', marginTop: '4px' }}>Add or copy items to modify</p>
+          <div className="p-10 text-center text-gray-500">
+            <p className="text-base">No modified invoice details</p>
+            <p className="text-sm mt-1">Add or copy items to modify</p>
           </div>
         )}
       </div>
@@ -956,48 +659,18 @@ export default function InvoiceDetailsTab({
       {/* Edit Item Modal */}
       {editingItem && (
         <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
-          }}
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]"
           onClick={() => {
             setEditingIndex(null);
             setEditingItem(null);
           }}
         >
           <div
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '24px',
-              width: '400px',
-              maxWidth: '90vw',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-            }}
+            className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px',
-              paddingBottom: '16px',
-              borderBottom: '2px solid #e5e7eb'
-            }}>
-              <h3 style={{
-                fontSize: '18px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: 0
-              }}>
+            <div className="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-900 m-0">
                 Edit Item
               </h3>
               <button
@@ -1005,87 +678,39 @@ export default function InvoiceDetailsTab({
                   setEditingIndex(null);
                   setEditingItem(null);
                 }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '24px',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  transition: 'background-color 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                className="bg-transparent border-none text-2xl cursor-pointer text-gray-600 p-1 rounded transition-colors duration-200 hover:bg-gray-100"
               >
                 ×
               </button>
             </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
+            <div className="space-y-4 mb-5">
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Product
                 </label>
                 <input
                   type="text"
                   value={editingItem.productName || ''}
                   disabled
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    backgroundColor: '#f9fafb',
-                    color: '#6b7280'
-                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium bg-gray-50 text-gray-600"
                 />
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Quantity
                 </label>
                 <input
                   type="number"
                   value={editingItem.qty || 0}
                   onChange={(e) => setEditingItem({ ...editingItem, qty: parseFloat(e.target.value) || 0 })}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 outline-none"
                 />
               </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Price
                 </label>
                 <input
@@ -1094,96 +719,40 @@ export default function InvoiceDetailsTab({
                   value={editingItem.price || 0}
                   onChange={(e) => setEditingItem({ ...editingItem, price: parseFloat(e.target.value) || 0 })}
                   disabled={editingItem.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    backgroundColor: editingItem.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f9fafb' : 'white'
-                  }}
+                  className={`w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    editingItem.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM
+                      ? 'bg-gray-50 text-gray-600 cursor-not-allowed'
+                      : 'bg-white text-gray-700 hover:border-blue-300 hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                  } outline-none`}
                 />
               </div>
 
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
+              <div className="group">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
                   Amount
                 </label>
                 <input
                   type="text"
                   value={`₱${((editingItem.qty || 0) * (editingItem.price || 0)).toFixed(2)}`}
                   disabled
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    backgroundColor: '#f9fafb',
-                    color: '#6b7280'
-                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium bg-gray-50 text-gray-600"
                 />
               </div>
             </div>
 
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '12px',
-              paddingTop: '16px',
-              borderTop: '1px solid #e5e7eb'
-            }}>
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
               <button
                 onClick={() => {
                   setEditingIndex(null);
                   setEditingItem(null);
                 }}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: 'transparent',
-                  color: '#6b7280',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f9fafb';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
+                className="px-5 py-2.5 bg-transparent text-gray-700 border-2 border-gray-300 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-200 hover:bg-gray-50 shadow-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                }}
+                className="px-5 py-2.5 bg-blue-600 text-white border-none rounded-lg cursor-pointer text-sm font-semibold transition-all duration-200 hover:bg-blue-700 shadow-sm"
               >
                 Save Changes
               </button>
@@ -1194,4 +763,3 @@ export default function InvoiceDetailsTab({
     </div>
   );
 }
-

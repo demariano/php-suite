@@ -1,5 +1,6 @@
 import { ErrorResponseDto, ResponseDto, StatusEnum, TerritoryManagerDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { TerritoryManagerDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -76,7 +77,6 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
      * Checks if user has permission to approve updates directly
      */
     private hasApprovalPermission(userRoles?: string[]): boolean {
-        console.log('userRoles', userRoles);
         if (!userRoles || userRoles.length === 0) {
             return false;
         }
@@ -97,26 +97,62 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
             existingRecord.status = StatusEnum.ACTIVE;
             existingRecord.territoryManagerName = command.territoryManagerDto.territoryManagerName;
             existingRecord.contactNo = command.territoryManagerDto.contactNo;
+            // Clear changeReason for admin users since changes are applied directly
+            existingRecord.changeReason = undefined;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Territory manager updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
             existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+
+            // Detect field changes
+            const fieldChanges = detectFieldChanges(existingRecord, command.territoryManagerDto, {});
+            const formattedChanges = formatFieldChanges(fieldChanges);
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Territory manager updated by ${command.user.username} for approval`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs.push(activityLogMessage);
+
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Preserve user's manually entered changeReason and combine with auto-generated changes
+            const userChangeReason = command.territoryManagerDto.changeReason?.trim();
+            if (userChangeReason && formattedChanges) {
+                // User provided changeReason and we have formatted changes - combine them
+                // formatFieldChanges already starts with \n, so we just concatenate
+                existingRecord.changeReason = `${userChangeReason}${formattedChanges}`;
+            } else if (userChangeReason) {
+                // User provided changeReason but no formatted changes - use user's input
+                existingRecord.changeReason = userChangeReason;
+            } else if (formattedChanges) {
+                // No user input but we have formatted changes - use formatted changes
+                existingRecord.changeReason = formattedChanges;
+            } else {
+                // No user input and no formatted changes
+                existingRecord.changeReason = undefined;
+            }
+
             existingRecord.forApprovalVersion = {
                 ...existingRecord.forApprovalVersion,
                 territoryManagerName: command.territoryManagerDto.territoryManagerName,
                 contactNo: command.territoryManagerDto.contactNo,
             };
         }
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
     }
 
     /**

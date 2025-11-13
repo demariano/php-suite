@@ -6,7 +6,7 @@ import { TermsHeader, TermsTable } from './components';
 
 export default function TermsPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [terms, setTerms] = useState<TermsDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { env } = useEnv();
@@ -40,10 +40,10 @@ export default function TermsPage() {
       // Use custom page size if provided, otherwise use state page size
       const currentPageSize = customPageSize ?? pageSize;
       
-      // If search term exists, use search API, otherwise use regular pagination API
-      if (searchTerm && searchTerm.trim() !== '') {
+      // If search query exists, use search API, otherwise use regular pagination API
+      if (searchQuery && searchQuery.trim() !== '') {
         response = await TermsApi.getTermsByName(
-          searchTerm.trim(),
+          searchQuery.trim(),
           currentPageSize,
           direction,
           serializedCursor,
@@ -99,10 +99,10 @@ export default function TermsPage() {
     fetchTerms();
   }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
-  // Debounce search term changes (but not on initial mount with empty search)
+  // Debounce search query changes (but not on initial mount with empty search)
   useEffect(() => {
-    // Only debounce if there's actually a search term
-    if (searchTerm === '') {
+    // Only debounce if there's actually a search query
+    if (searchQuery === '') {
       return; // Skip - initial load is handled by the other useEffect
     }
 
@@ -111,13 +111,28 @@ export default function TermsPage() {
     }, 500); // 500ms delay
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchQuery]);
 
   const headers = [
     { key: 'termsName', label: 'NAME' },
     { key: 'days', label: 'DAYS' },
     { key: 'status', label: 'STATUS' }
   ];
+
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
 
   const getStatusBadge = (status: StatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
@@ -137,7 +152,7 @@ export default function TermsPage() {
     
     return (
       <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
+        {getStatusText(status)}
       </span>
     );
   };
@@ -170,11 +185,13 @@ export default function TermsPage() {
     };
   }) || [];
 
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+  const canCreateTerms = isAdminUser;
+
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Error Message */}
+    <div className="p-4 sm:p-6 space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
@@ -185,8 +202,7 @@ export default function TermsPage() {
         </div>
       )}
 
-      {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -200,44 +216,39 @@ export default function TermsPage() {
         </nav>
       </div>
 
-      {/* Header */}
-      <div>
-        <TermsHeader
-          searchTerm={searchTerm}
-          onSearchChange={(value: string) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchTerm('');
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchTerms();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
+      <TermsHeader
+        searchQuery={searchQuery}
+        onSearchChange={(value: string) => {
+          setSearchQuery(value);
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchQuery('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchTerms();
+        }}
+        onCreateClick={handleCreateClick}
+        isLoading={isLoading}
+        canCreate={canCreateTerms}
+      />
 
-      {/* Table */}
-      <div>
-        <TermsTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchTerm={searchTerm}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchTerms('prev', prevCursor)}
-          onNext={() => fetchTerms('next', nextCursor)}
-        />
-      </div>
+      <TermsTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchQuery={searchQuery}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchTerms('prev', prevCursor)}
+        onNext={() => fetchTerms('next', nextCursor)}
+      />
     </div>
   );
 }

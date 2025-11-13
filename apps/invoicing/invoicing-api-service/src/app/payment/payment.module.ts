@@ -13,6 +13,7 @@ import { DenyPaymentHandler } from './command/deny-record/deny.handler';
 import { UpdatePaymentHandler } from './command/update/update.handler';
 import { PaymentController } from './payment.controller';
 import { GetPaymentByIdHandler } from './queries/get.by.id/get.payment.by.id.handler';
+import { GetPaymentByNameHandler } from './queries/get.by.name/get.payment.by.name.handler';
 import { GetPaymentByReceiptNoHandler } from './queries/get.by.receiptNo/get.payment.by.receiptNo.handler';
 import { GetPaymentsContainingReceiptNoHandler } from './queries/get.containing.receiptNo/get.payments.containing.receiptNo.handler';
 import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
@@ -39,6 +40,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         },
         CreatePaymentHandler,
         GetPaymentByIdHandler,
+        GetPaymentByNameHandler,
         GetPaymentByReceiptNoHandler,
         GetPaymentsContainingReceiptNoHandler,
         GetRecordsPaginationHandler,

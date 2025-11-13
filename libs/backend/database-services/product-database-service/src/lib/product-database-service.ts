@@ -56,18 +56,18 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         return await this.convertToDto(productRecord);
     }
 
-    async updateProductRecord(productData: ProductDto): Promise<ProductDto> {
-        console.log('productDataDTO:', productData);
-        const productRecord: ProductDataType = await this.convertToDataType(productData);
+    async updateRecord(productDto: ProductDto): Promise<ProductDto> {
+        const productRecord: ProductDataType = await this.convertToDataType(productDto);
 
-        console.log('productRecord', productRecord);
+        // CRITICAL: Explicitly set changeReason before update
+        productRecord.changeReason = productDto.changeReason;
 
         const updatedProductRecord: ProductDataType = await this.productTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
     }
 
-    async findProductRecordById(id: string): Promise<ProductDto | null> {
+    async findRecordById(id: string): Promise<ProductDto | null> {
         const productRecord = await this.productTable.get({
             PK: `PRODUCT`,
             SK: `${id}`,
@@ -126,7 +126,43 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         return await this.convertToDtoList(productRecords);
     }
 
-    async findProductRecordsByStatusPagination(
+    async findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<ProductDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const productRecords = await this.productTable.find(
+            {
+                GSI1PK: `PRODUCT`,
+                ...(name != null && name.trim() !== '' ? { GSI1SK: { begins: name.trim() } } : {}),
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            productRecords,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(productRecords.next),
+            JSON.stringify(productRecords.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(productRecords),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -139,7 +175,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         const productRecords = await this.productTable.find(
             {
                 GSI2PK: `PRODUCT#${status}`,
-                ...(name != null ? { GSI2SK: { begins: name } } : {}),
+                ...(name != null && name.trim() !== '' ? { GSI2SK: { begins: name.trim() } } : {}),
             },
             dynamoDbOption
         );
@@ -163,7 +199,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         );
     }
 
-    async findProductRecordsByPagination(
+    async findRecordsByPagination(
         limit: number,
         direction: string,
         cursorPointer: string
@@ -177,7 +213,6 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
             },
             dynamoDbOption
         );
-        console.log('productRecords', productRecords);
 
         const pageRecordCursorPointers = pageRecordHandler(
             productRecords,
@@ -198,7 +233,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         );
     }
 
-    async findProductRecordsByFilterPagination(
+    async findRecordsByFilterPagination(
         filter: ProductFilterDto,
         limit: number,
         direction: string,
@@ -273,7 +308,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         );
     }
 
-    async deleteProductRecord(productDto: ProductDto): Promise<ProductDto> {
+    async deleteRecord(productDto: ProductDto): Promise<ProductDto> {
         const productRecord: ProductDataType = await this.convertToDataType(productDto);
 
         await this.productTable.remove(productRecord);
@@ -315,7 +350,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.changeReason = (record as ProductDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 

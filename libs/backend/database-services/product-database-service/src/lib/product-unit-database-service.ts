@@ -57,6 +57,7 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         productRecord.GSI2SK = record.productUnitName;
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
+        productRecord.changeReason = record.changeReason;
 
         const updatedProductRecord: ProductUnitDataType = await this.productUnitTable.update(productRecord);
 
@@ -251,6 +252,7 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as ProductUnitDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -277,6 +279,7 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
             GSI2SK: dto.productUnitName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return productUnitData;
     }

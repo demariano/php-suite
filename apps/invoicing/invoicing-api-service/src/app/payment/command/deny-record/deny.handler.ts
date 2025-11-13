@@ -73,7 +73,7 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyPayment(existingRecord, user);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, user);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -87,15 +87,20 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
     private async denyPayment(existingRecord: PaymentDto, user: UserCognito): Promise<ResponseDto<PaymentDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Payment denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        
+        // Clear forApprovalVersion (set to {})
         existingRecord.forApprovalVersion = {};
+        // Reset changeReason to null (NOT undefined) AFTER clearing forApprovalVersion
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.paymentDatabaseService.updateRecord(existingRecord);
@@ -107,10 +112,22 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
     /**
      * Denies deletion of a payment
      */
-    private async denyDeletion(existingRecord: PaymentDto): Promise<ResponseDto<PaymentDto>> {
-        this.logger.log(`Payment deletion denied: ${existingRecord.paymentId}`);
+    private async denyDeletion(existingRecord: PaymentDto, user: UserCognito): Promise<ResponseDto<PaymentDto>> {
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Payment deletion denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
         const updatedRecord = await this.paymentDatabaseService.updateRecord(existingRecord);
+        this.logger.log(`Payment deletion denied: ${existingRecord.paymentId}`);
         return new ResponseDto<PaymentDto>(updatedRecord, HTTP_STATUS_OK);
     }
 

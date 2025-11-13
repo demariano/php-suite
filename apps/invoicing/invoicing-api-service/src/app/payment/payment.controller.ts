@@ -9,6 +9,7 @@ import { DeletePaymentCommand } from './command/delete/delete.command';
 import { DenyPaymentCommand } from './command/deny-record/deny.command';
 import { UpdatePaymentCommand } from './command/update/update.command';
 import { GetPaymentByIdQuery } from './queries/get.by.id/get.payment.by.id.query';
+import { GetPaymentByNameQuery } from './queries/get.by.name/get.payment.by.name.query';
 import { GetPaymentByReceiptNoQuery } from './queries/get.by.receiptNo/get.payment.by.receiptNo.query';
 import { GetPaymentsContainingReceiptNoQuery } from './queries/get.containing.receiptNo/get.payments.containing.receiptNo.query';
 import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
@@ -301,7 +302,7 @@ export class PaymentController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -400,6 +401,73 @@ export class PaymentController {
         @Query('status') status: string
     ) {
         return this.queryBus.execute(new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer));
+    }
+
+    @Get('name/:receiptNo')
+    @ApiOperation({
+        summary: 'Get payments by receipt number',
+        description: 'Retrieves payments that contain the specified receipt number in their receipt number with pagination support.',
+    })
+    @ApiParam({
+        name: 'receiptNo',
+        description: 'Receipt number to search for',
+        example: 'RCP-2024',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: false,
+        description: 'Number of records to return (1-100)',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'For Swagger consistency (not used in query endpoints)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'USER',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Payments retrieved successfully with pagination',
+        schema: {
+            type: 'object',
+            properties: {
+                data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/PaymentDto' },
+                },
+                nextCursorPointer: { type: 'object' },
+                prevCursorPointer: { type: 'object' },
+            },
+        },
+    })
+    getByName(
+        @Param('receiptNo') receiptNo: string,
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string,
+        @Query('userRole') userRole?: string
+    ) {
+        // Note: userRole is included for Swagger consistency but not used in query endpoints
+        const query = new GetPaymentByNameQuery(receiptNo, limit, direction, cursorPointer);
+        return this.queryBus.execute(query);
     }
 
     @Get(':id')
@@ -512,7 +580,7 @@ export class PaymentController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -564,9 +632,9 @@ export class PaymentController {
     })
     getContainingReceiptNo(
         @Param('receiptNo') receiptNo: string,
-        @Query('limit') limit: number,
-        @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string
     ) {
         return this.queryBus.execute(
             new GetPaymentsContainingReceiptNoQuery(receiptNo, limit, direction, cursorPointer)

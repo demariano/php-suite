@@ -51,9 +51,9 @@ export default function CreateStockTypePage() {
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
@@ -64,7 +64,7 @@ export default function CreateStockTypePage() {
         </div>
       )}
 
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -82,17 +82,35 @@ export default function CreateStockTypePage() {
         </nav>
       </div>
 
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Create New Stock Type</h1>
+      <div className="flex justify-center">
+        <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+          <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
+            <div className="flex flex-nowrap gap-2">
+              <button
+                className="flex-shrink-0 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Stock Type Information
+                </span>
+              </button>
+            </div>
+          </div>
 
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-        <StockTypeForm
-          isCreateMode={true}
-          selectedStockType={null}
-          successMessage={null}
-          onSave={handleSave}
-          onDelete={() => {}} // Not applicable in create mode
-          onCancel={handleCancel}
-        />
+          <div className="bg-white p-4 sm:p-6">
+            <StockTypeForm
+              isCreateMode={true}
+              selectedStockType={null}
+              successMessage={null}
+              onSave={handleSave}
+              onDelete={() => {}} // Not applicable in create mode
+              onCancel={handleCancel}
+              isAdminUser={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

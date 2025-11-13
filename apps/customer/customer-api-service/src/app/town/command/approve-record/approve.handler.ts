@@ -1,7 +1,6 @@
 import { UserCognito } from '@auth-guard-lib';
 import { TownDatabaseServiceAbstract } from '@customer-database-service';
-import { ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
-import { TownDto } from '@dto';
+import { ErrorResponseDto, ResponseDto, StatusEnum, TownDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -69,10 +68,7 @@ export class ApproveTownHandler implements ICommandHandler<ApproveTownCommand> {
     /**
      * Processes the approval based on the current status of the record
      */
-    private async processApproval(
-        existingRecord: TownDto,
-        user: UserCognito
-    ): Promise<ResponseDto<TownDto>> {
+    private async processApproval(existingRecord: TownDto, user: UserCognito): Promise<ResponseDto<TownDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
             case StatusEnum.NEW_RECORD:
@@ -87,10 +83,7 @@ export class ApproveTownHandler implements ICommandHandler<ApproveTownCommand> {
     /**
      * Approves a town for approval
      */
-    private async approveTown(
-        existingRecord: TownDto,
-        user: UserCognito
-    ): Promise<ResponseDto<TownDto>> {
+    private async approveTown(existingRecord: TownDto, user: UserCognito): Promise<ResponseDto<TownDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(

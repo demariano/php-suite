@@ -7,11 +7,11 @@ export abstract class CustomerClassificationDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<CustomerClassificationDto | null>;
 
-    abstract findRecordContainingName(
+    abstract findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<CustomerClassificationDto>>;
 
     abstract findRecordByName(name: string): Promise<CustomerClassificationDto | null>;

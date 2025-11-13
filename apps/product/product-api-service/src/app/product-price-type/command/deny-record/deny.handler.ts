@@ -87,36 +87,60 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
     }
 
     /**
-     * Approves a product price type for approval
+     * Denies a product price type for approval
      */
     private async denyProductPriceType(
         existingRecord: ProductPriceTypeDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductPriceTypeDto>> {
-        // Update status and add activity log
-        existingRecord.status = StatusEnum.ACTIVE;
-        existingRecord.activityLogs.push(
-            `Product price type denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
-        );
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        // Clear forApprovalVersion
         existingRecord.forApprovalVersion = {};
+
+        // Reset changeReason to null after clearing forApprovalVersion
+        existingRecord.changeReason = null;
+
+        // Revert to ACTIVE status
+        existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product price type denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         // Update record in database
         const updatedRecord = await this.productPriceTypeDatabaseService.updateRecord(existingRecord);
 
-        this.logger.log(`Product price type approved successfully: ${existingRecord.productPriceTypeId}`);
+        this.logger.log(`Product price type denied successfully: ${existingRecord.productPriceTypeId}`);
         return new ResponseDto<ProductPriceTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
-     * Approves deletion of a product price type
+     * Denies deletion of a product price type
      */
     private async denyDeletion(existingRecord: ProductPriceTypeDto): Promise<ResponseDto<ProductPriceTypeDto>> {
-        this.logger.log(`Product price type deletion approved: ${existingRecord.productPriceTypeId}`);
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
+
+        // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product price type deletion denied`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+        // Update record in database
         const updatedRecord = await this.productPriceTypeDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product price type deletion denied: ${existingRecord.productPriceTypeId}`);
         return new ResponseDto<ProductPriceTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -124,6 +148,9 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
      * Deletes a product price type when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: ProductPriceTypeDto): Promise<ResponseDto<ProductPriceTypeDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+
         this.logger.log(`Product price type deleted: ${existingRecord.productPriceTypeId}`);
         await this.productPriceTypeDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<ProductPriceTypeDto>(existingRecord, HTTP_STATUS_OK);

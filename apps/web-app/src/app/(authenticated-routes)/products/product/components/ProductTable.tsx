@@ -1,180 +1,217 @@
 'use client';
 
 import { ProductDto } from '@data-access/index';
+import { ReactNode } from 'react';
+
+type ProductTableRow = ProductDto & { status: ReactNode };
 
 interface ProductTableProps {
-  isLoading: boolean;
-  tableData: any[];
-  headers: { key: string; label: string }[];
-  searchTerm: string;
-  onRowClick: (product: ProductDto) => void;
-  pageSize: number;
-  onPageSizeChange: (size: number) => void;
-  prevCursor: any;
-  nextCursor: any;
-  onPrevious: () => void;
-  onNext: () => void;
+    isLoading: boolean;
+    tableData: ProductTableRow[];
+    headers: { key: string; label: string }[];
+    searchQuery: string;
+    onRowClick: (product: ProductDto) => void;
+    pageSize: number;
+    onPageSizeChange: (size: number) => void;
+    prevCursor: any;
+    nextCursor: any;
+    onPrevious: () => void;
+    onNext: () => void;
 }
 
-export default function ProductTable({
-  isLoading,
-  tableData,
-  headers,
-  searchTerm,
-  onRowClick,
-  pageSize,
-  onPageSizeChange,
-  prevCursor,
-  nextCursor,
-  onPrevious,
-  onNext
-}: ProductTableProps) {
-  const formatCriticalLevel = (level: number) => {
-    if (level === undefined || level === null) return '-';
-    return level.toString();
-  };
+const formatCriticalLevel = (level?: number | null): string => {
+    if (level === undefined || level === null) {
+        return '-';
+    }
 
-  return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-      {isLoading ? (
-        <div className="p-10 text-center text-gray-500 text-base">
-          Loading products...
-        </div>
-      ) : (
-        <div className="overflow-x-auto" style={{ backgroundColor: 'white' }}>
-          <table className="w-full border-collapse min-w-full" style={{ backgroundColor: 'white' }}>
-            <thead className="bg-white border-b border-gray-200">
-              <tr>
-                {headers.map((header, index) => (
-                  <th key={header.key} className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                    {header.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody style={{ backgroundColor: 'white' }}>
-              {tableData.length > 0 ? tableData.map((product, index) => (
-                <tr 
-                  key={product.productId}
-                  onClick={() => onRowClick(product)}
-                  className="cursor-pointer border-b border-row-separator transition-colors duration-200 hover:bg-gray-50"
-                  style={{ borderBottomWidth: '1px', backgroundColor: 'white' }}
-                >
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-900" style={{ backgroundColor: 'white' }}>
-                    {product.productName || '-'}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-600" style={{ backgroundColor: 'white' }}>
-                    {product.productCategoryName || '-'}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-600" style={{ backgroundColor: 'white' }}>
-                    {product.productClassName || '-'}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-sm text-gray-600" style={{ backgroundColor: 'white' }}>
-                    {formatCriticalLevel(product.criticalLevel)}
-                  </td>
-                  <td className="px-3 sm:px-6 py-3 sm:py-4" style={{ backgroundColor: 'white' }}>
-                    {product.status}
-                  </td>
-                </tr>
-            )) : (
-              <tr>
-                <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                  {searchTerm ? `No products found matching "${searchTerm}"` : 'No products found'}
-                </td>
-              </tr>
+    return level.toString();
+};
+
+export default function ProductTable({
+    isLoading,
+    tableData,
+    headers,
+    searchQuery,
+    onRowClick,
+    pageSize,
+    onPageSizeChange,
+    prevCursor,
+    nextCursor,
+    onPrevious,
+    onNext,
+}: ProductTableProps) {
+    return (
+        <>
+            {/* Desktop Table */}
+            <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                {isLoading ? (
+                    <div className="p-10 text-center text-gray-500 text-base">Loading products...</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead className="bg-blue-600 border-b border-blue-700">
+                                <tr>
+                                    {headers.map((header) => (
+                                        <th
+                                            key={header.key}
+                                            className="px-6 py-4 text-left text-white font-semibold text-xs uppercase tracking-wider"
+                                        >
+                                            {header.label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {tableData.length > 0 ? (
+                                    tableData.map((product) => (
+                                        <tr
+                                            key={product.productId}
+                                            onClick={() => onRowClick(product)}
+                                            className="cursor-pointer transition-all duration-200 bg-white hover:bg-gray-50"
+                                        >
+                                            <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                                {product.productName || '-'}
+                                            </td>
+                                            <td className="px-6 py-5 text-sm text-gray-600">
+                                                {product.productCategoryName || '-'}
+                                            </td>
+                                            <td className="px-6 py-5 text-sm text-gray-600">
+                                                {product.productClassName || '-'}
+                                            </td>
+                                            <td className="px-6 py-5 text-sm text-gray-600">
+                                                {formatCriticalLevel(product.criticalLevel)}
+                                            </td>
+                                            <td className="px-6 py-5">{product.status}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
+                                            {searchQuery ? `No products found matching "${searchQuery}"` : 'No products found'}
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm mt-6">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium text-gray-600">Rows per page:</span>
+                        <select
+                            className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={pageSize}
+                            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+                        >
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <button
+                            type="button"
+                            onClick={onPrevious}
+                            disabled={!prevCursor}
+                            className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors duration-200 ${
+                                prevCursor
+                                    ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400'
+                                    : 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
+                            }`}
+                        >
+                            Previous
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onNext}
+                            disabled={!nextCursor}
+                            className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors duration-200 ${
+                                nextCursor
+                                    ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400'
+                                    : 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
+                            }`}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile Cards */}
+            {!isLoading && (
+                <div className="sm:hidden space-y-4">
+                    {tableData.length > 0 ? (
+                        tableData.map((product) => (
+                            <button
+                                key={product.productId}
+                                onClick={() => onRowClick(product)}
+                                className="w-full bg-white border border-gray-200 rounded-xl p-4 shadow-sm space-y-2 text-left"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-semibold text-gray-900">{product.productName || '-'}</h3>
+                                    {product.status}
+                                </div>
+                                <div className="text-sm text-gray-600">
+                                    <div>Category: {product.productCategoryName || '-'}</div>
+                                    <div>Class: {product.productClassName || '-'}</div>
+                                    <div>Critical Level: {formatCriticalLevel(product.criticalLevel)}</div>
+                                </div>
+                            </button>
+                        ))
+                    ) : (
+                        <div className="bg-white border border-gray-200 rounded-xl p-8 text-center text-gray-500">
+                            {searchQuery ? `No products found matching "${searchQuery}"` : 'No products found'}
+                        </div>
+                    )}
+                </div>
             )}
-            </tbody>
-          </table>
-        </div>
-      )}
-      
-      {/* Custom Pagination */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 px-3 sm:px-6 py-4 sm:py-5 border-t border-gray-200 bg-gray-50">
-        <div className="flex items-center gap-3">
-          <span className="text-gray-500 text-sm font-medium">Rows per page:</span>
-          <select 
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm outline-none bg-white cursor-pointer min-w-15 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-          >
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
-        </div>
-        
-        <div className="flex items-center gap-2 sm:gap-3">
-          <button 
-            style={{
-              padding: '8px 16px',
-              backgroundColor: prevCursor ? 'white' : 'transparent',
-              color: prevCursor ? '#374151' : '#9ca3af',
-              border: prevCursor ? '1px solid #d1d5db' : '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: prevCursor ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: prevCursor ? 1 : 0.5,
-              boxShadow: prevCursor ? '0 1px 3px 0 rgba(0, 0, 0, 0.1)' : 'none'
-            }}
-            disabled={!prevCursor}
-            onClick={onPrevious}
-            onMouseEnter={(e) => {
-              if (prevCursor) {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-                e.currentTarget.style.borderColor = '#9ca3af';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (prevCursor) {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
-              }
-            }}
-          >
-            <span className="hidden sm:inline">Previous</span>
-            <span className="sm:hidden">Prev</span>
-          </button>
-          <button 
-            style={{
-              padding: '8px 16px',
-              backgroundColor: nextCursor ? 'white' : 'transparent',
-              color: nextCursor ? '#374151' : '#9ca3af',
-              border: nextCursor ? '1px solid #d1d5db' : '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: nextCursor ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: nextCursor ? 1 : 0.5,
-              boxShadow: nextCursor ? '0 1px 3px 0 rgba(0, 0, 0, 0.1)' : 'none'
-            }}
-            disabled={!nextCursor}
-            onClick={onNext}
-            onMouseEnter={(e) => {
-              if (nextCursor) {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-                e.currentTarget.style.borderColor = '#9ca3af';
-                e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (nextCursor) {
-                e.currentTarget.style.backgroundColor = 'white';
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
-              }
-            }}
-          >
-            <span className="hidden sm:inline">Next</span>
-            <span className="sm:hidden">Next</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+
+            {/* Mobile Pagination */}
+            {!isLoading && (
+                <div className="sm:hidden flex flex-col gap-3 bg-white border border-gray-200 rounded-xl px-4 py-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-gray-600">Rows per page:</span>
+                        <select
+                            className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            value={pageSize}
+                            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+                        >
+                            <option value="10">10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                    <div className="flex w-full gap-2">
+                        <button
+                            type="button"
+                            onClick={onPrevious}
+                            disabled={!prevCursor}
+                            className={`flex-1 px-4 py-2 rounded-md border text-sm font-medium transition-colors duration-200 ${
+                                prevCursor
+                                    ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400'
+                                    : 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
+                            }`}
+                        >
+                            Previous
+                        </button>
+                        <button
+                            type="button"
+                            onClick={onNext}
+                            disabled={!nextCursor}
+                            className={`flex-1 px-4 py-2 rounded-md border text-sm font-medium transition-colors duration-200 ${
+                                nextCursor
+                                    ? 'border-gray-300 text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400'
+                                    : 'border-gray-200 text-gray-300 bg-gray-50 cursor-not-allowed'
+                            }`}
+                        >
+                            Next
+                        </button>
+                    </div>
+                </div>
+            )}
+        </>
+    );
 }

@@ -34,7 +34,7 @@ export class GetProductByIdHandler implements IQueryHandler<GetProductByIdQuery>
      * Fetches and validates a product record by ID
      */
     private async fetchProductById(recordId: string): Promise<ProductDto> {
-        const productRecord = await this.productDatabaseService.findProductRecordById(recordId);
+        const productRecord = await this.productDatabaseService.findRecordById(recordId);
 
         if (!productRecord) {
             this.logger.warn(`Product not found for ID: ${recordId}`);

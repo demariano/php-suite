@@ -19,4 +19,7 @@ export class TerritoryManagerDto {
 
     @ApiProperty()
     forApprovalVersion?: Record<string, unknown>;
+
+    @ApiProperty({ required: false })
+    changeReason?: string;
 }

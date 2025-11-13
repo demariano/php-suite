@@ -66,11 +66,11 @@ export class GetCustomerClassificationByNameHandler implements IQueryHandler<Get
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<CustomerClassificationDto>> {
-        const customerClassifications = await this.customerClassificationDatabaseService.findRecordContainingName(
+        const customerClassifications = await this.customerClassificationDatabaseService.findRecordsByNamePagination(
             limit,
-            name,
             direction,
-            cursorPointer
+            cursorPointer,
+            name
         );
 
         if (!customerClassifications || customerClassifications.data.length === 0) {

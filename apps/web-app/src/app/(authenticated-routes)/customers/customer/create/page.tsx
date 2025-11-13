@@ -83,7 +83,7 @@ export default function CreateCustomerPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Breadcrumbs */}
       <div>
         <nav className="flex items-center gap-2">
@@ -105,12 +105,12 @@ export default function CreateCustomerPage() {
 
       {/* Customer Form */}
       <div className="flex justify-center">
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
           {/* Tab Navigation */}
-          <div className="bg-gray-50 border-b-2 border-gray-200 rounded-t-xl p-2">
-            <div className="flex gap-2">
+          <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
+            <div className="flex gap-2 flex-nowrap">
               <button
-                className="px-5 py-3 rounded-lg font-semibold text-sm bg-blue-600 text-white shadow-sm"
+                className="flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm bg-blue-600 text-white shadow-sm"
               >
                 <span className="flex items-center gap-2">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +123,7 @@ export default function CreateCustomerPage() {
           </div>
           
           {/* Tab Content */}
-          <div className="p-6 bg-white">
+          <div className="bg-white p-4 sm:p-6">
             <CustomerForm
               isCreateMode={true}
               selectedCustomer={null}

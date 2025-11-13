@@ -56,6 +56,7 @@ export class CustomerTypeDatabaseService implements CustomerTypeDatabaseServiceA
         customerTypeRecord.GSI2PK = `CUSTOMER_TYPE#${record.status}`;
         customerTypeRecord.GSI2SK = record.customerTypeName;
         customerTypeRecord.forApprovalVersion = record.forApprovalVersion;
+        customerTypeRecord.changeReason = record.changeReason;
 
         const updatedCustomerTypeRecord: CustomerTypeDataType = await this.customerTypeTable.update(customerTypeRecord);
 
@@ -91,11 +92,11 @@ export class CustomerTypeDatabaseService implements CustomerTypeDatabaseServiceA
         }
     }
 
-    async findRecordContainingName(
+    async findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<CustomerTypeDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
@@ -109,8 +110,6 @@ export class CustomerTypeDatabaseService implements CustomerTypeDatabaseServiceA
             },
             dynamoDbOption
         );
-
-        console.log('Records:', records);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -248,6 +247,7 @@ export class CustomerTypeDatabaseService implements CustomerTypeDatabaseServiceA
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as CustomerTypeDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -274,6 +274,7 @@ export class CustomerTypeDatabaseService implements CustomerTypeDatabaseServiceA
             GSI2SK: dto.customerTypeName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return customerTypeData;
     }

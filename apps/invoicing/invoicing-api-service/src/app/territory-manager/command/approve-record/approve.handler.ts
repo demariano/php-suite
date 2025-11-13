@@ -94,19 +94,22 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
     ): Promise<ResponseDto<TerritoryManagerDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Territory manager approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.territoryManagerName = forApprovalVersion.territoryManagerName as string;
         existingRecord.contactNo = forApprovalVersion.contactNo as string;
         existingRecord.forApprovalVersion = {};
+        // Reset changeReason to null AFTER applying forApprovalVersion
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
@@ -119,6 +122,8 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
      * Approves deletion of a territory manager
      */
     private async approveDeletion(existingRecord: TerritoryManagerDto): Promise<ResponseDto<TerritoryManagerDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
         await this.territoryManagerDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Territory manager deletion approved: ${existingRecord.territoryManagerId}`);

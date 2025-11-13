@@ -73,9 +73,9 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyContract(existingRecord, user);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, user);
             case StatusEnum.NEW_RECORD:
-                return await this.deleteRecord(existingRecord);
+                return await this.deleteRecord(existingRecord, user);
             default:
                 throw new BadRequestException(`Cannot deny contract with status: ${existingRecord.status}`);
         }
@@ -87,15 +87,19 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
     private async denyContract(existingRecord: ContractDto, user: UserCognito): Promise<ResponseDto<ContractDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Contract denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+        // Clear forApprovalVersion first, then reset changeReason
         existingRecord.forApprovalVersion = {};
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.contractDatabaseService.updateRecord(existingRecord);
@@ -107,19 +111,31 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
     /**
      * Denies deletion of a contract
      */
-    private async denyDeletion(existingRecord: ContractDto): Promise<ResponseDto<ContractDto>> {
-        this.logger.log(`Contract deletion denied: ${existingRecord.contractId}`);
+    private async denyDeletion(existingRecord: ContractDto, user: UserCognito): Promise<ResponseDto<ContractDto>> {
+        const timestamp = new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        });
+
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${timestamp}, Contract deletion denied by ${user.username} and status reverted to ${StatusEnum.ACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.changeReason = null;
         const updatedRecord = await this.contractDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Contract deletion denied: ${existingRecord.contractId}`);
         return new ResponseDto<ContractDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
      * Deletes a contract when it is a new record and it was denied
      */
-    private async deleteRecord(existingRecord: ContractDto): Promise<ResponseDto<ContractDto>> {
-        this.logger.log(`Contract deleted: ${existingRecord.contractId}`);
+    private async deleteRecord(existingRecord: ContractDto, user: UserCognito): Promise<ResponseDto<ContractDto>> {
+        existingRecord.changeReason = null;
         await this.contractDatabaseService.deleteRecord(existingRecord);
+        this.logger.log(`Contract deleted after denial: ${existingRecord.contractId} by ${user.username}`);
         return new ResponseDto<ContractDto>(existingRecord, HTTP_STATUS_OK);
     }
 

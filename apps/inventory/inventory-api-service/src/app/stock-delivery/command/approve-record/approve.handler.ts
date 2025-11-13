@@ -123,9 +123,11 @@ export class ApproveStockDeliveryHandler implements ICommandHandler<ApproveStock
      * Approves deletion of a stock delivery
      */
     private async approveDeletion(existingRecord: StockDeliveryDto): Promise<ResponseDto<StockDeliveryDto>> {
-        await this.stockDeliveryDatabaseService.deleteRecord(existingRecord);
-
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+        
         this.logger.log(`Stock delivery deletion approved: ${existingRecord.stockDeliveryId}`);
+        await this.stockDeliveryDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<StockDeliveryDto>(existingRecord, HTTP_STATUS_OK);
     }
 

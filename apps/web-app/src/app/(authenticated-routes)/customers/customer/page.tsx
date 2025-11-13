@@ -12,6 +12,7 @@ export default function CustomersMainPage() {
   const [error, setError] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   
   const [nextCursor, setNextCursor] = useState<any>(undefined);
   const [prevCursor, setPrevCursor] = useState<any>(undefined);
@@ -189,7 +190,7 @@ export default function CustomersMainPage() {
   }) || [];
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Error Message */}
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
@@ -236,6 +237,8 @@ export default function CustomersMainPage() {
           fetchCustomers();
         }}
         onCreateClick={handleCreateClick}
+        isLoading={isLoading}
+        canCreate={isAdminUser}
       />
 
       {/* Table */}

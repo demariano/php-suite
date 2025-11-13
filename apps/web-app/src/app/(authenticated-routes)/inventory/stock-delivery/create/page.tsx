@@ -68,18 +68,9 @@ export default function CreateStockDeliveryPage() {
     // Not applicable for create mode
   };
 
-  const handleApprove = () => {
-    // Not applicable for create mode
-  };
-
-  const handleDeny = () => {
-    // Not applicable for create mode
-  };
-
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Breadcrumbs */}
-      <div className="mb-6">
+    <div className="p-4 sm:p-6 space-y-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -90,28 +81,28 @@ export default function CreateStockDeliveryPage() {
           </a>
           <span className="text-gray-400">/</span>
           <a href="/inventory/stock-delivery" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Stock Delivery
+            Stock Deliveries
           </a>
           <span className="text-gray-400">/</span>
           <span className="text-gray-800 text-sm font-medium">Create</span>
         </nav>
       </div>
 
-      {/* Stock Delivery Form */}
-      <StockDeliveryForm
-        isCreateMode={true}
-        selectedStockDelivery={null}
-        successMessage={null}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        activeTab="details"
-        onTabChange={() => {}} // Not used in create mode
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onApprove={handleApprove}
-        onDeny={handleDeny}
-        onCancel={handleCancel}
-      />
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Create New Stock Delivery</h1>
+
+      <div className="flex justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 w-full sm:max-w-4xl">
+          <StockDeliveryForm
+            isCreateMode={true}
+            selectedStockDelivery={null}
+            successMessage={null}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onCancel={handleCancel}
+            isAdminUser={isAdminUser}
+          />
+        </div>
+      </div>
     </div>
   );
 }

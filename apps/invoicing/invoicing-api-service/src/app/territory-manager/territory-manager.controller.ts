@@ -293,7 +293,7 @@ export class TerritoryManagerController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -342,9 +342,9 @@ export class TerritoryManagerController {
     })
     getByName(
         @Param('name') name: string,
-        @Query('limit') limit: number,
-        @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
@@ -359,7 +359,7 @@ export class TerritoryManagerController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })

@@ -1,6 +1,7 @@
 import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, ResponseDto, ReturnGoodSoldDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { ReturnGoodSoldDatabaseServiceAbstractClass } from '@invoicing-database-service';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -81,17 +82,19 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
         existingRecord.dateReturned = updateDto.dateReturned;
         existingRecord.originalInvoiceDetails = updateDto.originalInvoiceDetails;
         existingRecord.modifiedInvoiceDetails = updateDto.modifiedInvoiceDetails;
-        existingRecord.changeReason = updateDto.changeReason;
+        // Clear changeReason for admin users since changes are applied directly
+        existingRecord.changeReason = undefined;
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Return Good Sold updated by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         // Clear forApprovalVersion since it's a direct update
@@ -122,20 +125,44 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
             dateReturned: updateDto.dateReturned,
             originalInvoiceDetails: updateDto.originalInvoiceDetails,
             modifiedInvoiceDetails: updateDto.modifiedInvoiceDetails,
-            changeReason: updateDto.changeReason,
         };
 
         existingRecord.status = StatusEnum.FOR_APPROVAL;
-        existingRecord.changeReason = updateDto.changeReason;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
 
-        // Add activity log
-        existingRecord.activityLogs.push(
-            `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Return Good Sold update requested by ${user.username}, status set to ${StatusEnum.FOR_APPROVAL}`
-        );
+        // Detect field changes
+        const fieldChanges = detectFieldChanges(existingRecord, updateDto, {});
+        const formattedChanges = formatFieldChanges(fieldChanges);
 
-        // Optimize activity logs
+        // Build activity log message
+        let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Return Good Sold updated by ${user.username} for approval`;
+
+        // Append changes to activity log if any changes detected
+        if (formattedChanges) {
+            activityLogMessage += ` - ${formattedChanges}`;
+        }
+
+        existingRecord.activityLogs.push(activityLogMessage);
+
+        // Preserve user's manually entered changeReason and combine with auto-generated changes
+        const userChangeReason = updateDto.changeReason?.trim();
+        if (userChangeReason && formattedChanges) {
+            // User provided changeReason and we have formatted changes - combine them
+            existingRecord.changeReason = `${userChangeReason}\n\n${formattedChanges}`;
+        } else if (userChangeReason) {
+            // User provided changeReason but no formatted changes - use user's input
+            existingRecord.changeReason = userChangeReason;
+        } else if (formattedChanges) {
+            // No user input but we have formatted changes - use formatted changes
+            existingRecord.changeReason = formattedChanges;
+        } else {
+            // No user input and no formatted changes
+            existingRecord.changeReason = undefined;
+        }
+
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         // Update record in database

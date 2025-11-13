@@ -62,6 +62,10 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
 
     async updateRecord(record: ReturnGoodSoldDto): Promise<ReturnGoodSoldDto> {
         const returnGoodSoldRecord: ReturnGoodSoldDataType = await this.convertToDataType(record);
+        
+        // CRITICAL: Explicitly set changeReason on the record before calling update()
+        // This ensures the field is persisted even if convertToDataType is called separately
+        returnGoodSoldRecord.changeReason = record.changeReason;
 
         console.log('Return Good Sold Record to update:', returnGoodSoldRecord);
 
@@ -83,6 +87,24 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
         }
 
         return await this.convertToDto(returnGoodSoldRecord);
+    }
+
+    async findRecordByRgsDocno(rgsDocno: string): Promise<ReturnGoodSoldDto | null> {
+        const record = await this.returnGoodSoldTable.get(
+            {
+                GSI1PK: `RETURN_GOOD_SOLD`,
+                GSI1SK: `${rgsDocno}`,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        if (!record) {
+            return null;
+        }
+
+        return await this.convertToDto(record);
     }
 
     async findRecordsByInvoiceId(
@@ -194,18 +216,19 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
         );
     }
 
-    async findRecordsByStatusPagination(
+    async findRecordsByRgsDocnoPagination(
         limit: number,
-        status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        rgsDocno: string
     ): Promise<PageDto<ReturnGoodSoldDto>> {
         limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
 
         const records = await this.returnGoodSoldTable.find(
             {
-                GSI2PK: `RETURN_GOOD_SOLD#${status}`,
+                GSI1PK: `RETURN_GOOD_SOLD`,
+                ...(rgsDocno != null && rgsDocno.trim() !== '' ? { GSI1SK: { begins: rgsDocno.trim() } } : {}),
             },
             dynamoDbOption
         );
@@ -214,8 +237,8 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             records,
             limit,
             direction,
-            'GSI2PK',
-            'GSI2SK',
+            'GSI1PK',
+            'GSI1SK',
             'PK',
             'SK',
             JSON.stringify(records.next),
@@ -224,6 +247,53 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
 
         return new PageDto(
             await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByStatusPagination(
+        limit: number,
+        status: string,
+        direction: string,
+        cursorPointer: string,
+        rgsDocno?: string
+    ): Promise<PageDto<ReturnGoodSoldDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
+
+        // Note: GSI2SK is dateReturned, not rgsDocno, so we can't filter by rgsDocno on GSI2
+        // If rgsDocno is provided, we'll need to filter results after querying
+        // For now, we'll query all records for the status and filter in memory if rgsDocno is provided
+        const records = await this.returnGoodSoldTable.find(
+            {
+                GSI2PK: `RETURN_GOOD_SOLD#${status}`,
+            },
+            dynamoDbOption
+        );
+
+        // Filter by rgsDocno if provided (in-memory filter since GSI2SK is dateReturned)
+        let filteredRecords = records;
+        if (rgsDocno != null && rgsDocno.trim() !== '') {
+            filteredRecords = records.filter((record) =>
+                record.rgsDocno?.toLowerCase().includes(rgsDocno.trim().toLowerCase())
+            );
+        }
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            filteredRecords,
+            limit,
+            direction,
+            'GSI2PK',
+            'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(filteredRecords.next),
+            JSON.stringify(filteredRecords.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(filteredRecords),
             pageRecordCursorPointers.nextCursorPointer,
             pageRecordCursorPointers.prevCursorPointer
         );
@@ -312,7 +382,7 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
         dto.dateReturned = record.dateReturned ? record.dateReturned : '';
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.status = record.status ? (record.status as StatusEnum) : undefined;
-        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.changeReason = (record as ReturnGoodSoldDataType & { changeReason?: string }).changeReason || undefined;
         dto.originalInvoiceDetails = record.originalInvoiceDetails ? record.originalInvoiceDetails : [];
         dto.modifiedInvoiceDetails = record.modifiedInvoiceDetails ? record.modifiedInvoiceDetails : [];
         return dto;

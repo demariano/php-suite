@@ -28,7 +28,7 @@ class InvoiceApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
-        return await this.axiosInstance.get(`/invoice?${params.toString()}`);
+        return await this.axiosInstance.get(`/invoices?${params.toString()}`);
     };
 
     public getInvoicesByStatus = async (
@@ -55,11 +55,11 @@ class InvoiceApi extends AxiosConfig {
             params.append('docno', docno);
         }
 
-        return await this.axiosInstance.get(`/invoice/status?${params.toString()}`);
+        return await this.axiosInstance.get(`/invoices/status?${params.toString()}`);
     };
 
     public getInvoiceById = async (id: string): Promise<InvoiceDto> => {
-        return await this.axiosInstance.get(`/invoice/${id}`);
+        return await this.axiosInstance.get(`/invoices/${id}`);
     };
 
     public getInvoicesByDocno = async (
@@ -80,7 +80,7 @@ class InvoiceApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
-        return await this.axiosInstance.get(`/invoice/docno/${docno}?${params.toString()}`);
+        return await this.axiosInstance.get(`/invoices/docno/${docno}?${params.toString()}`);
     };
 
     public createInvoice = async (invoice: CreateInvoiceDto, userRole?: string): Promise<InvoiceDto> => {
@@ -91,7 +91,7 @@ class InvoiceApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/invoice?${queryString}` : '/invoice';
+        const url = queryString ? `/invoices?${queryString}` : '/invoices';
 
         return await this.axiosInstance.post(url, invoice);
     };
@@ -104,7 +104,7 @@ class InvoiceApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/invoice/${id}?${queryString}` : `/invoice/${id}`;
+        const url = queryString ? `/invoices/${id}?${queryString}` : `/invoices/${id}`;
 
         return await this.axiosInstance.put(url, invoice);
     };
@@ -117,7 +117,7 @@ class InvoiceApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/invoice/${invoice.invoiceId}?${queryString}` : `/invoice/${invoice.invoiceId}`;
+        const url = queryString ? `/invoices/${invoice.invoiceId}?${queryString}` : `/invoices/${invoice.invoiceId}`;
 
         return await this.axiosInstance.delete(url, { data: invoice });
     };
@@ -130,7 +130,7 @@ class InvoiceApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/invoice/${id}/approve?${queryString}` : `/invoice/${id}/approve`;
+        const url = queryString ? `/invoices/${id}/approve?${queryString}` : `/invoices/${id}/approve`;
 
         return await this.axiosInstance.post(url);
     };
@@ -143,13 +143,13 @@ class InvoiceApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/invoice/${id}/deny?${queryString}` : `/invoice/${id}/deny`;
+        const url = queryString ? `/invoices/${id}/deny?${queryString}` : `/invoices/${id}/deny`;
 
         return await this.axiosInstance.post(url);
     };
 
     public getPendingPaymentInvoices = async (customerId: string, status: string): Promise<InvoiceDto[]> => {
-        return await this.axiosInstance.get(`/invoice/customer/${customerId}/pending-payment?status=${status}`);
+        return await this.axiosInstance.get(`/invoices/customer/${customerId}/pending-payment?status=${status}`);
     };
 }
 

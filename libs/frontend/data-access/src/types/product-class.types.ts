@@ -9,6 +9,7 @@ export interface ProductClassDto {
     status?: StatusEnum;
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    changeReason?: string;
 }
 
 export interface CreateProductClassDto {

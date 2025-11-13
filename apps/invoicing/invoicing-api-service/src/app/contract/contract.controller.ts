@@ -16,8 +16,8 @@ import { GetPendingPaymentContractsQuery } from './queries/get.pending.payment.c
 import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
-@ApiTags('Contract')
-@Controller('contract')
+@ApiTags('contracts')
+@Controller('contracts')
 @ApiBearerAuth('JWT-auth')
 @UseGuards(CognitoAuthGuard)
 export class ContractController {
@@ -299,7 +299,7 @@ export class ContractController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -517,7 +517,7 @@ export class ContractController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -568,9 +568,9 @@ export class ContractController {
     })
     getContainingContractNo(
         @Param('contractNo') contractNo: string,
-        @Query('limit') limit: number,
-        @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string
     ) {
         return this.queryBus.execute(
             new GetContractsContainingContractNoQuery(contractNo, limit, direction, cursorPointer)
@@ -590,7 +590,7 @@ export class ContractController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })

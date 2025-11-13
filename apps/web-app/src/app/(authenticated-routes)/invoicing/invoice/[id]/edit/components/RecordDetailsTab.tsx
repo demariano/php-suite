@@ -523,811 +523,379 @@ export default function RecordDetailsTab({
   };
 
   return (
-    <div>
-      <h3 style={{
-        fontSize: '18px',
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: '20px'
-      }}>
-        Invoice Details
-      </h3>
-
+    <div className="space-y-6">
       {/* Change Reason Field - Only for non-admin users editing existing invoices */}
       {!isCreateMode && !isAdminUser && !isReadOnly && (
-        <div style={{
-          backgroundColor: '#fef3c7',
-          border: '2px solid #f59e0b',
-          borderRadius: '8px',
-          padding: '16px',
-          marginBottom: '20px',
-          boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '12px'
-          }}>
-            <div style={{
-              width: '20px',
-              height: '20px',
-              backgroundColor: '#f59e0b',
-              borderRadius: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '12px',
-              fontWeight: 'bold'
-            }}>
-              📝
+        <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
             </div>
-            <h4 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#92400e',
-              margin: 0
-            }}>
-              Change Reason *
-            </h4>
+            <h3 className="text-base font-bold text-blue-600 m-0">
+              Change Reason
+            </h3>
           </div>
-          <textarea
-            value={formData.changeReason || ''}
-            onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
-            placeholder="Please provide a reason for the changes (minimum 10 characters)"
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #f59e0b',
-              borderRadius: '6px',
-              fontSize: '14px',
-              color: '#92400e',
-              lineHeight: '1.5',
-              backgroundColor: 'white',
-              outline: 'none',
-              resize: 'vertical',
-              minHeight: '80px',
-              fontFamily: 'inherit'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#d97706';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#f59e0b';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
-          <div style={{
-            fontSize: '12px',
-            color: '#92400e',
-            marginTop: '8px',
-            fontStyle: 'italic'
-          }}>
-            Minimum 10 characters required
+          <div className="group">
+            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+              Change Reason and Modification Made
+            </label>
+            <textarea
+              value={formData.changeReason || ''}
+              onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
+              placeholder="Please provide a reason for the changes (minimum 10 characters)"
+              rows={3}
+              className="min-h-[80px] w-full resize-vertical rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            />
+            <div className="mt-2 text-xs text-gray-500">
+              Minimum 10 characters required when making changes to the invoice record.
+            </div>
           </div>
         </div>
       )}
 
-      {/* Basic Information */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '20px',
-        marginBottom: '24px'
-      }}>
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Document Number *
-          </label>
-          <input
-            type="text"
-            value={formData.docno || ''}
-            onChange={(e) => onFormDataChange({ docno: e.target.value })}
-            readOnly={!isCreateMode || isReadOnly}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode || isReadOnly) ? '#f9fafb' : 'white'
-            }}
-            placeholder="Enter document number"
-          />
+      {/* Basic Information Section */}
+      <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </div>
+          <h3 className="text-base font-bold text-blue-600 m-0">
+            Basic Information
+          </h3>
         </div>
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Invoice Date *
-          </label>
-          <DatePicker
-            value={formData.invoiceDate || ''}
-            onChange={(date) => onFormDataChange({ invoiceDate: date })}
-            placeholder="Select invoice date"
-            disabled={!isCreateMode || isReadOnly}
-          />
-        </div>
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Customer Name *
-          </label>
-          <div style={{ position: 'relative' }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Document Number *
+            </label>
             <input
               type="text"
-              value={formData.customerName || ''}
-              readOnly
-              onClick={() => isCreateMode && !isReadOnly && setShowCustomerModal(true)}
+              value={formData.docno || ''}
+              onChange={(e) => onFormDataChange({ docno: e.target.value })}
+              readOnly={!isCreateMode || isReadOnly}
+              className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                !isCreateMode || isReadOnly
+                  ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+              }`}
+              placeholder="Enter document number"
+            />
+          </div>
+
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Invoice Date *
+            </label>
+            <DatePicker
+              value={formData.invoiceDate || ''}
+              onChange={(date) => onFormDataChange({ invoiceDate: date })}
+              placeholder="Select invoice date"
               disabled={!isCreateMode || isReadOnly}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                paddingRight: (formData.customerName && isCreateMode && !isReadOnly) ? '40px' : '16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                color: formData.customerName ? '#1f2937' : '#6b7280',
-                cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                outline: 'none',
-                transition: 'all 0.2s ease',
-                opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
-              }}
-              placeholder={(!isCreateMode || isReadOnly) ? "Customer cannot be changed" : "Click to select customer"}
-              onMouseEnter={(e) => {
-                if (isCreateMode) {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
             />
-            
-            {formData.customerName && isCreateMode && !isReadOnly && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClearCustomer();
-                }}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6b7280',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  zIndex: 10,
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#dc2626';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#6b7280';
-                }}
-                title="Clear customer selection"
-              >
-                ×
-              </button>
-            )}
           </div>
-        </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Area Name
-          </label>
-          <input
-            type="text"
-            value={formData.areaName || ''}
-            readOnly
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              backgroundColor: '#f9fafb',
-              color: '#6b7280'
-            }}
-            placeholder="Auto-populated from customer"
-          />
-        </div>
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Customer Name *
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.customerName || ''}
+                readOnly
+                onClick={() => isCreateMode && !isReadOnly && setShowCustomerModal(true)}
+                disabled={!isCreateMode || isReadOnly}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  formData.customerName && isCreateMode && !isReadOnly ? 'pr-10' : ''
+                } ${
+                  !isCreateMode || isReadOnly
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 opacity-60'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                }`}
+                placeholder={(!isCreateMode || isReadOnly) ? "Customer cannot be changed" : "Click to select customer"}
+              />
+              
+              {formData.customerName && isCreateMode && !isReadOnly && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearCustomer();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-transparent border-none cursor-pointer flex items-center justify-center text-gray-600 text-base font-bold z-10 transition-colors duration-200 hover:text-red-600"
+                  title="Clear customer selection"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Territory Manager
-          </label>
-          <input
-            type="text"
-            value={formData.territoryManagerName || ''}
-            readOnly
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              backgroundColor: '#f9fafb',
-              color: '#6b7280'
-            }}
-            placeholder="Auto-populated from area"
-          />
-        </div>
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Sales Type
-          </label>
-          <div style={{ position: 'relative' }}>
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Area Name
+            </label>
             <input
               type="text"
-              value={formData.salesTypeName || ''}
+              value={formData.areaName || ''}
               readOnly
-              onClick={() => isCreateMode && !isReadOnly && setShowSalesTypeModal(true)}
-              disabled={!isCreateMode || isReadOnly}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                paddingRight: formData.salesTypeName ? '40px' : '16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                color: formData.salesTypeName ? '#1f2937' : '#6b7280',
-                cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                outline: 'none',
-                transition: 'all 0.2s ease',
-                opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
-              }}
-              placeholder={(!isCreateMode || isReadOnly) ? "Sales type cannot be changed" : "Click to select sales type"}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
+              placeholder="Auto-populated from customer"
             />
-            
-            {isCreateMode && !isReadOnly && formData.salesTypeName && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClearSalesType();
-                }}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6b7280',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  zIndex: 10,
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#dc2626';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#6b7280';
-                }}
-                title="Clear sales type selection"
-              >
-                ×
-              </button>
-            )}
           </div>
-        </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Contract Name
-          </label>
-          <div style={{ position: 'relative' }}>
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Territory Manager
+            </label>
             <input
               type="text"
-              value={formData.contractName || ''}
+              value={formData.territoryManagerName || ''}
               readOnly
-              onClick={() => {
-                const isEnabled = formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly;
-                if (isEnabled) {
-                  setShowContractModal(true);
-                }
-              }}
-              disabled={!formData.customerId || formData.contractSales !== true || !isCreateMode || isReadOnly}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                paddingRight: (formData.contractName && formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly) ? '40px' : '16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: (!formData.customerId || formData.contractSales !== true || !isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                color: formData.contractName ? '#1f2937' : '#6b7280',
-                cursor: (formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                outline: 'none',
-                transition: 'all 0.2s ease',
-                opacity: (!formData.customerId || formData.contractSales !== true || !isCreateMode || isReadOnly) ? 0.6 : 1
-              }}
-              placeholder={
-                !formData.customerId 
-                  ? "Select customer first" 
-                  : formData.contractSales !== true 
-                    ? "Select sales type with contract sales enabled" 
-                    : (!isCreateMode || isReadOnly) 
-                      ? "Contract cannot be changed" 
-                      : "Click to select contract"
-              }
-              onMouseEnter={(e) => {
-                if (formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly) {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
+              className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
+              placeholder="Auto-populated from area"
             />
-            
-            {formData.contractName && formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClearContract();
-                }}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6b7280',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  zIndex: 10,
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#dc2626';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#6b7280';
-                }}
-                title="Clear contract selection"
-              >
-                ×
-              </button>
-            )}
           </div>
-        </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Terms Name
-          </label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              value={formData.termsName || ''}
-              readOnly
-              onClick={() => isCreateMode && !isReadOnly && customerTerms.length > 0 && setShowTermsModal(true)}
-              disabled={!isCreateMode || customerTerms.length === 0 || isReadOnly}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                paddingRight: (formData.termsName && isCreateMode && !isReadOnly && customerTerms.length > 0) ? '40px' : '16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: (!isCreateMode || isReadOnly || customerTerms.length === 0) ? '#f9fafb' : '#f9fafb',
-                color: formData.termsName ? '#1f2937' : '#6b7280',
-                cursor: (isCreateMode && !isReadOnly && customerTerms.length > 0) ? 'pointer' : 'not-allowed',
-                outline: 'none',
-                transition: 'all 0.2s ease',
-                opacity: (isCreateMode && !isReadOnly && customerTerms.length > 0) ? 1 : 0.6
-              }}
-              placeholder={(!isCreateMode || isReadOnly) ? "Terms cannot be changed" : (customerTerms.length === 0 ? "Select customer first" : "Click to select terms")}
-              onMouseEnter={(e) => {
-                if (isCreateMode && customerTerms.length > 0) {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-            
-            {formData.termsName && isCreateMode && !isReadOnly && customerTerms.length > 0 && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClearTerms();
-                }}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6b7280',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  zIndex: 10,
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#dc2626';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#6b7280';
-                }}
-                title="Clear terms selection"
-              >
-                ×
-              </button>
-            )}
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Sales Type
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.salesTypeName || ''}
+                readOnly
+                onClick={() => isCreateMode && !isReadOnly && setShowSalesTypeModal(true)}
+                disabled={!isCreateMode || isReadOnly}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  formData.salesTypeName && isCreateMode && !isReadOnly ? 'pr-10' : ''
+                } ${
+                  !isCreateMode || isReadOnly
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 opacity-60'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                }`}
+                placeholder={(!isCreateMode || isReadOnly) ? "Sales type cannot be changed" : "Click to select sales type"}
+              />
+              
+              {isCreateMode && !isReadOnly && formData.salesTypeName && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearSalesType();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-transparent border-none cursor-pointer flex items-center justify-center text-gray-600 text-base font-bold z-10 transition-colors duration-200 hover:text-red-600"
+                  title="Clear sales type selection"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
-        </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Product Price Type
-          </label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              value={formData.productPriceTypeName || ''}
-              readOnly
-              onClick={() => isCreateMode && !isReadOnly && setShowProductPriceTypeModal(true)}
-              disabled={!isCreateMode || isReadOnly}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                paddingRight: formData.productPriceTypeName ? '40px' : '16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                color: formData.productPriceTypeName ? '#1f2937' : '#6b7280',
-                cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                outline: 'none',
-                transition: 'all 0.2s ease',
-                opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
-              }}
-              placeholder={(!isCreateMode || isReadOnly) ? "Product price type cannot be changed" : "Click to select product price type"}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-            
-            {isCreateMode && !isReadOnly && formData.productPriceTypeName && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClearProductPriceType();
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Contract Name
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.contractName || ''}
+                readOnly
+                onClick={() => {
+                  const isEnabled = formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly;
+                  if (isEnabled) {
+                    setShowContractModal(true);
+                  }
                 }}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6b7280',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  zIndex: 10,
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#dc2626';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#6b7280';
-                }}
-                title="Clear product price type selection"
-              >
-                ×
-              </button>
-            )}
+                disabled={!formData.customerId || formData.contractSales !== true || !isCreateMode || isReadOnly}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  formData.contractName && formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly ? 'pr-10' : ''
+                } ${
+                  !formData.customerId || formData.contractSales !== true || !isCreateMode || isReadOnly
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 opacity-60'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                }`}
+                placeholder={
+                  !formData.customerId 
+                    ? "Select customer first" 
+                    : formData.contractSales !== true 
+                      ? "Select sales type with contract sales enabled" 
+                      : (!isCreateMode || isReadOnly) 
+                        ? "Contract cannot be changed" 
+                        : "Click to select contract"
+                }
+              />
+              
+              {formData.contractName && formData.customerId && formData.contractSales === true && isCreateMode && !isReadOnly && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearContract();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-transparent border-none cursor-pointer flex items-center justify-center text-gray-600 text-base font-bold z-10 transition-colors duration-200 hover:text-red-600"
+                  title="Clear contract selection"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Terms Name
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.termsName || ''}
+                readOnly
+                onClick={() => isCreateMode && !isReadOnly && customerTerms.length > 0 && setShowTermsModal(true)}
+                disabled={!isCreateMode || customerTerms.length === 0 || isReadOnly}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  formData.termsName && isCreateMode && !isReadOnly && customerTerms.length > 0 ? 'pr-10' : ''
+                } ${
+                  !isCreateMode || customerTerms.length === 0 || isReadOnly
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 opacity-60'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                }`}
+                placeholder={(!isCreateMode || isReadOnly) ? "Terms cannot be changed" : (customerTerms.length === 0 ? "Select customer first" : "Click to select terms")}
+              />
+              
+              {formData.termsName && isCreateMode && !isReadOnly && customerTerms.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearTerms();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-transparent border-none cursor-pointer flex items-center justify-center text-gray-600 text-base font-bold z-10 transition-colors duration-200 hover:text-red-600"
+                  title="Clear terms selection"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Product Price Type
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.productPriceTypeName || ''}
+                readOnly
+                onClick={() => isCreateMode && !isReadOnly && setShowProductPriceTypeModal(true)}
+                disabled={!isCreateMode || isReadOnly}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  formData.productPriceTypeName && isCreateMode && !isReadOnly ? 'pr-10' : ''
+                } ${
+                  !isCreateMode || isReadOnly
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 opacity-60'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                }`}
+                placeholder={(!isCreateMode || isReadOnly) ? "Product price type cannot be changed" : "Click to select product price type"}
+              />
+              
+              {isCreateMode && !isReadOnly && formData.productPriceTypeName && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearProductPriceType();
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-transparent border-none cursor-pointer flex items-center justify-center text-gray-600 text-base font-bold z-10 transition-colors duration-200 hover:text-red-600"
+                  title="Clear product price type selection"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Status Information */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr 1fr',
-        gap: '20px',
-        marginBottom: '24px'
-      }}>
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Status
-          </label>
-          <div style={{ padding: '8px 0' }}>
-            {getStatusBadge(formData.status || StatusEnum.ACTIVE)}
+      {/* Calculated Amounts Section */}
+      <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            </svg>
           </div>
+          <h3 className="text-base font-bold text-blue-600 m-0">
+            Calculated Amounts
+          </h3>
         </div>
-
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Payment Status
-          </label>
-          <div style={{ padding: '8px 0' }}>
-            {getPaymentStatusBadge(formData.paymentStatus || PaymentStatusEnum.PENDING)}
-          </div>
-        </div>
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Print Status
-          </label>
-          <div style={{ padding: '8px 0' }}>
-            {getPrintStatusBadge(formData.printStatus || PrintStatusEnum.PENDING)}
-          </div>
-        </div>
-      </div>
-
-      {/* Auto-calculated Amounts */}
-      <div style={{
-        backgroundColor: '#f8fafc',
-        border: '1px solid #e2e8f0',
-        borderRadius: '8px',
-        padding: '20px',
-        marginBottom: '24px'
-      }}>
-        <h4 style={{
-          fontSize: '16px',
-          fontWeight: '600',
-          color: '#1f2937',
-          marginBottom: '16px'
-        }}>
-          Calculated Amounts
-        </h4>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr 1fr 1fr',
-          gap: '20px'
-        }}>
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               Invoice Amount
             </label>
             <input
               type="number"
               value={formData.invoiceAmount || 0}
               readOnly
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: '#f9fafb',
-                color: '#6b7280',
-                fontWeight: '500'
-              }}
+              className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
             />
           </div>
 
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               Tax Amount
             </label>
             <input
               type="number"
               value={formData.taxAmount || 0}
               readOnly
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: '#f9fafb',
-                color: '#6b7280',
-                fontWeight: '500'
-              }}
+              className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
             />
           </div>
 
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               Final Amount
             </label>
             <input
               type="number"
               value={formData.finalAmount || 0}
               readOnly
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: '#f9fafb',
-                color: '#6b7280',
-                fontWeight: '500'
-              }}
+              className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
             />
           </div>
 
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               Total Amount Paid
             </label>
             <input
               type="number"
               value={formData.totalAmountPaid || 0}
               readOnly
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: '#f9fafb',
-                color: '#6b7280',
-                fontWeight: '500'
-              }}
+              className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
             />
           </div>
         </div>

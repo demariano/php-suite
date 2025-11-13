@@ -76,6 +76,8 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
     async updateRecord(record: CustomerDto): Promise<CustomerDto> {
         const customerRecord: CustomerDataType = await this.convertToDataType(record);
 
+        customerRecord.changeReason = record.changeReason;
+
         const updatedCustomerRecord: CustomerDataType = await this.customerTable.update(customerRecord);
 
         return await this.convertToDto(updatedCustomerRecord);
@@ -413,7 +415,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         dto.customerTypeName = record.customerTypeName ? record.customerTypeName : '';
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.changeReason = (record as CustomerDataType & { changeReason?: string }).changeReason || undefined;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.customerTerms = record.customerTerms ? record.customerTerms : [];
         dto.customerProductDeals = record.customerProductDeals ? record.customerProductDeals : [];

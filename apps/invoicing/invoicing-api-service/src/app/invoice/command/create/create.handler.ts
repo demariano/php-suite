@@ -1,12 +1,13 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
 import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateInvoiceCommand } from './create.command';
 
 // Constants
-
+const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreateInvoiceCommand)
@@ -91,15 +92,19 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
                     timeZone: 'Asia/Manila',
                 })}, Invoice created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
+            // Limit activity logs to last 10 entries
+            command.invoiceDto.activityLogs = reduceArrayContents(command.invoiceDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
-            // User needs approval - set to FOR_APPROVAL
-            command.invoiceDto.status = StatusEnum.FOR_APPROVAL;
+            // User needs approval - set to NEW_RECORD
+            command.invoiceDto.status = StatusEnum.NEW_RECORD;
             command.invoiceDto.activityLogs = [];
             command.invoiceDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
                 })}, Invoice created by ${command.user.username} for approval`
             );
+            // Limit activity logs to last 10 entries
+            command.invoiceDto.activityLogs = reduceArrayContents(command.invoiceDto.activityLogs, ACTIVITY_LOGS_LIMIT);
             command.invoiceDto.forApprovalVersion = {};
             command.invoiceDto.forApprovalVersion.docno = command.invoiceDto.docno;
             command.invoiceDto.forApprovalVersion.invoiceDate = command.invoiceDto.invoiceDate;

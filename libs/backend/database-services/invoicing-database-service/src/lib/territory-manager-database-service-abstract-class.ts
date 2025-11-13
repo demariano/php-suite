@@ -5,12 +5,7 @@ export abstract class TerritoryManagerDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<TerritoryManagerDto | null>;
 
-    abstract findRecordContainingName(
-        limit: number,
-        name: string,
-        direction: string,
-        cursorPointer: string
-    ): Promise<PageDto<TerritoryManagerDto>>;
+    abstract findRecordContainingName(name: string): Promise<TerritoryManagerDto[] | null>;
 
     abstract findRecordByName(name: string): Promise<TerritoryManagerDto | null>;
 
@@ -19,6 +14,13 @@ export abstract class TerritoryManagerDatabaseServiceAbstract {
     abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<TerritoryManagerDto>>;
+
+    abstract findRecordsByNamePagination(
+        limit: number,
         direction: string,
         cursorPointer: string,
         name: string

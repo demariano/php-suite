@@ -99,11 +99,14 @@ export class ApproveStockTypeHandler implements ICommandHandler<ApproveStockType
         existingRecord.status = StatusEnum.ACTIVE;
         const activityLog = `Date: ${new Date().toLocaleString('en-US', {
             timeZone: 'Asia/Manila',
-        })}, Stock type approved by ${user.username}`;
+        })}, Stock type approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
         existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+        // Reset changeReason to null after applying changes
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.stockTypeDatabaseService.updateRecord(existingRecord);
@@ -115,6 +118,9 @@ export class ApproveStockTypeHandler implements ICommandHandler<ApproveStockType
      * Approves deletion of a stock type record
      */
     private async approveDeletion(existingRecord: StockTypeDto): Promise<ResponseDto<StockTypeDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+        
         this.logger.log(`Stock type deletion approved: ${existingRecord.stockTypeId}`);
         await this.stockTypeDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<StockTypeDto>(existingRecord, HTTP_STATUS_OK);

@@ -40,6 +40,9 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
 
     async updateRecord(dto: AccountsDto): Promise<AccountsDto> {
         const accountsRecord: AccountsDataType = await this.convertToDataType(dto);
+
+        accountsRecord.changeReason = dto.changeReason;
+
         const updatedAccountsRecord: AccountsDataType = await this.accountsTable.update(accountsRecord);
         return await this.convertToDto(updatedAccountsRecord);
     }
@@ -268,7 +271,7 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.subAccounts = record.subAccounts ? record.subAccounts : [];
-        dto.changeReason = record.changeReason ? record.changeReason : undefined;
+        dto.changeReason = (record as AccountsDataType & { changeReason?: string }).changeReason || undefined;
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : undefined;
 
         return dto;

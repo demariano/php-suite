@@ -109,8 +109,28 @@ class StockDeliveryApi extends AxiosConfig {
         return await this.axiosInstance.get(`/stock-delivery/filter?${params.toString()}`);
     };
 
-    public getStockDeliveryByDocno = async (docno: string): Promise<StockDeliveryDto[]> => {
-        return await this.axiosInstance.get(`/stock-delivery/docno/${docno}`);
+    public getStockDeliveryByDocno = async (
+        docno: string,
+        limit = 10,
+        direction?: string,
+        cursorPointer?: string
+    ): Promise<StockDeliveriesResponse> => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+        });
+
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/stock-delivery/docno/${docno}?${queryString}` : `/stock-delivery/docno/${docno}`;
+
+        return await this.axiosInstance.get(url);
     };
 
     public getStockDeliveriesByStatusAndSupplier = async (

@@ -1,12 +1,9 @@
 'use client';
 
-import { InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, ProductDealQtyDto, ProductDto, ProductUnitDto, StockApi, StockDto, StockFilterDto, StockTypeDto, useSessionStore } from '@data-access/index';
+import { InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, ProductDealQtyDto, StockApi, StockDto, useSessionStore } from '@data-access/index';
 import { CustomerProductDealDto } from '@data-access/types/customer-product-deal.types';
 import { useState } from 'react';
-import DatePicker from '../../../../../components/DatePicker';
-import ProductSearchableSelectionModal from '../../../../../search-modals/ProductSearchableSelectionModal';
-import ProductUnitSearchableSelectionModal from '../../../../../search-modals/ProductUnitSearchableSelectionModal';
-import StockTypeSearchableSelectionModal from '../../../../../search-modals/StockTypeSearchableSelectionModal';
+import StockSearchableSelectionModal from '../../../../../search-modals/StockSearchableSelectionModal';
 
 interface InvoiceDetailsTabProps {
   formData: InvoiceDto;
@@ -19,17 +16,10 @@ interface InvoiceDetailsTabProps {
 }
 
 interface StockSelectionState {
-  selectedProduct: ProductDto | null;
-  selectedProductUnit: ProductUnitDto | null;
-  selectedStockType: StockTypeDto | null;
-  lotNo: string;
-  expirationDate: string;
+  selectedStock: StockDto | null;
   selectedProductDeal: CustomerProductDealDto | null;
   quantity: number;
-  showProductModal: boolean;
-  showProductUnitModal: boolean;
-  showStockTypeModal: boolean;
-  showProductDealModal: boolean;
+  showStockModal: boolean;
 }
 
 export default function InvoiceDetailsTab({
@@ -43,41 +33,71 @@ export default function InvoiceDetailsTab({
 }: InvoiceDetailsTabProps) {
   const { setFlashNotification } = useSessionStore();
   const [stockSelection, setStockSelection] = useState<StockSelectionState>({
-    selectedProduct: null,
-    selectedProductUnit: null,
-    selectedStockType: null,
-    lotNo: '',
-    expirationDate: '',
+    selectedStock: null,
     selectedProductDeal: null,
     quantity: 0,
-    showProductModal: false,
-    showProductUnitModal: false,
-    showStockTypeModal: false,
-    showProductDealModal: false
+    showStockModal: false
   });
 
-  const handleProductSelect = (product: ProductDto) => {
-    setStockSelection(prev => ({
-      ...prev,
-      selectedProduct: product,
-      showProductModal: false
-    }));
-  };
+  // Handle stock item selection from modal
+  const handleStockSelect = async (stock: StockDto) => {
+    try {
+      // Check if productPriceTypeId is selected
+      if (!formData.productPriceTypeId) {
+        setFlashNotification({
+          title: 'Selection Required',
+          message: 'Please select a Product Price Type in the invoice details before adding items.',
+          alertType: 'warning'
+        });
+        return;
+      }
 
-  const handleProductUnitSelect = (productUnit: ProductUnitDto) => {
-    setStockSelection(prev => ({
-      ...prev,
-      selectedProductUnit: productUnit,
-      showProductUnitModal: false
-    }));
-  };
+      // Fetch product details to get pricing
+      if (!stock.productId) {
+        setFlashNotification({
+          title: 'Error',
+          message: 'Product ID is missing from selected stock',
+          alertType: 'error'
+        });
+        return;
+      }
+      
+      const product = await ProductApi.getProductById(stock.productId);
+      
+      // Find matching price based on productUnitId and productPriceTypeId
+      const matchingPrice = product.productUnitPrice?.find(
+        (unitPrice) =>
+          unitPrice.productUnitId === stock.productUnitId &&
+          unitPrice.productPriceTypeId === formData.productPriceTypeId
+      );
+      
+      if (!matchingPrice) {
+        setFlashNotification({
+          title: 'Price Not Found',
+          message: `No price found for this product unit with the selected price type (${formData.productPriceTypeName}). Please select a different price type in the invoice details.`,
+          alertType: 'error'
+        });
+        return;
+      }
 
-  const handleStockTypeSelect = (stockType: StockTypeDto) => {
-    setStockSelection(prev => ({
-      ...prev,
-      selectedStockType: stockType,
-      showStockTypeModal: false
-    }));
+      // Update stock selection with pricing information
+      setStockSelection(prev => ({
+        ...prev,
+        selectedStock: {
+          ...stock,
+          cost: matchingPrice.cost,
+          price: matchingPrice.price
+        },
+        showStockModal: false
+      }));
+    } catch (error) {
+      console.error('Error fetching product details:', error);
+      setFlashNotification({
+        title: 'Error',
+        message: 'Failed to fetch product pricing information',
+        alertType: 'error'
+      });
+    }
   };
 
 
@@ -102,67 +122,28 @@ export default function InvoiceDetailsTab({
       return;
     }
 
-    if (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
-        !stockSelection.selectedStockType || stockSelection.quantity <= 0) {
+    if (!stockSelection.selectedStock || stockSelection.quantity <= 0) {
       setFlashNotification({
         title: 'Missing Information',
-        message: 'Please select product, product unit, stock type, and enter quantity.',
+        message: 'Please select a stock item and enter quantity.',
         alertType: 'warning'
       });
       return;
     }
 
-    // Fetch product details to get pricing
+    // Use the selected stock (already has pricing from handleStockSelect)
+    const foundStock = stockSelection.selectedStock;
+
+    if (!foundStock || !foundStock.stockId) {
+      setFlashNotification({
+        title: 'Stock Not Found',
+        message: 'Selected stock is invalid. Please select a stock item again.',
+        alertType: 'error'
+      });
+      return;
+    }
+
     try {
-      const product = await ProductApi.getProductById(stockSelection.selectedProduct.productId || '');
-      
-      // Find matching price based on productUnitId and productPriceTypeId
-      const matchingPrice = product.productUnitPrice?.find(
-        (unitPrice) =>
-          unitPrice.productUnitId === stockSelection.selectedProductUnit?.productUnitId &&
-          unitPrice.productPriceTypeId === formData.productPriceTypeId
-      );
-      
-      if (!matchingPrice) {
-        setFlashNotification({ 
-          title: 'Price Not Found', 
-          message: `No price found for this product unit with the selected price type (${formData.productPriceTypeName}). Please select a different price type in the invoice details.`, 
-          alertType: 'error' 
-        });
-        return;
-      }
-
-      // Find stock by filter (product, unit, type, lot)
-      const filter: StockFilterDto = {
-        productName: stockSelection.selectedProduct.productName || '',
-        productUnitName: stockSelection.selectedProductUnit.productUnitName,
-        stockTypeName: stockSelection.selectedStockType.stockTypeName || '',
-        lotNo: stockSelection.lotNo || undefined,
-        status: 'ACTIVE'
-      };
-
-      const stockResponse = await StockApi.getStocksByFilter(filter, 1);
-      let foundStock: StockDto | null = null;
-
-      if (stockResponse.data && stockResponse.data.length > 0) {
-        // Find exact match
-        foundStock = stockResponse.data.find(stock => 
-          stock.productId === stockSelection.selectedProduct?.productId &&
-          stock.productUnitId === stockSelection.selectedProductUnit?.productUnitId &&
-          stock.stockTypeId === stockSelection.selectedStockType?.stockTypeId &&
-          stock.lotNo === stockSelection.lotNo
-        ) || stockResponse.data[0];
-      }
-
-      if (!foundStock || !foundStock.stockId) {
-        setFlashNotification({
-          title: 'Stock Not Found',
-          message: 'No matching stock found. Please verify the product, unit, type, and lot number combination.',
-          alertType: 'error'
-        });
-        return;
-      }
-
       // Calculate total quantity needed (including free items from deal)
       let totalQuantityNeeded = stockSelection.quantity;
       let freeItemQuantity = 0;
@@ -192,19 +173,19 @@ export default function InvoiceDetailsTab({
         return;
       }
 
-      const cost = Math.round((matchingPrice.cost || 0) * 100) / 100;
-      const price = Math.round((matchingPrice.price || 0) * 100) / 100;
+      const cost = Math.round((foundStock.cost || 0) * 100) / 100;
+      const price = Math.round((foundStock.price || 0) * 100) / 100;
       const amount = Math.round((stockSelection.quantity * price) * 100) / 100;
 
       const newDetail: InvoiceDetailsDto = {
         invoiceDetailId: `temp_${Date.now()}`,
-        productId: stockSelection.selectedProduct.productId || '',
-        productName: stockSelection.selectedProduct.productName || '',
-        productUnitId: stockSelection.selectedProductUnit.productUnitId,
-        productUnitName: stockSelection.selectedProductUnit.productUnitName,
-        stockTypeId: stockSelection.selectedStockType.stockTypeId || '',
-        stockTypeName: stockSelection.selectedStockType.stockTypeName || '',
-        lotNo: stockSelection.lotNo,
+        productId: foundStock.productId || '',
+        productName: foundStock.productName || '',
+        productUnitId: foundStock.productUnitId || '',
+        productUnitName: foundStock.productUnitName || '',
+        stockTypeId: foundStock.stockTypeId || '',
+        stockTypeName: foundStock.stockTypeName || '',
+        lotNo: foundStock.lotNo || '',
         stockId: foundStock.stockId,
         qty: stockSelection.quantity,
         productDealId: stockSelection.selectedProductDeal?.productDealId,
@@ -212,7 +193,7 @@ export default function InvoiceDetailsTab({
         price: price,
         cost: cost,
         amount: amount,
-        expiryDate: stockSelection.expirationDate,
+        expiryDate: foundStock.expirationDate,
         invoiceDetailType: InvoiceDetailTypeEnum.REGULAR_ITEM
       };
 
@@ -239,13 +220,13 @@ export default function InvoiceDetailsTab({
         // Add free item
         const freeItem: InvoiceDetailsDto = {
           invoiceDetailId: `temp_${Date.now()}_free`,
-          productId: stockSelection.selectedProduct.productId || '',
-          productName: stockSelection.selectedProduct.productName || '',
-          productUnitId: stockSelection.selectedProductUnit.productUnitId,
-          productUnitName: stockSelection.selectedProductUnit.productUnitName,
-          stockTypeId: stockSelection.selectedStockType.stockTypeId || '',
-          stockTypeName: stockSelection.selectedStockType.stockTypeName || '',
-          lotNo: stockSelection.lotNo,
+          productId: foundStock.productId || '',
+          productName: foundStock.productName || '',
+          productUnitId: foundStock.productUnitId || '',
+          productUnitName: foundStock.productUnitName || '',
+          stockTypeId: foundStock.stockTypeId || '',
+          stockTypeName: foundStock.stockTypeName || '',
+          lotNo: foundStock.lotNo || '',
           stockId: foundStock.stockId,
           qty: freeItemQuantity,
           productDealId: contractSales ? formData.contractId : stockSelection.selectedProductDeal?.productDealId,
@@ -253,7 +234,7 @@ export default function InvoiceDetailsTab({
           price: 0,
           cost: 0,
           amount: 0,
-          expiryDate: stockSelection.expirationDate,
+          expiryDate: foundStock.expirationDate,
           invoiceDetailType: InvoiceDetailTypeEnum.FREE_ITEM
         };
         updatedDetails.push(freeItem);
@@ -278,17 +259,10 @@ export default function InvoiceDetailsTab({
 
       // Reset selection
       setStockSelection({
-        selectedProduct: null,
-        selectedProductUnit: null,
-        selectedStockType: null,
-        lotNo: '',
-        expirationDate: '',
+        selectedStock: null,
         selectedProductDeal: null,
         quantity: 0,
-        showProductModal: false,
-        showProductUnitModal: false,
-        showStockTypeModal: false,
-        showProductDealModal: false
+        showStockModal: false
       });
     } catch (error) {
       console.error('Error adding invoice detail:', error);
@@ -373,192 +347,65 @@ export default function InvoiceDetailsTab({
 
 
   return (
-    <div>
-      <h3 style={{
-        fontSize: '18px',
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: '20px'
-      }}>
-        Invoice Details
-      </h3>
-
+    <div className="space-y-6">
       {/* Stock Selection Section - Hidden when read-only */}
       {!isReadOnly && (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          padding: '20px',
-          marginBottom: '24px'
-        }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '16px'
-          }}>
-            Add Stock Item
-          </h4>
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <h4 className="text-base font-bold text-blue-600 m-0">
+              Add Stock Item
+            </h4>
+          </div>
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
-            gap: '16px',
-            alignItems: 'end'
-          }}>
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Product *
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Stock Item Selection */}
+            <div className="group sm:col-span-2 lg:col-span-3">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Stock Item *
               </label>
               <input
                 type="text"
-                value={stockSelection.selectedProduct?.productName || ''}
+                value={stockSelection.selectedStock 
+                  ? `${stockSelection.selectedStock.productName || ''} - ${stockSelection.selectedStock.productUnitName || ''} - ${stockSelection.selectedStock.stockTypeName || ''}${stockSelection.selectedStock.lotNo ? ` (Lot: ${stockSelection.selectedStock.lotNo})` : ''}`
+                  : ''}
                 readOnly
-                placeholder={formData.productPriceTypeId ? "Click to select product" : "Select Product Price Type first"}
+                placeholder={formData.productPriceTypeId ? "Click to select stock item" : "Select Product Price Type first"}
                 onClick={() => {
-                  if (formData.productPriceTypeId) {
-                    setStockSelection(prev => ({ ...prev, showProductModal: true }));
+                  if (formData.productPriceTypeId && !isReadOnly) {
+                    setStockSelection(prev => ({ ...prev, showStockModal: true }));
                   }
                 }}
                 disabled={!formData.productPriceTypeId || isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: formData.productPriceTypeId ? '#f9fafb' : '#f3f4f6',
-                  color: formData.productPriceTypeId ? '#6b7280' : '#9ca3af',
-                  cursor: formData.productPriceTypeId ? 'pointer' : 'not-allowed',
-                  opacity: formData.productPriceTypeId ? 1 : 0.6
-                }}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  !formData.productPriceTypeId || isReadOnly
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                    : 'border-gray-300 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                }`}
               />
+              {stockSelection.selectedStock && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setStockSelection(prev => ({ ...prev, selectedStock: null }));
+                  }}
+                  className="mt-2 text-sm text-red-600 hover:text-red-800 font-medium"
+                >
+                  Clear Selection
+                </button>
+              )}
             </div>
 
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Product Unit *
-              </label>
-              <input
-                type="text"
-                value={stockSelection.selectedProductUnit?.productUnitName || ''}
-                readOnly
-                placeholder="Click to select unit"
-                onClick={() => setStockSelection(prev => ({ ...prev, showProductUnitModal: true }))}
-                disabled={!formData.productPriceTypeId || isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: formData.productPriceTypeId ? '#f9fafb' : '#f3f4f6',
-                  color: formData.productPriceTypeId ? '#6b7280' : '#9ca3af',
-                  cursor: formData.productPriceTypeId ? 'pointer' : 'not-allowed',
-                  opacity: formData.productPriceTypeId ? 1 : 0.6
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Stock Type *
-              </label>
-              <input
-                type="text"
-                value={stockSelection.selectedStockType?.stockTypeName || ''}
-                readOnly
-                placeholder="Click to select type"
-                onClick={() => setStockSelection(prev => ({ ...prev, showStockTypeModal: true }))}
-                disabled={!formData.productPriceTypeId || isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: formData.productPriceTypeId ? '#f9fafb' : '#f3f4f6',
-                  color: formData.productPriceTypeId ? '#6b7280' : '#9ca3af',
-                  cursor: formData.productPriceTypeId ? 'pointer' : 'not-allowed',
-                  opacity: formData.productPriceTypeId ? 1 : 0.6
-                }}
-              />
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                LOT Number
-              </label>
-              <input
-                type="text"
-                value={stockSelection.lotNo}
-                onChange={(e) => setStockSelection(prev => ({ ...prev, lotNo: e.target.value }))}
-                disabled={!formData.productPriceTypeId || isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: formData.productPriceTypeId ? 'white' : '#f3f4f6',
-                  opacity: formData.productPriceTypeId ? 1 : 0.6
-                }}
-                placeholder="Enter LOT number"
-              />
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Expiration Date
-              </label>
-              <DatePicker
-                value={stockSelection.expirationDate}
-                onChange={(date) => setStockSelection(prev => ({ ...prev, expirationDate: date }))}
-                placeholder="Select expiration date"
-                disabled={!formData.productPriceTypeId || isReadOnly}
-              />
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
+            {/* Quantity */}
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                 Quantity *
               </label>
               <input
@@ -566,29 +413,20 @@ export default function InvoiceDetailsTab({
                 value={stockSelection.quantity}
                 onChange={(e) => setStockSelection(prev => ({ ...prev, quantity: parseInt(e.target.value) || 0 }))}
                 min="1"
-                disabled={!formData.productPriceTypeId || isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: formData.productPriceTypeId ? 'white' : '#f3f4f6',
-                  opacity: formData.productPriceTypeId ? 1 : 0.6
-                }}
+                disabled={!formData.productPriceTypeId || !stockSelection.selectedStock || isReadOnly}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  !formData.productPriceTypeId || !stockSelection.selectedStock || isReadOnly
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                    : 'border-gray-300 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                }`}
                 placeholder="Enter quantity"
               />
             </div>
 
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
+            {/* Product Deal */}
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
                 Product Deal
               </label>
               {contractSales ? (
@@ -599,24 +437,15 @@ export default function InvoiceDetailsTab({
                     'No contract deal available'
                   }
                   readOnly
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    backgroundColor: '#f9fafb',
-                    color: '#6b7280',
-                    cursor: 'not-allowed'
-                  }}
+                  className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
                 />
               ) : (
                 <select
                   value={stockSelection.selectedProductDeal?.productDealId || ''}
                   onChange={(e) => {
                     const dealId = e.target.value;
-                    const filteredDeals = stockSelection.selectedProduct 
-                      ? customerDeals.filter(deal => deal.productId === stockSelection.selectedProduct?.productId)
+                    const filteredDeals = stockSelection.selectedStock 
+                      ? customerDeals.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
                       : [];
                     const selectedDeal = filteredDeals.find(deal => deal.productDealId === dealId);
                     setStockSelection(prev => ({
@@ -624,24 +453,18 @@ export default function InvoiceDetailsTab({
                       selectedProductDeal: selectedDeal || null
                     }));
                   }}
-                  disabled={!stockSelection.selectedProduct}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    backgroundColor: !stockSelection.selectedProduct ? '#f9fafb' : 'white',
-                    color: !stockSelection.selectedProduct ? '#6b7280' : '#1f2937',
-                    cursor: !stockSelection.selectedProduct ? 'not-allowed' : 'pointer'
-                  }}
+                  disabled={!stockSelection.selectedStock}
+                  className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !stockSelection.selectedStock
+                      ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                      : 'border-gray-300 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
                 >
                   <option value="">
-                    {!stockSelection.selectedProduct ? 'Select product first' : 'Select product deal'}
+                    {!stockSelection.selectedStock ? 'Select stock item first' : 'Select product deal (optional)'}
                   </option>
-                  {stockSelection.selectedProduct && customerDeals
-                    .filter(deal => deal.productId === stockSelection.selectedProduct?.productId)
+                  {stockSelection.selectedStock && customerDeals
+                    .filter(deal => deal.productId === stockSelection.selectedStock?.productId)
                     .map((deal) => (
                       <option key={deal.productDealId} value={deal.productDealId}>
                         {deal.productDealName} (Min: {deal.minQty || 0}, Free: {deal.additionalQty || 0})
@@ -651,274 +474,145 @@ export default function InvoiceDetailsTab({
               )}
             </div>
 
-            <button
-              type="button"
-              onClick={handleAddDetailRecord}
-              disabled={!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
-                       !stockSelection.selectedStockType || stockSelection.quantity <= 0 || isReadOnly}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
-                                 !stockSelection.selectedStockType || stockSelection.quantity <= 0 || isReadOnly) ? '#9ca3af' : '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
-                         !stockSelection.selectedStockType || stockSelection.quantity <= 0 || isReadOnly) ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit || 
-                         !stockSelection.selectedStockType || stockSelection.quantity <= 0) ? 0.7 : 1
-              }}
-              onMouseEnter={(e) => {
-                if (stockSelection.selectedProduct && stockSelection.selectedProductUnit && 
-                    stockSelection.selectedStockType && stockSelection.quantity > 0) {
-                  e.currentTarget.style.backgroundColor = '#059669';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (stockSelection.selectedProduct && stockSelection.selectedProductUnit && 
-                    stockSelection.selectedStockType && stockSelection.quantity > 0) {
-                  e.currentTarget.style.backgroundColor = '#10b981';
-                }
-              }}
-            >
-              Add Detail
-            </button>
+            {/* Add Button */}
+            <div className="group flex items-end">
+              <button
+                type="button"
+                onClick={handleAddDetailRecord}
+                disabled={!stockSelection.selectedStock || stockSelection.quantity <= 0 || isReadOnly}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Item
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* Invoice Details Table */}
-      <div style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          backgroundColor: '#f8fafc',
-          padding: '12px 16px',
-          borderBottom: '1px solid #e5e7eb'
-        }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            margin: 0
-          }}>
+      <div className="border border-gray-200 rounded-xl overflow-hidden">
+        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+          <h4 className="text-base font-semibold text-gray-900 m-0">
             Invoice Details ({formData.invoiceDetails?.length || 0} items)
           </h4>
         </div>
 
         {formData.invoiceDetails && formData.invoiceDetails.length > 0 ? (
-          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+          <div className="max-h-96 overflow-y-auto">
             {formData.invoiceDetails.map((detail, index) => (
               <div
                 key={detail.invoiceDetailId || index}
-                style={{
-                  padding: '16px',
-                  borderBottom: '1px solid #e5e7eb',
-                  backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#d1fae5' : (index % 2 === 0 ? 'white' : '#f9fafb')
-                }}
+                className={`p-4 border-b border-gray-200 ${
+                  detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM 
+                    ? 'bg-green-50' 
+                    : index % 2 === 0 
+                      ? 'bg-white' 
+                      : 'bg-gray-50'
+                }`}
               >
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: isReadOnly ? '2fr 1fr 1fr 1fr 1fr 1fr 1fr' : '2fr 1fr 1fr 1fr 1fr 1fr 1fr auto',
-                  gap: '16px',
-                  alignItems: 'center'
-                }}>
-                  <div>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      color: '#1f2937',
-                      marginBottom: '4px',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}>
+                <div className={`grid gap-4 items-center ${
+                  isReadOnly 
+                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-7' 
+                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-8'
+                }`}>
+                  <div className="sm:col-span-2">
+                    <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
                       {detail.productName}
                       {detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM && (
-                        <span style={{
-                          backgroundColor: '#10b981',
-                          color: 'white',
-                          padding: '2px 8px',
-                          borderRadius: '4px',
-                          fontSize: '10px',
-                          fontWeight: '600',
-                          marginLeft: '8px'
-                        }}>
+                        <span className="ml-2 bg-green-600 text-white px-2 py-0.5 rounded text-xs font-semibold">
                           FREE
                         </span>
                       )}
                     </div>
-                    <div style={{
-                      fontSize: '12px',
-                      color: '#6b7280'
-                    }}>
+                    <div className="text-xs text-gray-600">
                       {detail.lotNo && `Lot: ${detail.lotNo}`}
                       {detail.stockTypeName && ` • ${detail.stockTypeName}`}
                     </div>
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Qty
                     </label>
                     <input
                       type="number"
                       value={detail.qty || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600"
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Price
                     </label>
                     <input
                       type="number"
                       value={detail.price || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f0fdf4' : '#f9fafb',
-                        color: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#10b981' : '#6b7280',
-                        fontWeight: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '600' : 'normal'
-                      }}
+                      className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm ${
+                        detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM
+                          ? 'bg-green-50 text-green-700 font-semibold'
+                          : 'bg-gray-50 text-gray-600'
+                      }`}
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Cost
                     </label>
                     <input
                       type="number"
                       value={detail.cost || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600"
                     />
                   </div>
 
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Amount
                     </label>
                     <input
                       type="number"
                       value={detail.amount || 0}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#f0fdf4' : '#f9fafb',
-                        color: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '#10b981' : '#6b7280',
-                        fontWeight: detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM ? '600' : '500'
-                      }}
+                      className={`w-full rounded-lg border border-gray-300 px-3 py-2 text-sm ${
+                        detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM
+                          ? 'bg-green-50 text-green-700 font-semibold'
+                          : 'bg-gray-50 text-gray-600 font-medium'
+                      }`}
                     />
                   </div>
 
-
-                  <div>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#374151',
-                      marginBottom: '4px'
-                    }}>
+                  <div className="group">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Expiry Date
                     </label>
                     <input
                       type="date"
                       value={detail.expiryDate || ''}
                       readOnly
-                      style={{
-                        width: '100%',
-                        padding: '8px 12px',
-                        border: '1px solid #d1d5db',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280'
-                      }}
+                      className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600"
                     />
                   </div>
 
                   {!isReadOnly && (
-                    <div>
+                    <div className="group flex items-end">
                       <button
                         type="button"
                         onClick={() => handleDeleteDetail(index)}
                         disabled={isReadOnly}
-                        style={{
-                          padding: '8px 12px',
-                          backgroundColor: isReadOnly ? '#9ca3af' : '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: isReadOnly ? 'not-allowed' : 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#b91c1c';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                        }}
+                        className="p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Remove"
                       >
-                        Delete
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   )}
@@ -927,43 +621,22 @@ export default function InvoiceDetailsTab({
             ))}
           </div>
         ) : (
-          <div style={{
-            padding: '40px',
-            textAlign: 'center',
-            color: '#6b7280'
-          }}>
+          <div className="px-10 py-10 text-center text-gray-600">
             {isReadOnly 
               ? "No invoice details in this version."
-              : "No invoice details added yet. Click \"Add Stock\" to get started."
+              : "No invoice details added yet. Click \"Add Item\" to get started."
             }
           </div>
         )}
       </div>
 
-      {/* Selection Modals */}
-      <ProductSearchableSelectionModal
-        show={stockSelection.showProductModal}
-        title="Select Product"
-        selectedValue={stockSelection.selectedProduct?.productId || null}
-        onSelect={handleProductSelect}
-        onClose={() => setStockSelection(prev => ({ ...prev, showProductModal: false }))}
-        skipDealSelection={true}
-      />
-
-      <ProductUnitSearchableSelectionModal
-        show={stockSelection.showProductUnitModal}
-        title="Select Product Unit"
-        selectedValue={stockSelection.selectedProductUnit?.productUnitId || null}
-        onSelect={handleProductUnitSelect}
-        onClose={() => setStockSelection(prev => ({ ...prev, showProductUnitModal: false }))}
-      />
-
-      <StockTypeSearchableSelectionModal
-        show={stockSelection.showStockTypeModal}
-        title="Select Stock Type"
-        selectedValue={stockSelection.selectedStockType?.stockTypeId || null}
-        onSelect={handleStockTypeSelect}
-        onClose={() => setStockSelection(prev => ({ ...prev, showStockTypeModal: false }))}
+      {/* Stock Selection Modal */}
+      <StockSearchableSelectionModal
+        show={stockSelection.showStockModal}
+        title="Select Stock Item"
+        selectedValue={stockSelection.selectedStock?.stockId || null}
+        onSelect={handleStockSelect}
+        onClose={() => setStockSelection(prev => ({ ...prev, showStockModal: false }))}
       />
 
     </div>

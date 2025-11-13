@@ -55,6 +55,7 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         stockTypeRecord.GSI2PK = `STOCK_TYPE#${record.status}`;
         stockTypeRecord.GSI2SK = record.stockTypeName;
         stockTypeRecord.forApprovalVersion = record.forApprovalVersion;
+        stockTypeRecord.changeReason = record.changeReason;
 
         const updatedStockTypeRecord: StockTypeDataType = await this.stockTypeTable.update(stockTypeRecord);
 
@@ -74,11 +75,11 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         return await this.convertToDto(record);
     }
 
-    async findRecordContainingName(
+    async findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<StockTypeDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
@@ -92,8 +93,6 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
             },
             dynamoDbOption
         );
-
-        console.log('Records:', records);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -249,6 +248,7 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as StockTypeDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -275,6 +275,7 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
             GSI2SK: dto.stockTypeName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return stockTypeData;
     }

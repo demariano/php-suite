@@ -3,6 +3,7 @@
 import { extractErrorMessage, InvoiceApi, ReturnGoodSoldApi, ReturnGoodSoldDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 import ReturnGoodSoldForm from './components/ReturnGoodSoldForm';
 
 interface EditReturnGoodSoldPageProps {
@@ -15,6 +16,7 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<ReturnGoodSoldDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -131,10 +133,19 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedRecord) {
       return;
     }
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedRecord) {
+      return;
+    }
+    
+    setShowDeleteModal(false);
     
     try {
       setIsLoading(true);
@@ -249,10 +260,45 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
     router.push('/invoicing/return-good-sold');
   };
 
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
+
+  const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+    
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'bg-green-600 text-white shadow-sm';
+      case StatusEnum.FOR_APPROVAL:
+        return 'bg-yellow-500 text-white shadow-sm';
+      case StatusEnum.FOR_DELETION:
+        return 'bg-red-600 text-white shadow-sm';
+      case StatusEnum.NEW_RECORD:
+        return 'bg-blue-600 text-white shadow-sm';
+      default:
+        return 'bg-gray-500 text-white shadow-sm';
+    }
+  };
+
   if (!selectedRecord && !isLoading) {
     return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>Return good sold record not found</span>
         </div>
       </div>
@@ -260,9 +306,9 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -287,23 +333,96 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
         </div>
       )}
 
-      {/* Return Good Sold Form */}
+      {/* Return Good Sold Form with Tabs */}
       {selectedRecord && (
-        <ReturnGoodSoldForm
-          isCreateMode={false}
-          selectedRecord={selectedRecord}
-          successMessage={null}
-          isAdminUser={isAdminUser}
-          isLoading={isLoading}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onApprove={handleApprove}
-          onDeny={handleDeny}
-          onCancel={handleCancel}
-        />
+        <div className="flex justify-center">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
+            {/* Tab Navigation */}
+            <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
+              <div className="flex gap-2 flex-nowrap">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                    getTabColorClasses(selectedRecord.status || StatusEnum.ACTIVE, activeTab === 'details')
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Return Good Sold Information
+                    {selectedRecord && (
+                      <>
+                        <span className="mx-1">-</span>
+                        <span>{getStatusText(selectedRecord.status || StatusEnum.ACTIVE)}</span>
+                      </>
+                    )}
+                  </span>
+                </button>
+                
+                {selectedRecord.status !== StatusEnum.ACTIVE && (
+                  <button
+                    onClick={() => setActiveTab('approval')}
+                    className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                      activeTab === 'approval'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Pending Changes
+                    </span>
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                    activeTab === 'logs'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Activity Logs
+                  </span>
+                </button>
+              </div>
+            </div>
+            
+            {/* Tab Content */}
+            <div className="bg-white p-4 sm:p-6">
+              <ReturnGoodSoldForm
+                isCreateMode={false}
+                selectedRecord={selectedRecord}
+                successMessage={null}
+                isAdminUser={isAdminUser}
+                isLoading={isLoading}
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                onSave={handleSave}
+                onDelete={handleDelete}
+                onApprove={handleApprove}
+                onDeny={handleDeny}
+                onCancel={handleCancel}
+              />
+            </div>
+          </div>
+        </div>
       )}
+
+      <DeleteConfirmationModal
+        show={showDeleteModal}
+        returnGoodSold={selectedRecord}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </div>
   );
 }

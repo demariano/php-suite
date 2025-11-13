@@ -22,11 +22,16 @@ export class GetContractsContainingContractNoHandler implements IQueryHandler<Ge
         this.logger.log(`Processing get containing contract number request for contract: ${query.contractNo}`);
 
         try {
+            const limit = query.limit || 10;
+            const direction = query.direction || undefined;
+            const cursorPointer = query.cursorPointer || undefined;
+            const contractNo = query.contractNo || '';
+
             const contracts = await this.contractDatabaseService.findRecordContainingContractNo(
-                query.limit,
-                query.contractNo,
-                query.direction,
-                query.cursorPointer
+                limit,
+                contractNo,
+                direction,
+                cursorPointer
             );
 
             this.logger.log(`Contracts retrieved successfully: ${contracts.data.length} records`);

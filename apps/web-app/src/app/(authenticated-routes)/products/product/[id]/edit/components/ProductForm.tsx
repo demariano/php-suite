@@ -1,7 +1,7 @@
 'use client';
 
 import { ProductDto, StatusEnum } from '@data-access/index';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import NumberInput from '../../../../../components/NumberInput';
 import ProductCategorySearchableSelectionModal from '../../../../../search-modals/ProductCategorySearchableSelectionModal';
 import ProductClassSearchableSelectionModal from '../../../../../search-modals/ProductClassSearchableSelectionModal';
@@ -9,1840 +9,1158 @@ import ProductDealSearchableSelectionModal from '../../../../../search-modals/Pr
 import ProductUnitPriceSelectionModal from '../../../../../search-modals/ProductUnitPriceSelectionModal';
 import SelectionField from './SelectionField';
 
-// Types for inner tabs
-type InnerTabType = 'record-details' | 'product-deals' | 'product-unit-price';
+type ProductDealDetails = {
+    productDealId: string;
+    productDealName?: string;
+    additionalQty?: number;
+    minQty?: number;
+};
 
-interface ProductDealDetailsDto {
-  productDealId: string;
-  productDealName?: string;
-  additionalQty?: number;
-  minQty?: number;
-}
-
-interface ProductUnitPriceDto {
-  productUnitId: string;
-  productUnitName?: string;
-  productPriceTypeId: string;
-  productPriceTypeName?: string;
-  cost?: number;
-  price?: number;
-}
+type ProductUnitPriceDetails = {
+    productUnitId: string;
+    productUnitName?: string;
+    productPriceTypeId: string;
+    productPriceTypeName?: string;
+    cost?: number;
+    price?: number;
+};
 
 interface ProductFormProps {
-  isCreateMode: boolean;
-  selectedProduct: ProductDto | null;
-  successMessage: string | null;
-  onSave: (product: ProductDto) => void;
-  onDelete: () => void;
-  onCancel: () => void;
-  isAdminUser?: boolean;
-  activeTab?: 'details' | 'approval' | 'logs';
-  onTabChange?: (tab: 'details' | 'approval' | 'logs') => void;
-  isLoading?: boolean;
-  onApprove?: () => void;
-  onDeny?: () => void;
+    isCreateMode: boolean;
+    selectedProduct: ProductDto | null;
+    successMessage: string | null;
+    onSave: (product: ProductDto) => void;
+    onDelete: () => void;
+    onCancel: () => void;
+    onApprove?: () => void;
+    onDeny?: () => void;
+    isAdminUser: boolean;
+    isLoading: boolean;
+    activeTab: 'details' | 'approval' | 'logs';
+    onTabChange: (tab: 'details' | 'approval' | 'logs') => void;
 }
+
+const STATUS_TAB_CLASSES: Record<StatusEnum, string> = {
+    [StatusEnum.ACTIVE]: 'bg-green-600 text-white shadow-sm',
+    [StatusEnum.FOR_APPROVAL]: 'bg-yellow-500 text-white shadow-sm',
+    [StatusEnum.FOR_DELETION]: 'bg-red-600 text-white shadow-sm',
+    [StatusEnum.NEW_RECORD]: 'bg-blue-600 text-white shadow-sm',
+    [StatusEnum.DRAFT]: 'bg-blue-600 text-white shadow-sm',
+};
+
+const getStatusText = (status?: StatusEnum): string => {
+    switch (status) {
+        case StatusEnum.ACTIVE:
+            return 'Active';
+        case StatusEnum.FOR_APPROVAL:
+            return 'For Approval';
+        case StatusEnum.FOR_DELETION:
+            return 'For Deletion';
+        case StatusEnum.NEW_RECORD:
+            return 'New Record';
+        case StatusEnum.DRAFT:
+            return 'Draft';
+        default:
+            return 'Active';
+    }
+};
+
+const getTabClassName = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+        return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+
+    return STATUS_TAB_CLASSES[status] ?? STATUS_TAB_CLASSES[StatusEnum.NEW_RECORD];
+};
+
+// Helper function to normalize values for comparison
+const normalizeValue = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    if (val === '') return '';
+    if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? '' : trimmed;
+    }
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'boolean') return String(val);
+    if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+        return JSON.stringify(val);
+    }
+    return String(val).trim();
+};
+
+// Helper function to format display value
+const formatValue = (value: any): string => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (typeof value === 'number') return value.toString();
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+};
+
 
 export default function ProductForm({
-  isCreateMode,
-  selectedProduct,
-  successMessage,
-  onSave,
-  onDelete,
-  onCancel,
-  isAdminUser = false,
-  activeTab = 'details',
-  onTabChange = () => {},
-  isLoading = false,
-  onApprove = () => {},
-  onDeny = () => {}
+    isCreateMode,
+    selectedProduct,
+    successMessage,
+    onSave,
+    onDelete,
+    onCancel,
+    onApprove,
+    onDeny,
+    isAdminUser,
+    isLoading,
+    activeTab,
+    onTabChange,
 }: ProductFormProps) {
-  const [selectedCategory, setSelectedCategory] = useState<{id: string, name: string} | null>(null);
-  const [selectedClass, setSelectedClass] = useState<{id: string, name: string} | null>(null);
-  const [showCategoryModal, setShowCategoryModal] = useState(false);
-  const [showClassModal, setShowClassModal] = useState(false);
-  const [showDealModal, setShowDealModal] = useState(false);
-  const [showUnitPriceModal, setShowUnitPriceModal] = useState(false);
-  const [userHasMadeSelections, setUserHasMadeSelections] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  
-  // Inner tabs state
-  const [activeInnerTab, setActiveInnerTab] = useState<InnerTabType>('record-details');
-  const [productDeals, setProductDeals] = useState<ProductDealDetailsDto[]>([]);
-  const [productUnitPrices, setProductUnitPrices] = useState<ProductUnitPriceDto[]>([]);
-  
-  // Form state for controlled inputs
-  const [formData, setFormData] = useState({
-    productName: '',
-    criticalLevel: '0',
-    changeReason: ''
-  });
+    const [selectedCategory, setSelectedCategory] = useState<{ id: string; name: string } | null>(null);
+    const [selectedClass, setSelectedClass] = useState<{ id: string; name: string } | null>(null);
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [showClassModal, setShowClassModal] = useState(false);
+    const [showDealModal, setShowDealModal] = useState(false);
+    const [showUnitPriceModal, setShowUnitPriceModal] = useState(false);
+    const [productDeals, setProductDeals] = useState<ProductDealDetails[]>([]);
+    const [productUnitPrices, setProductUnitPrices] = useState<ProductUnitPriceDetails[]>([]);
+    const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
-  // Set initial values when editing (only when user hasn't made selections)
-  useEffect(() => {
-    if (!isCreateMode && selectedProduct && !userHasMadeSelections) {
-      if (selectedProduct.productCategoryId && selectedProduct.productCategoryName) {
-        setSelectedCategory({
-          id: selectedProduct.productCategoryId,
-          name: selectedProduct.productCategoryName
-        });
-      }
-      if (selectedProduct.productClassId && selectedProduct.productClassName) {
-        setSelectedClass({
-          id: selectedProduct.productClassId,
-          name: selectedProduct.productClassName
-        });
-      }
-      // Initialize product deals and unit prices
-      if (selectedProduct.productDeals) {
-        setProductDeals(selectedProduct.productDeals);
-      }
-      if (selectedProduct.productUnitPrice) {
-        setProductUnitPrices(selectedProduct.productUnitPrice);
-      }
-      // Initialize form data
-      setFormData({
-        productName: selectedProduct.productName || '',
-        criticalLevel: selectedProduct.criticalLevel?.toString() || '0',
-        changeReason: selectedProduct.changeReason || ''
-      });
-    }
-  }, [isCreateMode, selectedProduct, userHasMadeSelections]);
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const productName = formData.productName;
-    const criticalLevel = formData.criticalLevel;
-    const changeReason = formData.changeReason;
-    
-    // Validate required fields
-    const errors: string[] = [];
-    
-    if (!selectedCategory) {
-      errors.push('Please select a product category.');
-    }
-    
-    if (!selectedClass) {
-      errors.push('Please select a product class.');
-    }
-    
-    // Validate change reason for non-create mode (only required for non-admin users)
-    if (!isCreateMode && !isAdminUser && (!changeReason || changeReason.trim() === '')) {
-      errors.push('Please provide a reason for the change.');
-    }
+    const [formData, setFormData] = useState({
+        productName: '',
+        criticalLevel: '',
+        changeReason: '',
+    });
 
-    // Check for duplicate deals
-    const dealIds = productDeals.map(deal => deal.productDealId);
-    const uniqueDealIds = new Set(dealIds);
-    if (dealIds.length !== uniqueDealIds.size) {
-      errors.push('Duplicate product deals detected. Please remove duplicate deals.');
-    }
-    
-    // Check for duplicate unit price combinations
-    const unitPriceCombinations = productUnitPrices.map(price => 
-      `${price.productUnitName || ''}-${price.productPriceTypeName || ''}`
+    const currentStatus = selectedProduct?.status ?? StatusEnum.NEW_RECORD;
+    const pendingVersion = useMemo(
+        () => (selectedProduct?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        [selectedProduct?.forApprovalVersion]
     );
-    const uniqueUnitPriceCombinations = new Set(unitPriceCombinations);
-    if (unitPriceCombinations.length !== uniqueUnitPriceCombinations.size) {
-      errors.push('Duplicate unit price combinations detected. Please remove duplicate unit prices.');
-    }
-    
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      
-      // Focus on change reason textbox if change reason validation error occurred
-      const changeReasonError = errors.find(error => error.includes('reason for the change'));
-      if (changeReasonError) {
-        // Switch to Record Details tab first to make the change reason field visible
-        setActiveInnerTab('record-details');
-        
-        setTimeout(() => {
-          const changeReasonTextarea = document.querySelector('textarea[name="changeReason"]') as HTMLTextAreaElement;
-          if (changeReasonTextarea) {
-            changeReasonTextarea.focus();
-          }
-        }, 200); // Increased timeout to allow tab switch to complete
-      }
-      
-      return;
-    }
-    
-    // Clear validation errors if validation passes
-    setValidationErrors([]);
-    
-    if (isCreateMode) {
-      const newProduct = {
-        productName,
-        productCategoryId: selectedCategory?.id || '',
-        productCategoryName: selectedCategory?.name || '',
-        productClassId: selectedClass?.id || '',
-        productClassName: selectedClass?.name || '',
-        criticalLevel: criticalLevel ? parseInt(criticalLevel) : 0,
-        status: StatusEnum.NEW_RECORD,
-        productDeals: productDeals,
-        productUnitPrice: productUnitPrices,
-        changeReason: '' // No change reason needed for new records
-      };
-      onSave(newProduct as ProductDto);
-    } else {
-      const updatedProduct = {
-        ...selectedProduct,
-        productName,
-        productCategoryId: selectedCategory?.id || '',
-        productCategoryName: selectedCategory?.name || '',
-        productClassId: selectedClass?.id || '',
-        productClassName: selectedClass?.name || '',
-        criticalLevel: criticalLevel ? parseInt(criticalLevel) : 0,
-        status: StatusEnum.ACTIVE,
-        productDeals: productDeals,
-        productUnitPrice: productUnitPrices,
-        changeReason: changeReason || ''
-      };
-      onSave(updatedProduct as ProductDto);
-    }
-  };
 
-  const handleCategorySelect = (category: { productCategoryId: string; productCategoryName?: string }) => {
-    setSelectedCategory({ id: category.productCategoryId, name: category.productCategoryName || '' });
-    setUserHasMadeSelections(true);
-  };
+    const canEditDetails = isCreateMode || currentStatus === StatusEnum.ACTIVE;
 
-  const handleClassSelect = (productClass: { productClassId: string; productClassName?: string }) => {
-    setSelectedClass({ id: productClass.productClassId, name: productClass.productClassName || '' });
-    setUserHasMadeSelections(true);
-  };
+    useEffect(() => {
+        if (!isCreateMode && selectedProduct) {
+            if (selectedProduct.productCategoryId && selectedProduct.productCategoryName) {
+                setSelectedCategory({
+                    id: selectedProduct.productCategoryId,
+                    name: selectedProduct.productCategoryName,
+                });
+            }
 
-  const handleClearCategory = () => {
-    setSelectedCategory(null);
-  };
+            if (selectedProduct.productClassId && selectedProduct.productClassName) {
+                setSelectedClass({
+                    id: selectedProduct.productClassId,
+                    name: selectedProduct.productClassName,
+                });
+            }
 
-  const handleClearClass = () => {
-    setSelectedClass(null);
-  };
+            setProductDeals(
+                (selectedProduct.productDeals ?? []).map((deal) => ({
+                    productDealId: deal.productDealId,
+                    productDealName: deal.productDealName,
+                    additionalQty: deal.additionalQty,
+                    minQty: deal.minQty,
+                }))
+            );
 
-  // Product Deals management
-  const addProductDeal = () => {
-    setShowDealModal(true);
-  };
+            setProductUnitPrices(
+                (selectedProduct.productUnitPrice ?? []).map((price) => ({
+                    productUnitId: price.productUnitId,
+                    productUnitName: price.productUnitName,
+                    productPriceTypeId: price.productPriceTypeId,
+                    productPriceTypeName: price.productPriceTypeName,
+                    cost: price.cost,
+                    price: price.price,
+                }))
+            );
 
-  const handleDealSelect = (deal: { productDealId: string; productDealName?: string; additionalQty?: number; minQty?: number }) => {
-    // Check if deal is already added
-    const existingDeal = productDeals.find(d => d.productDealId === deal.productDealId);
-    if (existingDeal) {
-      // Add validation error for duplicate deal
-      setValidationErrors(['This product deal has already been added. Please select a different deal.']);
-      return;
-    }
-
-    // Clear any existing validation errors
-    setValidationErrors([]);
-
-    const newDeal: ProductDealDetailsDto = {
-      productDealId: deal.productDealId,
-      productDealName: deal.productDealName,
-      additionalQty: deal.additionalQty || 0,
-      minQty: deal.minQty || 0
-    };
-    setProductDeals([...productDeals, newDeal]);
-  };
-
-
-  const removeProductDeal = (index: number) => {
-    setProductDeals(productDeals.filter((_, i) => i !== index));
-  };
-
-  // Product Unit Price management
-  const addProductUnitPrice = () => {
-    setShowUnitPriceModal(true);
-  };
-
-  const handleUnitPriceSelect = (productUnitId: string, productUnitName: string, productPriceTypeId: string, productPriceTypeName: string) => {
-    // Check if this combination already exists
-    const existingCombination = productUnitPrices.find(price => 
-      price.productUnitId === productUnitId && price.productPriceTypeId === productPriceTypeId
-    );
-    
-    if (existingCombination) {
-      setValidationErrors(['This product unit and price type combination has already been added. Please select a different combination.']);
-      return;
-    }
-
-    // Clear any existing validation errors
-    setValidationErrors([]);
-
-    const newUnitPrice: ProductUnitPriceDto = {
-      productUnitId,
-      productUnitName,
-      productPriceTypeId,
-      productPriceTypeName,
-      cost: 0,
-      price: 0
-    };
-    setProductUnitPrices([...productUnitPrices, newUnitPrice]);
-  };
-
-  const updateProductUnitPrice = (index: number, field: keyof ProductUnitPriceDto, value: string | number) => {
-    const updatedUnitPrices = [...productUnitPrices];
-    updatedUnitPrices[index] = { ...updatedUnitPrices[index], [field]: value };
-    
-    // Check for duplicate unit name and price type name combination
-    if (field === 'productUnitName' || field === 'productPriceTypeName') {
-      const currentItem = updatedUnitPrices[index];
-      const unitName = field === 'productUnitName' ? value as string : currentItem.productUnitName;
-      const priceTypeName = field === 'productPriceTypeName' ? value as string : currentItem.productPriceTypeName;
-      
-      // Only check for duplicates if both unit name and price type name are filled
-      if (unitName && priceTypeName) {
-        const duplicateExists = updatedUnitPrices.some((item, idx) => 
-          idx !== index && 
-          item.productUnitName === unitName && 
-          item.productPriceTypeName === priceTypeName
-        );
-        
-        if (duplicateExists) {
-          setValidationErrors(['This unit name and price type combination has already been added. Please use different values.']);
-          return;
+            setFormData({
+                productName: selectedProduct.productName ?? '',
+                criticalLevel:
+                    selectedProduct.criticalLevel !== undefined && selectedProduct.criticalLevel !== null
+                        ? String(selectedProduct.criticalLevel)
+                        : '',
+                changeReason: selectedProduct.changeReason ?? '',
+            });
         }
-      }
-    }
-    
-    // Clear any existing validation errors if no duplicates found
-    setValidationErrors([]);
-    setProductUnitPrices(updatedUnitPrices);
-  };
+    }, [isCreateMode, selectedProduct]);
 
-  const removeProductUnitPrice = (index: number) => {
-    setProductUnitPrices(productUnitPrices.filter((_, i) => i !== index));
-  };
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
 
-  // Render form content
-  const renderDetailsTab = () => (
-    <>
-    <form onSubmit={handleSubmit}>
-      {/* Success message */}
-      {successMessage && (
-        <div style={{
-          backgroundColor: '#dcfce7',
-          border: '2px solid #16a34a',
-          borderRadius: '8px',
-          padding: '16px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          animation: 'pulse 2s infinite'
-        }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            backgroundColor: '#16a34a',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}>
-            ✓
-          </div>
-          <span style={{
-            color: '#166534',
-            fontSize: '14px',
-            fontWeight: '600'
-          }}>
-            {successMessage}
-          </span>
-        </div>
-      )}
+        const errors: string[] = [];
 
-      {/* Validation errors */}
-      {validationErrors.length > 0 && (
-        <div style={{
-          backgroundColor: '#fef2f2',
-          border: '2px solid #dc2626',
-          borderRadius: '8px',
-          padding: '16px',
-          marginBottom: '16px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-            marginBottom: '8px'
-          }}>
-            <span style={{ fontSize: '20px' }}>⚠️</span>
-            <span style={{ color: '#dc2626', fontWeight: '600' }}>
-              Please fix the following errors:
-            </span>
-          </div>
-          <ul style={{
-            margin: 0,
-            paddingLeft: '20px',
-            color: '#dc2626'
-          }}>
-            {validationErrors.map((error, index) => (
-              <li key={index} style={{ marginBottom: '4px' }}>
-                {error}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      
-      {/* Pending approval or deletion warning */}
-      {!isCreateMode && selectedProduct && 
-       (selectedProduct.status === StatusEnum.FOR_APPROVAL || selectedProduct.status === StatusEnum.NEW_RECORD || selectedProduct.status === StatusEnum.FOR_DELETION) && (
-        <div style={{
-          backgroundColor: '#fef3c7',
-          border: '2px solid #f59e0b',
-          borderRadius: '8px',
-          padding: '16px',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          animation: 'pulse 2s infinite'
-        }}>
-          <div style={{
-            width: '24px',
-            height: '24px',
-            backgroundColor: '#f59e0b',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontSize: '14px',
-            fontWeight: 'bold'
-          }}>
-            ⚠
-          </div>
-          <span style={{
-            color: '#92400e',
-            fontSize: '14px',
-            fontWeight: '600'
-          }}>
-            {selectedProduct.status === StatusEnum.FOR_DELETION 
-              ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-              : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-          </span>
-        </div>
-      )}
-      
-      {/* Details Container with Inner Tabs */}
-      <div style={{
-        backgroundColor: '#f8fafc',
-        border: '2px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '20px',
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          marginBottom: '20px'
-        }}>
-          <div style={{
-            width: '20px',
-            height: '20px',
-            backgroundColor: '#3b82f6',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontSize: '12px',
-            fontWeight: 'bold'
-          }}>
-            📋
-          </div>
-          <h3 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            margin: 0
-          }}>
-            Details
-          </h3>
-        </div>
+        if (!formData.productName.trim()) {
+            errors.push('Product name is required.');
+        }
 
-        {/* Inner Tabs Navigation */}
-        <div style={{
-          display: 'flex',
-          borderBottom: '2px solid #e2e8f0',
-          marginBottom: '20px'
-        }}>
-          {[
-            { id: 'record-details', label: 'Record Details', icon: '📝' },
-            { id: 'product-deals', label: 'Product Deals', icon: '🎯' },
-            { id: 'product-unit-price', label: 'Product Unit Price', icon: '💰' }
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveInnerTab(tab.id as InnerTabType)}
-              style={{
-                padding: '12px 20px',
-                border: 'none',
-                backgroundColor: activeInnerTab === tab.id ? '#3b82f6' : 'transparent',
-                color: activeInnerTab === tab.id ? 'white' : '#6b7280',
-                borderBottom: activeInnerTab === tab.id ? '2px solid #3b82f6' : '2px solid transparent',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              <span>{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        if (!selectedCategory) {
+            errors.push('Product category is required.');
+        }
 
-        {/* Tab Content */}
-        {activeInnerTab === 'record-details' && (
-          <div>
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Product Name
-              </label>
-              <input
-                type="text"
-                name="productName"
-                value={formData.productName}
-                onChange={(e) => setFormData(prev => ({ ...prev, productName: e.target.value }))}
-                placeholder={isCreateMode ? 'Enter product name' : ''}
-                disabled={!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-                  color: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-                  transition: 'all 0.2s ease',
-                  cursor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-                }}
-                onFocus={(e) => {
-                  if (isCreateMode || selectedProduct?.status === StatusEnum.ACTIVE) {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                required
-              />
-            </div>
+        if (!selectedClass) {
+            errors.push('Product class is required.');
+        }
 
-         <SelectionField
-           label="Product Category *"
-           selectedItem={selectedCategory}
-           onSelect={() => setShowCategoryModal(true)}
-           onClear={handleClearCategory}
-           buttonText="Select Category"
-         />
+        if (!isCreateMode && !isAdminUser && !formData.changeReason.trim()) {
+            errors.push('Please provide a reason for the change.');
+        }
 
-         <SelectionField
-           label="Product Class *"
-           selectedItem={selectedClass}
-           onSelect={() => setShowClassModal(true)}
-           onClear={handleClearClass}
-           buttonText="Select Class"
-         />
+        const dealIds = productDeals.map((deal) => deal.productDealId);
+        if (new Set(dealIds).size !== dealIds.length) {
+            errors.push('Duplicate product deals detected. Please remove duplicate deals.');
+        }
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Critical Level
-          </label>
-          <input
-            type="number"
-            name="criticalLevel"
-            value={formData.criticalLevel}
-            onChange={(e) => setFormData(prev => ({ ...prev, criticalLevel: e.target.value }))}
-            placeholder={isCreateMode ? 'Enter critical level' : ''}
-            min="0"
-            disabled={!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-            onFocus={(e) => {
-              if (isCreateMode || selectedProduct?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-              }
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
-        </div>
+        const unitPriceKeys = productUnitPrices.map(
+            (item) => `${item.productUnitId}|${item.productPriceTypeId}`
+        );
+        if (new Set(unitPriceKeys).size !== unitPriceKeys.length) {
+            errors.push('Duplicate unit price combinations detected. Please remove duplicates.');
+        }
+
+        if (errors.length) {
+            setValidationErrors(errors);
+            return;
+        }
+
+        setValidationErrors([]);
+
+        const payload: ProductDto = {
+            ...(selectedProduct ?? {}),
+            productId: selectedProduct?.productId ?? '',
+            productName: formData.productName.trim(),
+            productCategoryId: selectedCategory?.id ?? '',
+            productCategoryName: selectedCategory?.name ?? '',
+            productClassId: selectedClass?.id ?? '',
+            productClassName: selectedClass?.name ?? '',
+            criticalLevel: formData.criticalLevel ? Number(formData.criticalLevel) : 0,
+            productDeals,
+            productUnitPrice: productUnitPrices,
+            status: selectedProduct?.status ?? StatusEnum.NEW_RECORD,
+            changeReason:
+                !isCreateMode && !isAdminUser ? formData.changeReason.trim() || undefined : selectedProduct?.changeReason,
+        };
+
+        onSave(payload);
+    };
+
+    const handleCategorySelect = (value: { productCategoryId: string; productCategoryName?: string }) => {
+        setSelectedCategory({
+            id: value.productCategoryId,
+            name: value.productCategoryName ?? '',
+        });
+        setShowCategoryModal(false);
+    };
+
+    const handleClassSelect = (value: { productClassId: string; productClassName?: string }) => {
+        setSelectedClass({
+            id: value.productClassId,
+            name: value.productClassName ?? '',
+        });
+        setShowClassModal(false);
+    };
+
+    const handleDealSelect = (value: {
+        productDealId: string;
+        productDealName?: string;
+        additionalQty?: number;
+        minQty?: number;
+    }) => {
+        if (productDeals.some((deal) => deal.productDealId === value.productDealId)) {
+            setValidationErrors(['This product deal has already been added. Please select a different deal.']);
+            return;
+        }
+
+        setProductDeals((prev) => [
+            ...prev,
+            {
+                productDealId: value.productDealId,
+                productDealName: value.productDealName,
+                additionalQty: value.additionalQty ?? 0,
+                minQty: value.minQty ?? 0,
+            },
+        ]);
+        setShowDealModal(false);
+    };
+
+    const handleUnitPriceSelect = (
+        productUnitId: string,
+        productUnitName: string,
+        productPriceTypeId: string,
+        productPriceTypeName: string
+    ) => {
+        const exists = productUnitPrices.some(
+            (item) =>
+                item.productUnitId === productUnitId && item.productPriceTypeId === productPriceTypeId
+        );
+
+        if (exists) {
+            setValidationErrors([
+                'This product unit and price type combination has already been added. Please select a different combination.',
+            ]);
+            return;
+        }
+
+        setProductUnitPrices((prev) => [
+            ...prev,
+            {
+                productUnitId,
+                productUnitName,
+                productPriceTypeId,
+                productPriceTypeName,
+                cost: 0,
+                price: 0,
+            },
+        ]);
+        setShowUnitPriceModal(false);
+    };
+
+    const updateProductUnitPrice = (
+        index: number,
+        field: keyof ProductUnitPriceDetails,
+        value: number
+    ) => {
+        setProductUnitPrices((prev) =>
+            prev.map((item, idx) => (idx === index ? { ...item, [field]: value } : item))
+        );
+    };
+
+    const removeProductDeal = (index: number) => {
+        setProductDeals((prev) => prev.filter((_, idx) => idx !== index));
+    };
+
+    const removeProductUnitPrice = (index: number) => {
+        setProductUnitPrices((prev) => prev.filter((_, idx) => idx !== index));
+    };
+
+    // Helper function to check if arrays have changes
+    const hasArrayChanges = (fieldName: string): boolean => {
+        if (!selectedProduct?.forApprovalVersion) return false;
+        const originalValue = (selectedProduct as any)[fieldName];
+        const newValue = (selectedProduct.forApprovalVersion as any)[fieldName];
         
-            {!isCreateMode && selectedProduct && (
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
-                  Status
-                </label>
-                <div style={{
-                  padding: '12px 16px',
-                  border: '2px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: '#f9fafb',
-                  color: '#6b7280',
-                  fontWeight: '500'
-                }}>
-                  {selectedProduct.status || 'ACTIVE'}
-                </div>
-              </div>
-            )}
-
-            {/* Change Reason Field - Only show for non-create mode and non-admin users */}
-            {!isCreateMode && !isAdminUser && (
-              <div style={{ marginTop: '24px', marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
-                  Change Reason *
-                </label>
-                <textarea
-                  name="changeReason"
-                  value={formData.changeReason}
-                  onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
-                  placeholder="Please explain the reason for this change..."
-                  rows={3}
-                  disabled={!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '2px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    backgroundColor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-                    color: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-                    transition: 'all 0.2s ease',
-                    resize: 'vertical',
-                    minHeight: '80px',
-                    cursor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-                  }}
-                  onFocus={(e) => {
-                    if (isCreateMode || selectedProduct?.status === StatusEnum.ACTIVE) {
-                      e.currentTarget.style.borderColor = '#3b82f6';
-                      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+        if (!originalValue && !newValue) return false;
+        if (!originalValue || !newValue) return true;
+        if (!Array.isArray(originalValue) || !Array.isArray(newValue)) return false;
+        
+        // Normalize arrays for comparison (exclude metadata fields)
+        const normalizeArray = (arr: any[], idField: string) => {
+            return arr.map(item => {
+                const normalized: any = {};
+                Object.keys(item).forEach(key => {
+                    if (key !== 'activityLogs' && key !== 'forApprovalVersion') {
+                        normalized[key] = item[key];
                     }
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = '#d1d5db';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                  required={!isAdminUser}
-                />
-                <div style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  marginTop: '4px'
-                }}>
-                  This field is required when making changes to the product record.
+                });
+                return normalized;
+            }).sort((a, b) => (a[idField] || '').localeCompare(b[idField] || ''));
+        };
+        
+        if (fieldName === 'productDeals') {
+            const normalizedOriginal = normalizeArray(originalValue, 'productDealId');
+            const normalizedNew = normalizeArray(newValue, 'productDealId');
+            return JSON.stringify(normalizedOriginal) !== JSON.stringify(normalizedNew);
+        } else if (fieldName === 'productUnitPrice') {
+            // For productUnitPrice, use composite key (productUnitId|productPriceTypeId)
+            const normalizedOriginal = normalizeArray(originalValue, 'productUnitId');
+            const normalizedNew = normalizeArray(newValue, 'productUnitId');
+            return JSON.stringify(normalizedOriginal) !== JSON.stringify(normalizedNew);
+        }
+        
+        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+    };
+    
+    // Helper function to check if a field has changed
+    const isFieldChanged = (fieldName: string): boolean => {
+        if (!selectedProduct?.forApprovalVersion) return false;
+        
+        const originalValue = (selectedProduct as any)[fieldName];
+        const newValue = (selectedProduct.forApprovalVersion as any)[fieldName];
+        
+        if (!(fieldName in selectedProduct.forApprovalVersion)) return false;
+        
+        if (Array.isArray(originalValue) && Array.isArray(newValue)) {
+            return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+        }
+        
+        const normalizedOriginal = normalizeValue(originalValue);
+        const normalizedNew = normalizeValue(newValue);
+        
+        const hasChanged = normalizedOriginal !== normalizedNew;
+        
+        return hasChanged;
+    };
+    
+    // Helper function to render read-only field with highlighting
+    const renderReadOnlyField = (label: string, value: any, colorClass: string, fieldName?: string) => {
+        const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+        
+        return (
+            <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                    {label}
+                </label>
+                <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+                    fieldChanged 
+                        ? 'border-blue-500 bg-blue-50 text-gray-700' 
+                        : 'border-gray-200 bg-white text-gray-500'
+                }`}>
+                    {formatValue(value)}
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Product Deals Tab */}
-        {activeInnerTab === 'product-deals' && (
-          <div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px'
-            }}>
-              <h4 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: 0
-              }}>
-                Product Deals
-              </h4>
-              <button
-                type="button"
-                onClick={addProductDeal}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#059669';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#10b981';
-                }}
-              >
-                <span>+</span>
-                Add Deal
-              </button>
             </div>
+        );
+    };
 
-            {productDeals.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px',
-                color: '#6b7280',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '2px dashed #d1d5db'
-              }}>
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>🎯</div>
-                <p>No product deals added yet. Click &quot;Add Deal&quot; to get started.</p>
-              </div>
-            ) : (
-              <div style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '16px',
-                maxHeight: '400px',
-                overflowY: 'auto',
-                paddingRight: '8px'
-              }}>
-                {productDeals.map((deal, index) => (
-                  <div key={index} style={{
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    backgroundColor: 'white'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '16px'
-                    }}>
-                      <h5 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        margin: 0
-                      }}>
-                        {deal.productDealName || 'Unnamed Deal'}
-                      </h5>
-                      <button
-                        type="button"
-                        onClick={() => removeProductDeal(index)}
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = '#b91c1c';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                        }}
-                      >
-                        <span>🗑️</span>
-                        Remove
-                      </button>
+    const renderDetailsTab = () => (
+        <div className="space-y-6">
+            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
                     </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '4px'
-                        }}>
-                          Minimum Quantity
-                        </label>
-                        <div style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          backgroundColor: '#f9fafb',
-                          color: '#374151'
-                        }}>
-                          {deal.minQty || 0}
-                        </div>
-                      </div>
-                      
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '4px'
-                        }}>
-                          Additional Quantity
-                        </label>
-                        <div style={{
-                          width: '100%',
-                          padding: '8px 12px',
-                          border: '1px solid #d1d5db',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          backgroundColor: '#f9fafb',
-                          color: '#374151'
-                        }}>
-                          {deal.additionalQty || 0}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Product Unit Price Tab */}
-        {activeInnerTab === 'product-unit-price' && (
-          <div>
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '20px'
-            }}>
-              <h4 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: 0
-              }}>
-                Product Unit Prices
-              </h4>
-              <button
-                type="button"
-                onClick={addProductUnitPrice}
-                style={{
-                  padding: '8px 16px',
-                  backgroundColor: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-              >
-                <span>+</span>
-                Add Unit Price
-              </button>
-            </div>
-
-            {productUnitPrices.length === 0 ? (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px',
-                color: '#6b7280',
-                backgroundColor: '#f9fafb',
-                borderRadius: '8px',
-                border: '2px dashed #d1d5db'
-              }}>
-                <div style={{ fontSize: '24px', marginBottom: '8px' }}>💰</div>
-                <p>No unit prices added yet. Click &quot;Add Unit Price&quot; to get started.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {productUnitPrices.map((unitPrice, index) => (
-                  <div key={index} style={{
-                    border: '2px solid #e2e8f0',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    backgroundColor: 'white'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '16px'
-                    }}>
-                      <h5 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#1f2937',
-                        margin: 0
-                      }}>
-                        {unitPrice.productUnitName || 'Unnamed Unit'} - {unitPrice.productPriceTypeName || 'Unnamed Price Type'}
-                      </h5>
-                      <button
-                        type="button"
-                        onClick={() => removeProductUnitPrice(index)}
-                        style={{
-                          padding: '4px 8px',
-                          backgroundColor: '#dc2626',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '12px'
-                        }}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '4px'
-                        }}>
-                          Unit Name
+                    <h3 className="text-base font-bold text-blue-600 m-0">Product Information</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                            Product Name
                         </label>
                         <input
-                          type="text"
-                          value={unitPrice.productUnitName || ''}
-                          readOnly
-                          style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            backgroundColor: '#f9fafb',
-                            color: '#374151',
-                            cursor: 'not-allowed'
-                          }}
+                            type="text"
+                            value={formData.productName}
+                            onChange={(event) => setFormData((prev) => ({ ...prev, productName: event.target.value }))}
+                            disabled={!canEditDetails}
+                            className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm focus:outline-none transition-all duration-200 ${
+                                canEditDetails
+                                    ? 'border-gray-300 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                                    : 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                            }`}
+                            placeholder="Enter product name"
                         />
-                      </div>
-                      
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '4px'
-                        }}>
-                          Cost
-                        </label>
-                        <NumberInput
-                          value={unitPrice.cost || 0}
-                          onChange={(value: number) => updateProductUnitPrice(index, 'cost', value)}
-                          placeholder="Enter cost"
-                          style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            outline: 'none'
-                          }}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label style={{
-                          display: 'block',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          color: '#374151',
-                          marginBottom: '4px'
-                        }}>
-                          Price
-                        </label>
-                        <NumberInput
-                          value={unitPrice.price || 0}
-                          onChange={(value: number) => updateProductUnitPrice(index, 'price', value)}
-                          placeholder="Enter price"
-                          style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            outline: 'none'
-                          }}
-                        />
-                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      <div className="flex justify-between items-center mt-6">
-        {!isCreateMode && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onDelete();
-            }}
-            disabled={selectedProduct?.status !== StatusEnum.ACTIVE}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: selectedProduct?.status !== StatusEnum.ACTIVE ? 'transparent' : '#dc2626',
-              color: selectedProduct?.status !== StatusEnum.ACTIVE ? '#9ca3af' : 'white',
-              border: selectedProduct?.status !== StatusEnum.ACTIVE ? '1px solid #d1d5db' : 'none',
-              borderRadius: '6px',
-              cursor: selectedProduct?.status !== StatusEnum.ACTIVE ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: selectedProduct?.status !== StatusEnum.ACTIVE ? 0.5 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (selectedProduct?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#b91c1c';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (selectedProduct?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#dc2626';
-              }
-            }}
-          >
-            Delete
-          </button>
-        )}
-        
-        <div className="flex gap-3 ml-auto">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: (!isCreateMode && selectedProduct?.status !== StatusEnum.ACTIVE) ? 0.7 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (isCreateMode || selectedProduct?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (isCreateMode || selectedProduct?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-              }
-            }}
-          >
-            {isCreateMode ? 'Create Product' : 'Save Changes'}
-          </button>
-        </div>
-       </div>
-     </form>
-
-     {/* Searchable Selection Modals */}
-     <ProductCategorySearchableSelectionModal
-       show={showCategoryModal}
-       title="Select Product Category"
-       selectedValue={selectedCategory?.id || null}
-       onSelect={handleCategorySelect}
-       onClose={() => setShowCategoryModal(false)}
-     />
-
-     <ProductClassSearchableSelectionModal
-       show={showClassModal}
-       title="Select Product Class"
-       selectedValue={selectedClass?.id || null}
-       onSelect={handleClassSelect}
-       onClose={() => setShowClassModal(false)}
-     />
-
-     <ProductDealSearchableSelectionModal
-       show={showDealModal}
-       title="Select Product Deal"
-       selectedValue={null}
-       onSelect={handleDealSelect}
-       onClose={() => setShowDealModal(false)}
-     />
-
-     <ProductUnitPriceSelectionModal
-       show={showUnitPriceModal}
-       onSelect={handleUnitPriceSelect}
-       onClose={() => setShowUnitPriceModal(false)}
-     />
-    </>
-  );
-
-  // Render approval tab
-  const renderApprovalTab = () => {
-    if (isCreateMode || !selectedProduct) return null;
-    
-    return (
-      <div>
-        <div className="mb-5">
-          {(selectedProduct.status === StatusEnum.FOR_APPROVAL || selectedProduct.status === StatusEnum.NEW_RECORD) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-              <span className="text-yellow-600 text-base">ℹ️</span>
-              <span className="text-yellow-800 text-sm">
-                These are the proposed changes awaiting approval
-              </span>
-            </div>
-          )}
-
-          {/* Change Reason - Highlighted field */}
-          {selectedProduct?.changeReason && (
-            <div style={{
-              backgroundColor: '#fef3c7',
-              border: '2px solid #f59e0b',
-              borderRadius: '8px',
-              padding: '16px',
-              marginBottom: '20px',
-              boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '12px'
-              }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: '#f59e0b',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
-                }}>
-                  📝
-                </div>
-                <h4 style={{
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#92400e',
-                  margin: 0
-                }}>
-                  Change Reason
-                </h4>
-              </div>
-              <div style={{
-                padding: '12px 16px',
-                backgroundColor: 'white',
-                border: '1px solid #f59e0b',
-                borderRadius: '6px',
-                fontSize: '14px',
-                color: '#92400e',
-                lineHeight: '1.5',
-                whiteSpace: 'pre-wrap'
-              }}>
-                {selectedProduct.changeReason}
-              </div>
-            </div>
-          )}
-          
-          {selectedProduct?.forApprovalVersion ? (
-            <div style={{
-              backgroundColor: '#f8fafc',
-              border: '2px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px',
-              boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06)'
-            }}>
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '16px'
-              }}>
-                <div style={{
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: '#f59e0b',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: '12px',
-                  fontWeight: 'bold'
-                }}>
-                  ⏳
-                </div>
-                <h3 style={{
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  color: '#1f2937',
-                  margin: 0
-                }}>
-                  Pending Approval Details
-                </h3>
-              </div>
-
-              {/* Product Name */}
-              {selectedProduct.forApprovalVersion.productName !== undefined && (
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '8px'
-                  }}>
-                    Product Name
-                  </label>
-                  <input
-                    type="text"
-                    value={String(selectedProduct.forApprovalVersion.productName)}
-                    readOnly
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '2px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      backgroundColor: '#f9fafb',
-                      color: '#6b7280',
-                      fontWeight: '500'
-                    }}
-                  />
-                </div>
-              )}
-              
-              {/* Status */}
-              {selectedProduct.forApprovalVersion.status !== undefined && (
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '8px'
-                  }}>
-                    Status
-                  </label>
-                  <input
-                    type="text"
-                    value={String(selectedProduct.forApprovalVersion.status)}
-                    readOnly
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      border: '2px solid #d1d5db',
-                      borderRadius: '8px',
-                      fontSize: '14px',
-                      outline: 'none',
-                      backgroundColor: '#f9fafb',
-                      color: '#6b7280',
-                      fontWeight: '500'
-                    }}
-                  />
-                </div>
-              )}
-              
-              {/* Product Deals */}
-              {selectedProduct.forApprovalVersion.productDeals && selectedProduct.forApprovalVersion.productDeals.length > 0 && (
-                <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#1f2937',
-                    marginBottom: '16px'
-                  }}>
-                    Product Deals
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {selectedProduct.forApprovalVersion.productDeals.map((deal: any, index: number) => (
-                      <div key={index} style={{
-                        border: '2px solid #e2e8f0',
-                        borderRadius: '8px',
-                        padding: '16px',
-                        backgroundColor: 'white'
-                      }}>
-                        <h5 style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#1f2937',
-                          margin: '0 0 16px 0'
-                        }}>
-                          {deal.productDealName || 'Unnamed Deal'}
-                        </h5>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                          <div>
-                            <label style={{
-                              display: 'block',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              color: '#374151',
-                              marginBottom: '4px'
-                            }}>
-                              Minimum Quantity
-                            </label>
-                            <input
-                              type="number"
-                              value={deal.minQty || 0}
-                              readOnly
-                              style={{
-                                width: '100%',
-                                padding: '8px 12px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                backgroundColor: '#f9fafb',
-                                color: '#374151'
-                              }}
-                            />
-                          </div>
-                          
-                          <div>
-                            <label style={{
-                              display: 'block',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              color: '#374151',
-                              marginBottom: '4px'
-                            }}>
-                              Additional Quantity
-                            </label>
-                            <input
-                              type="number"
-                              value={deal.additionalQty || 0}
-                              readOnly
-                              style={{
-                                width: '100%',
-                                padding: '8px 12px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                backgroundColor: '#f9fafb',
-                                color: '#374151'
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Product Unit Price */}
-              {selectedProduct.forApprovalVersion.productUnitPrice && selectedProduct.forApprovalVersion.productUnitPrice.length > 0 && (
-                <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: '#1f2937',
-                    marginBottom: '16px'
-                  }}>
-                    Product Unit Prices
-                  </h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    {selectedProduct.forApprovalVersion.productUnitPrice.map((unitPrice: any, index: number) => (
-                      <div key={index} style={{
-                        border: '2px solid #e2e8f0',
-                        borderRadius: '8px',
-                        padding: '16px',
-                        backgroundColor: 'white'
-                      }}>
-                        <h5 style={{
-                          fontSize: '14px',
-                          fontWeight: '600',
-                          color: '#1f2937',
-                          margin: '0 0 16px 0'
-                        }}>
-                          {unitPrice.productUnitName || 'Unnamed Unit'} - {unitPrice.productPriceTypeName || 'Unnamed Price Type'}
-                        </h5>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-                          <div>
-                            <label style={{
-                              display: 'block',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              color: '#374151',
-                              marginBottom: '4px'
-                            }}>
-                              Unit Name
-                            </label>
-                            <input
-                              type="text"
-                              value={unitPrice.productUnitName || ''}
-                              readOnly
-                              style={{
-                                width: '100%',
-                                padding: '8px 12px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                backgroundColor: '#f9fafb',
-                                color: '#374151'
-                              }}
-                            />
-                          </div>
-                          
-                          <div>
-                            <label style={{
-                              display: 'block',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              color: '#374151',
-                              marginBottom: '4px'
-                            }}>
-                              Cost
-                            </label>
-                            <input
-                              type="number"
-                              value={unitPrice.cost || 0}
-                              readOnly
-                              style={{
-                                width: '100%',
-                                padding: '8px 12px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                backgroundColor: '#f9fafb',
-                                color: '#374151'
-                              }}
-                            />
-                          </div>
-                          
-                          <div>
-                            <label style={{
-                              display: 'block',
-                              fontSize: '12px',
-                              fontWeight: '600',
-                              color: '#374151',
-                              marginBottom: '4px'
-                            }}>
-                              Price
-                            </label>
-                            <input
-                              type="number"
-                              value={unitPrice.price || 0}
-                              readOnly
-                              style={{
-                                width: '100%',
-                                padding: '8px 12px',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '6px',
-                                fontSize: '14px',
-                                backgroundColor: '#f9fafb',
-                                color: '#374151'
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Other fields that might be in forApprovalVersion */}
-              {Object.entries(selectedProduct.forApprovalVersion).map(([key, value]) => {
-                // Skip the fields we've already handled
-                if (key === 'productName' || key === 'status' || key === 'productDeals' || key === 'productUnitPrice') {
-                  return null;
-                }
-                
-                return (
-                  <div key={key} style={{ marginBottom: '20px' }}>
-                    <label style={{
-                      display: 'block',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      color: '#374151',
-                      marginBottom: '8px'
-                    }}>
-                      {/* Convert camelCase to Title Case */}
-                      {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
-                    </label>
-                    <input
-                      type="text"
-                      value={String(value)}
-                      readOnly
-                      style={{
-                        width: '100%',
-                        padding: '12px 16px',
-                        border: '2px solid #d1d5db',
-                        borderRadius: '8px',
-                        fontSize: '14px',
-                        outline: 'none',
-                        backgroundColor: '#f9fafb',
-                        color: '#6b7280',
-                        fontWeight: '500'
-                      }}
+                    <div className="space-y-2">
+                        <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                            Critical Level
+                        </label>
+                        <input
+                            type="number"
+                            value={formData.criticalLevel}
+                            min={0}
+                            onChange={(event) => setFormData((prev) => ({ ...prev, criticalLevel: event.target.value }))}
+                            disabled={!canEditDetails}
+                            className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm focus:outline-none transition-all duration-200 ${
+                                canEditDetails
+                                    ? 'border-gray-300 text-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                                    : 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                            }`}
+                            placeholder="Enter critical level"
+                        />
+                    </div>
+                    <SelectionField
+                        label="Product Category *"
+                        selectedItem={selectedCategory}
+                        onSelect={() => setShowCategoryModal(true)}
+                        onClear={() => setSelectedCategory(null)}
+                        disabled={!canEditDetails}
                     />
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-gray-500 italic">
-              No pending approval changes
-            </p>
-          )}
-        </div>
-        
-        <div className="flex justify-between mt-6">
-          {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
-          {isAdminUser && (selectedProduct?.status === StatusEnum.FOR_APPROVAL || selectedProduct?.status === StatusEnum.NEW_RECORD || selectedProduct?.status === StatusEnum.FOR_DELETION) ? (
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                type="button"
-                onClick={onDeny}
-                disabled={isLoading}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: isLoading ? '#9ca3af' : '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  opacity: isLoading ? 0.7 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = '#b91c1c';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = '#dc2626';
-                  }
-                }}
-              >
-                {isLoading ? 'Processing...' : 'Deny Changes'}
-              </button>
-              <button
-                type="button"
-                onClick={onApprove}
-                disabled={isLoading}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  opacity: isLoading ? 0.7 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = '#2563eb';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading) {
-                    e.currentTarget.style.backgroundColor = '#3b82f6';
-                  }
-                }}
-              >
-                {isLoading ? 'Processing...' : 'Approve Changes'}
-              </button>
-            </div>
-          ) : (
-            <div></div>
-          )}
-          
-          {/* Cancel button - always visible on the right */}
-          <div>
-            <button
-              type="button"
-              onClick={onCancel}
-              className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
-            >
-              Cancel
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Render logs tab
-  const renderLogsTab = () => {
-    if (isCreateMode || !selectedProduct) return null;
-    
-    return (
-      <div>
-        <div className="mb-5">
-          <h3 className="text-base font-semibold text-gray-800 mb-3">
-            Recent Activity
-          </h3>
-          {selectedProduct?.activityLogs && selectedProduct.activityLogs.length > 0 ? (
-            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-              {selectedProduct.activityLogs.map((log, index) => (
-                <div 
-                  key={index} 
-                  className={`py-2 ${
-                    index < selectedProduct.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                  }`}
-                >
-                  {log}
+                    <SelectionField
+                        label="Product Class *"
+                        selectedItem={selectedClass}
+                        onSelect={() => setShowClassModal(true)}
+                        onClear={() => setSelectedClass(null)}
+                        disabled={!canEditDetails}
+                    />
                 </div>
-              ))}
             </div>
-          ) : (
-            <p className="text-gray-500 italic">
-              No activity logs available
-            </p>
-          )}
+
+            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-base font-bold text-blue-600 m-0">Product Deals</h3>
+                </div>
+
+                <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-500">
+                        Manage product deals that can be associated with this product.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setShowDealModal(true)}
+                        disabled={!canEditDetails}
+                        className="px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-200 disabled:text-gray-400"
+                    >
+                        Add Deal
+                    </button>
+                </div>
+
+                {productDeals.length === 0 ? (
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 sm:p-6 text-center text-sm text-gray-500">
+                        No product deals added.
+                    </div>
+                ) : (
+                    <div className="overflow-hidden border border-gray-200 rounded-xl">
+                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-2 text-left font-semibold text-gray-600">Deal</th>
+                                    <th className="px-4 py-2 text-left font-semibold text-gray-600">Min Qty</th>
+                                    <th className="px-4 py-2 text-left font-semibold text-gray-600">Additional Qty</th>
+                                    <th className="px-4 py-2 text-right font-semibold text-gray-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {productDeals.map((deal, index) => (
+                                    <tr key={deal.productDealId}>
+                                        <td className="px-4 py-3 text-gray-700">{deal.productDealName ?? '-'}</td>
+                                        <td className="px-4 py-3 text-gray-600">{deal.minQty ?? 0}</td>
+                                        <td className="px-4 py-3 text-gray-600">{deal.additionalQty ?? 0}</td>
+                                        <td className="px-4 py-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => removeProductDeal(index)}
+                                                disabled={!isCreateMode && currentStatus !== StatusEnum.ACTIVE}
+                                                className={`p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center ${
+                                                    !isCreateMode && currentStatus !== StatusEnum.ACTIVE
+                                                        ? 'bg-gray-500 cursor-not-allowed opacity-60'
+                                                        : 'bg-red-600 hover:bg-red-700'
+                                                }`}
+                                                title="Remove"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-base font-bold text-blue-600 m-0">Unit Pricing</h3>
+                </div>
+
+                <div className="flex justify-between items-center">
+                    <p className="text-sm text-gray-500">
+                        Configure pricing combinations for different units and price types.
+                    </p>
+                    <button
+                        type="button"
+                        onClick={() => setShowUnitPriceModal(true)}
+                        disabled={!canEditDetails}
+                        className="px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-200 disabled:text-gray-400"
+                    >
+                        Add Unit Price
+                    </button>
+                </div>
+
+                {productUnitPrices.length === 0 ? (
+                    <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 sm:p-6 text-center text-sm text-gray-500">
+                        No unit prices configured.
+                    </div>
+                ) : (
+                    <div className="overflow-hidden border border-gray-200 rounded-xl">
+                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                            <thead className="bg-gray-50">
+                                <tr>
+                                    <th className="px-4 py-2 text-left font-semibold text-gray-600">Unit</th>
+                                    <th className="px-4 py-2 text-left font-semibold text-gray-600">Price Type</th>
+                                    <th className="px-4 py-2 text-left font-semibold text-gray-600">Cost</th>
+                                    <th className="px-4 py-2 text-left font-semibold text-gray-600">Price</th>
+                                    <th className="px-4 py-2 text-right font-semibold text-gray-600">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {productUnitPrices.map((price, index) => (
+                                    <tr key={`${price.productUnitId}-${price.productPriceTypeId}`}>
+                                        <td className="px-4 py-3 text-gray-700">{price.productUnitName ?? '-'}</td>
+                                        <td className="px-4 py-3 text-gray-700">{price.productPriceTypeName ?? '-'}</td>
+                                        <td className="px-4 py-3 text-gray-700">
+                                            <NumberInput
+                                                value={price.cost ?? 0}
+                                                onChange={(value) => updateProductUnitPrice(index, 'cost', value)}
+                                                disabled={!canEditDetails}
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-700">
+                                            <NumberInput
+                                                value={price.price ?? 0}
+                                                onChange={(value) => updateProductUnitPrice(index, 'price', value)}
+                                                disabled={!canEditDetails}
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => removeProductUnitPrice(index)}
+                                                disabled={!isCreateMode && currentStatus !== StatusEnum.ACTIVE}
+                                                className={`p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center ${
+                                                    !isCreateMode && currentStatus !== StatusEnum.ACTIVE
+                                                        ? 'bg-gray-500 cursor-not-allowed opacity-60'
+                                                        : 'bg-red-600 hover:bg-red-700'
+                                                }`}
+                                                title="Remove"
+                                            >
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
+                <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-2">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                        Change Reason
+                    </label>
+                    <textarea
+                        value={formData.changeReason}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, changeReason: event.target.value }))}
+                        rows={3}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                        placeholder="Describe the changes you made to this product..."
+                    />
+                    <p className="text-xs text-gray-500">
+                        This field is required when submitting updates for approval.
+                    </p>
+                </div>
+            )}
         </div>
-        
-        <div className="flex justify-end mt-6">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
     );
-  };
 
-  return (
-    <>
-      {/* Tab Navigation - Only show in edit mode */}
-      {!isCreateMode && (
-        <div style={{
-          display: 'flex',
-          borderBottom: '2px solid #e5e7eb',
-          marginBottom: '20px',
-          backgroundColor: '#f8fafc',
-          borderRadius: '8px 8px 0 0',
-          padding: '4px'
-        }}>
-          <button
-            onClick={() => onTabChange('details')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
-              color: activeTab === 'details' ? '#1f2937' : '#6b7280',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: activeTab === 'details' ? '600' : '500',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-              marginRight: '4px'
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== 'details') {
-                e.currentTarget.style.backgroundColor = '#f1f5f9';
-                e.currentTarget.style.color = '#374151';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== 'details') {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }
-            }}
-          >
-            Details
-          </button>
-          
-          {selectedProduct && selectedProduct.status !== StatusEnum.ACTIVE && (
-            <button
-              onClick={() => onTabChange('approval')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
-                color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'approval' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                marginRight: '4px'
-              }}
-              onMouseEnter={(e) => {
-                if (activeTab !== 'approval') {
-                  e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#374151';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== 'approval') {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#6b7280';
-                }
-              }}
-            >
-              Approval Version
-            </button>
-          )}
-          
-          {!isCreateMode && (
-            <button
-              onClick={() => onTabChange('logs')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
-                color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'logs' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-              }}
-              onMouseEnter={(e) => {
-                if (activeTab !== 'logs') {
-                  e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#374151';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== 'logs') {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#6b7280';
-                }
-              }}
-            >
-              Activity Logs
-            </button>
-          )}
+    const renderApprovalTab = () => {
+        if (!selectedProduct) {
+            return null;
+        }
+
+        if (currentStatus === StatusEnum.FOR_DELETION) {
+            return (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🗑️
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-800 m-0">Record Marked for Deletion</h3>
+                            <p className="text-sm text-red-700">
+                                This record has been marked for deletion and is awaiting approval.
+                            </p>
+                        </div>
+                    </div>
+                    {selectedProduct.changeReason && (
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-red-700">Deletion Reason</p>
+                            <div className="bg-white border-2 border-red-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                                {selectedProduct.changeReason}
+                            </div>
+                        </div>
+                    )}
+                    {isAdminUser && (
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-8 pt-6 border-t-2 border-gray-200">
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                <button
+                                    type="button"
+                                    onClick={onDeny}
+                                    disabled={isLoading}
+                                    className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Deny Deletion
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={onApprove}
+                                    disabled={isLoading}
+                                    className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    Approve Deletion
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="w-full sm:w-auto px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center justify-center gap-2"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const approvalData = pendingVersion;
+        
+        const pendingDeals = (pendingVersion.productDeals as ProductDealDetails[]) ?? [];
+        const pendingUnitPrices = (pendingVersion.productUnitPrice as ProductUnitPriceDetails[]) ?? [];
+
+        return (
+            <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
+                {/* Change Reason and Modification Made */}
+                {selectedProduct?.changeReason && (
+                    <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </div>
+                            <h4 className="m-0 text-base font-bold text-blue-600">
+                                Change Reason and Modification Made
+                            </h4>
+                        </div>
+                        <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
+                            {selectedProduct.changeReason}
+                        </div>
+                    </div>
+                )}
+
+                {/* Product Information Section */}
+                <div className="space-y-4">
+                    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-base font-bold text-blue-600">
+                                Product Information
+                            </h3>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {renderReadOnlyField('Product Name', pendingVersion.productName, 'bg-blue-500', 'productName')}
+                            {renderReadOnlyField('Critical Level', pendingVersion.criticalLevel, 'bg-blue-500', 'criticalLevel')}
+                            {renderReadOnlyField('Product Category', pendingVersion.productCategoryName, 'bg-blue-500', 'productCategoryName')}
+                            {renderReadOnlyField('Product Class', pendingVersion.productClassName, 'bg-blue-500', 'productClassName')}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Product Deals */}
+                {(() => {
+                    const dealsChanged = hasArrayChanges('productDeals');
+                    const originalDeals = selectedProduct.productDeals;
+                    const newDeals = pendingDeals;
+                    const originalHasItems = originalDeals && Array.isArray(originalDeals) && originalDeals.length > 0;
+                    const newHasItems = newDeals && Array.isArray(newDeals) && newDeals.length > 0;
+                    const allRemoved = originalHasItems && !newHasItems;
+                    
+                    // Render if there are changes OR if new array has items
+                    if (!dealsChanged && !newHasItems) return null;
+                    
+                    return (
+                        <div className="mt-6">
+                            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                    <h4 className={`text-base font-bold ${dealsChanged ? 'px-3 py-1 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700' : 'text-blue-600'}`}>
+                                        Product Deals
+                                    </h4>
+                                </div>
+                                {allRemoved ? (
+                                    <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-blue-600 rounded-lg">
+                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-amber-800">
+                                                    All Product Deals records have been removed
+                                                </p>
+                                                <p className="text-xs text-amber-700 mt-1">
+                                                    {originalDeals.length} record{originalDeals.length !== 1 ? 's' : ''} will be deleted upon approval
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                                        {!newHasItems ? (
+                                            <div className="p-10 text-center text-gray-500 text-base">
+                                                No product deals in pending changes.
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-collapse">
+                                                    <thead className="bg-white border-b border-gray-200">
+                                                        <tr>
+                                                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                                                Product Deal Name
+                                                            </th>
+                                                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                                                Minimum Quantity
+                                                            </th>
+                                                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                                                Additional Quantity
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-gray-200">
+                                                        {newDeals.map((deal: any, index: number) => (
+                                                            <tr 
+                                                                key={index}
+                                                                className="transition-all duration-200 bg-white hover:bg-gray-50"
+                                                            >
+                                                                <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                                                    {deal.productDealName || '-'}
+                                                                </td>
+                                                                <td className="px-6 py-5 text-sm text-gray-600">
+                                                                    {deal.minQty || 0}
+                                                                </td>
+                                                                <td className="px-6 py-5 text-sm text-gray-600">
+                                                                    {deal.additionalQty || 0}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {/* Unit Pricing */}
+                {(() => {
+                    const pricesChanged = hasArrayChanges('productUnitPrice');
+                    const originalPrices = selectedProduct.productUnitPrice;
+                    const newPrices = pendingUnitPrices;
+                    const originalHasItems = originalPrices && Array.isArray(originalPrices) && originalPrices.length > 0;
+                    const newHasItems = newPrices && Array.isArray(newPrices) && newPrices.length > 0;
+                    const allRemoved = originalHasItems && !newHasItems;
+                    
+                    // Render if there are changes OR if new array has items
+                    if (!pricesChanged && !newHasItems) return null;
+                    
+                    return (
+                        <div className="mt-6">
+                            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <h4 className={`text-base font-bold ${pricesChanged ? 'px-3 py-1 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700' : 'text-blue-600'}`}>
+                                        Unit Pricing
+                                    </h4>
+                                </div>
+                                {allRemoved ? (
+                                    <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-blue-600 rounded-lg">
+                                                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-amber-800">
+                                                    All Unit Pricing records have been removed
+                                                </p>
+                                                <p className="text-xs text-amber-700 mt-1">
+                                                    {originalPrices.length} record{originalPrices.length !== 1 ? 's' : ''} will be deleted upon approval
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                                        {!newHasItems ? (
+                                            <div className="p-10 text-center text-gray-500 text-base">
+                                                No unit prices in pending changes.
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full border-collapse">
+                                                    <thead className="bg-white border-b border-gray-200">
+                                                        <tr>
+                                                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                                                Product Unit
+                                                            </th>
+                                                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                                                Price Type
+                                                            </th>
+                                                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                                                Cost
+                                                            </th>
+                                                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                                                Price
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="bg-white divide-y divide-gray-200">
+                                                        {newPrices.map((price: any, index: number) => (
+                                                            <tr 
+                                                                key={index}
+                                                                className="transition-all duration-200 bg-white hover:bg-gray-50"
+                                                            >
+                                                                <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                                                    {price.productUnitName || '-'}
+                                                                </td>
+                                                                <td className="px-6 py-5 text-sm text-gray-600">
+                                                                    {price.productPriceTypeName || '-'}
+                                                                </td>
+                                                                <td className="px-6 py-5 text-sm text-gray-600">
+                                                                    {price.cost || 0}
+                                                                </td>
+                                                                <td className="px-6 py-5 text-sm text-gray-600">
+                                                                    {price.price || 0}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })()}
+
+                {isAdminUser && (
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-8 pt-6 border-t-2 border-gray-200">
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                            <button
+                                type="button"
+                                onClick={onDeny}
+                                disabled={isLoading}
+                                className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Deny Changes
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onApprove}
+                                disabled={isLoading}
+                                className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Approve Changes
+                            </button>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="w-full sm:w-auto px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center justify-center gap-2"
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderLogsTab = () => (
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Activity Logs</h3>
+            <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-200">
+                {(selectedProduct?.activityLogs ?? []).length === 0 ? (
+                    <p className="p-4 text-sm text-gray-500">No activity logs available.</p>
+                ) : (
+                    (selectedProduct?.activityLogs ?? []).map((log, index) => (
+                        <p key={`${log}-${index}`} className="p-4 text-sm text-gray-700">
+                            {log}
+                        </p>
+                    ))
+                )}
+            </div>
         </div>
-      )}
+    );
 
-      {/* Tab Content */}
-      {activeTab === 'details' && renderDetailsTab()}
-      {activeTab === 'approval' && !isCreateMode && renderApprovalTab()}
-      {activeTab === 'logs' && !isCreateMode && renderLogsTab()}
+    const deleteDisabled = isCreateMode || currentStatus !== StatusEnum.ACTIVE;
+    const detailsTabLabel = `Product Information - ${getStatusText(currentStatus)}`;
 
-      {/* Searchable Selection Modals - Only render when details tab is active */}
-      {activeTab === 'details' && (
+    return (
         <>
-          <ProductCategorySearchableSelectionModal
-            show={showCategoryModal}
-            title="Select Product Category"
-            selectedValue={selectedCategory?.id || null}
-            onSelect={handleCategorySelect}
-            onClose={() => setShowCategoryModal(false)}
-          />
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {successMessage && (
+                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 text-green-700 text-sm shadow-sm">
+                        {successMessage}
+                    </div>
+                )}
 
-          <ProductClassSearchableSelectionModal
-            show={showClassModal}
-            title="Select Product Class"
-            selectedValue={selectedClass?.id || null}
-            onSelect={handleClassSelect}
-            onClose={() => setShowClassModal(false)}
-          />
+                {validationErrors.length > 0 && (
+                    <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 shadow-sm space-y-2">
+                        <p className="text-sm font-semibold text-red-700">Please fix the following errors:</p>
+                        <ul className="list-disc pl-5 text-sm text-red-600 space-y-1">
+                            {validationErrors.map((error) => (
+                                <li key={error}>{error}</li>
+                            ))}
+                        </ul>
+                    </div>
+                )}
 
-          <ProductDealSearchableSelectionModal
-            show={showDealModal}
-            title="Select Product Deal"
-            selectedValue={null}
-            onSelect={handleDealSelect}
-            onClose={() => setShowDealModal(false)}
-          />
 
-          <ProductUnitPriceSelectionModal
-            show={showUnitPriceModal}
-            onSelect={handleUnitPriceSelect}
-            onClose={() => setShowUnitPriceModal(false)}
-          />
+                <div className="flex justify-center">
+                    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
+                        <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
+                            <div className="flex gap-2 flex-nowrap">
+                                <button
+                                    type="button"
+                                    onClick={() => onTabChange('details')}
+                                    className={`${getTabClassName(currentStatus, activeTab === 'details')} px-5 py-3 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center gap-2 flex-shrink-0`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    {detailsTabLabel}
+                                </button>
+                                {!isCreateMode && (
+                                    <>
+                                        {currentStatus !== StatusEnum.ACTIVE && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onTabChange('approval')}
+                                                className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center gap-2 flex-shrink-0 ${
+                                                    activeTab === 'approval'
+                                                        ? 'bg-blue-600 text-white shadow-sm'
+                                                        : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                                }`}
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                </svg>
+                                                Pending Changes
+                                            </button>
+                                        )}
+                                        <button
+                                            type="button"
+                                            onClick={() => onTabChange('logs')}
+                                            className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center gap-2 flex-shrink-0 ${
+                                                activeTab === 'logs'
+                                                    ? 'bg-blue-600 text-white shadow-sm'
+                                                    : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                            }`}
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Activity Logs
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                <div className="p-4 sm:p-6 bg-white space-y-6">
+                    {activeTab === 'details' && renderDetailsTab()}
+                    {!isCreateMode && activeTab === 'approval' && renderApprovalTab()}
+                    {!isCreateMode && activeTab === 'logs' && renderLogsTab()}
+                </div>
+
+                {/* Action Buttons */}
+                {activeTab !== 'approval' && (
+                    <div className="flex flex-col gap-3 border-t-2 border-gray-200 pt-6 px-4 sm:px-6 pb-4 sm:pb-6 sm:flex-row sm:items-center sm:justify-between">
+                        {!isCreateMode && currentStatus === StatusEnum.ACTIVE ? (
+                            <button
+                                type="button"
+                                onClick={onDelete}
+                                disabled={deleteDisabled || isLoading}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto disabled:bg-red-300 disabled:cursor-not-allowed"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete
+                            </button>
+                        ) : (
+                            <div className="hidden sm:block" />
+                        )}
+
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                            {(isCreateMode || currentStatus === StatusEnum.ACTIVE) && (
+                                <button
+                                    type="submit"
+                                    disabled={!canEditDetails || isLoading}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    {isCreateMode ? 'Create Product' : 'Save Changes'}
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                )}
+                    </div>
+                </div>
+            </form>
+
+            <ProductCategorySearchableSelectionModal
+                show={showCategoryModal}
+                title="Select Product Category"
+                selectedValue={selectedCategory?.id ?? null}
+                onSelect={handleCategorySelect}
+                onClose={() => setShowCategoryModal(false)}
+            />
+
+            <ProductClassSearchableSelectionModal
+                show={showClassModal}
+                title="Select Product Class"
+                selectedValue={selectedClass?.id ?? null}
+                onSelect={handleClassSelect}
+                onClose={() => setShowClassModal(false)}
+            />
+
+            <ProductDealSearchableSelectionModal
+                show={showDealModal}
+                title="Select Product Deal"
+                selectedValue={null}
+                onSelect={handleDealSelect}
+                onClose={() => setShowDealModal(false)}
+            />
+
+            <ProductUnitPriceSelectionModal
+                show={showUnitPriceModal}
+                onSelect={handleUnitPriceSelect}
+                onClose={() => setShowUnitPriceModal(false)}
+            />
         </>
-      )}
-   </>
- );
+    );
 }
+

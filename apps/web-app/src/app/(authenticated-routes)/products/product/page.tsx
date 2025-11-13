@@ -1,246 +1,221 @@
 'use client';
 
 import { ProductApi, ProductDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ProductHeader, ProductTable } from './components';
 
+const DEFAULT_PAGE_SIZE = 10;
+
+const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+        case StatusEnum.ACTIVE:
+            return 'Active';
+        case StatusEnum.FOR_APPROVAL:
+            return 'For Approval';
+        case StatusEnum.FOR_DELETION:
+            return 'For Deletion';
+        case StatusEnum.NEW_RECORD:
+            return 'New Record';
+        default:
+            return status;
+    }
+};
+
+const getStatusBadge = (status?: StatusEnum) => {
+    const resolvedStatus = status ?? StatusEnum.ACTIVE;
+
+    const badgeStyles: Record<StatusEnum, string> = {
+        [StatusEnum.ACTIVE]: 'bg-green-100 text-green-800',
+        [StatusEnum.FOR_APPROVAL]: 'bg-yellow-100 text-yellow-800',
+        [StatusEnum.FOR_DELETION]: 'bg-red-100 text-red-800',
+        [StatusEnum.NEW_RECORD]: 'bg-blue-100 text-blue-800',
+        [StatusEnum.DRAFT]: 'bg-gray-100 text-gray-700',
+    };
+
+    return (
+        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeStyles[resolvedStatus] ?? 'bg-gray-100 text-gray-700'}`}>
+            {getStatusText(resolvedStatus)}
+        </span>
+    );
+};
+
 export default function ProductsMainPage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [products, setProducts] = useState<ProductDto[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const { env } = useEnv();
-  const { authedUser } = useLocalStore();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
-  
-  const [nextCursor, setNextCursor] = useState<any>(undefined);
-  const [prevCursor, setPrevCursor] = useState<any>(undefined);
-  const [currentCursor, setCurrentCursor] = useState<any>(undefined);
-  const [pageSize, setPageSize] = useState<number>(10);
+    const [isLoading, setIsLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [products, setProducts] = useState<ProductDto[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [nextCursor, setNextCursor] = useState<any>();
+    const [prevCursor, setPrevCursor] = useState<any>();
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+    const hasFetchedRef = useRef(false);
 
-  // Track if initial fetch has been made to prevent duplicate calls
-  const hasFetchedRef = useRef(false);
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const router = useRouter();
 
+    const fetchProducts = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
+        try {
+            setIsLoading(true);
+            setError(null);
 
-  // Fetch products from API
-  const fetchProducts = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Serialize cursor object to JSON string if it's an object
-      const serializedCursor = cursor && typeof cursor === 'object' 
-        ? JSON.stringify(cursor) 
-        : cursor;
-      
-      let response;
-      
-      // Use custom page size if provided, otherwise use state page size
-      const currentPageSize = customPageSize ?? pageSize;
-      
-      // If search term exists, use search API, otherwise use regular pagination API
-      if (searchTerm && searchTerm.trim() !== '') {
-        response = await ProductApi.getProductsByName(
-          searchTerm.trim(),
-          currentPageSize,
-          direction,
-          serializedCursor,
-          userRole
-        );
-      } else {
-        response = await ProductApi.getProducts(
-          currentPageSize, 
-          undefined, // No status filter - show all records
-          direction,
-          serializedCursor, 
-          userRole
-        );
-      }
-      
-      if (response && response.statusCode === 200 && response.data) {
-        // The response.data contains the array of products
-        if (Array.isArray(response.data)) {
-          setProducts(response.data);
-          
-          // Set pagination cursors from response
-          setNextCursor(response.nextCursorPointer || undefined);
-          setPrevCursor(response.prevCursorPointer || undefined);
-        } else {
-          setProducts([]);
-          setNextCursor(undefined);
-          setPrevCursor(undefined);
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+            const currentPageSize = customPageSize ?? pageSize;
+            const serializedCursor =
+                cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
+
+            const trimmedQuery = searchQuery.trim();
+            const response =
+                trimmedQuery.length > 0
+                    ? await ProductApi.getProductsByName(
+                          trimmedQuery,
+                          currentPageSize,
+                          direction,
+                          serializedCursor,
+                          userRole
+                      )
+                    : await ProductApi.getProducts(
+                          currentPageSize,
+                          undefined,
+                          direction,
+                          serializedCursor,
+                          userRole
+                      );
+
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setProducts(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
+            } else {
+                setProducts([]);
+                setNextCursor(undefined);
+                setPrevCursor(undefined);
+            }
+        } catch {
+            setError('Failed to load products. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
-      } else {
-        setProducts([]);
+    };
+
+    useEffect(() => {
+        if (hasFetchedRef.current) {
+            return;
+        }
+
+        hasFetchedRef.current = true;
+        fetchProducts();
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
+
+    useEffect(() => {
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0) {
+            fetchProducts();
+            return;
+        }
+
+        const timer = setTimeout(() => {
+            fetchProducts();
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    const headers = useMemo(
+        () => [
+            { key: 'productName', label: 'PRODUCT NAME' },
+            { key: 'productCategoryName', label: 'CATEGORY' },
+            { key: 'productClassName', label: 'CLASS' },
+            { key: 'criticalLevel', label: 'CRITICAL LEVEL' },
+            { key: 'status', label: 'STATUS' },
+        ],
+        []
+    );
+
+    const tableData = useMemo(
+        () =>
+            products.map((product) => ({
+                ...product,
+                status: getStatusBadge(product.status),
+            })),
+        [products]
+    );
+
+    const handleCreateClick = () => {
+        router.push('/products/product/create');
+    };
+
+    const handleRowClick = (product: ProductDto) => {
+        router.push(`/products/product/${product.productId}/edit`);
+    };
+
+    const handlePageSizeChange = (size: number) => {
+        setPageSize(size);
         setNextCursor(undefined);
         setPrevCursor(undefined);
-      }
-      
-      if (direction && cursor) {
-        setCurrentCursor(cursor);
-      } else {
-        setCurrentCursor(undefined);
-      }
-    } catch (err) {
-      setError('Failed to load products. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Fetch on initial load and when these dependencies change
-  useEffect(() => {
-    // Prevent duplicate calls in React Strict Mode
-    if (hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
-    
-    fetchProducts();
-  }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
-
-  // Debounce search term changes (but not on initial mount with empty search)
-  useEffect(() => {
-    // Only debounce if there's actually a search term
-    if (searchTerm === '') {
-      return; // Skip - initial load is handled by the other useEffect
-    }
-
-    const delayDebounceFn = setTimeout(() => {
-      fetchProducts();
-    }, 500); // 500ms delay
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
-
-  const headers = [
-    { key: 'productName', label: 'PRODUCT NAME' },
-    { key: 'productCategoryName', label: 'CATEGORY' },
-    { key: 'productClassName', label: 'CLASS' },
-    { key: 'criticalLevel', label: 'CRITICAL LEVEL' },
-    { key: 'status', label: 'STATUS' }
-  ];
-
-  const getStatusBadge = (status: StatusEnum) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
-    
-    let colorClasses = "";
-    if (status === StatusEnum.ACTIVE) {
-      colorClasses = "!bg-green-100 !text-green-800";
-    } else if (status === StatusEnum.FOR_APPROVAL) {
-      colorClasses = "!bg-yellow-100 !text-yellow-800";
-    } else if (status === StatusEnum.FOR_DELETION) {
-      colorClasses = "!bg-red-100 !text-red-800";
-    } else if (status === StatusEnum.NEW_RECORD) {
-      colorClasses = "!bg-blue-100 !text-blue-800";
-    } else {
-      colorClasses = "!bg-gray-100 !text-gray-600";
-    }
-    
-    return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
-      </span>
-    );
-  };
-
-  const handleRowClick = async (product: ProductDto) => {
-    // Navigate to edit product page
-    window.location.href = `/products/product/${product.productId}/edit`;
-  };
-
-  const handleCreateClick = () => {
-    // Navigate to create product page
-    window.location.href = '/products/product/create';
-  };
-
-  // Handle page size change - reset pagination and fetch fresh data
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize);
-    setNextCursor(undefined);
-    setPrevCursor(undefined);
-    setCurrentCursor(undefined);
-    // Fetch with new page size and no cursor (like initial load)
-    fetchProducts(undefined, undefined, newPageSize);
-  };
-
-  // Transform data for table display
-  const tableData = products?.map(product => {
-    return {
-      ...product,
-      status: getStatusBadge(product.status || StatusEnum.ACTIVE)
+        fetchProducts(undefined, undefined, size);
     };
-  }) || [];
 
-  return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
-          <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
-          >
-            ×
-          </button>
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
+                    <span>{error}</span>
+                    <button
+                        type="button"
+                        onClick={() => setError(null)}
+                        className="text-red-600 hover:text-red-800 font-bold"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
+            <div>
+                <nav className="flex items-center gap-2 text-sm text-gray-500">
+                    <a href="/dashboard" className="text-blue-600 hover:text-blue-700">
+                        Home
+                    </a>
+                    <span>/</span>
+                    <a href="/products" className="text-blue-600 hover:text-blue-700">
+                        Products
+                    </a>
+                    <span>/</span>
+                    <span className="text-gray-800 font-medium">Products</span>
+                </nav>
+            </div>
+
+            <ProductHeader
+                searchQuery={searchQuery}
+                onSearchChange={(value) => {
+                    setSearchQuery(value);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
+                onRefresh={() => {
+                    setSearchQuery('');
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                    fetchProducts();
+                }}
+                onCreateClick={handleCreateClick}
+                isLoading={isLoading}
+            />
+
+            <ProductTable
+                isLoading={isLoading}
+                tableData={tableData}
+                headers={headers}
+                searchQuery={searchQuery}
+                onRowClick={handleRowClick}
+                pageSize={pageSize}
+                onPageSizeChange={handlePageSizeChange}
+                prevCursor={prevCursor}
+                nextCursor={nextCursor}
+                onPrevious={() => fetchProducts('prev', prevCursor)}
+                onNext={() => fetchProducts('next', nextCursor)}
+            />
         </div>
-      )}
-
-      {/* Breadcrumbs */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Home
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/products" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Products
-          </a>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Products</span>
-        </nav>
-      </div>
-
-      {/* Header */}
-      <ProductHeader
-        searchTerm={searchTerm}
-        onSearchChange={(value) => {
-          setSearchTerm(value);
-          // Reset pagination when search term changes
-          setCurrentCursor(undefined);
-          setNextCursor(undefined);
-          setPrevCursor(undefined);
-        }}
-        onRefresh={() => {
-          setSearchTerm('');
-          setCurrentCursor(undefined);
-          setNextCursor(undefined);
-          setPrevCursor(undefined);
-          fetchProducts();
-        }}
-        onCreateClick={handleCreateClick}
-      />
-
-      {/* Table */}
-      <ProductTable
-        isLoading={isLoading}
-        tableData={tableData}
-        headers={headers}
-        searchTerm={searchTerm}
-        onRowClick={handleRowClick}
-        pageSize={pageSize}
-        onPageSizeChange={handlePageSizeChange}
-        prevCursor={prevCursor}
-        nextCursor={nextCursor}
-        onPrevious={() => fetchProducts('prev', prevCursor)}
-        onNext={() => fetchProducts('next', nextCursor)}
-      />
-    </div>
-  );
+    );
 }

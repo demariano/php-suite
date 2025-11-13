@@ -53,6 +53,7 @@ export const ProductSchema = {
             productCategoryId: { type: String, generate: 'ulid' },
             productCategoryName: { type: String },
             forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
             GSI1PK: { type: String, value: 'PRODUCT_CATEGORY', hidden: false },
             GSI1SK: { type: String, value: '${productCategoryName}', hidden: false },
             GSI2PK: { type: String, value: 'PRODUCT_CATEGORY#${status}', hidden: false },
@@ -65,6 +66,7 @@ export const ProductSchema = {
             productClassName: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
@@ -82,6 +84,7 @@ export const ProductSchema = {
             productUnitName: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
@@ -99,6 +102,7 @@ export const ProductSchema = {
             productPriceTypeName: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
@@ -118,6 +122,7 @@ export const ProductSchema = {
             minQty: { type: Number },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],

@@ -16,30 +16,26 @@ export default function CreateTermsPage() {
     try {
       setIsLoading(true);
       
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      // Create new terms
+      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development')
+        ? authedUser?.userRole
+        : undefined;
+
       await TermsApi.createTerms({
         termsName: terms.termsName,
         days: terms.days,
         status: terms.status
       }, userRole);
-      
+
       setFlashNotification({
         title: 'Success!',
         message: 'Terms created successfully!',
         alertType: 'success'
       });
-      
-      // Navigate back to terms list after a short delay
+
       setTimeout(() => {
         router.push('/customers/terms');
       }, 1500);
-      
+
     } catch (error) {
       console.error('Error creating terms:', error);
       const errorMessage = extractErrorMessage(error, 'Failed to create terms. Please try again.');
@@ -61,10 +57,11 @@ export default function CreateTermsPage() {
     // Not applicable for create mode
   };
 
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Breadcrumbs */}
-      <div className="mb-6">
+    <div className="p-4 sm:p-6 space-y-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -82,16 +79,36 @@ export default function CreateTermsPage() {
         </nav>
       </div>
 
-      {/* Terms Form */}
-      <TermsForm
-        isCreateMode={true}
-        selectedTerms={null}
-        successMessage={null}
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onCancel={handleCancel}
-      />
+      <div className="flex justify-center">
+        <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+          <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
+            <div className="flex flex-nowrap gap-2">
+              <button
+                className="flex-shrink-0 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Terms Information
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 sm:p-6">
+            <TermsForm
+              isCreateMode={true}
+              selectedTerms={null}
+              successMessage={null}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onCancel={handleCancel}
+              isAdminUser={isAdminUser}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-

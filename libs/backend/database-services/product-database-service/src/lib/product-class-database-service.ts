@@ -56,6 +56,7 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         productRecord.GSI2PK = `PRODUCT_CLASS#${record.status}`;
         productRecord.GSI2SK = record.productClassName;
         productRecord.forApprovalVersion = record.forApprovalVersion;
+        productRecord.changeReason = record.changeReason;
 
         const updatedProductRecord: ProductClassDataType = await this.productClassTable.update(productRecord);
 
@@ -250,6 +251,7 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as ProductClassDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -276,6 +278,7 @@ export class ProductClassDatabaseService implements ProductClassDatabaseServiceA
             GSI2SK: dto.productClassName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return productClassData;
     }

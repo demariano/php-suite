@@ -66,10 +66,14 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
 
     async updateRecord(record: InvoiceDto): Promise<InvoiceDto> {
         const invoiceRecord: InvoiceDataType = await this.convertToDataType(record);
+        
+        // CRITICAL: Explicitly set changeReason on the record before calling update()
+        // This ensures the field is persisted even if convertToDataType is called separately
+        invoiceRecord.changeReason = record.changeReason;
 
-        const updatedTerritoryManagerRecord: InvoiceDataType = await this.invoiceTable.update(invoiceRecord);
+        const updatedInvoiceRecord: InvoiceDataType = await this.invoiceTable.update(invoiceRecord);
 
-        return await this.convertToDto(updatedTerritoryManagerRecord);
+        return await this.convertToDto(updatedInvoiceRecord);
     }
 
     async findRecordById(id: string): Promise<InvoiceDto | null> {
@@ -308,7 +312,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         dto.invoiceDetails = record.invoiceDetails ? record.invoiceDetails : [];
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.changeReason = (record as InvoiceDataType & { changeReason?: string }).changeReason || undefined;
         dto.contractSales = record.contractSales ? record.contractSales : false;
         return dto;
     }

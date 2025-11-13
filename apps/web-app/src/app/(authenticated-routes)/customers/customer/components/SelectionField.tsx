@@ -17,92 +17,49 @@ export default function SelectionField({
   buttonText,
   disabled = false
 }: SelectionFieldProps) {
-  // Check if label indicates required field (has asterisk)
-  const isRequired = label.includes('*');
-  // Remove asterisk from label text to avoid duplication
+  const isRequired = /\*+$/.test(label);
   const labelText = label.replace(/\*+$/, '').trim();
-  
+  const showLabel = labelText.length > 0;
+  const placeholder = disabled
+    ? 'Selection unavailable'
+    : buttonText || (labelText ? `Select ${labelText.toLowerCase()}` : 'Select an option');
+
   return (
-    <div style={{ marginBottom: '20px' }}>
-      <label style={{
-        display: 'block',
-        fontSize: '14px',
-        fontWeight: '600',
-        color: '#374151',
-        marginBottom: '8px'
-      }}>
-        {labelText}
-        {isRequired && (
-          <span style={{ color: '#dc2626', marginLeft: '4px' }}>*</span>
-        )}
-      </label>
-      
-      <div style={{ position: 'relative' }}>
+    <div className="space-y-2">
+      {showLabel && (
+        <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+          <span>
+            {labelText}
+            {isRequired && <span className="ml-1 text-red-600">*</span>}
+          </span>
+        </label>
+      )}
+
+      <div className="relative">
         <input
           type="text"
           value={selectedItem?.name || ''}
           readOnly
           onClick={disabled ? undefined : onSelect}
           disabled={disabled}
-          style={{
-            width: '100%',
-            padding: '12px 16px',
-            paddingRight: selectedItem ? '40px' : '16px',
-            border: '1px solid #d1d5db',
-            borderRadius: '8px',
-            fontSize: '14px',
-            backgroundColor: disabled ? '#f9fafb' : '#f9fafb',
-            color: selectedItem ? '#1f2937' : '#6b7280',
-            cursor: disabled ? 'not-allowed' : 'pointer',
-            outline: 'none',
-            transition: 'all 0.2s ease'
-          }}
-          placeholder={disabled ? "Please select an area first" : `Click to select ${labelText.toLowerCase()}`}
-          onMouseEnter={(e) => {
-            if (!disabled) {
-              e.currentTarget.style.borderColor = '#3b82f6';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.borderColor = '#d1d5db';
-            e.currentTarget.style.boxShadow = 'none';
-          }}
+          placeholder={placeholder}
+          className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+            disabled
+              ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+              : 'cursor-pointer border-gray-300 bg-white text-gray-700 hover:border-blue-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40'
+          }`}
         />
-        
+
         {selectedItem && !disabled && (
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation();
+            onClick={(event) => {
+              event.stopPropagation();
               onClear();
             }}
-            style={{
-              position: 'absolute',
-              right: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: '20px',
-              height: '20px',
-              backgroundColor: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#6b7280',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              zIndex: 10,
-              transition: 'color 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.color = '#dc2626';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.color = '#6b7280';
-            }}
-            title="Clear selection"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-base font-bold text-gray-400 transition-colors duration-200 hover:text-red-600"
+            aria-label="Clear selection"
           >
             ×
           </button>

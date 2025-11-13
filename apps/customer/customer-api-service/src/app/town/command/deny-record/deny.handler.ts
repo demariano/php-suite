@@ -1,7 +1,6 @@
 import { UserCognito } from '@auth-guard-lib';
 import { TownDatabaseServiceAbstract } from '@customer-database-service';
-import { ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
-import { TownDto } from '@dto';
+import { ErrorResponseDto, ResponseDto, StatusEnum, TownDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -69,10 +68,7 @@ export class DenyTownHandler implements ICommandHandler<DenyTownCommand> {
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDenial(
-        existingRecord: TownDto,
-        user: UserCognito
-    ): Promise<ResponseDto<TownDto>> {
+    private async processDenial(existingRecord: TownDto, user: UserCognito): Promise<ResponseDto<TownDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyTown(existingRecord, user);
@@ -88,10 +84,7 @@ export class DenyTownHandler implements ICommandHandler<DenyTownCommand> {
     /**
      * Denies a town for approval
      */
-    private async denyTown(
-        existingRecord: TownDto,
-        user: UserCognito
-    ): Promise<ResponseDto<TownDto>> {
+    private async denyTown(existingRecord: TownDto, user: UserCognito): Promise<ResponseDto<TownDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(

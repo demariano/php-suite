@@ -8,6 +8,13 @@ export abstract class SupplierDatabaseServiceAbstract {
 
     abstract findRecordContainingName(name: string): Promise<SupplierDto[] | null>;
 
+    abstract findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<SupplierDto>>;
+
     abstract updateRecord(supplierData: SupplierDto): Promise<SupplierDto>;
 
     abstract findRecordsPagination(

@@ -1,4 +1,5 @@
 import { ContractDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { ContractDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -6,6 +7,7 @@ import { DeleteContractCommand } from './delete.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(DeleteContractCommand)
 export class DeleteContractHandler implements ICommandHandler<DeleteContractCommand> {
@@ -27,10 +29,10 @@ export class DeleteContractHandler implements ICommandHandler<DeleteContractComm
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
-            this.updateContractStatus(command, existingRecord, hasApprovalPermission);
+            const contractPayload = this.updateContractStatus(command, existingRecord, hasApprovalPermission);
 
             // Delete or mark for deletion based on permissions
-            const deletedRecord = await this.performDeletion(command, hasApprovalPermission);
+            const deletedRecord = await this.performDeletion(contractPayload, hasApprovalPermission);
 
             this.logger.log(`Contract deleted successfully: ${deletedRecord.contractId}`);
             return new ResponseDto<ContractDto>(deletedRecord, HTTP_STATUS_OK);
@@ -57,7 +59,6 @@ export class DeleteContractHandler implements ICommandHandler<DeleteContractComm
      * Checks if user has permission to delete directly
      */
     private hasApprovalPermission(userRoles?: string[]): boolean {
-        console.log('userRoles', userRoles);
         if (!userRoles || userRoles.length === 0) {
             return false;
         }
@@ -72,40 +73,45 @@ export class DeleteContractHandler implements ICommandHandler<DeleteContractComm
         command: DeleteContractCommand,
         existingRecord: ContractDto,
         hasApprovalPermission: boolean
-    ): void {
-        // Set the ID
-        command.contractDto.contractId = command.id;
+    ): ContractDto {
+        const activityLogs = existingRecord.activityLogs || [];
+        const timestamp = new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        });
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.contractDto.status = StatusEnum.FOR_DELETION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Contract deleted by ${command.user.username}`;
-            command.contractDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-        } else {
-            // User needs approval - set to FOR_DELETION for soft delete
-            command.contractDto.status = StatusEnum.FOR_DELETION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Contract marked for deletion by ${command.user.username}`;
-            command.contractDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            const activityLog = `Date: ${timestamp}, Contract deleted by ${command.user.username}`;
+            const updatedLogs = reduceArrayContents([...activityLogs, activityLog], ACTIVITY_LOGS_LIMIT);
+
+            return {
+                ...existingRecord,
+                status: StatusEnum.FOR_DELETION,
+                changeReason: null,
+                activityLogs: updatedLogs,
+            };
         }
+
+        const pendingDeletionLog = `Date: ${timestamp}, Contract marked for deletion by ${command.user.username}`;
+        const logsWithDeletionRequest = reduceArrayContents([...activityLogs, pendingDeletionLog], ACTIVITY_LOGS_LIMIT);
+
+        return {
+            ...existingRecord,
+            status: StatusEnum.FOR_DELETION,
+            changeReason: command.contractDto.changeReason ?? existingRecord.changeReason,
+            activityLogs: logsWithDeletionRequest,
+        };
     }
 
     /**
      * Performs the actual deletion based on user permissions
      */
-    private async performDeletion(
-        command: DeleteContractCommand,
-        hasApprovalPermission: boolean
-    ): Promise<ContractDto> {
+    private async performDeletion(contractPayload: ContractDto, hasApprovalPermission: boolean): Promise<ContractDto> {
         if (hasApprovalPermission) {
             // Hard delete
-            return await this.contractDatabaseService.deleteRecord(command.contractDto);
+            return await this.contractDatabaseService.deleteRecord(contractPayload);
         } else {
             // Soft delete (mark for deletion)
-            return await this.contractDatabaseService.updateRecord(command.contractDto);
+            return await this.contractDatabaseService.updateRecord(contractPayload);
         }
     }
 

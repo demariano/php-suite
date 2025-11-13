@@ -57,6 +57,7 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
         townRecord.GSI2PK = `TOWN#${record.status}`;
         townRecord.GSI2SK = record.townName;
         townRecord.forApprovalVersion = record.forApprovalVersion;
+        townRecord.changeReason = record.changeReason;
 
         const updatedTownRecord: TownDataType = await this.townTable.update(townRecord);
 
@@ -296,7 +297,7 @@ export class TownDatabaseService implements TownDatabaseServiceAbstract {
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = record.changeReason ? record.changeReason : undefined;
+        dto.changeReason = (record as TownDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 

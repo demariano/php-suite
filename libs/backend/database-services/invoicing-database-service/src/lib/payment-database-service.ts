@@ -67,6 +67,10 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
 
     async updateRecord(record: PaymentDto): Promise<PaymentDto> {
         const paymentRecord: PaymentDataType = await this.convertToDataType(record);
+        
+        // CRITICAL: Explicitly set changeReason on the record before calling update()
+        // This ensures the field is persisted even if convertToDataType is called separately
+        paymentRecord.changeReason = record.changeReason;
 
         console.log('Payment Record to update:', paymentRecord);
 
@@ -104,6 +108,42 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         }
 
         return await this.convertToDto(record);
+    }
+
+    async findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<PaymentDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.paymentTable.find(
+            {
+                GSI1PK: `PAYMENT`,
+                ...(name != null && name.trim() !== '' ? { GSI1SK: { begins: name.trim() } } : {}),
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async deleteAllRecords(): Promise<void> {
@@ -305,6 +345,7 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         dto.chequeClearStatus = record.chequeClearStatus as ChequeClearStatusEnum;
         dto.paymentDetails = record.paymentDetails ? record.paymentDetails : [];
         dto.paymentInvoiceDetails = record.paymentInvoiceDetails ? record.paymentInvoiceDetails : [];
+        dto.changeReason = (record as PaymentDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -350,6 +391,7 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             GSI5SK: dto.paymentDate,
             GSI6PK: `PAYMENT#${dto.contractId}`,
             GSI6SK: dto.paymentDate,
+            changeReason: dto.changeReason,
         };
         return paymentData;
     }

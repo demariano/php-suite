@@ -61,6 +61,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         productRecord.GSI2SK = record.productDealName;
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
+        productRecord.changeReason = record.changeReason;
         const updatedProductRecord: ProductDealDataType = await this.productDealTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
@@ -256,6 +257,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as ProductDealDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -284,6 +286,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
             GSI2SK: dto.productDealName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return productDealData;
     }

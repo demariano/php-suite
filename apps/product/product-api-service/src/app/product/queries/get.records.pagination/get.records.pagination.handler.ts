@@ -50,7 +50,7 @@ export class GetProductRecordsPaginationHandler implements IQueryHandler<GetProd
     private async fetchPaginatedRecords(query: GetProductRecordsPaginationQuery): Promise<PageDto<ProductDto>> {
         const { limit, direction, cursorPointer } = query;
 
-        return await this.productDatabaseService.findProductRecordsByPagination(limit, direction, cursorPointer);
+        return await this.productDatabaseService.findRecordsByPagination(limit, direction, cursorPointer);
     }
 
     /**

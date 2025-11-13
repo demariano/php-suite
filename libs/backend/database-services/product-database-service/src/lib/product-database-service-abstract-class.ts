@@ -4,15 +4,22 @@ import { ProductDataType } from '@dynamo-db-lib';
 export abstract class ProductDatabaseServiceAbstract {
     abstract createRecord(productDto: CreateProductDto): Promise<ProductDto>;
 
-    abstract findProductRecordById(id: string): Promise<ProductDto | null>;
+    abstract updateRecord(productDto: ProductDto): Promise<ProductDto>;
 
-    abstract updateProductRecord(productData: ProductDto): Promise<ProductDto>;
+    abstract findRecordById(id: string): Promise<ProductDto | null>;
 
     abstract findRecordByName(name: string): Promise<ProductDto | null>;
 
     abstract findRecordContainingName(name: string): Promise<ProductDto[] | null>;
 
-    abstract findProductRecordsByStatusPagination(
+    abstract findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<ProductDto>>;
+
+    abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
@@ -20,26 +27,26 @@ export abstract class ProductDatabaseServiceAbstract {
         name: string
     ): Promise<PageDto<ProductDto>>;
 
-    abstract findProductRecordsByPagination(
+    abstract findRecordsByPagination(
         limit: number,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<ProductDto>>;
 
-    abstract findProductRecordsByFilterPagination(
+    abstract findRecordsByFilterPagination(
         filter: ProductFilterDto,
         limit: number,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<ProductDto>>;
 
-    abstract deleteProductRecord(productDto: ProductDto): Promise<ProductDto>;
+    abstract deleteRecord(productDto: ProductDto): Promise<ProductDto>;
 
     abstract deleteAllRecords(): Promise<void>;
 
-    abstract convertToDto(record: ProductDto): Promise<ProductDto>;
+    abstract convertToDto(record: ProductDataType): Promise<ProductDto>;
 
-    abstract convertToDtoList(records: ProductDto[]): Promise<ProductDto[]>;
+    abstract convertToDtoList(records: ProductDataType[]): Promise<ProductDto[]>;
 
     abstract convertToDataType(dto: ProductDto): Promise<ProductDataType>;
 }

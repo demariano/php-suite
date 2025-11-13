@@ -299,7 +299,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         dto.stockTypeId = record.stockTypeId ? record.stockTypeId : '';
         dto.stockTypeName = record.stockTypeName ? record.stockTypeName : '';
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.changeReason = (record as StockDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 

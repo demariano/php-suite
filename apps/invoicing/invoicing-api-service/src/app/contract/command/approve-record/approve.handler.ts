@@ -95,13 +95,14 @@ export class ApproveContractHandler implements ICommandHandler<ApproveContractCo
     private async approveContract(existingRecord: ContractDto, user: UserCognito): Promise<ResponseDto<ContractDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Contract approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
@@ -118,9 +119,10 @@ export class ApproveContractHandler implements ICommandHandler<ApproveContractCo
         existingRecord.deliveryStatus = forApprovalVersion.deliveryStatus as DeliveryStatusEnum;
         existingRecord.paymentStatus = forApprovalVersion.paymentStatus as PaymentStatusEnum;
         existingRecord.deliveredAmount = forApprovalVersion.deliveredAmount as number;
-        existingRecord.changeReason = forApprovalVersion.changeReason as string;
         existingRecord.productDealQty = forApprovalVersion.productDealQty as ProductDealQtyDto;
         existingRecord.forApprovalVersion = {};
+        // Reset changeReason to null AFTER applying forApprovalVersion
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.contractDatabaseService.updateRecord(existingRecord);
@@ -133,6 +135,7 @@ export class ApproveContractHandler implements ICommandHandler<ApproveContractCo
      * Approves deletion of a contract
      */
     private async approveDeletion(existingRecord: ContractDto): Promise<ResponseDto<ContractDto>> {
+        existingRecord.changeReason = null;
         await this.contractDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Contract deletion approved: ${existingRecord.contractId}`);

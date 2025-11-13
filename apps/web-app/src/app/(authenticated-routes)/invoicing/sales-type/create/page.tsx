@@ -56,21 +56,11 @@ export default function CreateSalesTypePage() {
     router.replace('/invoicing/sales-type');
   };
 
-  return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
-          <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
-          >
-            ×
-          </button>
-        </div>
-      )}
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
-      <div className="mb-6">
+  return (
+    <div className="p-4 sm:p-6 space-y-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -88,17 +78,35 @@ export default function CreateSalesTypePage() {
         </nav>
       </div>
 
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Create New Sales Type</h1>
+      <div className="flex justify-center">
+        <div className="w-full sm:max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+          <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
+            <div className="flex flex-nowrap gap-2">
+              <button
+                className="flex-shrink-0 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  </svg>
+                  Sales Type Information
+                </span>
+              </button>
+            </div>
+          </div>
 
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-        <SalesTypeForm
-          isCreateMode={true}
-          selectedSalesType={null}
-          successMessage={null}
-          onSave={handleSave}
-          onDelete={() => {}} // Not applicable in create mode
-          onCancel={handleCancel}
-        />
+          <div className="bg-white p-4 sm:p-6">
+            <SalesTypeForm
+              isCreateMode={true}
+              selectedSalesType={null}
+              successMessage={null}
+              onSave={handleSave}
+              onDelete={() => {}} // Not applicable in create mode
+              onCancel={handleCancel}
+              isAdminUser={isAdminUser}
+            />
+          </div>
+        </div>
       </div>
     </div>
   );

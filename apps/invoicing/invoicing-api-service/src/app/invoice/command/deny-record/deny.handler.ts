@@ -87,16 +87,19 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
     private async denyInvoice(existingRecord: InvoiceDto, user: UserCognito): Promise<ResponseDto<InvoiceDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
-        existingRecord.changeReason = null;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Invoice denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        
+        // Clear forApprovalVersion first, then reset changeReason
         existingRecord.forApprovalVersion = {};
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.invoiceDatabaseService.updateRecord(existingRecord);
@@ -109,9 +112,27 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
      * Denies deletion of an invoice
      */
     private async denyDeletion(existingRecord: InvoiceDto): Promise<ResponseDto<InvoiceDto>> {
-        this.logger.log(`Invoice deletion denied: ${existingRecord.invoiceId}`);
+        // Reset changeReason before reverting status
+        existingRecord.changeReason = null;
+        
+        // Revert status to ACTIVE
         existingRecord.status = StatusEnum.ACTIVE;
+        
+        // Add denial activity log
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Invoice deletion denied by admin, status reverted to ${StatusEnum.ACTIVE}`
+        );
+        
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        
+        // Update record in database
         const updatedRecord = await this.invoiceDatabaseService.updateRecord(existingRecord);
+        
+        this.logger.log(`Invoice deletion denied: ${existingRecord.invoiceId}`);
         return new ResponseDto<InvoiceDto>(updatedRecord, HTTP_STATUS_OK);
     }
 

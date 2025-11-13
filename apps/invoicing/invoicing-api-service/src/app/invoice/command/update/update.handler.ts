@@ -1,5 +1,6 @@
 import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -30,8 +31,6 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
 
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
-
-            console.log('hasApprovalPermission', hasApprovalPermission);
 
             // Update status and activity logs based on permissions
             this.updateInvoiceStatus(command, existingRecord, hasApprovalPermission);
@@ -76,7 +75,6 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
      * Checks if user has permission to approve updates directly
      */
     private hasApprovalPermission(userRoles?: string[]): boolean {
-        console.log('userRoles', userRoles);
         if (!userRoles || userRoles.length === 0) {
             return false;
         }
@@ -123,15 +121,47 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
                 timeZone: 'Asia/Manila',
             })}, Invoice updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
             existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            // Store changeReason in main record for admin visibility
-            existingRecord.changeReason = command.invoiceDto.changeReason;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+
+            // Detect field changes
+            const fieldChanges = detectFieldChanges(existingRecord, command.invoiceDto, {});
+            const formattedChanges = formatFieldChanges(fieldChanges);
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Invoice updated by ${command.user.username} for approval`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs.push(activityLogMessage);
+
+            // Preserve user's manually entered changeReason and combine with auto-generated changes
+            const userChangeReason = command.invoiceDto.changeReason?.trim();
+            if (userChangeReason && formattedChanges) {
+                // User provided changeReason and we have formatted changes - combine them
+                // formatFieldChanges already starts with \n, so we just concatenate
+                existingRecord.changeReason = `${userChangeReason}${formattedChanges}`;
+            } else if (userChangeReason) {
+                // User provided changeReason but no formatted changes - use user's input
+                existingRecord.changeReason = userChangeReason;
+            } else if (formattedChanges) {
+                // No user input but we have formatted changes - use formatted changes
+                existingRecord.changeReason = formattedChanges;
+            } else {
+                // No user input and no formatted changes
+                existingRecord.changeReason = undefined;
+            }
+
             existingRecord.forApprovalVersion = {
                 ...existingRecord.forApprovalVersion,
                 docno: command.invoiceDto.docno,
@@ -157,10 +187,10 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
                 invoiceDetails: command.invoiceDto.invoiceDetails,
                 contractSales: command.invoiceDto.contractSales,
             };
+            
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         }
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
     }
 
     /**

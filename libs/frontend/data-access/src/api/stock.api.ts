@@ -12,7 +12,7 @@ export type StocksResponse = PaginatedResponse<StockDto>;
 
 class StockApi extends AxiosConfig {
     constructor() {
-        super('API_INVENTORY_URL', true, false);
+        super('API_STOCK_URL', true, false);
     }
 
     public getStocks = async (

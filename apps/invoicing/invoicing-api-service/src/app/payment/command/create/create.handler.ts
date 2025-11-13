@@ -1,10 +1,12 @@
-import { CreatePaymentDto, ErrorResponseDto, ResponseDto, StatusEnum } from '@dto';
+import { CreatePaymentDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreatePaymentCommand } from './create.command';
 
 // Constants
+const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreatePaymentCommand)
@@ -23,10 +25,11 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             // Validate that receipt number doesn't already exist
             await this.validateReceiptNoUnique(command.paymentDto.receiptNo);
 
-            // Update status and activity logs based on permissions
-            this.updatePaymentStatus(command);
+            // Check user authorization and determine status
+            const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
-            console.log('command.paymentDto', command.paymentDto);
+            // Update status and activity logs based on permissions
+            this.updatePaymentStatus(command, hasApprovalPermission);
 
             // Create record in database
             const createdRecord = await this.paymentDatabaseService.createRecord(command.paymentDto);
@@ -51,16 +54,66 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
     }
 
     /**
+     * Checks if user has permission to approve updates directly
+     */
+    private hasApprovalPermission(userRoles?: string[]): boolean {
+        if (!userRoles || userRoles.length === 0) {
+            return false;
+        }
+
+        return userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+    }
+
+    /**
      * Updates payment status and activity logs based on user permissions
      */
-    private updatePaymentStatus(command: CreatePaymentCommand): void {
-        command.paymentDto.status = StatusEnum.ACTIVE;
-        command.paymentDto.activityLogs = [];
-        command.paymentDto.activityLogs.push(
-            `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Payment created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
-        );
+    private updatePaymentStatus(command: CreatePaymentCommand, hasApprovalPermission: boolean): void {
+        if (hasApprovalPermission) {
+            // User can approve directly - set to ACTIVE
+            command.paymentDto.status = StatusEnum.ACTIVE;
+            command.paymentDto.activityLogs = [];
+            command.paymentDto.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Payment created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+            );
+
+            // Limit activity logs to last 10 entries
+            command.paymentDto.activityLogs = reduceArrayContents(
+                command.paymentDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
+            );
+        } else {
+            // User needs approval - set to NEW_RECORD
+            command.paymentDto.status = StatusEnum.NEW_RECORD;
+            command.paymentDto.activityLogs = [];
+            command.paymentDto.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Payment created by ${command.user.username} for approval`
+            );
+
+            // Limit activity logs to last 10 entries
+            command.paymentDto.activityLogs = reduceArrayContents(
+                command.paymentDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
+            );
+
+            // Set the forApprovalVersion
+            command.paymentDto.forApprovalVersion = {};
+            command.paymentDto.forApprovalVersion.paymentDate = command.paymentDto.paymentDate;
+            command.paymentDto.forApprovalVersion.paymentAmount = command.paymentDto.paymentAmount;
+            command.paymentDto.forApprovalVersion.customerId = command.paymentDto.customerId;
+            command.paymentDto.forApprovalVersion.customerName = command.paymentDto.customerName;
+            command.paymentDto.forApprovalVersion.receiptNo = command.paymentDto.receiptNo;
+            command.paymentDto.forApprovalVersion.contractPayment = command.paymentDto.contractPayment;
+            command.paymentDto.forApprovalVersion.contractId = command.paymentDto.contractId;
+            command.paymentDto.forApprovalVersion.contractName = command.paymentDto.contractName;
+            command.paymentDto.forApprovalVersion.contractNo = command.paymentDto.contractNo;
+            command.paymentDto.forApprovalVersion.chequeClearStatus = command.paymentDto.chequeClearStatus;
+            command.paymentDto.forApprovalVersion.paymentDetails = command.paymentDto.paymentDetails;
+            command.paymentDto.forApprovalVersion.paymentInvoiceDetails = command.paymentDto.paymentInvoiceDetails;
+        }
     }
 
     /**
@@ -91,5 +144,7 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             const responseError = error as { response?: { body?: { errorMessage?: string } } };
             return responseError.response?.body?.errorMessage || 'Unknown error occurred';
         }
+
+        return 'An unexpected error occurred';
     }
 }

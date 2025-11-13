@@ -22,16 +22,59 @@ export default function DatePicker({
   maxDate,
   required = false
 }: DatePickerProps) {
+  // Helper functions for date formatting and parsing (defined before use)
+  const formatDate = (date: Date): string => {
+    // Format date in local timezone to avoid timezone conversion issues
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const parseDate = (dateString: string): Date | null => {
+    // Parse date string in local timezone to avoid timezone conversion issues
+    // Expected format: YYYY-MM-DD
+    const parts = dateString.split('-');
+    if (parts.length !== 3) {
+      return null;
+    }
+    
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+    const day = parseInt(parts[2], 10);
+    
+    if (isNaN(year) || isNaN(month) || isNaN(day)) {
+      return null;
+    }
+    
+    const date = new Date(year, month, day);
+    
+    // Validate the date (handles invalid dates like Feb 30)
+    if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+      return null;
+    }
+    
+    return date;
+  };
+
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState(value);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(value ? new Date(value) : null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(value ? parseDate(value) : null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Update input value when value prop changes
   useEffect(() => {
     setInputValue(value);
-    setSelectedDate(value ? new Date(value) : null);
+    if (value) {
+      const parsed = parseDate(value);
+      setSelectedDate(parsed);
+      if (parsed) {
+        setCurrentMonth(parsed);
+      }
+    } else {
+      setSelectedDate(null);
+    }
   }, [value]);
 
   // Close calendar when clicking outside (disabled for modal)
@@ -73,15 +116,6 @@ export default function DatePicker({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
-
-  const formatDate = (date: Date): string => {
-    return date.toISOString().split('T')[0];
-  };
-
-  const parseDate = (dateString: string): Date | null => {
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? null : date;
-  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;

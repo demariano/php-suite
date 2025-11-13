@@ -1,10 +1,13 @@
 import { ErrorResponseDto, ResponseDto, SalesTypeDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { SalesTypeDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateSalesTypeCommand } from './update.command';
 
 // Constants
+const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_OK = 200;
 
 @CommandHandler(UpdateSalesTypeCommand)
@@ -33,7 +36,7 @@ export class UpdateSalesTypeHandler implements ICommandHandler<UpdateSalesTypeCo
             this.updateSalesTypeStatus(command, existingRecord, hasApprovalPermission);
 
             // Update record in database
-            const updatedRecord = await this.salesTypeDatabaseService.updateRecord(command.salesTypeDto);
+            const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);
 
             this.logger.log(`Sales type updated successfully: ${updatedRecord.salesTypeId}`);
             return new ResponseDto<SalesTypeDto>(updatedRecord, HTTP_STATUS_OK);
@@ -90,31 +93,77 @@ export class UpdateSalesTypeHandler implements ICommandHandler<UpdateSalesTypeCo
     ): void {
         console.log('hasApprovalPermission', hasApprovalPermission);
         if (hasApprovalPermission) {
-            // User can approve directly - set to ACTIVE
-            command.salesTypeDto.status = StatusEnum.ACTIVE;
-            command.salesTypeDto.activityLogs = existingRecord.activityLogs || [];
-            command.salesTypeDto.activityLogs.push(
-                `Date: ${new Date().toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila',
-                })}, Sales type updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
-            );
+            // User can approve directly - update the existing record
+            existingRecord.status = StatusEnum.ACTIVE;
+            existingRecord.salesTypeName = command.salesTypeDto.salesTypeName;
+            existingRecord.allowDiscount = command.salesTypeDto.allowDiscount;
+            existingRecord.contractSales = command.salesTypeDto.contractSales;
+            existingRecord.defaultDiscount = command.salesTypeDto.defaultDiscount;
+            existingRecord.defaultTax = command.salesTypeDto.defaultTax;
+            existingRecord.incomeGenerating = command.salesTypeDto.incomeGenerating;
+            existingRecord.taxable = command.salesTypeDto.taxable;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Sales type updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
+            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Clear changeReason for admin users since changes are applied directly
+            existingRecord.changeReason = undefined;
         } else {
-            // User needs approval - set to FOR_APPROVAL
-            command.salesTypeDto.status = StatusEnum.FOR_APPROVAL;
-            command.salesTypeDto.activityLogs = existingRecord.activityLogs || [];
-            command.salesTypeDto.activityLogs.push(
-                `Date: ${new Date().toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila',
-                })}, Sales type updated by ${command.user.username} for approval`
-            );
-            command.salesTypeDto.forApprovalVersion = {};
-            command.salesTypeDto.forApprovalVersion.salesTypeName = command.salesTypeDto.salesTypeName;
-            command.salesTypeDto.forApprovalVersion.allowDiscount = command.salesTypeDto.allowDiscount;
-            command.salesTypeDto.forApprovalVersion.contractSales = command.salesTypeDto.contractSales;
-            command.salesTypeDto.forApprovalVersion.defaultDiscount = command.salesTypeDto.defaultDiscount;
-            command.salesTypeDto.forApprovalVersion.defaultTax = command.salesTypeDto.defaultTax;
-            command.salesTypeDto.forApprovalVersion.incomeGenerating = command.salesTypeDto.incomeGenerating;
-            command.salesTypeDto.forApprovalVersion.taxable = command.salesTypeDto.taxable;
+            // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
+            existingRecord.status = StatusEnum.FOR_APPROVAL;
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+
+            // Detect field changes
+            const fieldChanges = detectFieldChanges(existingRecord, command.salesTypeDto, {});
+            const formattedChanges = formatFieldChanges(fieldChanges);
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Sales type updated by ${command.user.username} for approval`;
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs.push(activityLogMessage);
+
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Preserve user's manually entered changeReason and combine with auto-generated changes
+            const userChangeReason = command.salesTypeDto.changeReason?.trim();
+            if (userChangeReason && formattedChanges) {
+                // User provided changeReason and we have formatted changes - combine them
+                // formatFieldChanges already starts with \n, so we just concatenate
+                existingRecord.changeReason = `${userChangeReason}${formattedChanges}`;
+            } else if (userChangeReason) {
+                // User provided changeReason but no formatted changes - use user's input
+                existingRecord.changeReason = userChangeReason;
+            } else if (formattedChanges) {
+                // No user input but we have formatted changes - use formatted changes
+                existingRecord.changeReason = formattedChanges;
+            } else {
+                // No user input and no formatted changes
+                existingRecord.changeReason = undefined;
+            }
+
+            // Store new values in forApprovalVersion (keep original values in main fields)
+            existingRecord.forApprovalVersion = {
+                ...existingRecord.forApprovalVersion,
+                salesTypeName: command.salesTypeDto.salesTypeName,
+                allowDiscount: command.salesTypeDto.allowDiscount,
+                contractSales: command.salesTypeDto.contractSales,
+                defaultDiscount: command.salesTypeDto.defaultDiscount,
+                defaultTax: command.salesTypeDto.defaultTax,
+                incomeGenerating: command.salesTypeDto.incomeGenerating,
+                taxable: command.salesTypeDto.taxable,
+            };
         }
     }
 

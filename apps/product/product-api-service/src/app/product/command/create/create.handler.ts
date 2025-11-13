@@ -68,10 +68,11 @@ export class CreateProductHandler implements ICommandHandler<CreateProductComman
      * Updates product status and activity logs based on user permissions
      */
     private updateProductStatus(command: CreateProductCommand, hasApprovalPermission: boolean): void {
+        command.productDto.activityLogs = command.productDto.activityLogs ?? [];
+
         if (hasApprovalPermission) {
             // User can approve directly - set to ACTIVE
             command.productDto.status = StatusEnum.ACTIVE;
-            command.productDto.activityLogs = [];
             command.productDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
@@ -80,10 +81,11 @@ export class CreateProductHandler implements ICommandHandler<CreateProductComman
 
             // Limit activity logs to last 10 entries
             command.productDto.activityLogs = reduceArrayContents(command.productDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+            command.productDto.forApprovalVersion = {};
+            command.productDto.changeReason = undefined;
         } else {
             // User needs approval - set to FOR_APPROVAL
             command.productDto.status = StatusEnum.NEW_RECORD;
-            command.productDto.activityLogs = [];
             command.productDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
@@ -94,15 +96,16 @@ export class CreateProductHandler implements ICommandHandler<CreateProductComman
             command.productDto.activityLogs = reduceArrayContents(command.productDto.activityLogs, ACTIVITY_LOGS_LIMIT);
 
             //set the forApprovalVersion
-            command.productDto.forApprovalVersion = {};
-            command.productDto.forApprovalVersion.productName = command.productDto.productName;
-            command.productDto.forApprovalVersion.criticalLevel = command.productDto.criticalLevel;
-            command.productDto.forApprovalVersion.productCategoryId = command.productDto.productCategoryId;
-            command.productDto.forApprovalVersion.productCategoryName = command.productDto.productCategoryName;
-            command.productDto.forApprovalVersion.productClassId = command.productDto.productClassId;
-            command.productDto.forApprovalVersion.productClassName = command.productDto.productClassName;
-            command.productDto.forApprovalVersion.productDeals = command.productDto.productDeals;
-            command.productDto.forApprovalVersion.productUnitPrice = command.productDto.productUnitPrice;
+            command.productDto.forApprovalVersion = {
+                productName: command.productDto.productName,
+                criticalLevel: command.productDto.criticalLevel,
+                productCategoryId: command.productDto.productCategoryId,
+                productCategoryName: command.productDto.productCategoryName,
+                productClassId: command.productDto.productClassId,
+                productClassName: command.productDto.productClassName,
+                productDeals: command.productDto.productDeals,
+                productUnitPrice: command.productDto.productUnitPrice,
+            };
         }
     }
 

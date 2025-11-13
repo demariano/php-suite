@@ -22,15 +22,20 @@ export class GetTerritoryManagerByNameHandler implements IQueryHandler<GetTerrit
         this.logger.log(`Processing get by name request for territory manager: ${query.name}`);
 
         try {
-            const territoryManagers = await this.territoryManagerDatabaseService.findRecordContainingName(
-                query.limit,
-                query.name,
-                query.direction,
-                query.cursorPointer
+            const limit = query.limit || 10;
+            const direction = query.direction || undefined;
+            const cursorPointer = query.cursorPointer || undefined;
+            const name = query.name || '';
+
+            const paginatedResult = await this.territoryManagerDatabaseService.findRecordsByNamePagination(
+                limit,
+                direction,
+                cursorPointer,
+                name
             );
 
-            this.logger.log(`Territory managers retrieved successfully: ${territoryManagers.data.length} records`);
-            return new ResponseDto<PageDto<TerritoryManagerDto>>(territoryManagers, HTTP_STATUS_OK);
+            this.logger.log(`Territory managers retrieved successfully for name: ${name}`);
+            return new ResponseDto<PageDto<TerritoryManagerDto>>(paginatedResult, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }

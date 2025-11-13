@@ -1,10 +1,12 @@
 import { ContractDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { ContractDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateContractCommand } from './create.command';
 
 // Constants
+const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreateContractCommand)
@@ -28,8 +30,6 @@ export class CreateContractHandler implements ICommandHandler<CreateContractComm
 
             // Update status and activity logs based on permissions
             this.updateContractStatus(command, hasApprovalPermission);
-
-            console.log('command.contractDto', command.contractDto);
 
             // Create record in database
             const createdRecord = await this.contractDatabaseService.createRecord(command.contractDto);
@@ -57,7 +57,6 @@ export class CreateContractHandler implements ICommandHandler<CreateContractComm
      * Checks if user has permission to approve updates directly
      */
     private hasApprovalPermission(userRoles?: string[]): boolean {
-        console.log('userRoles', userRoles);
         if (!userRoles || userRoles.length === 0) {
             return false;
         }
@@ -78,6 +77,8 @@ export class CreateContractHandler implements ICommandHandler<CreateContractComm
                     timeZone: 'Asia/Manila',
                 })}, Contract created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
+            // Limit activity logs to last 10 entries
+            command.contractDto.activityLogs = reduceArrayContents(command.contractDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to NEW_RECORD
             command.contractDto.status = StatusEnum.NEW_RECORD;
@@ -87,6 +88,8 @@ export class CreateContractHandler implements ICommandHandler<CreateContractComm
                     timeZone: 'Asia/Manila',
                 })}, Contract created by ${command.user.username} for approval`
             );
+            // Limit activity logs to last 10 entries
+            command.contractDto.activityLogs = reduceArrayContents(command.contractDto.activityLogs, ACTIVITY_LOGS_LIMIT);
             command.contractDto.forApprovalVersion = {};
             command.contractDto.forApprovalVersion.contractNo = command.contractDto.contractNo;
             command.contractDto.forApprovalVersion.contractName = command.contractDto.contractName;
@@ -103,6 +106,7 @@ export class CreateContractHandler implements ICommandHandler<CreateContractComm
             command.contractDto.forApprovalVersion.deliveredAmount = command.contractDto.deliveredAmount;
             command.contractDto.forApprovalVersion.changeReason = command.contractDto.changeReason;
             command.contractDto.forApprovalVersion.productDealQty = command.contractDto.productDealQty;
+            command.contractDto.forApprovalVersion.invoicedAmount = command.contractDto.invoicedAmount;
         }
     }
 

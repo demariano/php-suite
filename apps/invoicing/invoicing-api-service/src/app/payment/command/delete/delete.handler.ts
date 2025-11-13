@@ -1,4 +1,5 @@
 import { ErrorResponseDto, PaymentDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -6,6 +7,7 @@ import { DeletePaymentCommand } from './delete.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(DeletePaymentCommand)
 export class DeletePaymentHandler implements ICommandHandler<DeletePaymentCommand> {
@@ -79,17 +81,33 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
         if (hasApprovalPermission) {
             // User can delete directly - set to FOR_DELETION for hard delete
             command.paymentDto.status = StatusEnum.FOR_DELETION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Payment deleted by ${command.user.username}`;
-            command.paymentDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            command.paymentDto.activityLogs = existingRecord.activityLogs || [];
+            command.paymentDto.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Payment deleted by ${command.user.username}, status set to ${StatusEnum.FOR_DELETION}`
+            );
+
+            // Limit activity logs to last 10 entries
+            command.paymentDto.activityLogs = reduceArrayContents(
+                command.paymentDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
+            );
         } else {
             // User needs approval - set to FOR_DELETION for soft delete
             command.paymentDto.status = StatusEnum.FOR_DELETION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Payment marked for deletion by ${command.user.username}`;
-            command.paymentDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            command.paymentDto.activityLogs = existingRecord.activityLogs || [];
+            command.paymentDto.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Payment deletion requested by ${command.user.username} for approval`
+            );
+
+            // Limit activity logs to last 10 entries
+            command.paymentDto.activityLogs = reduceArrayContents(
+                command.paymentDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
+            );
         }
     }
 

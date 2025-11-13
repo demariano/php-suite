@@ -1,6 +1,6 @@
 'use client';
 
-import { extractErrorMessage, StatusEnum, TermsApi, TermsDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { TermsApi, TermsDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import TermsForm from '../../components/TermsForm';
@@ -16,32 +16,27 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTerms, setSelectedTerms] = useState<TermsDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
   const router = useRouter();
   
-  // Check if user is admin or super admin
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
-  // Fetch terms details on component mount
   useEffect(() => {
     const fetchTerms = async () => {
       try {
         setIsLoading(true);
         
-        // SECURITY: Only get user role if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
         
         const terms = await TermsApi.getTermsById(params.id, userRole);
         setSelectedTerms(terms);
         
-        // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
         if ((terms.status === StatusEnum.FOR_APPROVAL || terms.status === StatusEnum.NEW_RECORD || terms.status === StatusEnum.FOR_DELETION) && isAdminUser) {
           setActiveTab('approval');
         } else {
-          // Default to details tab
           setActiveTab('details');
         }
         
@@ -67,18 +62,16 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     try {
       setIsLoading(true);
       
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
       const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
           ? authedUser?.userRole 
           : undefined;
       
-      // Update existing terms
       const updatedTerms = await TermsApi.updateTerms(params.id, {
         termsId: terms.termsId,
         termsName: terms.termsName,
         days: terms.days,
-        status: terms.status
+        status: terms.status,
+        changeReason: terms.changeReason
       }, userRole);
       
       setSelectedTerms(updatedTerms);
@@ -88,7 +81,6 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
         alertType: 'success'
       });
       
-      // Navigate back to terms list after a short delay
       setTimeout(() => {
         router.push('/customers/terms');
       }, 1500);
@@ -106,20 +98,22 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedTerms) {
       return;
     }
-    
-    if (!confirm('Are you sure you want to delete this terms?')) {
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedTerms) {
       return;
     }
     
     try {
       setIsLoading(true);
+      setShowDeleteModal(false);
       
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
       const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
           ? authedUser?.userRole 
           : undefined;
@@ -132,7 +126,6 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
         alertType: 'success'
       });
       
-      // Navigate back to terms list after a short delay
       setTimeout(() => {
         router.push('/customers/terms');
       }, 1500);
@@ -156,11 +149,8 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     try {
       setIsLoading(true);
       
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to approve the record
       const approvedTerms = await TermsApi.approveTerms(selectedTerms.termsId, userRole);
       setSelectedTerms(approvedTerms);
       setFlashNotification({
@@ -169,7 +159,6 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
         alertType: 'success'
       });
       
-      // Navigate back to terms list after a short delay
       setTimeout(() => {
         router.push('/customers/terms');
       }, 1500);
@@ -193,11 +182,8 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     try {
       setIsLoading(true);
       
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
       const deniedTerms = await TermsApi.denyTerms(selectedTerms.termsId, userRole);
       setSelectedTerms(deniedTerms);
       setFlashNotification({
@@ -206,7 +192,6 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
         alertType: 'success'
       });
       
-      // Navigate back to terms list after a short delay
       setTimeout(() => {
         router.push('/customers/terms');
       }, 1500);
@@ -228,88 +213,265 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     router.push('/customers/terms');
   };
 
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
+
+  const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+    
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'bg-green-600 text-white shadow-sm';
+      case StatusEnum.FOR_APPROVAL:
+        return 'bg-yellow-500 text-white shadow-sm';
+      case StatusEnum.FOR_DELETION:
+        return 'bg-red-600 text-white shadow-sm';
+      case StatusEnum.NEW_RECORD:
+        return 'bg-blue-600 text-white shadow-sm';
+      default:
+        return 'bg-gray-500 text-white shadow-sm';
+    }
+  };
+
   if (!selectedTerms && !isLoading) {
     return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>Terms not found</span>
         </div>
       </div>
     );
   }
 
-  // Render approval tab content
   const renderApprovalTab = () => {
     if (!selectedTerms) return null;
-    
-    return (
-      <div>
-        <div className="mb-5">
-          {(selectedTerms.status === StatusEnum.FOR_APPROVAL || selectedTerms.status === StatusEnum.NEW_RECORD) && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-              <span className="text-yellow-600 text-base">ℹ️</span>
-              <span className="text-yellow-800 text-sm">
-                These are the proposed changes awaiting approval
-              </span>
+
+    if (selectedTerms.status === StatusEnum.FOR_DELETION) {
+      return (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="rounded-xl border-2 border-red-300 bg-red-50 p-6 shadow-sm sm:p-8">
+            <div className="mb-4 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600">
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-red-800">Record Marked for Deletion</h3>
+                <p className="mt-1 text-sm text-red-700">This record has been marked for deletion and is awaiting approval.</p>
+              </div>
             </div>
-          )}
-          
-          {selectedTerms?.forApprovalVersion ? (
-            <div style={{
-              backgroundColor: '#f8fafc',
-              border: '2px solid #e2e8f0',
-              borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: '#1f2937',
-                margin: '0 0 16px 0'
-              }}>
-                Pending Approval Details
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Review the pending changes above. Use the buttons below to approve or deny.
-              </p>
-            </div>
-          ) : (
-            <p className="text-gray-500 italic">
-              No pending approval changes
-            </p>
-          )}
+            {selectedTerms.changeReason && (
+              <div className="mt-6 rounded-lg border-2 border-red-200 bg-white p-4">
+                <p className="mb-2 text-sm font-semibold text-gray-700">Deletion Reason:</p>
+                <p className="mt-2 whitespace-pre-wrap font-mono text-sm text-gray-600 leading-relaxed">{selectedTerms.changeReason}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            {isAdminUser ? (
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <button
+                  type="button"
+                  onClick={handleDeny}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Deny Deletion'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Approve Deletion'}
+                </button>
+              </div>
+            ) : (
+              <div className="hidden sm:block" />
+            )}
+
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
+            </button>
+          </div>
         </div>
-        
-        <div className="flex justify-between mt-6">
-          {isAdminUser && (selectedTerms?.status === StatusEnum.FOR_APPROVAL || selectedTerms?.status === StatusEnum.NEW_RECORD || selectedTerms?.status === StatusEnum.FOR_DELETION) ? (
-            <div style={{ display: 'flex', gap: '12px' }}>
+      );
+    }
+
+    if (!selectedTerms.forApprovalVersion) return null;
+
+    const approvalData = selectedTerms.forApprovalVersion;
+
+    const normalizeValue = (val: unknown): string => {
+      if (val === null || val === undefined) return '';
+      if (val === '') return '';
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        return trimmed === '' ? '' : trimmed;
+      }
+      if (typeof val === 'number') return String(val);
+      if (typeof val === 'boolean') return String(val);
+      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+        return JSON.stringify(val);
+      }
+      return String(val).trim();
+    };
+
+    const isFieldChanged = (fieldName: string): boolean => {
+      if (!selectedTerms?.forApprovalVersion) return false;
+
+      const originalValue = (selectedTerms as unknown as Record<string, unknown>)[fieldName];
+      const newValue = (selectedTerms.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
+
+      if (!(fieldName in selectedTerms.forApprovalVersion)) return false;
+
+      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
+        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+      }
+
+      const normalizedOriginal = normalizeValue(originalValue);
+      const normalizedNew = normalizeValue(newValue);
+
+      const hasChanged = normalizedOriginal !== normalizedNew;
+
+      return hasChanged;
+    };
+
+    const formatValue = (value: unknown): string => {
+      if (value === null || value === undefined) return '-';
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (typeof value === 'number') return value.toString();
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    };
+
+    const renderReadOnlyField = (label: string, value: unknown, colorClass: string, fieldName?: string) => {
+      const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+
+      return (
+        <div className="group">
+          <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+            <span className={`h-1.5 w-1.5 rounded-full ${colorClass}`}></span>
+            {label}
+          </label>
+          <div className={`w-full cursor-not-allowed rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm ${
+            fieldChanged
+              ? 'border-blue-500 bg-blue-50 text-gray-700'
+              : 'border-gray-200 bg-gray-50 text-gray-500'
+          }`}>
+            {formatValue(value)}
+          </div>
+        </div>
+      );
+    };
+
+    return (
+      <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
+        {selectedTerms?.changeReason && (
+          <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <h4 className="m-0 text-base font-bold text-blue-600">
+                Change Reason and Modification Made
+              </h4>
+            </div>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
+              {selectedTerms.changeReason}
+            </div>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-lg bg-blue-600 p-2 shadow-md">
+                <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-blue-600">
+                Terms Information
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 gap-6">
+              {renderReadOnlyField('Terms Name', approvalData.termsName, 'bg-blue-500', 'termsName')}
+              {renderReadOnlyField('Days', approvalData.days, 'bg-blue-500', 'days')}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          {isAdminUser && selectedTerms && ([StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(selectedTerms.status as StatusEnum)) ? (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <button
                 type="button"
                 onClick={handleDeny}
                 disabled={isLoading}
-                className="px-5 py-2.5 bg-red-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-red-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
                 {isLoading ? 'Processing...' : 'Deny Changes'}
               </button>
               <button
                 type="button"
                 onClick={handleApprove}
                 disabled={isLoading}
-                className="px-5 py-2.5 bg-blue-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
                 {isLoading ? 'Processing...' : 'Approve Changes'}
               </button>
             </div>
           ) : (
-            <div></div>
+            <div className="hidden sm:block" />
           )}
-          
+
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
           >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
           </button>
         </div>
@@ -317,42 +479,52 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     );
   };
 
-  // Render logs tab content
   const renderLogsTab = () => {
     if (!selectedTerms) return null;
-    
+
     return (
-      <div>
-        <div className="mb-5">
-          <h3 className="text-base font-semibold text-gray-800 mb-3">
-            Recent Activity
-          </h3>
+      <div className="space-y-6 animate-fadeIn">
+        <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="m-0 text-base font-bold text-blue-600">
+              Activity Logs
+            </h3>
+          </div>
+
           {selectedTerms?.activityLogs && selectedTerms.activityLogs.length > 0 ? (
-            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-              {selectedTerms.activityLogs.map((log, index) => (
-                <div 
-                  key={index} 
-                  className={`py-2 ${
-                    index < selectedTerms.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                  }`}
-                >
-                  {log}
-                </div>
-              ))}
+            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
+              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
+                {selectedTerms.activityLogs.map((log, index) => (
+                  <li
+                    key={index}
+                    className="px-4 py-3"
+                  >
+                    {log}
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : (
-            <p className="text-gray-500 italic">
+            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
               No activity logs available
             </p>
           )}
         </div>
-        
-        <div className="flex justify-end mt-6">
+
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
           >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
           </button>
         </div>
@@ -361,9 +533,14 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
   };
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Breadcrumbs */}
-      <div className="mb-6">
+    <div className="p-4 sm:p-6 space-y-6">
+      <DeleteConfirmationModal
+        show={showDeleteModal}
+        terms={selectedTerms}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteModal(false)}
+      />
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -381,104 +558,93 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
         </nav>
       </div>
 
-      {/* Loading State */}
       {isLoading && !selectedTerms && (
-        <div className="flex justify-center items-center min-h-96">
+        <div className="flex min-h-96 items-center justify-center">
           <div className="text-gray-600">Loading terms details...</div>
         </div>
       )}
 
-      {/* Terms Form with Tabs */}
       {selectedTerms && (
-        <div>
-          {/* Tab Navigation */}
-          <div style={{
-            display: 'flex',
-            borderBottom: '2px solid #e5e7eb',
-            marginBottom: '20px',
-            backgroundColor: '#f8fafc',
-            borderRadius: '8px 8px 0 0',
-            padding: '4px'
-          }}>
-            <button
-              onClick={() => setActiveTab('details')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
-                color: activeTab === 'details' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'details' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                marginRight: '4px'
-              }}
-            >
-              Details
-            </button>
-            
-            {selectedTerms.status !== StatusEnum.ACTIVE && (
-              <button
-                onClick={() => setActiveTab('approval')}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
-                  color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontSize: '14px',
-                  fontWeight: activeTab === 'approval' ? '600' : '500',
-                  transition: 'all 0.2s ease',
-                  boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                  marginRight: '4px'
-                }}
-              >
-                Approval Version
-              </button>
-            )}
-            
-            <button
-              onClick={() => setActiveTab('logs')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
-                color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'logs' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-              }}
-            >
-              Activity Logs
-            </button>
-          </div>
-          
-          {/* Tab Content */}
-          <div>
-            {activeTab === 'details' && (
-              <TermsForm
-                isCreateMode={false}
-                selectedTerms={selectedTerms}
-                successMessage={null}
-                onSave={handleSave}
-                onDelete={handleDelete}
-                onCancel={handleCancel}
-              />
-            )}
-            
-            {activeTab === 'approval' && renderApprovalTab()}
-            
-            {activeTab === 'logs' && renderLogsTab()}
+        <div className="flex justify-center">
+          <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+            <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
+              <div className="flex flex-nowrap gap-2">
+                <button
+                  onClick={() => setActiveTab('details')}
+                  className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
+                    getTabColorClasses(selectedTerms.status || StatusEnum.ACTIVE, activeTab === 'details')
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Terms Information
+                    {selectedTerms && (
+                      <>
+                        <span className="mx-1">-</span>
+                        <span>{getStatusText(selectedTerms.status || StatusEnum.ACTIVE)}</span>
+                      </>
+                    )}
+                  </span>
+                </button>
+
+                {selectedTerms.status !== StatusEnum.ACTIVE && (
+                  <button
+                    onClick={() => setActiveTab('approval')}
+                    className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
+                      activeTab === 'approval'
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      Pending Changes
+                    </span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
+                    activeTab === 'logs'
+                      ? 'bg-blue-600 text-white shadow-sm'
+                      : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Activity Logs
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 sm:p-6">
+              {activeTab === 'details' && (
+                <TermsForm
+                  isCreateMode={false}
+                  selectedTerms={selectedTerms}
+                  successMessage={null}
+                  onSave={handleSave}
+                  onDelete={handleDelete}
+                  onCancel={handleCancel}
+                  isAdminUser={isAdminUser}
+                />
+              )}
+
+              {activeTab === 'approval' && renderApprovalTab()}
+
+              {activeTab === 'logs' && renderLogsTab()}
+            </div>
           </div>
         </div>
       )}
     </div>
   );
 }
-

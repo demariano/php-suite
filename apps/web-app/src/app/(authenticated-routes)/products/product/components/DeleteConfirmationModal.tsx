@@ -4,147 +4,63 @@ import { ProductDto } from '@data-access/index';
 import { useEffect } from 'react';
 
 interface DeleteConfirmationModalProps {
-  show: boolean;
-  product: ProductDto | null;
-  onConfirm: () => void;
-  onCancel: () => void;
+    show: boolean;
+    product: ProductDto | null;
+    onConfirm: () => void;
+    onCancel: () => void;
 }
 
-export default function DeleteConfirmationModal({
-  show,
-  product,
-  onConfirm,
-  onCancel
-}: DeleteConfirmationModalProps) {
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && show) {
-        onCancel();
-      }
-    };
+export default function DeleteConfirmationModal({ show, product, onConfirm, onCancel }: DeleteConfirmationModalProps) {
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && show) {
+                onCancel();
+            }
+        };
 
-    if (show) {
-      document.addEventListener('keydown', handleKeyDown);
+        if (show) {
+            document.addEventListener('keydown', handleKeyDown);
+        }
+
+        return () => document.removeEventListener('keydown', handleKeyDown);
+    }, [show, onCancel]);
+
+    if (!show || !product) {
+        return null;
     }
 
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [show, onCancel]);
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000] p-4">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-lg space-y-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-600 text-lg">
+                        ⚠️
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-800 m-0">Delete Product</h3>
+                </div>
 
-  if (!show || !product) return null;
+                <p className="text-sm text-gray-600 leading-relaxed">
+                    Are you sure you want to delete <strong>{product.productName}</strong>? This action cannot be
+                    undone.
+                </p>
 
-  return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1001,
-      padding: '16px'
-    }}>
-      <div style={{
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        padding: '24px',
-        width: '100%',
-        maxWidth: '400px',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            backgroundColor: '#fef2f2',
-            borderRadius: '50%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: '12px'
-          }}>
-            <span style={{ fontSize: '20px', color: '#dc2626' }}>⚠️</span>
-          </div>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: '#1f2937',
-            margin: 0
-          }}>
-            Delete Product
-          </h3>
+                <div className="flex justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:shadow-md hover:bg-gray-50 hover:border-gray-400 transition-all duration-200"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200"
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
         </div>
-
-        <p style={{
-          fontSize: '14px',
-          color: '#6b7280',
-          marginBottom: '24px',
-          lineHeight: '1.5'
-        }}>
-          Are you sure you want to delete <strong>&quot;{product.productName}&quot;</strong>? 
-          This action cannot be undone.
-        </p>
-
-        <div style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          gap: '12px'
-        }}>
-          <button
-            onClick={onCancel}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: 'transparent',
-              color: '#6b7280',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#dc2626',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#b91c1c';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = '#dc2626';
-            }}
-          >
-            Delete
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }

@@ -48,7 +48,7 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
      * Validates that the product record exists
      */
     private async validateProductExists(productId: string): Promise<ProductDto> {
-        const existingRecord = await this.productDatabaseService.findProductRecordById(productId);
+        const existingRecord = await this.productDatabaseService.findRecordById(productId);
 
         if (!existingRecord) {
             this.logger.warn(`Product not found: ${productId}`);
@@ -92,7 +92,10 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
      * Approves a product for approval
      */
     private async approveProduct(existingRecord: ProductDto, user: UserCognito): Promise<ResponseDto<ProductDto>> {
+        const approvalVersion = existingRecord.forApprovalVersion ?? {};
+
         // Update status and add activity log
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
@@ -103,21 +106,24 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
-        const forApprovalVersion = existingRecord.forApprovalVersion;
-
-        existingRecord.productName = forApprovalVersion.productName as string;
-        existingRecord.criticalLevel = forApprovalVersion.criticalLevel as number;
-        existingRecord.productCategoryId = forApprovalVersion.productCategoryId as string;
-        existingRecord.productCategoryName = forApprovalVersion.productCategoryName as string;
-        existingRecord.productClassId = forApprovalVersion.productClassId as string;
-        existingRecord.productClassName = forApprovalVersion.productClassName as string;
-        existingRecord.productDeals = forApprovalVersion.productDeals as ProductDealDetailsDto[];
-        existingRecord.productUnitPrice = forApprovalVersion.productUnitPrice as ProductUnitPriceDto[];
-        existingRecord.changeReason = forApprovalVersion.changeReason as string;
+        existingRecord.productName = (approvalVersion.productName as string) ?? existingRecord.productName;
+        existingRecord.criticalLevel = (approvalVersion.criticalLevel as number) ?? existingRecord.criticalLevel;
+        existingRecord.productCategoryId =
+            (approvalVersion.productCategoryId as string) ?? existingRecord.productCategoryId;
+        existingRecord.productCategoryName =
+            (approvalVersion.productCategoryName as string) ?? existingRecord.productCategoryName;
+        existingRecord.productClassId = (approvalVersion.productClassId as string) ?? existingRecord.productClassId;
+        existingRecord.productClassName =
+            (approvalVersion.productClassName as string) ?? existingRecord.productClassName;
+        existingRecord.productDeals =
+            (approvalVersion.productDeals as ProductDealDetailsDto[]) ?? existingRecord.productDeals ?? [];
+        existingRecord.productUnitPrice =
+            (approvalVersion.productUnitPrice as ProductUnitPriceDto[]) ?? existingRecord.productUnitPrice ?? [];
+        existingRecord.changeReason = null;
         existingRecord.forApprovalVersion = {};
 
         // Update record in database
-        const updatedRecord = await this.productDatabaseService.updateProductRecord(existingRecord);
+        const updatedRecord = await this.productDatabaseService.updateRecord(existingRecord);
 
         this.logger.log(`Product approved successfully: ${existingRecord.productId}`);
         return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
@@ -127,7 +133,8 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
      * Approves deletion of a product
      */
     private async approveDeletion(existingRecord: ProductDto): Promise<ResponseDto<ProductDto>> {
-        await this.productDatabaseService.deleteProductRecord(existingRecord);
+        existingRecord.changeReason = null;
+        await this.productDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Product deletion approved: ${existingRecord.productId}`);
         return new ResponseDto<ProductDto>(existingRecord, HTTP_STATUS_OK);

@@ -90,20 +90,23 @@ export class ApproveProductUnitHandler implements ICommandHandler<ApproveProduct
         existingRecord: ProductUnitDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductUnitDto>> {
-        // Update status and add activity log
-        existingRecord.status = StatusEnum.ACTIVE;
-        existingRecord.activityLogs.push(
-            `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Product unit approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`
-        );
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
+        // Apply forApprovalVersion to main fields
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.productUnitName = forApprovalVersion.productUnitName as string;
         existingRecord.forApprovalVersion = {};
+
+        // Reset changeReason to null after applying changes
+        existingRecord.changeReason = null;
+
+        // Update status and add activity log
+        existingRecord.status = StatusEnum.ACTIVE;
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product unit approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         // Update record in database
         const updatedRecord = await this.productUnitDatabaseService.updateRecord(existingRecord);
@@ -116,6 +119,9 @@ export class ApproveProductUnitHandler implements ICommandHandler<ApproveProduct
      * Approves deletion of a product unit
      */
     private async approveDeletion(existingRecord: ProductUnitDto): Promise<ResponseDto<ProductUnitDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+
         await this.productUnitDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Product unit deletion approved: ${existingRecord.productUnitId}`);

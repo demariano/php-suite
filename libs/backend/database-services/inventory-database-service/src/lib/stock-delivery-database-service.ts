@@ -107,6 +107,44 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
         return await this.convertToDtoList(stockDeliveryRecords);
     }
 
+    async findRecordsByDocnoPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        docno: string
+    ): Promise<PageDto<StockDeliveryDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.stockDeliveryTable.find(
+            {
+                GSI1PK: `STOCK_DELIVERY`,
+                GSI1SK: {
+                    begins: docno,
+                },
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
     async getDatabaseRecordById(recordId: string): Promise<StockDeliveryDataType | undefined> {
         const record: StockDeliveryDataType | undefined = await this.stockDeliveryTable.get({
             PK: 'STOCK_DELIVERY',
@@ -315,7 +353,7 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.changeReason = (record as StockDeliveryDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 

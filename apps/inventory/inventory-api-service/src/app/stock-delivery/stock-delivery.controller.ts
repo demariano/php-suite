@@ -289,12 +289,32 @@ export class StockDeliveryController {
     @Get('docno/:docno')
     @ApiOperation({
         summary: 'Search stock deliveries by document number',
-        description: 'Searches for stock deliveries containing the specified document number',
+        description: 'Searches for stock deliveries containing the specified document number with pagination',
     })
     @ApiParam({
         name: 'docno',
         description: 'Document number to search for',
         example: 'SD-001',
+    })
+    @ApiQuery({
+        name: 'limit',
+        description: 'Number of records per page',
+        required: false,
+        type: Number,
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        description: 'Pagination direction',
+        required: false,
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        description: 'Cursor pointer for pagination',
+        required: false,
+        type: String,
     })
     @ApiResponse({
         status: 200,
@@ -304,25 +324,37 @@ export class StockDeliveryController {
             properties: {
                 statusCode: { type: 'number', example: 200 },
                 data: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            stockDeliveryId: { type: 'string', example: 'stock-delivery-123' },
-                            docno: { type: 'string', example: 'SD-001' },
-                            supplierName: { type: 'string', example: 'Supplier ABC' },
-                            dateReceived: { type: 'string', example: '2024-01-01' },
-                            status: { type: 'string', example: 'ACTIVE' },
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    stockDeliveryId: { type: 'string', example: 'stock-delivery-123' },
+                                    docno: { type: 'string', example: 'SD-001' },
+                                    supplierName: { type: 'string', example: 'Supplier ABC' },
+                                    dateReceived: { type: 'string', example: '2024-01-01' },
+                                    status: { type: 'string', example: 'ACTIVE' },
+                                },
+                            },
                         },
+                        nextCursorPointer: { type: 'string', nullable: true },
+                        prevCursorPointer: { type: 'string', nullable: true },
                     },
                 },
             },
         },
     })
-    getByDocno(@Param('docno') docno: string) {
+    getByDocno(
+        @Param('docno') docno: string,
+        @Query('limit') limit: number = 10,
+        @Query('direction') direction: string = 'next',
+        @Query('cursorPointer') cursorPointer: string = ''
+    ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetStockDeliveryByDocnoQuery(docno));
+        return this.queryBus.execute(new GetStockDeliveryByDocnoQuery(docno, limit, direction, cursorPointer));
     }
 
     @Get()

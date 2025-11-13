@@ -90,6 +90,10 @@ export class DenyStockTypeHandler implements ICommandHandler<DenyStockTypeComman
     private async denyStockType(existingRecord: StockTypeDto, user: UserCognito): Promise<ResponseDto<StockTypeDto>> {
         // Clear forApprovalVersion and revert to ACTIVE
         existingRecord.forApprovalVersion = {};
+        
+        // Reset changeReason to null after clearing forApprovalVersion
+        existingRecord.changeReason = null;
+        
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
@@ -111,6 +115,9 @@ export class DenyStockTypeHandler implements ICommandHandler<DenyStockTypeComman
      * Denies deletion of a stock type record
      */
     private async denyDeletion(existingRecord: StockTypeDto): Promise<ResponseDto<StockTypeDto>> {
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
+        
         // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
 
@@ -133,6 +140,9 @@ export class DenyStockTypeHandler implements ICommandHandler<DenyStockTypeComman
      * Deletes a stock type when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: StockTypeDto): Promise<ResponseDto<StockTypeDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+        
         this.logger.log(`Stock type deleted: ${existingRecord.stockTypeId}`);
         await this.stockTypeDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<StockTypeDto>(existingRecord, HTTP_STATUS_OK);

@@ -1,11 +1,11 @@
 .sidebar-layout {
-    @apply bg-secondaryNeutral-50 flex;
+    @apply flex min-h-screen bg-secondaryNeutral-50;
 
     &__content {
-        @apply h-screen w-full overflow-y-auto px-14 pt-24 pb-14 relative;
+        @apply relative z-0 h-screen w-full overflow-y-auto bg-secondaryNeutral-50 px-4 pb-14 pt-20 sm:px-14 sm:pt-28;
     }
 
     &__header {
-        @apply absolute top-0 left-0 right-0;
+        @apply hidden sm:block;
     }
 }

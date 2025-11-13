@@ -6,6 +6,8 @@ export abstract class ReturnGoodSoldDatabaseServiceAbstractClass {
 
     abstract findRecordById(id: string): Promise<ReturnGoodSoldDto | null>;
 
+    abstract findRecordByRgsDocno(rgsDocno: string): Promise<ReturnGoodSoldDto | null>;
+
     abstract findRecordsByInvoiceId(
         limit: number,
         invoiceId: string,
@@ -27,11 +29,19 @@ export abstract class ReturnGoodSoldDatabaseServiceAbstractClass {
         cursorPointer: string
     ): Promise<PageDto<ReturnGoodSoldDto>>;
 
+    abstract findRecordsByRgsDocnoPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        rgsDocno: string
+    ): Promise<PageDto<ReturnGoodSoldDto>>;
+
     abstract findRecordsByStatusPagination(
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        rgsDocno?: string
     ): Promise<PageDto<ReturnGoodSoldDto>>;
 
     abstract findRecordsByPagination(

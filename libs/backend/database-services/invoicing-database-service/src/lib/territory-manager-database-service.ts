@@ -60,6 +60,10 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
         territoryManagerRecord.GSI2SK = record.territoryManagerName;
         territoryManagerRecord.contactNo = record.contactNo;
         territoryManagerRecord.forApprovalVersion = record.forApprovalVersion;
+        
+        // CRITICAL: Explicitly set changeReason on the record before calling update()
+        // This ensures the field is persisted even if convertToDataType is called separately
+        territoryManagerRecord.changeReason = record.changeReason;
 
         const updatedTerritoryManagerRecord: TerritoryManagerDataType = await this.territoryManagerTable.update(
             territoryManagerRecord
@@ -69,7 +73,6 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
     }
 
     async findRecordById(id: string): Promise<TerritoryManagerDto | null> {
-        console.log('Finding record by id:', id);
         const record = await this.territoryManagerTable.get({
             PK: `TERRITORY_MANAGER`,
             SK: `${id}`,
@@ -98,44 +101,21 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
         }
     }
 
-    async findRecordContainingName(
-        limit: number,
-        name: string,
-        direction: string,
-        cursorPointer: string
-    ): Promise<PageDto<TerritoryManagerDto>> {
-        limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
-
-        const records = await this.territoryManagerTable.find(
+    async findRecordContainingName(name: string): Promise<TerritoryManagerDto[] | null> {
+        const territoryManagerRecords = await this.territoryManagerTable.find(
             {
-                GSI1PK: `TERRITORY_MANAGER`,
-                GSI1SK: {
-                    begins: name,
-                },
+                GSI1PK: 'TERRITORY_MANAGER',
             },
-            dynamoDbOption
+            {
+                where: 'contains(${territoryManagerName}, @{territoryManagerName})',
+                substitutions: {
+                    territoryManagerName: name,
+                },
+                index: 'GSI1',
+            }
         );
 
-        console.log('Records:', records);
-
-        const pageRecordCursorPointers = pageRecordHandler(
-            records,
-            limit,
-            direction,
-            'GSI1PK',
-            'GSI1SK',
-            'PK',
-            'SK',
-            JSON.stringify(records.next),
-            JSON.stringify(records.prev)
-        );
-
-        return new PageDto(
-            await this.convertToDtoList(records),
-            pageRecordCursorPointers.nextCursorPointer,
-            pageRecordCursorPointers.prevCursorPointer
-        );
+        return await this.convertToDtoList(territoryManagerRecords);
     }
 
     async findRecordByName(name: string): Promise<TerritoryManagerDto | null> {
@@ -204,6 +184,42 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
         );
     }
 
+    async findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<TerritoryManagerDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.territoryManagerTable.find(
+            {
+                GSI1PK: `TERRITORY_MANAGER`,
+                ...(name != null && name.trim() !== '' ? { GSI1SK: { begins: name.trim() } } : {}),
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
     async findRecordsByPagination(
         limit: number,
         direction: string,
@@ -256,6 +272,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
         dto.contactNo = record.contactNo ? record.contactNo : '';
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as TerritoryManagerDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -283,6 +300,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
             GSI2SK: dto.territoryManagerName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return territoryManagerData;
     }

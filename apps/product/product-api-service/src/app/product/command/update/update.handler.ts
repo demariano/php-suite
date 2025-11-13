@@ -1,5 +1,6 @@
 import { ErrorResponseDto, ProductDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductDatabaseServiceAbstract } from '@product-database-service';
@@ -22,10 +23,10 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
         this.logger.log(`Processing update request for product: ${command.productDto.productId}`);
 
         try {
-            console.log('command', command);
+            command.productDto.productId = command.productId;
 
             // Validate record exists
-            const existingRecord = await this.validateProductExists(command.productDto.productId);
+            const existingRecord = await this.validateProductExists(command.productId);
 
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
@@ -34,12 +35,11 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
             this.updateProductStatus(existingRecord, command, hasApprovalPermission);
 
             // Optimize activity logs
-            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
-            console.log('existingRecord', existingRecord);
+            existingRecord.activityLogs =
+                reduceArrayContents(existingRecord.activityLogs ?? [], ACTIVITY_LOGS_LIMIT) ?? [];
 
             // Update record in database
-            const updatedRecord = await this.productDatabaseService.updateProductRecord(existingRecord);
+            const updatedRecord = await this.productDatabaseService.updateRecord(existingRecord);
 
             this.logger.log(`Product updated successfully: ${existingRecord.productId}`);
             return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
@@ -52,7 +52,7 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
      * Validates that the product record exists
      */
     private async validateProductExists(productId: string): Promise<ProductDto> {
-        const existingRecord = await this.productDatabaseService.findProductRecordById(productId);
+        const existingRecord = await this.productDatabaseService.findRecordById(productId);
 
         if (!existingRecord) {
             this.logger.warn(`Product not found: ${productId}`);
@@ -85,6 +85,8 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
         command: UpdateProductCommand,
         hasApprovalPermission: boolean
     ): void {
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+
         if (hasApprovalPermission) {
             // User can approve directly - set to ACTIVE
             existingRecord.status = StatusEnum.ACTIVE;
@@ -94,9 +96,10 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
             existingRecord.productCategoryName = command.productDto.productCategoryName;
             existingRecord.productClassId = command.productDto.productClassId;
             existingRecord.productClassName = command.productDto.productClassName;
-            existingRecord.productDeals = command.productDto.productDeals;
-            existingRecord.productUnitPrice = command.productDto.productUnitPrice;
-            existingRecord.changeReason = command.productDto.changeReason;
+            existingRecord.productDeals = command.productDto.productDeals ?? [];
+            existingRecord.productUnitPrice = command.productDto.productUnitPrice ?? [];
+            existingRecord.forApprovalVersion = {};
+            existingRecord.changeReason = undefined;
             existingRecord.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
@@ -105,21 +108,41 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
         } else {
             // User needs approval - set to FOR_APPROVAL
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            existingRecord.forApprovalVersion = {};
-            existingRecord.forApprovalVersion.productName = command.productDto.productName;
-            existingRecord.forApprovalVersion.criticalLevel = command.productDto.criticalLevel;
-            existingRecord.forApprovalVersion.productCategoryId = command.productDto.productCategoryId;
-            existingRecord.forApprovalVersion.productCategoryName = command.productDto.productCategoryName;
-            existingRecord.forApprovalVersion.productClassId = command.productDto.productClassId;
-            existingRecord.forApprovalVersion.productClassName = command.productDto.productClassName;
-            existingRecord.forApprovalVersion.productDeals = command.productDto.productDeals;
-            existingRecord.forApprovalVersion.productUnitPrice = command.productDto.productUnitPrice;
-            existingRecord.forApprovalVersion.changeReason = command.productDto.changeReason;
-            existingRecord.activityLogs.push(
-                `Date: ${new Date().toLocaleString('en-US', {
-                    timeZone: 'Asia/Manila',
-                })}, Product updated by ${command.user.username} for approval`
-            );
+            const fieldChanges = detectFieldChanges(existingRecord, command.productDto, {
+                arrayIdFields: {
+                    productDeals: 'productDealId',
+                    productUnitPrice: 'productUnitId',
+                },
+            });
+            const formattedChanges = formatFieldChanges(fieldChanges);
+            const trimmedReason = command.productDto.changeReason?.trim();
+
+            existingRecord.forApprovalVersion = {
+                productName: command.productDto.productName,
+                criticalLevel: command.productDto.criticalLevel,
+                productCategoryId: command.productDto.productCategoryId,
+                productCategoryName: command.productDto.productCategoryName,
+                productClassId: command.productDto.productClassId,
+                productClassName: command.productDto.productClassName,
+                productDeals: command.productDto.productDeals ?? [],
+                productUnitPrice: command.productDto.productUnitPrice ?? [],
+            };
+
+            const combinedReason = [trimmedReason, formattedChanges]
+                .filter((value) => value && value.length > 0)
+                .join('\n\n');
+
+            existingRecord.changeReason = combinedReason || undefined;
+
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product updated by ${command.user.username} for approval`;
+
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs.push(activityLogMessage);
         }
     }
 

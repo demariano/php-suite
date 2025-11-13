@@ -1,9 +1,9 @@
 'use client';
 
-import { extractErrorMessage, ProductApi, ProductCategoryDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { ProductApi, ProductCategoryDto, extractErrorMessage, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import CategoryForm from '../[id]/edit/components/CategoryForm';
+import CategoryForm from '../components/CategoryForm';
 
 export default function CreateCategoryPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -11,9 +11,6 @@ export default function CreateCategoryPage() {
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
   const router = useRouter();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
   const handleSave = async (category: ProductCategoryDto) => {
     try {
@@ -63,18 +60,13 @@ export default function CreateCategoryPage() {
     // Not applicable for create mode
   };
 
-  const handleApprove = () => {
-    // Not applicable for create mode
-  };
-
-  const handleDeny = () => {
-    // Not applicable for create mode
-  };
+  // Check if user is admin or super admin
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -93,21 +85,38 @@ export default function CreateCategoryPage() {
       </div>
 
       {/* Category Form */}
-      <CategoryForm
-        isCreateMode={true}
-        selectedCategory={null}
-        successMessage={null}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        activeTab="details"
-        onTabChange={() => {}} // Not used in create mode
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onApprove={handleApprove}
-        onDeny={handleDeny}
-        onCancel={handleCancel}
-      />
+      <div className="flex justify-center">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
+          {/* Tab Navigation */}
+          <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
+            <div className="flex gap-2 flex-nowrap">
+              <button
+                className="flex-shrink-0 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm"
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Category Information
+                </span>
+              </button>
+            </div>
+          </div>
+          
+          {/* Tab Content */}
+          <div className="p-4 sm:p-6 bg-white">
+            <CategoryForm
+              isCreateMode={true}
+              selectedCategory={null}
+              successMessage={null}
+              onSave={handleSave}
+              onDelete={handleDelete}
+              onCancel={handleCancel}
+              isAdminUser={isAdminUser}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-

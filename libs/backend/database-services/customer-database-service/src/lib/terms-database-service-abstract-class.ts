@@ -5,11 +5,11 @@ export abstract class TermsDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<TermsDto | null>;
 
-    abstract findRecordContainingName(
+    abstract findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<TermsDto>>;
 
     abstract findRecordByName(name: string): Promise<TermsDto | null>;

@@ -1,4 +1,5 @@
 import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -6,6 +7,7 @@ import { DeleteInvoiceCommand } from './delete.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(DeleteInvoiceCommand)
 export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceCommand> {
@@ -57,7 +59,6 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
      * Checks if user has permission to delete directly
      */
     private hasApprovalPermission(userRoles?: string[]): boolean {
-        console.log('userRoles', userRoles);
         if (!userRoles || userRoles.length === 0) {
             return false;
         }
@@ -79,17 +80,25 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
         if (hasApprovalPermission) {
             // User can delete directly - set to FOR_DELETION for hard delete
             command.invoiceDto.status = StatusEnum.FOR_DELETION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Invoice deleted by ${command.user.username}`;
-            command.invoiceDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            command.invoiceDto.activityLogs = existingRecord.activityLogs || [];
+            command.invoiceDto.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Invoice deleted by ${command.user.username}, status set to ${StatusEnum.FOR_DELETION}`
+            );
+            // Limit activity logs to last 10 entries
+            command.invoiceDto.activityLogs = reduceArrayContents(command.invoiceDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to FOR_DELETION for soft delete
             command.invoiceDto.status = StatusEnum.FOR_DELETION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Invoice marked for deletion by ${command.user.username}`;
-            command.invoiceDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            command.invoiceDto.activityLogs = existingRecord.activityLogs || [];
+            command.invoiceDto.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Invoice deletion requested by ${command.user.username} for approval`
+            );
+            // Limit activity logs to last 10 entries
+            command.invoiceDto.activityLogs = reduceArrayContents(command.invoiceDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         }
     }
 

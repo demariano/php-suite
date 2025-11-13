@@ -1,11 +1,12 @@
 import { ErrorResponseDto, ResponseDto, SalesTypeDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { SalesTypeDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateSalesTypeCommand } from './create.command';
 
 // Constants
-
+const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreateSalesTypeCommand)
@@ -78,6 +79,8 @@ export class CreateSalesTypeHandler implements ICommandHandler<CreateSalesTypeCo
                     timeZone: 'Asia/Manila',
                 })}, Sales type created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
+            // Limit activity logs to last 10 entries
+            command.salesTypeDto.activityLogs = reduceArrayContents(command.salesTypeDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to FOR_APPROVAL
             command.salesTypeDto.status = StatusEnum.NEW_RECORD;
@@ -87,6 +90,8 @@ export class CreateSalesTypeHandler implements ICommandHandler<CreateSalesTypeCo
                     timeZone: 'Asia/Manila',
                 })}, Sales type created by ${command.user.username} for approval`
             );
+            // Limit activity logs to last 10 entries
+            command.salesTypeDto.activityLogs = reduceArrayContents(command.salesTypeDto.activityLogs, ACTIVITY_LOGS_LIMIT);
             command.salesTypeDto.forApprovalVersion = {};
             command.salesTypeDto.forApprovalVersion.salesTypeName = command.salesTypeDto.salesTypeName;
             command.salesTypeDto.forApprovalVersion.allowDiscount = command.salesTypeDto.allowDiscount;

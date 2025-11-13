@@ -68,11 +68,11 @@ export class GetProductCategoryByNameHandler implements IQueryHandler<GetProduct
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<ProductCategoryDto>> {
-        const productCategoryRecords = await this.productCategoryDatabaseService.findRecordContainingName(
+        const productCategoryRecords = await this.productCategoryDatabaseService.findRecordsByNamePagination(
             limit,
-            name,
             direction,
-            cursorPointer
+            cursorPointer,
+            name
         );
 
         if (!productCategoryRecords || productCategoryRecords.data.length === 0) {

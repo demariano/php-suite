@@ -54,20 +54,20 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         productRecord.GSI2PK = `PRODUCT_CATEGORY#${record.status}`;
         productRecord.GSI2SK = record.productCategoryName;
         productRecord.forApprovalVersion = record.forApprovalVersion;
+        productRecord.changeReason = record.changeReason;
 
         const updatedProductRecord: ProductCategoryDataType = await this.productCategoryTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
     }
 
-    async findRecordContainingName(
+    async findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<ProductCategoryDto>> {
         limit = Number(limit);
-
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
 
         const records = await this.productCategoryTable.find(
@@ -79,8 +79,6 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
             },
             dynamoDbOption
         );
-
-        console.log('Records:', records);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -252,6 +250,7 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as ProductCategoryDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -278,6 +277,7 @@ export class ProductCategoryDatabaseService implements ProductCategoryDatabaseSe
             GSI2PK: `PRODUCT_CATEGORY#${dto.status}`,
             GSI2SK: dto.productCategoryName,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return productCategoryData;
     }

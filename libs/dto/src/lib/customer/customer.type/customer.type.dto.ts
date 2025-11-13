@@ -16,4 +16,7 @@ export class CustomerTypeDto {
 
     @ApiProperty()
     forApprovalVersion?: Record<string, unknown>;
+
+    @ApiProperty()
+    changeReason?: string;
 }

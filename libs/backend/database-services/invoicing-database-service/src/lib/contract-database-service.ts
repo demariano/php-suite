@@ -76,8 +76,7 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
 
     async updateRecord(record: ContractDto): Promise<ContractDto> {
         const contractRecord: ContractDataType = await this.convertToDataType(record);
-
-        console.log('Contract Record to update:', contractRecord);
+        contractRecord.changeReason = record.changeReason;
 
         const updatedContractRecord: ContractDataType = await this.contractTable.update(contractRecord);
 
@@ -125,7 +124,6 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         const records = await this.contractTable.find(
             {
                 GSI3PK: `CONTRACT#${customerId}`,
-                GSI3SK: customerId,
             },
             dynamoDbOption
         );
@@ -261,8 +259,8 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             records,
             limit,
             direction,
-            'GSI2PK',
-            'GSI2SK',
+            'GSI4PK',
+            'GSI4SK',
             'PK',
             'SK',
             JSON.stringify(records.next),
@@ -313,8 +311,6 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
     async deleteRecord(dto: ContractDto): Promise<ContractDto> {
         const contractRecord: ContractDataType = await this.convertToDataType(dto);
 
-        console.log('Contract Record to delete:', contractRecord);
-
         await this.contractTable.remove(contractRecord);
 
         this.logger.log(`Contract Record hard deleted: ${JSON.stringify(contractRecord)}`);
@@ -342,7 +338,7 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.invoicedAmount = record.invoicedAmount ? record.invoicedAmount : 0;
         dto.status = record.status as StatusEnum;
-        dto.changeReason = record.changeReason ? record.changeReason : '';
+        dto.changeReason = (record as ContractDataType & { changeReason?: string }).changeReason || undefined;
         dto.productDealQty = record.productDealQty as ProductDealQtyDto;
         return dto;
     }

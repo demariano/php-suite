@@ -56,6 +56,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         productRecord.GSI2SK = record.productPriceTypeName;
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
+        productRecord.changeReason = record.changeReason;
         const updatedProductRecord: ProductPriceTypeDataType = await this.productPriceTypeTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
@@ -249,6 +250,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as ProductPriceTypeDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -275,6 +277,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
             GSI2SK: dto.productPriceTypeName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return productPriceTypeData;
     }

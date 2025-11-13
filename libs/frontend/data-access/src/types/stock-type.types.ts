@@ -9,6 +9,7 @@ export interface StockTypeDto {
     status?: StatusEnum;
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    changeReason?: string;
 }
 
 export interface CreateStockTypeDto {

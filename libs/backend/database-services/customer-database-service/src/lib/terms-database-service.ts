@@ -56,6 +56,7 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         termsRecord.GSI2PK = `TERMS#${record.status}`;
         termsRecord.GSI2SK = record.termsName;
         termsRecord.forApprovalVersion = record.forApprovalVersion;
+        termsRecord.changeReason = record.changeReason;
 
         const updatedTermsRecord: TermsDataType = await this.termsTable.update(termsRecord);
 
@@ -91,11 +92,11 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         }
     }
 
-    async findRecordContainingName(
+    async findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<TermsDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
@@ -109,8 +110,6 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
             },
             dynamoDbOption
         );
-
-        console.log('Records:', records);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -245,6 +244,7 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.days = record.days ? record.days : 0;
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason = (record as TermsDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -272,6 +272,7 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
             GSI2SK: dto.termsName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return termsData;
     }

@@ -255,7 +255,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
   // Helper function to get tab color based on status
   const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
     if (!isActive) {
-      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-blue-600';
     }
     
     switch (status) {
@@ -274,8 +274,8 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
 
   if (!selectedArea && !isLoading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>Area not found</span>
         </div>
       </div>
@@ -311,14 +311,14 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
+          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
             {isAdminUser ? (
-              <div className="flex gap-3">
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <button
                   type="button"
                   onClick={handleDeny}
                   disabled={isLoading}
-                  className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -329,7 +329,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                   type="button"
                   onClick={handleApprove}
                   disabled={isLoading}
-                  className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -338,15 +338,15 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 </button>
               </div>
             ) : (
-              <div></div>
+              <div className="hidden sm:block" />
             )}
             
             <button
               type="button"
               onClick={handleCancel}
-              className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
               Cancel
@@ -408,13 +408,13 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     };
     
     // Helper function to render read-only field with highlighting
-    const renderReadOnlyField = (label: string, value: unknown, colorClass: string, fieldName?: string) => {
+    const renderReadOnlyField = (label: string, value: unknown, fieldName?: string) => {
       const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
       
       return (
         <div className="group">
           <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
             {label}
           </label>
           <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
@@ -429,21 +429,21 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     };
     
     return (
-      <div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-6 bg-white shadow-lg">
+      <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
         {/* Change Reason and Modification Made */}
         {selectedArea?.changeReason && (
-          <div className="bg-white border-2 border-gray-200 rounded-xl p-5 shadow-md mb-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-blue-600 rounded-lg shadow-md">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </div>
-              <h4 className="text-base font-bold text-gray-700">
+              <h4 className="m-0 text-base font-bold text-blue-600">
                 Change Reason and Modification Made
               </h4>
             </div>
-            <div className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm bg-white text-gray-500 font-medium shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
               {selectedArea.changeReason}
             </div>
           </div>
@@ -451,8 +451,8 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
         
         {/* Area Information Section */}
         <div className="space-y-4">
-          <div className="border-2 border-gray-200 rounded-xl p-4">
-            <div className="flex items-center gap-3 mb-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+            <div className="mb-4 flex items-center gap-3">
               <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -463,21 +463,21 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
               </h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {renderReadOnlyField('Area Name', approvalData.areaName, 'bg-blue-500', 'areaName')}
-              {renderReadOnlyField('Territory Manager', approvalData.territoryManagerName, 'bg-indigo-500', 'territoryManagerName')}
+              {renderReadOnlyField('Area Name', approvalData.areaName, 'areaName')}
+              {renderReadOnlyField('Territory Manager', approvalData.territoryManagerName, 'territoryManagerName')}
             </div>
           </div>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex justify-between items-center mt-8 pt-6 border-t-2 border-gray-200">
+        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
           {isAdminUser && (selectedArea?.status === StatusEnum.FOR_APPROVAL || selectedArea?.status === StatusEnum.NEW_RECORD || selectedArea?.status === StatusEnum.FOR_DELETION) ? (
-            <div className="flex gap-3">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <button
                 type="button"
                 onClick={handleDeny}
                 disabled={isLoading}
-                className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -488,7 +488,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 type="button"
                 onClick={handleApprove}
                 disabled={isLoading}
-                className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -497,15 +497,15 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
               </button>
             </div>
           ) : (
-            <div></div>
+            <div className="hidden sm:block" />
           )}
           
           <button
             type="button"
             onClick={handleCancel}
-            className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-md hover:shadow-lg hover:bg-gray-50 hover:border-gray-400 transform hover:scale-105 transition-all duration-200 flex items-center gap-2"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
             Cancel
@@ -520,37 +520,43 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     if (!selectedArea) return null;
     
     return (
-      <div>
-        <div className="mb-5">
-          <h3 className="text-base font-semibold text-gray-800 mb-3">
-            Recent Activity
-          </h3>
+      <div className="space-y-6 animate-fadeIn">
+        <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="m-0 text-base font-bold text-blue-600">Activity Logs</h3>
+          </div>
+
           {selectedArea?.activityLogs && selectedArea.activityLogs.length > 0 ? (
-            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
+              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
               {selectedArea.activityLogs.map((log, index) => (
-                <div 
-                  key={index} 
-                  className={`py-2 ${
-                    selectedArea.activityLogs && index < selectedArea.activityLogs.length - 1 ? 'border-b border-gray-200' : ''
-                  }`}
-                >
+                  <li key={index} className="px-4 py-3">
                   {log}
-                </div>
+                  </li>
               ))}
+              </ul>
             </div>
           ) : (
-            <p className="text-gray-500 italic">
+            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
               No activity logs available
             </p>
           )}
         </div>
         
-        <div className="flex justify-end mt-6">
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={handleCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
           >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
           </button>
         </div>
@@ -559,7 +565,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Breadcrumbs */}
       <div>
         <nav className="flex items-center gap-2">
@@ -589,13 +595,13 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
       {/* Area Form with Tabs */}
       {selectedArea && (
         <div className="flex justify-center">
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
+          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
             {/* Tab Navigation */}
-            <div className="bg-gray-50 border-b-2 border-gray-200 rounded-t-xl p-2">
-              <div className="flex gap-2">
+            <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
+              <div className="flex gap-2 flex-nowrap">
                 <button
                   onClick={() => setActiveTab('details')}
-                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                  className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
                     getTabColorClasses(selectedArea.status || StatusEnum.ACTIVE, activeTab === 'details')
                   }`}
                 >
@@ -616,7 +622,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 {selectedArea.status !== StatusEnum.ACTIVE && (
                   <button
                     onClick={() => setActiveTab('approval')}
-                    className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                    className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
                       activeTab === 'approval'
                         ? 'bg-blue-600 text-white shadow-sm'
                         : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -633,7 +639,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 
                 <button
                   onClick={() => setActiveTab('logs')}
-                  className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                  className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
                     activeTab === 'logs'
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
@@ -650,7 +656,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
             </div>
             
             {/* Tab Content */}
-            <div className="p-6 bg-white">
+            <div className="bg-white p-4 sm:p-6">
               {activeTab === 'details' && (
                 <AreaForm
                   isCreateMode={false}

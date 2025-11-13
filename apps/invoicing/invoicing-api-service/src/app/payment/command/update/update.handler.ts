@@ -1,5 +1,6 @@
 import { ErrorResponseDto, PaymentDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -93,19 +94,53 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
             existingRecord.chequeClearStatus = command.paymentDto.chequeClearStatus;
             existingRecord.paymentDetails = command.paymentDto.paymentDetails;
             existingRecord.paymentInvoiceDetails = command.paymentDto.paymentInvoiceDetails;
-            existingRecord.changeReason = null;
+            // Clear changeReason for admin users since changes are applied directly
+            existingRecord.changeReason = undefined;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Payment updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
             existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+
+            // Detect field changes
+            const fieldChanges = detectFieldChanges(existingRecord, command.paymentDto, {});
+            const formattedChanges = formatFieldChanges(fieldChanges);
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Payment updated by ${command.user.username} for approval`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-            existingRecord.changeReason = command.paymentDto.changeReason;
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs.push(activityLogMessage);
+
+            // Preserve user's manually entered changeReason and combine with auto-generated changes
+            const userChangeReason = command.paymentDto.changeReason?.trim();
+            if (userChangeReason && formattedChanges) {
+                // User provided changeReason and we have formatted changes - combine them
+                // formatFieldChanges already starts with \n, so we just concatenate
+                existingRecord.changeReason = `${userChangeReason}${formattedChanges}`;
+            } else if (userChangeReason) {
+                // User provided changeReason but no formatted changes - use user's input
+                existingRecord.changeReason = userChangeReason;
+            } else if (formattedChanges) {
+                // No user input but we have formatted changes - use formatted changes
+                existingRecord.changeReason = formattedChanges;
+            } else {
+                // No user input and no formatted changes
+                existingRecord.changeReason = undefined;
+            }
+
             existingRecord.forApprovalVersion = {
                 ...existingRecord.forApprovalVersion,
                 paymentDate: command.paymentDto.paymentDate,
@@ -121,10 +156,10 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
                 paymentDetails: command.paymentDto.paymentDetails,
                 paymentInvoiceDetails: command.paymentDto.paymentInvoiceDetails,
             };
+            
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         }
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
     }
 
     /**

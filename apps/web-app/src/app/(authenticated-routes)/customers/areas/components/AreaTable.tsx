@@ -32,7 +32,7 @@ export default function AreaTable({
   return (
     <>
       {/* Table */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-gray-500 text-base">
             Loading customer areas...
@@ -42,7 +42,7 @@ export default function AreaTable({
             <table className="w-full border-collapse">
               <thead className="bg-blue-600 border-b border-blue-700">
                 <tr>
-                  {headers.map((header, index) => (
+                  {headers.map((header) => (
                     <th key={header.key} className="px-6 py-4 text-left text-white font-semibold text-xs uppercase tracking-wider">
                       {header.label}
                     </th>
@@ -50,7 +50,7 @@ export default function AreaTable({
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {tableData.length > 0 ? tableData.map((area, index) => (
+                {tableData.length > 0 ? tableData.map((area) => (
                   <tr 
                     key={area.areaId}
                     onClick={() => onRowClick(area)}
@@ -76,14 +76,49 @@ export default function AreaTable({
         )}
       </div>
 
+      {/* Mobile Cards */}
+      {!isLoading && (
+        <div className="sm:hidden space-y-4">
+          {tableData.length > 0 ? (
+            tableData.map((area) => (
+              <button
+                key={area.areaId}
+                type="button"
+                onClick={() => onRowClick(area)}
+                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900">
+                      {area.areaName || '-'}
+                    </h3>
+                  </div>
+                  <div>{area.status}</div>
+                </div>
+              </button>
+            ))
+          ) : (
+            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
+              {searchQuery ? `No customer areas found matching "${searchQuery}"` : 'No customer areas found'}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="sm:hidden rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm">
+          Loading customer areas...
+        </div>
+      )}
+
       {/* Pagination */}
-      <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-6 py-4 shadow-sm mt-6">
-        <div className="flex items-center gap-3">
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <span className="text-sm font-medium text-gray-600">Rows per page:</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:w-auto"
           >
             <option value="10">10</option>
             <option value="20">20</option>
@@ -91,11 +126,11 @@ export default function AreaTable({
             <option value="100">100</option>
           </select>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
           <button
             onClick={onPrevious}
             disabled={!prevCursor}
-            className={`px-4 py-2 rounded-md border text-sm font-medium transition-all duration-200 ${
+            className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
               !prevCursor
                 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
@@ -106,7 +141,7 @@ export default function AreaTable({
           <button
             onClick={onNext}
             disabled={!nextCursor}
-            className={`px-4 py-2 rounded-md border text-sm font-medium transition-all duration-200 ${
+            className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
               !nextCursor
                 ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
                 : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'

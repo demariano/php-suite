@@ -59,331 +59,204 @@ export default function RecordDetailsTab({
 
 
   return (
-    <div style={{
-      backgroundColor: '#f8fafc',
-      borderRadius: '8px',
-      padding: '20px',
-      marginBottom: '20px',
-      border: '1px solid #e2e8f0'
-    }}>
-      <h3 style={{
-        fontSize: '16px',
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: '16px',
-        margin: '0 0 16px 0'
-      }}>
-        Payment Details
-      </h3>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
-        {/* Customer Selection */}
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Customer Name *
-          </label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              value={formData.customerName || ''}
-              readOnly
-              onClick={() => isCreateMode && !isReadOnly && setShowCustomerModal(true)}
-              disabled={!isCreateMode || isReadOnly}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                paddingRight: (formData.customerName && isCreateMode && !isReadOnly) ? '40px' : '16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                color: formData.customerName ? '#1f2937' : '#6b7280',
-                cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                outline: 'none',
-                transition: 'all 0.2s ease',
-                opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
-              }}
-              placeholder={(!isCreateMode || isReadOnly) ? "Customer cannot be changed" : "Click to select customer"}
-              onMouseEnter={(e) => {
-                if (isCreateMode && !isReadOnly) {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-            
-            {formData.customerName && isCreateMode && !isReadOnly && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFormDataChange({
-                    customerId: '',
-                    customerName: ''
-                  });
-                }}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                  color: '#6b7280',
-                  padding: '4px',
-                  borderRadius: '4px',
-                  transition: 'all 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#f3f4f6';
-                  e.currentTarget.style.color = '#dc2626';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#6b7280';
-                }}
-              >
-                ×
-              </button>
-            )}
+    <div className="space-y-6">
+      {/* Payment Details Section */}
+      <div className="space-y-4">
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           </div>
+          <h3 className="text-base font-bold text-blue-600">
+            Payment Details
+          </h3>
         </div>
 
-        {/* Payment Date */}
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '6px'
-          }}>
-            Payment Date *
-          </label>
-          <DatePicker
-            value={formData.paymentDate || ''}
-            onChange={(date) => onFormDataChange({ paymentDate: date })}
-            disabled={isReadOnly}
-            placeholder="Select payment date"
-          />
-        </div>
-
-        {/* Receipt Number */}
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '6px'
-          }}>
-            Receipt Number *
-          </label>
-          <input
-            type="text"
-            value={formData.receiptNo || ''}
-            onChange={(e) => onFormDataChange({ receiptNo: e.target.value })}
-            placeholder="Enter receipt number"
-            disabled={isReadOnly || !isCreateMode}
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '14px',
-              backgroundColor: (isReadOnly || !isCreateMode) ? '#f9fafb' : 'white',
-              color: (isReadOnly || !isCreateMode) ? '#6b7280' : '#1f2937'
-            }}
-          />
-        </div>
-
-        {/* Payment Amount (Read-only) */}
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '6px'
-          }}>
-            Payment Amount
-          </label>
-          <input
-            type="text"
-            value={formData.paymentAmount ? `$${formData.paymentAmount.toFixed(2)}` : '$0.00'}
-            readOnly
-            style={{
-              width: '100%',
-              padding: '10px 12px',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              fontSize: '14px',
-              backgroundColor: '#f9fafb',
-              color: '#6b7280'
-            }}
-          />
-          <p style={{
-            fontSize: '12px',
-            color: '#6b7280',
-            margin: '4px 0 0 0'
-          }}>
-            Calculated from payment details
-          </p>
-        </div>
-
-        {/* Contract Payment Checkbox */}
-        <div style={{ gridColumn: '1 / -1' }}>
-          <label style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            cursor: isReadOnly ? 'default' : 'pointer'
-          }}>
-            <input
-              type="checkbox"
-              checked={formData.contractPayment || false}
-              onChange={(e) => onFormDataChange({ contractPayment: e.target.checked })}
-              disabled={isReadOnly}
-              style={{
-                width: '16px',
-                height: '16px',
-                cursor: isReadOnly ? 'not-allowed' : 'pointer'
-              }}
-            />
-            Contract Payment
-          </label>
-        </div>
-
-        {/* Contract Selection (only if contract payment is enabled) */}
-        {formData.contractPayment && (
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Contract Name
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Customer Selection */}
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Customer Name *
             </label>
-            <div style={{ position: 'relative' }}>
+            <div className="relative">
               <input
                 type="text"
-                value={formData.contractName || ''}
+                value={formData.customerName || ''}
                 readOnly
-                onClick={() => {
-                  const isEnabled = formData.customerId && formData.contractPayment && isCreateMode && !isReadOnly;
-                  if (isEnabled) {
-                    setShowContractModal(true);
-                  }
-                }}
-                disabled={!formData.customerId || !formData.contractPayment || !isCreateMode || isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  paddingRight: (formData.contractName && formData.customerId && formData.contractPayment && isCreateMode && !isReadOnly) ? '40px' : '16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: (!formData.customerId || !formData.contractPayment || !isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                  color: formData.contractName ? '#1f2937' : '#6b7280',
-                  cursor: (formData.customerId && formData.contractPayment && isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                  opacity: (!formData.customerId || !formData.contractPayment || !isCreateMode || isReadOnly) ? 0.6 : 1
-                }}
-                placeholder={
-                  !formData.customerId 
-                    ? "Select customer first" 
-                    : !formData.contractPayment 
-                      ? "Enable contract payment first" 
-                      : (!isCreateMode || isReadOnly) 
-                        ? "Contract cannot be changed" 
-                        : "Click to select contract"
-                }
-                onMouseEnter={(e) => {
-                  if (formData.customerId && formData.contractPayment && isCreateMode && !isReadOnly) {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
+                onClick={() => isCreateMode && !isReadOnly && setShowCustomerModal(true)}
+                disabled={!isCreateMode || isReadOnly}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  (!isCreateMode || isReadOnly)
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 pr-4'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 pr-10'
+                }`}
+                placeholder={(!isCreateMode || isReadOnly) ? "Customer cannot be changed" : "Click to select customer"}
               />
               
-              {formData.contractName && formData.customerId && formData.contractPayment && isCreateMode && !isReadOnly && (
+              {formData.customerName && isCreateMode && !isReadOnly && (
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onFormDataChange({
-                      contractId: '',
-                      contractName: '',
-                      contractNo: ''
+                      customerId: '',
+                      customerName: ''
                     });
                   }}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#6b7280',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    zIndex: 10,
-                    transition: 'color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#dc2626';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#6b7280';
-                  }}
-                  title="Clear contract selection"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none text-lg cursor-pointer text-gray-600 p-1 rounded transition-all duration-200 hover:bg-gray-100 hover:text-red-600"
                 >
                   ×
                 </button>
               )}
             </div>
           </div>
-        )}
 
-        {/* Change Reason (only for non-admin users editing existing payments) */}
-        {!isCreateMode && !isAdminUser && (
-          <div style={{ gridColumn: '1 / -1' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '6px'
-            }}>
-              Change Reason *
+          {/* Payment Date */}
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Payment Date *
+            </label>
+            <DatePicker
+              value={formData.paymentDate || ''}
+              onChange={(date) => onFormDataChange({ paymentDate: date })}
+              disabled={isReadOnly}
+              placeholder="Select payment date"
+            />
+          </div>
+
+          {/* Receipt Number */}
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Receipt Number *
+            </label>
+            <input
+              type="text"
+              value={formData.receiptNo || ''}
+              onChange={(e) => onFormDataChange({ receiptNo: e.target.value })}
+              placeholder="Enter receipt number"
+              disabled={isReadOnly || !isCreateMode}
+              className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                (isReadOnly || !isCreateMode)
+                  ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+              }`}
+            />
+          </div>
+
+          {/* Payment Amount (Read-only) */}
+          <div className="group">
+            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+              Payment Amount
+            </label>
+            <input
+              type="text"
+              value={formData.paymentAmount ? `$${formData.paymentAmount.toFixed(2)}` : '$0.00'}
+              readOnly
+              className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Calculated from payment details
+            </p>
+          </div>
+
+          {/* Contract Payment Checkbox */}
+          <div className="col-span-1 md:col-span-2">
+            <label className={`flex items-center gap-2 text-sm font-bold text-gray-700 ${isReadOnly ? 'cursor-default' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={formData.contractPayment || false}
+                onChange={(e) => onFormDataChange({ contractPayment: e.target.checked })}
+                disabled={isReadOnly}
+                className={`w-4 h-4 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+              />
+              Contract Payment
+            </label>
+          </div>
+
+          {/* Contract Selection (only if contract payment is enabled) */}
+          {formData.contractPayment && (
+            <div className="col-span-1 md:col-span-2 group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Contract Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formData.contractName || ''}
+                  readOnly
+                  onClick={() => {
+                    const isEnabled = formData.customerId && formData.contractPayment && isCreateMode && !isReadOnly;
+                    if (isEnabled) {
+                      setShowContractModal(true);
+                    }
+                  }}
+                  disabled={!formData.customerId || !formData.contractPayment || !isCreateMode || isReadOnly}
+                  className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                    (!formData.customerId || !formData.contractPayment || !isCreateMode || isReadOnly)
+                      ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 pr-4'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 pr-10'
+                  }`}
+                  placeholder={
+                    !formData.customerId 
+                      ? "Select customer first" 
+                      : !formData.contractPayment 
+                        ? "Enable contract payment first" 
+                        : (!isCreateMode || isReadOnly) 
+                          ? "Contract cannot be changed" 
+                          : "Click to select contract"
+                  }
+                />
+                
+                {formData.contractName && formData.customerId && formData.contractPayment && isCreateMode && !isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onFormDataChange({
+                        contractId: '',
+                        contractName: '',
+                        contractNo: ''
+                      });
+                    }}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-transparent border-none cursor-pointer flex items-center justify-center text-gray-600 text-base font-bold z-10 transition-colors duration-200 hover:text-red-600"
+                    title="Clear contract selection"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </div>
+      </div>
+
+      {/* Change Reason Section - Only show for non-admin users when not in create mode */}
+      {!isCreateMode && !isAdminUser && (
+        <div className="space-y-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-blue-600">
+              Change Reason
+            </h3>
+          </div>
+          <div className="group">
+            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+              Change Reason and Modification Made
             </label>
             <textarea
               value={formData.changeReason || ''}
@@ -391,27 +264,19 @@ export default function RecordDetailsTab({
               placeholder="Explain the reason for this change (minimum 10 characters)"
               disabled={isReadOnly}
               rows={3}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                fontSize: '14px',
-                backgroundColor: isReadOnly ? '#f9fafb' : 'white',
-                color: isReadOnly ? '#6b7280' : '#1f2937',
-                resize: 'vertical'
-              }}
+              className={`min-h-[80px] w-full resize-vertical rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                isReadOnly
+                  ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+              }`}
             />
-            <p style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              margin: '4px 0 0 0'
-            }}>
-              {formData.changeReason?.length || 0} characters (minimum 10 required)
-            </p>
+            <div className="mt-2 text-xs text-gray-500">
+              {formData.changeReason?.length || 0} characters (minimum 10 required when making changes to the payment record)
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+        </div>
+      )}
 
       {/* Customer Selection Modal */}
       <CustomerSearchableSelectionModal

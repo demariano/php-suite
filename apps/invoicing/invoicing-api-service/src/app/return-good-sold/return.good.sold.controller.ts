@@ -11,7 +11,7 @@ import { UpdateReturnGoodSoldCommand } from './command/update/update.command';
 import { GetReturnGoodSoldByCustomerIdQuery } from './queries/get.by.customerId/get.return.good.sold.by.customerId.query';
 import { GetReturnGoodSoldByIdQuery } from './queries/get.by.id/get.return.good.sold.by.id.query';
 import { GetReturnGoodSoldByInvoiceIdQuery } from './queries/get.by.invoiceId/get.return.good.sold.by.invoiceId.query';
-import { GetReturnGoodSoldContainingDocnoQuery } from './queries/get.containing.docno/get.return.good.sold.containing.docno.query';
+import { GetReturnGoodSoldByRgsDocnoQuery } from './queries/get.by.rgsDocno/get.return.good.sold.by.rgsDocno.query';
 import { GetReturnGoodSoldRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetReturnGoodSoldRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
@@ -305,7 +305,7 @@ export class ReturnGoodSoldController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -394,16 +394,24 @@ export class ReturnGoodSoldController {
         description: 'Filter by status',
         enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
     })
+    @ApiQuery({
+        name: 'rgsDocno',
+        type: String,
+        required: false,
+        description: 'Filter by return good sold document number',
+        example: 'RGS-2024-001',
+    })
     @ApiResponse({ status: 200, description: 'Return Good Sold records retrieved successfully' })
     @ApiResponse({ status: 400, description: 'Bad request - Invalid pagination parameters' })
     getRecordsPaginationByStatus(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
         @Query('cursorPointer') cursorPointer: string,
-        @Query('status') status: string
+        @Query('status') status: string,
+        @Query('rgsDocno') rgsDocno?: string
     ) {
         return this.queryBus.execute(
-            new GetReturnGoodSoldRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer)
+            new GetReturnGoodSoldRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, rgsDocno)
         );
     }
 
@@ -469,7 +477,7 @@ export class ReturnGoodSoldController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -541,7 +549,7 @@ export class ReturnGoodSoldController {
     @ApiQuery({
         name: 'limit',
         description: 'Number of records per page',
-        required: true,
+        required: false,
         type: Number,
         example: 10,
     })
@@ -602,41 +610,49 @@ export class ReturnGoodSoldController {
         );
     }
 
-    @Get('search/:docno')
+    @Get('name/:rgsDocno')
     @ApiOperation({
-        summary: 'Search return good sold by document number',
+        summary: 'Get return good sold by document number',
         description:
-            'Searches for return good sold records containing the specified document number with pagination support',
+            'Retrieves return good sold records that contain the specified document number with pagination support.',
     })
     @ApiParam({
-        name: 'docno',
-        description: 'Document number to search for',
-        example: 'DOC-2024',
+        name: 'rgsDocno',
+        description: 'Return good sold document number to search for',
+        example: 'RGS-2024',
     })
     @ApiQuery({
         name: 'limit',
-        description: 'Number of records per page',
-        required: true,
+        description: 'Number of records to return (1-100)',
+        required: false,
         type: Number,
         example: 10,
     })
     @ApiQuery({
         name: 'direction',
-        description: 'Pagination direction',
+        description: 'Page direction: "next" or "prev"',
         required: false,
         enum: ['next', 'prev'],
         example: 'next',
     })
     @ApiQuery({
         name: 'cursorPointer',
-        description: 'Cursor pointer for pagination',
+        description: 'Cursor for pagination',
         required: false,
         type: String,
-        example: 'eyJjcmVhdGVkQXQiOiIyMDI0LTAxLTAxVDAwOjAwOjAwLjAwMFoifQ==',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'For Swagger consistency (not used in query endpoints)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'USER',
     })
     @ApiResponse({
         status: 200,
-        description: 'Return Good Sold records found successfully with pagination',
+        description: 'Return Good Sold records retrieved successfully with pagination',
         schema: {
             type: 'object',
             properties: {
@@ -646,33 +662,24 @@ export class ReturnGoodSoldController {
                     properties: {
                         data: {
                             type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: {
-                                    returnGoodSoldId: { type: 'string', example: 'return-123' },
-                                    invoiceId: { type: 'string', example: 'invoice-123' },
-                                    customerId: { type: 'string', example: 'customer-123' },
-                                    customerName: { type: 'string', example: 'Acme Corp' },
-                                    invoiceDocno: { type: 'string', example: 'INV-2024-001' },
-                                    rgsDocno: { type: 'string', example: 'RGS-2024-001' },
-                                    dateReturned: { type: 'string', example: '2024-01-01' },
-                                    status: { type: 'string', example: 'ACTIVE' },
-                                },
-                            },
+                            items: { $ref: '#/components/schemas/ReturnGoodSoldDto' },
                         },
-                        nextCursorPointer: { type: 'string', nullable: true },
-                        prevCursorPointer: { type: 'string', nullable: true },
+                        nextCursorPointer: { type: 'object' },
+                        prevCursorPointer: { type: 'object' },
                     },
                 },
             },
         },
     })
-    getContainingDocno(
-        @Param('docno') docno: string,
-        @Query('limit') limit: number,
-        @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string
+    getByRgsDocno(
+        @Param('rgsDocno') rgsDocno: string,
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string,
+        @Query('userRole') userRole?: string
     ) {
-        return this.queryBus.execute(new GetReturnGoodSoldContainingDocnoQuery(docno, limit, direction, cursorPointer));
+        // Note: userRole is included for Swagger consistency but not used in query endpoints
+        const query = new GetReturnGoodSoldByRgsDocnoQuery(rgsDocno, limit, direction, cursorPointer);
+        return this.queryBus.execute(query);
     }
 }

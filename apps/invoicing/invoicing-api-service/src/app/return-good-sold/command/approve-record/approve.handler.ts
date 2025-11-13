@@ -92,13 +92,14 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
     ): Promise<ResponseDto<ReturnGoodSoldDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Return Good Sold approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
@@ -110,8 +111,9 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
         existingRecord.dateReturned = forApprovalVersion.dateReturned as string;
         existingRecord.originalInvoiceDetails = forApprovalVersion.originalInvoiceDetails as Array<any>;
         existingRecord.modifiedInvoiceDetails = forApprovalVersion.modifiedInvoiceDetails as Array<any>;
-        existingRecord.changeReason = null;
         existingRecord.forApprovalVersion = {};
+        // Reset changeReason to null AFTER applying forApprovalVersion
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.returnGoodSoldDatabaseService.updateRecord(existingRecord);

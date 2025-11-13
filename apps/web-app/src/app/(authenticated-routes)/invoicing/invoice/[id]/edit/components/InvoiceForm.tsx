@@ -189,192 +189,119 @@ export default function InvoiceForm({
     setContractProductDealQty(productDealQty);
   };
 
-  return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      padding: '24px',
-      width: '100%',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-      }}>
-        <h2 style={{
-          fontSize: '20px',
-          fontWeight: '600',
-          color: '#1f2937',
-          margin: 0
-        }}>
-          {isCreateMode ? 'Create Invoice' : 'Edit Invoice'}
-        </h2>
-      </div>
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
 
+  const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+    
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'bg-green-600 text-white shadow-sm';
+      case StatusEnum.FOR_APPROVAL:
+        return 'bg-yellow-500 text-white shadow-sm';
+      case StatusEnum.FOR_DELETION:
+        return 'bg-red-600 text-white shadow-sm';
+      case StatusEnum.NEW_RECORD:
+        return 'bg-blue-600 text-white shadow-sm';
+      default:
+        return 'bg-gray-500 text-white shadow-sm';
+    }
+  };
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
       {/* Tab Navigation */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '2px solid #e5e7eb',
-        marginBottom: '20px',
-        backgroundColor: '#f8fafc',
-        borderRadius: '8px 8px 0 0',
-        padding: '4px'
-      }}>
-        <button
-          onClick={() => onTabChange('details')}
-          style={{
-            padding: '12px 20px',
-            backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
-            color: activeTab === 'details' ? '#1f2937' : '#6b7280',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: activeTab === 'details' ? '600' : '500',
-            transition: 'all 0.2s ease',
-            boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-            marginRight: '4px'
-          }}
-          title={(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE) ? 'View original invoice details (read-only)' : 'View and edit invoice details'}
-          onMouseEnter={(e) => {
-            if (activeTab !== 'details') {
-              e.currentTarget.style.backgroundColor = '#f1f5f9';
-              e.currentTarget.style.color = '#374151';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (activeTab !== 'details') {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#6b7280';
-            }
-          }}
-        >
-          Details
-        </button>
-        
-        {!isCreateMode && selectedInvoice && selectedInvoice.status !== StatusEnum.ACTIVE && (
+      <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
+        <div className="flex gap-2 flex-nowrap">
           <button
-            onClick={() => onTabChange('approval')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
-              color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: activeTab === 'approval' ? '600' : '500',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-              marginRight: '4px'
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== 'approval') {
-                e.currentTarget.style.backgroundColor = '#f1f5f9';
-                e.currentTarget.style.color = '#374151';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== 'approval') {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }
-            }}
+            onClick={() => onTabChange('details')}
+            className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+              getTabColorClasses(selectedInvoice?.status || StatusEnum.ACTIVE, activeTab === 'details')
+            }`}
+            title={(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE) ? 'View original invoice details (read-only)' : 'View and edit invoice details'}
           >
-            Approval Version
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Invoice Information
+              {selectedInvoice && (
+                <>
+                  <span className="mx-1">-</span>
+                  <span>{getStatusText(selectedInvoice.status || StatusEnum.ACTIVE)}</span>
+                </>
+              )}
+            </span>
           </button>
-        )}
-        
-        {!isCreateMode && (
-          <button
-            onClick={() => onTabChange('logs')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
-              color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: activeTab === 'logs' ? '600' : '500',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== 'logs') {
-                e.currentTarget.style.backgroundColor = '#f1f5f9';
-                e.currentTarget.style.color = '#374151';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== 'logs') {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }
-            }}
-          >
-            Activity Logs
-          </button>
-        )}
+          
+          {!isCreateMode && selectedInvoice && selectedInvoice.status !== StatusEnum.ACTIVE && (
+            <button
+              onClick={() => onTabChange('approval')}
+              className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                activeTab === 'approval'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Pending Changes
+              </span>
+            </button>
+          )}
+          
+          {!isCreateMode && (
+            <button
+              onClick={() => onTabChange('logs')}
+              className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                activeTab === 'logs'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Activity Logs
+              </span>
+            </button>
+          )}
+        </div>
       </div>
       
       {/* Tab Content */}
-      <div>
+      <div className="bg-white p-4 sm:p-6">
         {/* Details Tab */}
         {activeTab === 'details' && (
           <div>
             {/* Show read-only warning when invoice is pending approval */}
             {!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE && (
-              <div style={{
-                backgroundColor: '#fef3c7',
-                border: '2px solid #f59e0b',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '20px',
-                boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '8px'
-                }}>
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: '#f59e0b',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    🔒
-                  </div>
-                  <h4 style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#92400e',
-                    margin: 0
-                  }}>
-                    Read-Only Mode
-                  </h4>
+              <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
+                  ⚠
                 </div>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#92400e',
-                  margin: 0,
-                  lineHeight: '1.5'
-                }}>
-                  This invoice is pending approval. You can view the original details here, but cannot make changes. 
-                  Use the "Approval Version" tab to see the proposed changes.
-                </p>
+                <span className="text-sm font-semibold">
+                  This record is pending approval. Editing and deletion are disabled until the record is approved or denied.
+                </span>
               </div>
             )}
             
@@ -396,6 +323,51 @@ export default function InvoiceForm({
               contractSales={formData.contractSales}
               isReadOnly={!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE}
             />
+
+            {/* Action Buttons for Details Tab */}
+            <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+              {!isCreateMode && selectedInvoice?.status === StatusEnum.ACTIVE ? (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  disabled={isLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Delete'}
+                </button>
+              ) : (
+                <div className="hidden sm:block" />
+              )}
+              
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                {(isCreateMode || selectedInvoice?.status === StatusEnum.ACTIVE) && (
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)}
+                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    {isLoading ? 'Saving...' : (isCreateMode ? 'Create Invoice' : 'Save Changes')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={onCancel}
+                  className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
         
@@ -411,9 +383,9 @@ export default function InvoiceForm({
             <div>
               <div className="mb-5">
                 {(selectedInvoice.status === StatusEnum.FOR_APPROVAL || selectedInvoice.status === StatusEnum.NEW_RECORD) && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-                    <span className="text-yellow-600 text-base">ℹ️</span>
-                    <span className="text-yellow-800 text-sm">
+                  <div className="mb-4 flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3">
+                    <span className="text-base text-yellow-600">ℹ️</span>
+                    <span className="text-sm text-yellow-800">
                       These are the proposed changes awaiting approval
                     </span>
                   </div>
@@ -421,53 +393,18 @@ export default function InvoiceForm({
 
                 {/* Change Reason - Highlighted field */}
                 {selectedInvoice?.changeReason && (
-                  <div style={{
-                    backgroundColor: '#fef3c7',
-                    border: '2px solid #f59e0b',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    marginBottom: '20px',
-                    boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '12px'
-                    }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: '#f59e0b',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        📝
+                  <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </div>
-                      <h4 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#92400e',
-                        margin: 0
-                      }}>
+                      <h3 className="m-0 text-base font-bold text-blue-600">
                         Change Reason
-                      </h4>
+                      </h3>
                     </div>
-                    <div style={{
-                      padding: '12px 16px',
-                      backgroundColor: 'white',
-                      border: '1px solid #f59e0b',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      color: '#92400e',
-                      lineHeight: '1.5',
-                      whiteSpace: 'pre-wrap'
-                    }}>
+                    <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium leading-relaxed text-gray-500 shadow-sm whitespace-pre-wrap font-mono cursor-not-allowed">
                       {selectedInvoice.changeReason}
                     </div>
                   </div>
@@ -491,79 +428,48 @@ export default function InvoiceForm({
                 isReadOnly={true}
               />
               
-              <div className="flex justify-between mt-6">
+              <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
-                {isAdminUser && (selectedInvoice?.status === StatusEnum.FOR_APPROVAL || selectedInvoice?.status === StatusEnum.NEW_RECORD || selectedInvoice?.status === StatusEnum.FOR_DELETION) && (
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                {isAdminUser && (selectedInvoice?.status === StatusEnum.FOR_APPROVAL || selectedInvoice?.status === StatusEnum.NEW_RECORD || selectedInvoice?.status === StatusEnum.FOR_DELETION) ? (
+                  <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                     <button
                       type="button"
                       onClick={onDeny}
                       disabled={isLoading}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: isLoading ? '#9ca3af' : '#dc2626',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        opacity: isLoading ? 0.7 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = '#b91c1c';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                        }
-                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
                     >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                       {isLoading ? 'Processing...' : 'Deny Changes'}
                     </button>
                     <button
                       type="button"
                       onClick={onApprove}
                       disabled={isLoading}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        opacity: isLoading ? 0.7 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = '#2563eb';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = '#3b82f6';
-                        }
-                      }}
+                      className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
                     >
+                      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
                       {isLoading ? 'Processing...' : 'Approve Changes'}
                     </button>
                   </div>
+                ) : (
+                  <div className="hidden sm:block" />
                 )}
                 
-                {/* Close button - moved to right side */}
+                {/* Cancel button */}
                 <div>
                   <button
                     type="button"
                     onClick={onCancel}
-                    className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
                   >
-                    Close
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Cancel
                   </button>
                 </div>
               </div>
@@ -572,147 +478,56 @@ export default function InvoiceForm({
         })()}
         
         {/* Activity Logs Tab */}
-        {activeTab === 'logs' && !isCreateMode && (
-          <div>
-            <div className="mb-5">
-              <h3 className="text-base font-semibold text-gray-800 mb-3">
-                Recent Activity
-              </h3>
+        {activeTab === 'logs' && !isCreateMode && selectedInvoice && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="m-0 text-base font-bold text-blue-600">
+                  Activity Logs
+                </h3>
+              </div>
+              
               {selectedInvoice?.activityLogs && selectedInvoice.activityLogs.length > 0 ? (
-                <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-                  {selectedInvoice.activityLogs.map((log, index) => (
-                    <div 
-                      key={index} 
-                      className={`py-2 ${
-                        index < selectedInvoice.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                      }`}
-                    >
-                      {log}
-                    </div>
-                  ))}
+                <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
+                  <ul className="divide-y divide-gray-200 text-sm text-gray-700">
+                    {selectedInvoice.activityLogs.map((log, index) => (
+                      <li 
+                        key={index} 
+                        className="px-4 py-3"
+                      >
+                        {log}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : (
-                <p className="text-gray-500 italic">
+                <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
                   No activity logs available
                 </p>
               )}
             </div>
-            
-            <div className="flex justify-end mt-6">
+
+            {/* Action Buttons */}
+            <div className="mt-8 flex justify-end">
               <button
                 type="button"
                 onClick={onCancel}
-                className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                Close
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
               </button>
             </div>
           </div>
         )}
       </div>
-
-      {/* Action Buttons for Details Tab */}
-      {activeTab === 'details' && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '24px',
-          paddingTop: '24px',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <div>
-            {!isCreateMode && (
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? '#9ca3af' : '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  opacity: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? 0.7 : 1
-                }}
-                title={(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE) ? 'Delete button is disabled - invoice is pending approval' : 'Delete invoice'}
-                onMouseEnter={(e) => {
-                  if (!isLoading && !(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) {
-                    e.currentTarget.style.backgroundColor = '#b91c1c';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading && !(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) {
-                    e.currentTarget.style.backgroundColor = '#dc2626';
-                  }
-                }}
-              >
-                {isLoading ? 'Processing...' : 'Delete'}
-              </button>
-            )}
-          </div>
-          
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              type="button"
-              onClick={onCancel}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: 'transparent',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? '#9ca3af' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: (isLoading || (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) ? 0.7 : 1
-              }}
-              title={(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE) ? 'Save button is disabled - invoice is pending approval' : (isCreateMode ? 'Create invoice' : 'Save changes')}
-              onMouseEnter={(e) => {
-                if (!isLoading && !(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isLoading && !(!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)) {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                }
-              }}
-            >
-              {isLoading ? 'Saving...' : (isCreateMode ? 'Create Invoice' : 'Save Changes')}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

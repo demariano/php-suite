@@ -22,16 +22,22 @@ export class DeleteProductHandler implements ICommandHandler<DeleteProductComman
         this.logger.log(`Processing delete request for product: ${command.productDto.productId}`);
 
         try {
+            command.productDto.productId = command.productId;
+
             // Validate record exists
-            await this.validateProductExists(command.productDto.productId);
+            const existingRecord = await this.validateProductExists(command.productId);
 
             // Check user authorization and determine action
             const hasDeletePermission = this.hasDeletePermission(command.user.roles);
 
             if (hasDeletePermission) {
-                return await this.performDirectDelete(command);
+                return await this.performDirectDelete(existingRecord);
             } else {
-                return await this.performSoftDelete(command);
+                return await this.performSoftDelete(
+                    existingRecord,
+                    command.user.username,
+                    command.productDto.changeReason
+                );
             }
         } catch (error) {
             return this.handleError(error, command.productDto.productId);
@@ -41,13 +47,15 @@ export class DeleteProductHandler implements ICommandHandler<DeleteProductComman
     /**
      * Validates that the product record exists
      */
-    private async validateProductExists(productId: string): Promise<void> {
-        const existingRecord = await this.productDatabaseService.findProductRecordById(productId);
+    private async validateProductExists(productId: string): Promise<ProductDto> {
+        const existingRecord = await this.productDatabaseService.findRecordById(productId);
 
         if (!existingRecord) {
             this.logger.warn(`Product not found: ${productId}`);
             throw new NotFoundException(`Product record not found for id ${productId}`);
         }
+
+        return existingRecord;
     }
 
     /**
@@ -64,32 +72,38 @@ export class DeleteProductHandler implements ICommandHandler<DeleteProductComman
     /**
      * Performs direct deletion for authorized users
      */
-    private async performDirectDelete(command: DeleteProductCommand): Promise<ResponseDto<ProductDto>> {
-        await this.productDatabaseService.deleteProductRecord(command.productDto);
+    private async performDirectDelete(existingRecord: ProductDto): Promise<ResponseDto<ProductDto>> {
+        await this.productDatabaseService.deleteRecord(existingRecord);
 
-        this.logger.log(`Product deleted successfully: ${command.productDto.productId}`);
-        return new ResponseDto<ProductDto>(command.productDto, HTTP_STATUS_OK);
+        this.logger.log(`Product deleted successfully: ${existingRecord.productId}`);
+        return new ResponseDto<ProductDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**
      * Performs soft deletion by marking for deletion
      */
-    private async performSoftDelete(command: DeleteProductCommand): Promise<ResponseDto<ProductDto>> {
+    private async performSoftDelete(
+        existingRecord: ProductDto,
+        username: string,
+        changeReason?: string
+    ): Promise<ResponseDto<ProductDto>> {
         // Update status and add activity log
-        command.productDto.status = StatusEnum.FOR_DELETION;
-        command.productDto.activityLogs.push(
+        existingRecord.status = StatusEnum.FOR_DELETION;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.changeReason = changeReason ?? existingRecord.changeReason;
+        existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Product marked for deletion by ${command.user.username}`
+            })}, Product marked for deletion by ${username}`
         );
 
         // Optimize activity logs
-        command.productDto.activityLogs = reduceArrayContents(command.productDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         // Update record in database
-        const updatedRecord = await this.productDatabaseService.updateProductRecord(command.productDto);
+        const updatedRecord = await this.productDatabaseService.updateRecord(existingRecord);
 
-        this.logger.log(`Product marked for deletion: ${command.productDto.productId}`);
+        this.logger.log(`Product marked for deletion: ${existingRecord.productId}`);
         return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
     }
 

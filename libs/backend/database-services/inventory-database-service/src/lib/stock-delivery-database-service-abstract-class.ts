@@ -8,6 +8,13 @@ export abstract class StockDeliveryDatabaseServiceAbstract {
 
     abstract findRecordContainingDocno(docno: string): Promise<StockDeliveryDto[] | null>;
 
+    abstract findRecordsByDocnoPagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        docno: string
+    ): Promise<PageDto<StockDeliveryDto>>;
+
     abstract getDatabaseRecordById(recordId: string): Promise<StockDeliveryDataType | undefined>;
 
     abstract updateRecord(stockDeliveryData: StockDeliveryDto): Promise<StockDeliveryDto>;

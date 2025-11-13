@@ -1,6 +1,6 @@
-import { ErrorResponseDto, ResponseDto, StockDeliveryDto } from '@dto';
+import { ErrorResponseDto, PageDto, ResponseDto, StockDeliveryDto } from '@dto';
 import { StockDeliveryDatabaseServiceAbstract } from '@inventory-database-service';
-import { Inject, Logger } from '@nestjs/common';
+import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetStockDeliveryByDocnoQuery } from './get.stock-delivery.by.docno.query';
 
@@ -16,22 +16,58 @@ export class GetStockDeliveryByDocnoHandler implements IQueryHandler<GetStockDel
         private readonly stockDeliveryDatabaseService: StockDeliveryDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetStockDeliveryByDocnoQuery): Promise<ResponseDto<StockDeliveryDto[] | ErrorResponseDto>> {
-        this.logger.log(`Processing get by docno request for stock delivery: ${query.docno}`);
+    async execute(query: GetStockDeliveryByDocnoQuery): Promise<ResponseDto<PageDto<StockDeliveryDto>>> {
+        this.logger.log(`Processing get stock deliveries by docno request: ${query.docno}`);
 
         try {
-            const stockDeliveries = await this.stockDeliveryDatabaseService.findRecordContainingDocno(query.docno);
+            // Validate docno parameter
+            this.validateDocnoParameter(query.docno);
 
-            if (!stockDeliveries || stockDeliveries.length === 0) {
-                this.logger.warn(`No stock deliveries found for docno: ${query.docno}`);
-                return new ResponseDto<StockDeliveryDto[]>([], HTTP_STATUS_OK);
-            }
+            // Fetch stock deliveries by docno
+            const stockDeliveries = await this.fetchStockDeliveriesByDocno(
+                query.docno,
+                query.limit,
+                query.direction,
+                query.cursorPointer
+            );
 
-            this.logger.log(`Stock deliveries retrieved successfully: ${stockDeliveries.length} records`);
-            return new ResponseDto<StockDeliveryDto[]>(stockDeliveries, HTTP_STATUS_OK);
+            this.logger.log(`Stock deliveries retrieved successfully: ${stockDeliveries.data.length} found`);
+            return new ResponseDto<PageDto<StockDeliveryDto>>(stockDeliveries, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.docno);
         }
+    }
+
+    /**
+     * Validates the docno parameter
+     */
+    private validateDocnoParameter(docno: string): void {
+        if (!docno || docno.trim() === '') {
+            throw new BadRequestException('Document number is required');
+        }
+    }
+
+    /**
+     * Fetches stock deliveries by docno using pagination
+     */
+    private async fetchStockDeliveriesByDocno(
+        docno: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockDeliveryDto>> {
+        const stockDeliveries = await this.stockDeliveryDatabaseService.findRecordsByDocnoPagination(
+            limit,
+            direction,
+            cursorPointer,
+            docno
+        );
+
+        if (!stockDeliveries || stockDeliveries.data.length === 0) {
+            return new PageDto<StockDeliveryDto>([], null, null);
+        }
+
+        return stockDeliveries;
     }
 
     /**

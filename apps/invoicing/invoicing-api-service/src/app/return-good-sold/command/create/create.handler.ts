@@ -1,10 +1,12 @@
 import { CreateReturnGoodSoldDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { ReturnGoodSoldDatabaseServiceAbstractClass } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateReturnGoodSoldCommand } from './create.command';
 
 // Constants
+const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_CREATED = 201;
 
 @CommandHandler(CreateReturnGoodSoldCommand)
@@ -22,6 +24,9 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
         this.logger.log(`Processing create request for return good sold: ${command.returnGoodSoldDto.rgsDocno}`);
 
         try {
+            // Validate that rgsDocno doesn't already exist
+            await this.validateRgsDocnoUnique(command.returnGoodSoldDto.rgsDocno);
+
             // Update status and activity logs based on permissions
             this.updateReturnGoodSoldStatus(command);
 
@@ -32,6 +37,18 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
             return new ResponseDto<CreateReturnGoodSoldDto>(createdRecord, HTTP_STATUS_CREATED);
         } catch (error) {
             return this.handleError(error, command.returnGoodSoldDto.rgsDocno);
+        }
+    }
+
+    /**
+     * Validates that the rgsDocno is unique
+     */
+    private async validateRgsDocnoUnique(rgsDocno: string): Promise<void> {
+        const existingRecord = await this.returnGoodSoldDatabaseService.findRecordByRgsDocno(rgsDocno);
+
+        if (existingRecord) {
+            this.logger.warn(`Return Good Sold rgsDocno already exists: ${rgsDocno}`);
+            throw new BadRequestException('Return Good Sold document number already exists');
         }
     }
 
@@ -61,6 +78,8 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
                     timeZone: 'Asia/Manila',
                 })}, Return Good Sold created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
+            // Limit activity logs to last 10 entries
+            command.returnGoodSoldDto.activityLogs = reduceArrayContents(command.returnGoodSoldDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to NEW_RECORD
             command.returnGoodSoldDto.status = StatusEnum.NEW_RECORD;
@@ -70,6 +89,8 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
                     timeZone: 'Asia/Manila',
                 })}, Return Good Sold created by ${command.user.username} for approval`
             );
+            // Limit activity logs to last 10 entries
+            command.returnGoodSoldDto.activityLogs = reduceArrayContents(command.returnGoodSoldDto.activityLogs, ACTIVITY_LOGS_LIMIT);
             command.returnGoodSoldDto.forApprovalVersion = {};
             command.returnGoodSoldDto.forApprovalVersion.invoiceId = command.returnGoodSoldDto.invoiceId;
             command.returnGoodSoldDto.forApprovalVersion.customerId = command.returnGoodSoldDto.customerId;

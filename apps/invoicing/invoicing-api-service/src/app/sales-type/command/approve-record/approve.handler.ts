@@ -85,13 +85,14 @@ export class ApproveSalesTypeHandler implements ICommandHandler<ApproveSalesType
     private async approveSalesType(existingRecord: SalesTypeDto, user: any): Promise<ResponseDto<SalesTypeDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Sales type approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
@@ -103,6 +104,8 @@ export class ApproveSalesTypeHandler implements ICommandHandler<ApproveSalesType
         existingRecord.incomeGenerating = forApprovalVersion.incomeGenerating as boolean;
         existingRecord.taxable = forApprovalVersion.taxable as boolean;
         existingRecord.forApprovalVersion = {};
+        // Reset changeReason to null AFTER applying forApprovalVersion
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);

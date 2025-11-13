@@ -1,645 +1,652 @@
 'use client';
 
-import { StatusEnum, StockDeliveryDto, useSessionStore } from '@data-access/index';
+import { DeliveryDetailsDto, ProductDto, ProductUnitDto, StatusEnum, StockDeliveryDto, StockTypeDto, SupplierDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import RecordDetailsTab from './RecordDetailsTab';
-import StockDeliveryDetailsTab from './StockDeliveryDetailsTab';
+import DatePicker from '../../../../../components/DatePicker';
+import ProductSearchableSelectionModal from '../../../../../search-modals/ProductSearchableSelectionModal';
+import ProductUnitSearchableSelectionModal from '../../../../../search-modals/ProductUnitSearchableSelectionModal';
+import StockTypeSearchableSelectionModal from '../../../../../search-modals/StockTypeSearchableSelectionModal';
+import SupplierSearchableSelectionModal from '../../../../../search-modals/SupplierSearchableSelectionModal';
 
 interface StockDeliveryFormProps {
   isCreateMode: boolean;
   selectedStockDelivery: StockDeliveryDto | null;
   successMessage: string | null;
-  isAdminUser: boolean;
-  isLoading: boolean;
-  activeTab: 'details' | 'approval' | 'logs';
-  onTabChange: (tab: 'details' | 'approval' | 'logs') => void;
   onSave: (stockDelivery: StockDeliveryDto) => void;
   onDelete: () => void;
-  onApprove: () => void;
-  onDeny: () => void;
   onCancel: () => void;
+  isAdminUser?: boolean;
+}
+
+interface StockSelectionState {
+  selectedProduct: ProductDto | null;
+  selectedProductUnit: ProductUnitDto | null;
+  selectedStockType: StockTypeDto | null;
+  lotNo: string;
+  expirationDate: string;
+  quantity: number;
+  showProductModal: boolean;
+  showProductUnitModal: boolean;
+  showStockTypeModal: boolean;
+  showSupplierModal: boolean;
 }
 
 export default function StockDeliveryForm({
   isCreateMode,
   selectedStockDelivery,
   successMessage,
-  isAdminUser,
-  isLoading,
-  activeTab,
-  onTabChange,
   onSave,
   onDelete,
-  onApprove,
-  onDeny,
-  onCancel
+  onCancel,
+  isAdminUser = false
 }: StockDeliveryFormProps) {
+  const { setFlashNotification } = useSessionStore();
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState<StockDeliveryDto>({
-    stockDeliveryId: '',
     docno: '',
     dateReceived: new Date().toISOString().split('T')[0],
     supplierId: '',
     supplierName: '',
-    status: isCreateMode ? StatusEnum.NEW_RECORD : StatusEnum.ACTIVE,
     deliveryDetails: [],
-    activityLogs: [],
-    forApprovalVersion: {}
+    changeReason: ''
   });
 
-  // Toast notification hook
-  const { setFlashNotification } = useSessionStore();
+  const [stockSelection, setStockSelection] = useState<StockSelectionState>({
+    selectedProduct: null,
+    selectedProductUnit: null,
+    selectedStockType: null,
+    lotNo: '',
+    expirationDate: '',
+    quantity: 0,
+    showProductModal: false,
+    showProductUnitModal: false,
+    showStockTypeModal: false,
+    showSupplierModal: false
+  });
 
-  // Initialize form data when selectedStockDelivery changes
   useEffect(() => {
-    if (selectedStockDelivery) {
+    if (!isCreateMode && selectedStockDelivery) {
       setFormData({
-        ...selectedStockDelivery,
-        deliveryDetails: selectedStockDelivery.deliveryDetails || []
+        docno: selectedStockDelivery.docno || '',
+        dateReceived: selectedStockDelivery.dateReceived || new Date().toISOString().split('T')[0],
+        supplierId: selectedStockDelivery.supplierId || '',
+        supplierName: selectedStockDelivery.supplierName || '',
+        deliveryDetails: selectedStockDelivery.deliveryDetails || [],
+        changeReason: selectedStockDelivery.changeReason || ''
       });
     } else if (isCreateMode) {
-      // Reset to default values for create mode
       setFormData({
-        stockDeliveryId: '',
         docno: '',
         dateReceived: new Date().toISOString().split('T')[0],
         supplierId: '',
         supplierName: '',
-        status: StatusEnum.NEW_RECORD,
         deliveryDetails: [],
-        activityLogs: [],
-        forApprovalVersion: {}
+        changeReason: ''
       });
     }
-  }, [selectedStockDelivery, isCreateMode]);
+  }, [isCreateMode, selectedStockDelivery]);
 
-  // Validation function for stock delivery data
-  const validateStockDelivery = (stockDelivery: StockDeliveryDto): string | null => {
-    // Rule 1: Document number is required
-    if (!stockDelivery.docno || stockDelivery.docno.trim() === '') {
-      return 'Document number is required and cannot be empty.';
+  const validateForm = (): string[] => {
+    const errors: string[] = [];
+
+    if (!formData.docno.trim()) {
+      errors.push('Document Number is required.');
+    }
+    if (!formData.supplierId) {
+      errors.push('Supplier is required.');
+    }
+    if (!formData.dateReceived) {
+      errors.push('Date Received is required.');
+    }
+    if (!formData.deliveryDetails || formData.deliveryDetails.length === 0) {
+      errors.push('At least one stock item must be added to delivery details.');
+    } else {
+      formData.deliveryDetails.forEach((detail, index) => {
+        if (!detail.productId || !detail.productUnitId || !detail.stockTypeId || 
+            detail.qty === undefined || detail.qty === null || detail.qty <= 0 || isNaN(detail.qty)) {
+          errors.push(`Delivery detail item ${index + 1} has incomplete information (product, unit, stock type, or quantity missing/invalid).`);
+        }
+        if (!detail.lotNo || detail.lotNo.trim() === '') {
+          errors.push(`Delivery detail item ${index + 1} is missing a Lot Number.`);
+        }
+        if (!detail.expirationDate || detail.expirationDate.trim() === '') {
+          errors.push(`Delivery detail item ${index + 1} is missing an Expiration Date.`);
+        }
+      });
     }
 
-    // Rule 2: Supplier must be selected
-    if (!stockDelivery.supplierId || stockDelivery.supplierId.trim() === '') {
-      return 'Please select a supplier before saving the stock delivery.';
+    if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+      errors.push('Please provide a reason for the change.');
     }
 
-    // Rule 3: Delivery details must not be empty
-    if (!stockDelivery.deliveryDetails || stockDelivery.deliveryDetails.length === 0) {
-      return 'Please add at least one item to the delivery details.';
-    }
-
-    // Rule 4: Change reason required for non-admin users editing existing records
-    if (!isCreateMode && !isAdminUser) {
-      if (!stockDelivery.changeReason || stockDelivery.changeReason.trim() === '') {
-        return 'Change reason is required when modifying a stock delivery.';
-      }
-      if (stockDelivery.changeReason.trim().length < 10) {
-        return 'Change reason must be at least 10 characters when modifying a stock delivery.';
-      }
-    }
-
-    return null; // All validations passed
+    return errors;
   };
 
-  const handleSave = () => {
-    const validationError = validateStockDelivery(formData);
-    if (validationError) {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const errors = validateForm();
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+    setValidationErrors([]);
+
+    const newStatus = isCreateMode ? StatusEnum.NEW_RECORD : (isAdminUser ? StatusEnum.ACTIVE : StatusEnum.FOR_APPROVAL);
+
+    const stockDeliveryToSave: StockDeliveryDto = {
+      ...selectedStockDelivery,
+      ...formData,
+      status: newStatus,
+      changeReason: formData.changeReason.trim() || undefined,
+      deliveryDetails: formData.deliveryDetails
+    };
+    onSave(stockDeliveryToSave);
+  };
+
+  const handleAddDetailRecord = () => {
+    if (!stockSelection.selectedProduct || !stockSelection.selectedProductUnit ||
+        !stockSelection.selectedStockType || stockSelection.quantity <= 0 ||
+        !stockSelection.lotNo.trim() || !stockSelection.expirationDate.trim()) {
       setFlashNotification({
-        title: 'Validation Error',
-        message: validationError,
-        alertType: 'error',
+        title: 'Missing Information',
+        message: 'Please select product, product unit, stock type, enter lot number, expiration date, and quantity.',
+        alertType: 'warning'
       });
       return;
     }
-    onSave(formData);
-  };
 
-  const handleFormDataChange = (updatedData: Partial<StockDeliveryDto>) => {
+    const hasDuplicate = (formData.deliveryDetails || []).some(d =>
+      d.productId === stockSelection.selectedProduct?.productId &&
+      d.lotNo === stockSelection.lotNo
+    );
+    if (hasDuplicate) {
+      setFlashNotification({
+        title: 'Duplicate Item',
+        message: 'An item with the same product and lot is already added.',
+        alertType: 'warning'
+      });
+      return;
+    }
+
+    const newDetail: DeliveryDetailsDto = {
+      productId: stockSelection.selectedProduct.productId || '',
+      productName: stockSelection.selectedProduct.productName || '',
+      productUnitId: stockSelection.selectedProductUnit.productUnitId,
+      productUnitName: stockSelection.selectedProductUnit.productUnitName,
+      stockTypeId: stockSelection.selectedStockType.stockTypeId,
+      stockTypeName: stockSelection.selectedStockType.stockTypeName,
+      lotNo: stockSelection.lotNo.trim(),
+      expirationDate: stockSelection.expirationDate.trim(),
+      qty: Number(stockSelection.quantity)
+    };
+
     setFormData(prev => ({
       ...prev,
-      ...updatedData
+      deliveryDetails: [...(prev.deliveryDetails || []), newDetail]
+    }));
+
+    // Reset stock selection fields
+    setStockSelection(prev => ({
+      ...prev,
+      selectedProduct: null,
+      selectedProductUnit: null,
+      selectedStockType: null,
+      lotNo: '',
+      expirationDate: '',
+      quantity: 0
     }));
   };
 
+  const handleRemoveDetailRecord = (indexToRemove: number) => {
+    setFormData(prev => ({
+      ...prev,
+      deliveryDetails: (prev.deliveryDetails || []).filter((_, index) => index !== indexToRemove)
+    }));
+  };
+
+  const isFormDisabled = !isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE;
+
   return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      padding: '24px',
-      width: '100%',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-      }}>
-        <h2 style={{
-          fontSize: '20px',
-          fontWeight: '600',
-          color: '#1f2937',
-          margin: 0
-        }}>
-          {isCreateMode ? 'Create Stock Delivery' : 'Edit Stock Delivery'}
-        </h2>
-      </div>
-
-      {/* Tab Navigation */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '2px solid #e5e7eb',
-        marginBottom: '20px',
-        backgroundColor: '#f8fafc',
-        borderRadius: '8px 8px 0 0',
-        padding: '4px'
-      }}>
-        <button
-          onClick={() => onTabChange('details')}
-          style={{
-            padding: '12px 20px',
-            backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
-            color: activeTab === 'details' ? '#1f2937' : '#6b7280',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: activeTab === 'details' ? '600' : '500',
-            transition: 'all 0.2s ease',
-            boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-            marginRight: '4px'
-          }}
-          title={(!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE) ? 'View original stock delivery details (read-only)' : 'View and edit stock delivery details'}
-          onMouseEnter={(e) => {
-            if (activeTab !== 'details') {
-              e.currentTarget.style.backgroundColor = '#f1f5f9';
-              e.currentTarget.style.color = '#374151';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (activeTab !== 'details') {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#6b7280';
-            }
-          }}
-        >
-          Details
-        </button>
-        
-        {!isCreateMode && selectedStockDelivery && selectedStockDelivery.status !== StatusEnum.ACTIVE && (
-          <button
-            onClick={() => onTabChange('approval')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
-              color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: activeTab === 'approval' ? '600' : '500',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-              marginRight: '4px'
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== 'approval') {
-                e.currentTarget.style.backgroundColor = '#f1f5f9';
-                e.currentTarget.style.color = '#374151';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== 'approval') {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }
-            }}
-          >
-            Approval Version
-          </button>
-        )}
-        
-        {!isCreateMode && (
-          <button
-            onClick={() => onTabChange('logs')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
-              color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: activeTab === 'logs' ? '600' : '500',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== 'logs') {
-                e.currentTarget.style.backgroundColor = '#f1f5f9';
-                e.currentTarget.style.color = '#374151';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== 'logs') {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }
-            }}
-          >
-            Activity Logs
-          </button>
-        )}
-      </div>
-      
-      {/* Tab Content */}
-      <div>
-        {/* Details Tab */}
-        {activeTab === 'details' && (
-          <div>
-            {/* Show read-only warning when stock delivery is pending approval */}
-            {!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE && (
-              <div style={{
-                backgroundColor: '#fef3c7',
-                border: '2px solid #f59e0b',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '20px',
-                boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '8px'
-                }}>
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: '#f59e0b',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    🔒
-                  </div>
-                  <h4 style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#92400e',
-                    margin: 0
-                  }}>
-                    Read-Only Mode
-                  </h4>
-                </div>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#92400e',
-                  margin: 0,
-                  lineHeight: '1.5'
-                }}>
-                  This stock delivery is pending approval. You can view the original details here, but cannot make changes. 
-                  Use the "Approval Version" tab to see the proposed changes.
-                </p>
-              </div>
-            )}
-            
-            <RecordDetailsTab
-              formData={formData}
-              onFormDataChange={handleFormDataChange}
-              isCreateMode={isCreateMode}
-              isAdminUser={isAdminUser}
-              isReadOnly={!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE}
-            />
-            <StockDeliveryDetailsTab
-              formData={formData}
-              onFormDataChange={handleFormDataChange}
-              isCreateMode={isCreateMode}
-              isReadOnly={!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE}
-            />
+    <form onSubmit={handleSubmit}>
+      {/* Success Message */}
+      {successMessage && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-green-500 bg-green-50 p-4 text-green-700 shadow-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-sm font-bold text-white">
+            ✓
           </div>
-        )}
-        
-        {/* Approval Version Tab */}
-        {activeTab === 'approval' && !isCreateMode && selectedStockDelivery && (() => {
-          // Merge original stock delivery data with forApprovalVersion changes
-          const approvalVersionData: StockDeliveryDto = {
-            ...selectedStockDelivery,
-            ...selectedStockDelivery.forApprovalVersion
-          };
-          
-          return (
-            <div>
-              <div className="mb-5">
-                {(selectedStockDelivery.status === StatusEnum.FOR_APPROVAL || selectedStockDelivery.status === StatusEnum.NEW_RECORD) && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4 flex items-center gap-2">
-                    <span className="text-yellow-600 text-base">ℹ️</span>
-                    <span className="text-yellow-800 text-sm">
-                      These are the proposed changes awaiting approval
-                    </span>
-                  </div>
-                )}
-
-                {/* Change Reason - Highlighted field */}
-                {selectedStockDelivery?.changeReason && (
-                  <div style={{
-                    backgroundColor: '#fef3c7',
-                    border: '2px solid #f59e0b',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    marginBottom: '20px',
-                    boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '12px'
-                    }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: '#f59e0b',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        📝
-                      </div>
-                      <h4 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#92400e',
-                        margin: 0
-                      }}>
-                        Change Reason
-                      </h4>
-                    </div>
-                    <div style={{
-                      padding: '12px 16px',
-                      backgroundColor: 'white',
-                      border: '1px solid #f59e0b',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      color: '#92400e',
-                      lineHeight: '1.5',
-                      whiteSpace: 'pre-wrap'
-                    }}>
-                      {selectedStockDelivery.changeReason}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Use the same components as Details tab but with merged data and read-only */}
-              <RecordDetailsTab
-                formData={approvalVersionData}
-                onFormDataChange={() => {}} // No-op since read-only
-                isCreateMode={false}
-                isAdminUser={isAdminUser}
-                isReadOnly={true}
-              />
-              <StockDeliveryDetailsTab
-                formData={approvalVersionData}
-                onFormDataChange={() => {}} // No-op since read-only
-                isCreateMode={false}
-                isReadOnly={true}
-              />
-              
-              <div className="flex justify-between mt-6">
-                {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
-                {isAdminUser && (selectedStockDelivery?.status === StatusEnum.FOR_APPROVAL || selectedStockDelivery?.status === StatusEnum.NEW_RECORD || selectedStockDelivery?.status === StatusEnum.FOR_DELETION) && (
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
-                      type="button"
-                      onClick={onDeny}
-                      disabled={isLoading}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: isLoading ? '#9ca3af' : '#dc2626',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        opacity: isLoading ? 0.7 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = '#b91c1c';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = '#dc2626';
-                        }
-                      }}
-                    >
-                      {isLoading ? 'Processing...' : 'Deny Changes'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={onApprove}
-                      disabled={isLoading}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: isLoading ? 'not-allowed' : 'pointer',
-                        fontSize: '14px',
-                        fontWeight: '500',
-                        transition: 'all 0.2s ease',
-                        opacity: isLoading ? 0.7 : 1
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = '#2563eb';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isLoading) {
-                          e.currentTarget.style.backgroundColor = '#3b82f6';
-                        }
-                      }}
-                    >
-                      {isLoading ? 'Processing...' : 'Approve Changes'}
-                    </button>
-                  </div>
-                )}
-                
-                {/* Close button - moved to right side */}
-                <div>
-                  <button
-                    type="button"
-                    onClick={onCancel}
-                    className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
-        
-        {/* Activity Logs Tab */}
-        {activeTab === 'logs' && !isCreateMode && (
-          <div>
-            <div className="mb-5">
-              <h3 className="text-base font-semibold text-gray-800 mb-3">
-                Recent Activity
-              </h3>
-              {selectedStockDelivery?.activityLogs && selectedStockDelivery.activityLogs.length > 0 ? (
-                <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-                  {selectedStockDelivery.activityLogs.map((log, index) => (
-                    <div 
-                      key={index} 
-                      className={`py-2 ${
-                        index < selectedStockDelivery.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                      }`}
-                    >
-                      {log}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">
-                  No activity logs available
-                </p>
-              )}
-            </div>
-            
-            <div className="flex justify-end mt-6">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Action Buttons for Details Tab */}
-      {activeTab === 'details' && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '24px',
-          paddingTop: '24px',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <div>
-            {!isCreateMode && (
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={isLoading || (!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: (isLoading || (!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) ? '#9ca3af' : '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: (isLoading || (!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  opacity: (isLoading || (!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) ? 0.7 : 1
-                }}
-                title={(!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE) ? 'Delete button is disabled - stock delivery is pending approval' : 'Delete stock delivery'}
-                onMouseEnter={(e) => {
-                  if (!isLoading && !(!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) {
-                    e.currentTarget.style.backgroundColor = '#b91c1c';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading && !(!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) {
-                    e.currentTarget.style.backgroundColor = '#dc2626';
-                  }
-                }}
-              >
-                {isLoading ? 'Processing...' : 'Delete'}
-              </button>
-            )}
-          </div>
-          
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              type="button"
-              onClick={onCancel}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: 'transparent',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSave}
-              disabled={isLoading || (!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: (isLoading || (!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) ? '#9ca3af' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: (isLoading || (!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: (isLoading || (!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) ? 0.7 : 1
-              }}
-              title={(!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE) ? 'Save button is disabled - stock delivery is pending approval' : (isCreateMode ? 'Create stock delivery' : 'Save changes')}
-              onMouseEnter={(e) => {
-                if (!isLoading && !(!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isLoading && !(!isCreateMode && selectedStockDelivery?.status !== StatusEnum.ACTIVE)) {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                }
-              }}
-            >
-              {isLoading ? 'Saving...' : (isCreateMode ? 'Create Stock Delivery' : 'Save Changes')}
-            </button>
-          </div>
+          <span className="text-sm font-semibold">{successMessage}</span>
         </div>
       )}
-    </div>
+
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <div className="mb-4 space-y-3 rounded-xl border-2 border-red-500 bg-red-50 p-4 shadow-sm">
+          <div className="flex items-center gap-2 text-sm font-semibold text-red-700">
+            <span className="text-base">⚠️</span>
+            <span>Please fix the following errors:</span>
+          </div>
+          <ul className="list-disc space-y-1 pl-5 text-sm text-red-700">
+            {validationErrors.map((error, index) => (
+              <li key={index}>{error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Pending Approval/Deletion Warning */}
+      {!isCreateMode && selectedStockDelivery &&
+        (selectedStockDelivery.status === StatusEnum.FOR_APPROVAL ||
+          selectedStockDelivery.status === StatusEnum.NEW_RECORD ||
+          selectedStockDelivery.status === StatusEnum.FOR_DELETION) && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
+              ⚠
+            </div>
+            <span className="text-sm font-semibold">
+              {selectedStockDelivery.status === StatusEnum.FOR_DELETION
+                ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
+                : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
+            </span>
+          </div>
+        )}
+
+      <div className="space-y-6">
+        {/* Stock Delivery Information Section */}
+        <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-blue-600 p-2 shadow-md">
+              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-blue-600">
+              Stock Delivery Information
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <div className="group">
+              <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                Document Number
+              </label>
+              <input
+                type="text"
+                name="docno"
+                value={formData.docno}
+                onChange={(e) => setFormData(prev => ({ ...prev, docno: e.target.value }))}
+                placeholder={isCreateMode ? 'Enter document number' : ''}
+                disabled={isFormDisabled}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  isFormDisabled
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                }`}
+                required
+              />
+            </div>
+            <div className="group">
+              <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                Date Received
+              </label>
+              <DatePicker
+                value={formData.dateReceived}
+                onChange={(date) => setFormData(prev => ({ ...prev, dateReceived: date }))}
+                disabled={isFormDisabled}
+                placeholder="Select date received"
+              />
+            </div>
+            <div className="group sm:col-span-2">
+              <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                Supplier
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formData.supplierName || ''}
+                  readOnly
+                  placeholder="Select a supplier"
+                  disabled={isFormDisabled}
+                  className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                    isFormDisabled
+                      ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                      : 'cursor-pointer border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                  }`}
+                  onClick={() => !isFormDisabled && setStockSelection(prev => ({ ...prev, showSupplierModal: true }))}
+                  required
+                />
+                {formData.supplierName && !isFormDisabled && (
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, supplierId: '', supplierName: '' }))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <SupplierSearchableSelectionModal
+                show={stockSelection.showSupplierModal}
+                onClose={() => setStockSelection(prev => ({ ...prev, showSupplierModal: false }))}
+                onSelect={(supplier: SupplierDto) => setFormData(prev => ({ ...prev, supplierId: supplier.supplierId, supplierName: supplier.supplierName }))}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Stock Items Section */}
+        <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-blue-600 p-2 shadow-md">
+              <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h-10a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v12a2 2 0 01-2 2zM9 10h6M9 14h6M9 18h6" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-blue-600">
+              Stock Items
+            </h3>
+          </div>
+
+          {!isFormDisabled && (
+            <div className="mb-6 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 sm:p-6">
+              <h4 className="mb-4 text-sm font-bold text-gray-700">Add New Stock Item</h4>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {/* Product Selection */}
+                <div className="group">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Product</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={stockSelection.selectedProduct?.productName || ''}
+                      readOnly
+                      placeholder="Select product"
+                      className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 cursor-pointer border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md"
+                      onClick={() => setStockSelection(prev => ({ ...prev, showProductModal: true }))}
+                    />
+                    {stockSelection.selectedProduct && (
+                      <button
+                        type="button"
+                        onClick={() => setStockSelection(prev => ({ ...prev, selectedProduct: null, selectedProductUnit: null }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <ProductSearchableSelectionModal
+                    show={stockSelection.showProductModal}
+                    title="Select Product"
+                    selectedValue={stockSelection.selectedProduct?.productId || null}
+                    onSelect={(product: ProductDto) => setStockSelection(prev => ({ ...prev, selectedProduct: product, showProductModal: false }))}
+                    onClose={() => setStockSelection(prev => ({ ...prev, showProductModal: false }))}
+                    skipDealSelection={true}
+                  />
+                </div>
+
+                {/* Product Unit Selection */}
+                <div className="group">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Unit</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={stockSelection.selectedProductUnit?.productUnitName || ''}
+                      readOnly
+                      placeholder="Select unit"
+                      disabled={!stockSelection.selectedProduct}
+                      className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                        !stockSelection.selectedProduct
+                          ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                          : 'cursor-pointer border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                      }`}
+                      onClick={() => stockSelection.selectedProduct && setStockSelection(prev => ({ ...prev, showProductUnitModal: true }))}
+                    />
+                    {stockSelection.selectedProductUnit && (
+                      <button
+                        type="button"
+                        onClick={() => setStockSelection(prev => ({ ...prev, selectedProductUnit: null }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <ProductUnitSearchableSelectionModal
+                    show={stockSelection.showProductUnitModal}
+                    onClose={() => setStockSelection(prev => ({ ...prev, showProductUnitModal: false }))}
+                    onSelect={(unit: ProductUnitDto) => setStockSelection(prev => ({ ...prev, selectedProductUnit: unit, showProductUnitModal: false }))}
+                    productId={stockSelection.selectedProduct?.productId}
+                  />
+                </div>
+
+                {/* Stock Type Selection */}
+                <div className="group">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Stock Type</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={stockSelection.selectedStockType?.stockTypeName || ''}
+                      readOnly
+                      placeholder="Select stock type"
+                      className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 cursor-pointer border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md"
+                      onClick={() => setStockSelection(prev => ({ ...prev, showStockTypeModal: true }))}
+                    />
+                    {stockSelection.selectedStockType && (
+                      <button
+                        type="button"
+                        onClick={() => setStockSelection(prev => ({ ...prev, selectedStockType: null }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <StockTypeSearchableSelectionModal
+                    show={stockSelection.showStockTypeModal}
+                    onClose={() => setStockSelection(prev => ({ ...prev, showStockTypeModal: false }))}
+                    onSelect={(stockType: StockTypeDto) => setStockSelection(prev => ({ ...prev, selectedStockType: stockType, showStockTypeModal: false }))}
+                  />
+                </div>
+
+                {/* Lot Number */}
+                <div className="group">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Lot Number</label>
+                  <input
+                    type="text"
+                    value={stockSelection.lotNo}
+                    onChange={(e) => setStockSelection(prev => ({ ...prev, lotNo: e.target.value }))}
+                    placeholder="Enter lot number"
+                    className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md"
+                  />
+                </div>
+
+                {/* Expiration Date */}
+                <div className="group">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Expiration Date</label>
+                  <DatePicker
+                    value={stockSelection.expirationDate}
+                    onChange={(date) => setStockSelection(prev => ({ ...prev, expirationDate: date }))}
+                    placeholder="Select expiration date"
+                  />
+                </div>
+
+                {/* Quantity */}
+                <div className="group">
+                  <label className="mb-2 block text-sm font-medium text-gray-700">Quantity</label>
+                  <input
+                    type="number"
+                    value={stockSelection.quantity === 0 ? '' : stockSelection.quantity}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const numValue = value === '' ? 0 : (isNaN(Number(value)) ? 0 : Number(value));
+                      setStockSelection(prev => ({ ...prev, quantity: numValue }));
+                    }}
+                    placeholder="Enter quantity"
+                    min="1"
+                    className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md"
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="button"
+                  onClick={handleAddDetailRecord}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Add Item
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Display Added Stock Items */}
+          {formData.deliveryDetails && formData.deliveryDetails.length > 0 ? (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-white border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">Product</th>
+                      <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">Unit</th>
+                      <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">Stock Type</th>
+                      <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">Lot No</th>
+                      <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">Exp. Date</th>
+                      <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">Qty</th>
+                      {!isFormDisabled && <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {formData.deliveryDetails.map((detail, index) => (
+                      <tr key={index} className="transition-all duration-200 bg-white hover:bg-gray-50">
+                        <td className="px-6 py-5 text-sm font-medium text-gray-900">{detail.productName}</td>
+                        <td className="px-6 py-5 text-sm text-gray-600">{detail.productUnitName}</td>
+                        <td className="px-6 py-5 text-sm text-gray-600">{detail.stockTypeName}</td>
+                        <td className="px-6 py-5 text-sm text-gray-600">{detail.lotNo}</td>
+                        <td className="px-6 py-5 text-sm text-gray-600">{detail.expirationDate}</td>
+                        <td className="px-6 py-5 text-sm text-gray-600">{detail.qty}</td>
+                        {!isFormDisabled && (
+                          <td className="px-6 py-5">
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveDetailRecord(index)}
+                              disabled={isFormDisabled}
+                              className={`p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center ${
+                                isFormDisabled
+                                  ? 'bg-gray-500 cursor-not-allowed opacity-60'
+                                  : 'bg-red-600 hover:bg-red-700'
+                              }`}
+                              title="Remove"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+              <div className="p-10 text-center text-gray-500 text-base">
+                No stock items added yet. Click &quot;Add Item&quot; to get started.
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Change Reason Section (for non-admin users in edit mode) */}
+        {!isCreateMode && !isAdminUser && (
+          <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-blue-600">
+                Change Reason
+              </h3>
+            </div>
+            <div className="group">
+              <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                Reason for Change
+              </label>
+              <textarea
+                name="changeReason"
+                value={formData.changeReason}
+                onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+                placeholder="Please explain the reason for this change..."
+                rows={3}
+                disabled={isFormDisabled}
+                className={`min-h-[80px] w-full resize-vertical rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  isFormDisabled
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                }`}
+                required={!isAdminUser}
+              />
+              <div className="mt-2 text-xs text-gray-500">
+                This field is required when making changes to the stock delivery record.
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        {!isCreateMode && selectedStockDelivery?.status === StatusEnum.ACTIVE ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            Delete
+          </button>
+        ) : (
+          <div className="hidden sm:block" />
+        )}
+
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          {(isCreateMode || selectedStockDelivery?.status === StatusEnum.ACTIVE) && (
+            <button
+              type="submit"
+              disabled={isFormDisabled && !isAdminUser}
+              className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {isCreateMode ? 'Create Stock Delivery' : 'Save Changes'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </form>
   );
 }
-

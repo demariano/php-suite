@@ -15,4 +15,7 @@ export class ProductPriceTypeDto {
 
     @ApiProperty()
     forApprovalVersion?: Record<string, unknown>;
+
+    @ApiProperty()
+    changeReason?: string;
 }

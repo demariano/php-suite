@@ -40,7 +40,7 @@ export class DenyProductHandler implements ICommandHandler<DenyProductCommand> {
      * Validates that the product record exists
      */
     private async validateProductExists(productId: string): Promise<ProductDto> {
-        const existingRecord = await this.productDatabaseService.findProductRecordById(productId);
+        const existingRecord = await this.productDatabaseService.findRecordById(productId);
 
         if (!existingRecord) {
             this.logger.warn(`Product not found: ${productId}`);
@@ -73,7 +73,7 @@ export class DenyProductHandler implements ICommandHandler<DenyProductCommand> {
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyProduct(existingRecord, user);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, user);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -87,14 +87,20 @@ export class DenyProductHandler implements ICommandHandler<DenyProductCommand> {
     private async denyProduct(existingRecord: ProductDto, user: UserCognito): Promise<ResponseDto<ProductDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
-        existingRecord.activityLogs.push(`Product denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`);
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product changes denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
+        existingRecord.changeReason = null;
 
         // Update record in database
-        const updatedRecord = await this.productDatabaseService.updateProductRecord(existingRecord);
+        const updatedRecord = await this.productDatabaseService.updateRecord(existingRecord);
 
         this.logger.log(`Product approved successfully: ${existingRecord.productId}`);
         return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
@@ -105,17 +111,26 @@ export class DenyProductHandler implements ICommandHandler<DenyProductCommand> {
      */
     private async deleteRecord(existingRecord: ProductDto): Promise<ResponseDto<ProductDto>> {
         this.logger.log(`Product deleted: ${existingRecord.productId}`);
-        await this.productDatabaseService.deleteProductRecord(existingRecord);
+        existingRecord.changeReason = null;
+        await this.productDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<ProductDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**
      * Approves deletion of a product
      */
-    private async denyDeletion(existingRecord: ProductDto): Promise<ResponseDto<ProductDto>> {
-        this.logger.log(`Product deletion approved: ${existingRecord.productId}`);
+    private async denyDeletion(existingRecord: ProductDto, user: UserCognito): Promise<ResponseDto<ProductDto>> {
+        this.logger.log(`Product deletion denied: ${existingRecord.productId}`);
         existingRecord.status = StatusEnum.ACTIVE;
-        const updatedRecord = await this.productDatabaseService.updateProductRecord(existingRecord);
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.changeReason = null;
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product deletion denied by ${user.username}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.productDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
     }
 

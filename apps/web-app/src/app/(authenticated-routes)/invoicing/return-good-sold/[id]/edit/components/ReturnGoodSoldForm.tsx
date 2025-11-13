@@ -70,7 +70,7 @@ export default function ReturnGoodSoldForm({
         customerId: '',
         customerName: '',
         invoiceDocno: '',
-    rgsDocno: '',
+        rgsDocno: '',
         dateReturned: new Date().toISOString().split('T')[0],
         originalInvoiceDetails: [],
         modifiedInvoiceDetails: [],
@@ -87,16 +87,6 @@ export default function ReturnGoodSoldForm({
     (!isAdminUser && (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.FOR_DELETION)) ||
     (isAdminUser && (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.FOR_DELETION || formData.status === StatusEnum.NEW_RECORD))
   );
-
-  // Determine which buttons to show
-  const showSaveButton = isCreateMode || (!isReadOnly && formData.status === StatusEnum.ACTIVE);
-  const showDeleteButton = !isCreateMode && !isReadOnly && formData.status === StatusEnum.ACTIVE;
-  const showApproveButton = !isCreateMode && isAdminUser && (
-    formData.status === StatusEnum.FOR_APPROVAL || 
-    formData.status === StatusEnum.FOR_DELETION || 
-    formData.status === StatusEnum.NEW_RECORD
-  );
-  const showDenyButton = showApproveButton;
 
   const handleFormDataChange = (updates: Partial<ReturnGoodSoldDto>) => {
     setFormData(prev => ({ ...prev, ...updates }));
@@ -164,561 +154,381 @@ export default function ReturnGoodSoldForm({
     onSave(formData);
   };
 
-  return (
-    <div style={{
-      backgroundColor: 'white',
-      borderRadius: '8px',
-      padding: '24px',
-      width: '100%',
-      maxWidth: '1200px',
-      margin: '0 auto',
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '24px'
-      }}>
-        <h2 style={{
-          fontSize: '20px',
-          fontWeight: '600',
-          color: '#1f2937',
-          margin: 0
-        }}>
-          {isCreateMode ? 'Create Return Good Sold' : 'Edit Return Good Sold'}
-        </h2>
-      </div>
+  // Helper function to normalize values for comparison
+  const normalizeValue = (val: any): string => {
+    if (val === null || val === undefined) return '';
+    if (val === '') return '';
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      return trimmed === '' ? '' : trimmed;
+    }
+    if (typeof val === 'number') return String(val);
+    if (typeof val === 'boolean') return String(val);
+    if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+      return JSON.stringify(val);
+    }
+    return String(val).trim();
+  };
 
-      {/* Tab Navigation */}
-      <div style={{
-        display: 'flex',
-        borderBottom: '2px solid #e5e7eb',
-        marginBottom: '20px',
-        backgroundColor: '#f8fafc',
-        borderRadius: '8px 8px 0 0',
-        padding: '4px'
-      }}>
-        <button
-          onClick={() => onTabChange('details')}
-          style={{
-            padding: '12px 20px',
-            backgroundColor: activeTab === 'details' ? 'white' : 'transparent',
-            color: activeTab === 'details' ? '#1f2937' : '#6b7280',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: activeTab === 'details' ? '600' : '500',
-            transition: 'all 0.2s ease',
-            boxShadow: activeTab === 'details' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-            marginRight: '4px'
-          }}
-          onMouseEnter={(e) => {
-            if (activeTab !== 'details') {
-              e.currentTarget.style.backgroundColor = '#f1f5f9';
-              e.currentTarget.style.color = '#374151';
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (activeTab !== 'details') {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              e.currentTarget.style.color = '#6b7280';
-            }
-          }}
-        >
-          Details
-        </button>
-        
-        {!isCreateMode && (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.FOR_DELETION || formData.status === StatusEnum.NEW_RECORD) && (
-          <button
-            onClick={() => onTabChange('approval')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: activeTab === 'approval' ? 'white' : 'transparent',
-              color: activeTab === 'approval' ? '#1f2937' : '#6b7280',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: activeTab === 'approval' ? '600' : '500',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTab === 'approval' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-              marginRight: '4px'
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== 'approval') {
-                e.currentTarget.style.backgroundColor = '#f1f5f9';
-                e.currentTarget.style.color = '#374151';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== 'approval') {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }
-            }}
-          >
-            Approval
-          </button>
-        )}
+  // Helper function to check if a field has changed
+  const isFieldChanged = (fieldName: string): boolean => {
+    if (!selectedRecord?.forApprovalVersion) return false;
+    
+    const originalValue = (selectedRecord as any)[fieldName];
+    const newValue = (selectedRecord.forApprovalVersion as any)[fieldName];
+    
+    if (!(fieldName in selectedRecord.forApprovalVersion)) return false;
+    
+    if (Array.isArray(originalValue) && Array.isArray(newValue)) {
+      return JSON.stringify(originalValue) !== JSON.stringify(newValue);
+    }
+    
+    const normalizedOriginal = normalizeValue(originalValue);
+    const normalizedNew = normalizeValue(newValue);
+    
+    return normalizedOriginal !== normalizedNew;
+  };
 
-        {!isCreateMode && (
-          <button
-            onClick={() => onTabChange('logs')}
-            style={{
-              padding: '12px 20px',
-              backgroundColor: activeTab === 'logs' ? 'white' : 'transparent',
-              color: activeTab === 'logs' ? '#1f2937' : '#6b7280',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: activeTab === 'logs' ? '600' : '500',
-              transition: 'all 0.2s ease',
-              boxShadow: activeTab === 'logs' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none'
-            }}
-            onMouseEnter={(e) => {
-              if (activeTab !== 'logs') {
-                e.currentTarget.style.backgroundColor = '#f1f5f9';
-                e.currentTarget.style.color = '#374151';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (activeTab !== 'logs') {
-                e.currentTarget.style.backgroundColor = 'transparent';
-                e.currentTarget.style.color = '#6b7280';
-              }
-            }}
-          >
-            Activity Logs
-          </button>
-        )}
-      </div>
+  // Helper function to format display value
+  const formatValue = (value: any): string => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (typeof value === 'number') return value.toString();
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+  };
 
-      {/* Tab Content */}
-      <div>
-        {activeTab === 'details' && (
-          <div>
-            {/* Show read-only warning when record is pending approval */}
-            {!isCreateMode && formData.status !== StatusEnum.ACTIVE && (
-              <div style={{
-                backgroundColor: '#fef3c7',
-                border: '2px solid #f59e0b',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '20px',
-                boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  marginBottom: '8px'
-                }}>
-                  <div style={{
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: '#f59e0b',
-                    borderRadius: '4px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white',
-                    fontSize: '12px',
-                    fontWeight: 'bold'
-                  }}>
-                    🔒
-                  </div>
-                  <h4 style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#92400e',
-                    margin: 0
-                  }}>
-                    Read-Only Mode
-                  </h4>
-                </div>
-                <p style={{
-                  fontSize: '14px',
-                  color: '#92400e',
-                  margin: 0,
-                  lineHeight: '1.5'
-                }}>
-                  This return good sold record is pending approval. You can view the original details here, but cannot make changes. 
-                  Use the "Approval" tab to see the proposed changes.
-                </p>
-              </div>
-            )}
-            
-            <RecordDetailsTab
-              formData={formData}
-              onFormDataChange={handleFormDataChange}
-              isCreateMode={isCreateMode}
-              isAdminUser={isAdminUser}
-              isReadOnly={isReadOnly}
-            />
-
-            <InvoiceDetailsTab
-              formData={formData}
-              onFormDataChange={handleFormDataChange}
-              isCreateMode={isCreateMode}
-              isReadOnly={isReadOnly}
-            />
-          </div>
-        )}
-
-        {activeTab === 'approval' && !isCreateMode && selectedRecord && (() => {
-          // Merge original record data with forApprovalVersion changes
-          const approvalVersionData: ReturnGoodSoldDto = {
-            ...selectedRecord,
-            ...selectedRecord.forApprovalVersion
-          };
-          
-          return (
-            <div>
-              <div style={{ marginBottom: '20px' }}>
-                {(selectedRecord.status === StatusEnum.FOR_APPROVAL || selectedRecord.status === StatusEnum.NEW_RECORD) && (
-                  <div style={{
-                    backgroundColor: '#fef3c7',
-                    border: '1px solid #f59e0b',
-                    borderRadius: '6px',
-                    padding: '12px',
-                    marginBottom: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}>
-                    <span style={{ color: '#92400e', fontSize: '16px' }}>ℹ️</span>
-                    <span style={{ color: '#92400e', fontSize: '14px' }}>
-                      These are the proposed changes awaiting approval
-                    </span>
-                  </div>
-                )}
-
-                {/* Change Reason - Highlighted field */}
-                {selectedRecord?.changeReason && (
-                  <div style={{
-                    backgroundColor: '#fef3c7',
-                    border: '2px solid #f59e0b',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    marginBottom: '20px',
-                    boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-                  }}>
-                    <div style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      marginBottom: '12px'
-                    }}>
-                      <div style={{
-                        width: '20px',
-                        height: '20px',
-                        backgroundColor: '#f59e0b',
-                        borderRadius: '4px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: 'white',
-                        fontSize: '12px',
-                        fontWeight: 'bold'
-                      }}>
-                        📝
-                      </div>
-                      <h4 style={{
-                        fontSize: '14px',
-                        fontWeight: '600',
-                        color: '#92400e',
-                        margin: 0
-                      }}>
-                        Change Reason
-                      </h4>
-                    </div>
-                    <div style={{
-                      padding: '12px 16px',
-                      backgroundColor: 'white',
-                      border: '1px solid #f59e0b',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      color: '#92400e',
-                      lineHeight: '1.5',
-                      whiteSpace: 'pre-wrap'
-                    }}>
-                      {selectedRecord.changeReason}
-                    </div>
-                  </div>
-                )}
-              </div>
-              
-              {/* Use the same components as Details tab but with merged data and read-only */}
-              <RecordDetailsTab
-                formData={approvalVersionData}
-                onFormDataChange={() => {}} // No-op since read-only
-                isCreateMode={false}
-                isAdminUser={isAdminUser}
-                isReadOnly={true}
-              />
-              <InvoiceDetailsTab
-                formData={approvalVersionData}
-                onFormDataChange={() => {}} // No-op since read-only
-                isCreateMode={false}
-                isReadOnly={true}
-              />
-            </div>
-          );
-        })()}
-
-        {activeTab === 'logs' && !isCreateMode && (
-          <ActivityLogsTab
-            activityLogs={formData.activityLogs || []}
-          />
-        )}
-      </div>
-
-      {/* Action Buttons for Details Tab */}
-      {activeTab === 'details' && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '24px',
-          paddingTop: '24px',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <div>
-            {!isCreateMode && (
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={isLoading || isReadOnly}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: (isLoading || isReadOnly) ? '#9ca3af' : '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: (isLoading || isReadOnly) ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  opacity: (isLoading || isReadOnly) ? 0.7 : 1
-                }}
-                title={isReadOnly ? 'Delete button is disabled - record is read-only' : 'Delete record'}
-                onMouseEnter={(e) => {
-                  if (!isLoading && !isReadOnly) {
-                    e.currentTarget.style.backgroundColor = '#b91c1c';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isLoading && !isReadOnly) {
-                    e.currentTarget.style.backgroundColor = '#dc2626';
-                  }
-                }}
-              >
-                {isLoading ? 'Processing...' : 'Delete'}
-              </button>
-            )}
-          </div>
-          
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              type="button"
-              onClick={onCancel}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: 'transparent',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveClick}
-              disabled={isLoading || isReadOnly}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: (isLoading || isReadOnly) ? '#9ca3af' : '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: (isLoading || isReadOnly) ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                opacity: (isLoading || isReadOnly) ? 0.7 : 1
-              }}
-              title={isReadOnly ? 'Save button is disabled - record is read-only' : (isCreateMode ? 'Create record' : 'Save changes')}
-              onMouseEnter={(e) => {
-                if (!isLoading && !isReadOnly) {
-                  e.currentTarget.style.backgroundColor = '#2563eb';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!isLoading && !isReadOnly) {
-                  e.currentTarget.style.backgroundColor = '#3b82f6';
-                }
-              }}
-            >
-              {isLoading ? 'Saving...' : (isCreateMode ? 'Create Record' : 'Save Changes')}
-            </button>
-          </div>
+  // Helper function to render read-only field with highlighting
+  const renderReadOnlyField = (label: string, value: any, colorClass: string, fieldName?: string) => {
+    const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+    
+    return (
+      <div className="group">
+        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+          <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+          {label}
+        </label>
+        <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+          fieldChanged 
+            ? 'border-blue-500 bg-blue-50 text-gray-700' 
+            : 'border-gray-200 bg-gray-50 text-gray-500'
+        }`}>
+          {formatValue(value)}
         </div>
-      )}
+      </div>
+    );
+  };
 
-      {/* Action Buttons for Approval Tab */}
-      {activeTab === 'approval' && !isCreateMode && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginTop: '24px',
-          paddingTop: '24px',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <div>
-            {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
-            {isAdminUser && (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.NEW_RECORD || formData.status === StatusEnum.FOR_DELETION) && (
-              <div style={{ display: 'flex', gap: '12px' }}>
+  // Render approval tab content
+  const renderApprovalTab = () => {
+    if (!selectedRecord) return null;
+    
+    // If status is FOR_DELETION, show deletion message instead of approval version
+    if (selectedRecord.status === StatusEnum.FOR_DELETION) {
+      return (
+        <div className="space-y-6 animate-fadeIn">
+          <div className="rounded-xl border-2 border-red-300 bg-red-50 p-6 shadow-sm sm:p-8">
+            <div className="mb-4 flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600">
+                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-red-800">Record Marked for Deletion</h3>
+                <p className="mt-1 text-sm text-red-700">This record has been marked for deletion and is awaiting approval.</p>
+              </div>
+            </div>
+            {selectedRecord.changeReason && (
+              <div className="mt-6 rounded-lg border-2 border-red-200 bg-white p-4">
+                <p className="text-sm font-semibold text-gray-700">Deletion Reason:</p>
+                <p className="mt-2 whitespace-pre-wrap font-mono text-sm text-gray-600 leading-relaxed">{selectedRecord.changeReason}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            {isAdminUser ? (
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <button
                   type="button"
                   onClick={onDeny}
                   disabled={isLoading}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: isLoading ? '#9ca3af' : '#dc2626',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: isLoading ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease',
-                    opacity: isLoading ? 0.7 : 1
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isLoading) {
-                      e.currentTarget.style.backgroundColor = '#b91c1c';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isLoading) {
-                      e.currentTarget.style.backgroundColor = '#dc2626';
-                    }
-                  }}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isLoading ? 'Processing...' : 'Deny Changes'}
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Deny Deletion'}
                 </button>
                 <button
                   type="button"
                   onClick={onApprove}
                   disabled={isLoading}
-                  style={{
-                    padding: '10px 20px',
-                    backgroundColor: isLoading ? '#9ca3af' : '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: isLoading ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '500',
-                    transition: 'all 0.2s ease',
-                    opacity: isLoading ? 0.7 : 1
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isLoading) {
-                      e.currentTarget.style.backgroundColor = '#2563eb';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isLoading) {
-                      e.currentTarget.style.backgroundColor = '#3b82f6';
-                    }
-                  }}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isLoading ? 'Processing...' : 'Approve Changes'}
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isLoading ? 'Processing...' : 'Approve Deletion'}
                 </button>
               </div>
+            ) : (
+              <div className="hidden sm:block" />
             )}
-          </div>
-          
-          {/* Close button - moved to right side */}
-          <div>
+
             <button
               type="button"
               onClick={onCancel}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: 'transparent',
-                color: '#6b7280',
-                border: '1px solid #d1d5db',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = '#f9fafb';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
             >
-              Close
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Cancel
             </button>
+          </div>
+        </div>
+      );
+    }
+    
+    // For FOR_APPROVAL and NEW_RECORD, show approval version
+    if (!selectedRecord.forApprovalVersion) return null;
+    
+    const approvalVersionData: ReturnGoodSoldDto = {
+      ...selectedRecord,
+      ...selectedRecord.forApprovalVersion
+    };
+    
+    return (
+      <div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-4 sm:p-6 bg-white shadow-sm">
+        {/* Change Reason and Modification Made */}
+        {selectedRecord?.changeReason && (
+          <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+              <h4 className="m-0 text-base font-bold text-blue-600">
+                Change Reason and Modification Made
+              </h4>
+            </div>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">
+              {selectedRecord.changeReason}
+            </div>
+          </div>
+        )}
+        
+        {/* Use the same components as Details tab but with merged data and read-only */}
+        <RecordDetailsTab
+          formData={approvalVersionData}
+          onFormDataChange={() => {}} // No-op since read-only
+          isCreateMode={false}
+          isAdminUser={isAdminUser}
+          isReadOnly={true}
+        />
+        <InvoiceDetailsTab
+          formData={approvalVersionData}
+          onFormDataChange={() => {}} // No-op since read-only
+          isCreateMode={false}
+          isReadOnly={true}
+        />
+
+        {/* Action Buttons */}
+        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+          {isAdminUser && (selectedRecord?.status === StatusEnum.FOR_APPROVAL || selectedRecord?.status === StatusEnum.NEW_RECORD || selectedRecord?.status === StatusEnum.FOR_DELETION) ? (
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <button
+                type="button"
+                onClick={onDeny}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                {isLoading ? 'Processing...' : 'Deny Changes'}
+              </button>
+              <button
+                type="button"
+                onClick={onApprove}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {isLoading ? 'Processing...' : 'Approve Changes'}
+              </button>
+            </div>
+          ) : (
+            <div className="hidden sm:block" />
+          )}
+
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Render logs tab content
+  const renderLogsTab = () => {
+    if (!selectedRecord) return null;
+    
+    return (
+      <div className="space-y-6 animate-fadeIn">
+        <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="m-0 text-base font-bold text-blue-600">
+              Activity Logs
+            </h3>
+          </div>
+          
+          {selectedRecord?.activityLogs && selectedRecord.activityLogs.length > 0 ? (
+            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
+              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
+                {selectedRecord.activityLogs.map((log, index) => (
+                  <li 
+                    key={index} 
+                    className="px-4 py-3"
+                  >
+                    {log}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
+              No activity logs available
+            </p>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-xl border-2 border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <>
+      {/* Success message */}
+      {successMessage && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-green-500 bg-green-50 p-4 text-green-700 shadow-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-sm font-bold text-white">
+            ✓
+          </div>
+          <span className="text-sm font-semibold">{successMessage}</span>
+        </div>
+      )}
+
+      {/* Tab Content */}
+      {activeTab === 'details' && (
+        <div>
+          {/* Show read-only warning when record is pending approval */}
+          {!isCreateMode && formData.status !== StatusEnum.ACTIVE && (
+            <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
+                ⚠
+              </div>
+              <span className="text-sm font-semibold">
+                {formData.status === StatusEnum.FOR_DELETION 
+                  ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
+                  : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
+              </span>
+            </div>
+          )}
+          
+          <RecordDetailsTab
+            formData={formData}
+            onFormDataChange={handleFormDataChange}
+            isCreateMode={isCreateMode}
+            isAdminUser={isAdminUser}
+            isReadOnly={isReadOnly}
+          />
+
+          <InvoiceDetailsTab
+            formData={formData}
+            onFormDataChange={handleFormDataChange}
+            isCreateMode={isCreateMode}
+            isReadOnly={isReadOnly}
+          />
+
+          {/* Action Buttons for Details Tab */}
+          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            {!isCreateMode && formData.status === StatusEnum.ACTIVE ? (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={isLoading || isReadOnly}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                {isLoading ? 'Processing...' : 'Delete'}
+              </button>
+            ) : (
+              <div className="hidden sm:block" />
+            )}
+            
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+              {(isCreateMode || formData.status === StatusEnum.ACTIVE) && (
+                <button
+                  type="button"
+                  onClick={handleSaveClick}
+                  disabled={isLoading || isReadOnly}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isLoading ? 'Saving...' : (isCreateMode ? 'Create Record' : 'Save Changes')}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onCancel}
+                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Action Buttons for Logs Tab */}
-      {activeTab === 'logs' && !isCreateMode && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'flex-end',
-          marginTop: '24px',
-          paddingTop: '24px',
-          borderTop: '1px solid #e5e7eb'
-        }}>
-          <button
-            type="button"
-            onClick={onCancel}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: 'transparent',
-              color: '#6b7280',
-              border: '1px solid #d1d5db',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease'
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = '#f9fafb';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            Close
-          </button>
-        </div>
-      )}
-    </div>
+      {activeTab === 'approval' && !isCreateMode && renderApprovalTab()}
+
+      {activeTab === 'logs' && !isCreateMode && renderLogsTab()}
+    </>
   );
 }
-

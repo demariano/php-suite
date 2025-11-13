@@ -8,6 +8,13 @@ export abstract class PaymentDatabaseServiceAbstractClass {
 
     abstract findRecordByReceiptNo(receiptNo: string): Promise<PaymentDto | null>;
 
+    abstract findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<PaymentDto>>;
+
     abstract findRecordContainingReceiptNo(
         limit: number,
         receiptNo: string,

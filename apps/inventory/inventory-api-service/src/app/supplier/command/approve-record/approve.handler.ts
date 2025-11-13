@@ -102,13 +102,14 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
         existingRecord.status = StatusEnum.ACTIVE;
         const activityLog = `Date: ${new Date().toLocaleString('en-US', {
             timeZone: 'Asia/Manila',
-        })}, Supplier approved by ${user.username}`;
+        })}, Supplier approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
         existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-        // Clear changeReason after approval
-        existingRecord.changeReason = '';
+        
+        // Reset changeReason to null after applying changes
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.supplierDatabaseService.updateRecord(existingRecord);
@@ -120,6 +121,9 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
      * Approves deletion of a supplier record
      */
     private async approveDeletion(existingRecord: SupplierDto): Promise<ResponseDto<SupplierDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+        
         this.logger.log(`Supplier deletion approved: ${existingRecord.supplierId}`);
         await this.supplierDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<SupplierDto>(existingRecord, HTTP_STATUS_OK);

@@ -8,6 +8,7 @@ interface NumberInputProps {
   placeholder?: string;
   disabled?: boolean;
   style?: React.CSSProperties;
+  className?: string;
   min?: number;
   step?: number;
 }
@@ -18,6 +19,7 @@ export default function NumberInput({
   placeholder,
   disabled = false,
   style,
+  className = '',
   min = 0,
   step = 0.01
 }: NumberInputProps) {
@@ -37,6 +39,7 @@ export default function NumberInput({
       placeholder={placeholder}
       disabled={disabled}
       style={style}
+      className={className}
     />
   );
 }

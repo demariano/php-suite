@@ -4,6 +4,7 @@ import { extractErrorMessage, PaymentApi, PaymentDto, StatusEnum, useEnv, useLoc
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import PaymentForm from './components/PaymentForm';
+import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
 
 interface EditPaymentPageProps {
   params: {
@@ -15,6 +16,7 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<PaymentDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -117,10 +119,19 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!selectedPayment) {
       return;
     }
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!selectedPayment) {
+      return;
+    }
+    
+    setShowDeleteModal(false);
     
     try {
       setIsLoading(true);
@@ -235,10 +246,45 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
     router.push('/invoicing/payment');
   };
 
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
+
+  const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+    
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'bg-green-600 text-white shadow-sm';
+      case StatusEnum.FOR_APPROVAL:
+        return 'bg-yellow-500 text-white shadow-sm';
+      case StatusEnum.FOR_DELETION:
+        return 'bg-red-600 text-white shadow-sm';
+      case StatusEnum.NEW_RECORD:
+        return 'bg-blue-600 text-white shadow-sm';
+      default:
+        return 'bg-gray-500 text-white shadow-sm';
+    }
+  };
+
   if (!selectedPayment && !isLoading) {
     return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>Payment not found</span>
         </div>
       </div>
@@ -246,9 +292,9 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -275,21 +321,30 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
 
       {/* Payment Form */}
       {selectedPayment && (
-        <PaymentForm
-          isCreateMode={false}
-          selectedPayment={selectedPayment}
-          successMessage={null}
-          isAdminUser={isAdminUser}
-          isLoading={isLoading}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onApprove={handleApprove}
-          onDeny={handleDeny}
-          onCancel={handleCancel}
-        />
+        <div className="flex justify-center">
+          <PaymentForm
+            isCreateMode={false}
+            selectedPayment={selectedPayment}
+            successMessage={null}
+            isAdminUser={isAdminUser}
+            isLoading={isLoading}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onApprove={handleApprove}
+            onDeny={handleDeny}
+            onCancel={handleCancel}
+          />
+        </div>
       )}
+
+      <DeleteConfirmationModal
+        show={showDeleteModal}
+        payment={selectedPayment}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </div>
   );
 }

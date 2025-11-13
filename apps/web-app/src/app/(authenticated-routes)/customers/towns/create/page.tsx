@@ -66,7 +66,7 @@ export default function CreateTownPage() {
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Breadcrumbs */}
       <div>
         <nav className="flex items-center gap-2">
@@ -88,15 +88,15 @@ export default function CreateTownPage() {
 
       {/* Town Form */}
       <div className="flex justify-center">
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full max-w-4xl">
+        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
           {/* Tab Navigation */}
-          <div className="bg-gray-50 border-b-2 border-gray-200 rounded-t-xl p-2">
-            <div className="flex gap-2">
+          <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
+            <div className="flex gap-2 flex-nowrap">
               <button
-                className="px-5 py-3 rounded-lg font-semibold text-sm bg-blue-600 text-white shadow-sm"
+                className="flex-shrink-0 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm"
               >
                 <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
                   Town Information
@@ -106,7 +106,7 @@ export default function CreateTownPage() {
           </div>
           
           {/* Tab Content */}
-          <div className="p-6 bg-white">
+          <div className="p-4 sm:p-6 bg-white">
             <TownForm
               isCreateMode={true}
               selectedTown={null}

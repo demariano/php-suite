@@ -82,34 +82,60 @@ export class DenyProductDealHandler implements ICommandHandler<DenyProductDealCo
     }
 
     /**
-     * Approves a product deal for approval
+     * Denies a product deal for approval
      */
     private async denyProductDeal(
         existingRecord: ProductDealDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductDealDto>> {
-        // Update status and add activity log
-        existingRecord.status = StatusEnum.ACTIVE;
-        existingRecord.activityLogs.push(`Product deal denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`);
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        // Clear forApprovalVersion
         existingRecord.forApprovalVersion = {};
+
+        // Reset changeReason to null after clearing forApprovalVersion
+        existingRecord.changeReason = null;
+
+        // Revert to ACTIVE status
+        existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product deal denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         // Update record in database
         const updatedRecord = await this.productDealDatabaseService.updateRecord(existingRecord);
 
-        this.logger.log(`Product deal approved successfully: ${existingRecord.productDealId}`);
+        this.logger.log(`Product deal denied successfully: ${existingRecord.productDealId}`);
         return new ResponseDto<ProductDealDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
-     * Approves deletion of a product deal
+     * Denies deletion of a product deal
      */
     private async denyDeletion(existingRecord: ProductDealDto): Promise<ResponseDto<ProductDealDto>> {
-        this.logger.log(`Product deal deletion approved: ${existingRecord.productDealId}`);
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
+
+        // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
+
+        // Add activity log
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Product deal deletion denied`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+        // Update record in database
         const updatedRecord = await this.productDealDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product deal deletion denied: ${existingRecord.productDealId}`);
         return new ResponseDto<ProductDealDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -117,6 +143,9 @@ export class DenyProductDealHandler implements ICommandHandler<DenyProductDealCo
      * Deletes a product deal when it is a new record and it was denied
      */
     private async deleteRecord(existingRecord: ProductDealDto): Promise<ResponseDto<ProductDealDto>> {
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
+
         this.logger.log(`Product deal deleted: ${existingRecord.productDealId}`);
         await this.productDealDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<ProductDealDto>(existingRecord, HTTP_STATUS_OK);

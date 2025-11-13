@@ -6,13 +6,16 @@ import { PaymentHeader, PaymentTable } from './components';
 
 export default function PaymentPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [payments, setPayments] = useState<PaymentDto[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
   const [pageSize, setPageSize] = useState<number>(10);
 
   // Track if initial fetch has been made to prevent duplicate calls
@@ -22,6 +25,11 @@ export default function PaymentPage() {
   const fetchPayments = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
     try {
       setIsLoading(true);
+      setError(null);
+      
+      // SECURITY: Only get user role if BYPASS_AUTH is enabled
+      // This prevents role parameter leakage when bypass auth is disabled
+      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
       // Serialize cursor object to JSON string if it's an object
       const serializedCursor = cursor && typeof cursor === 'object' 
@@ -33,10 +41,10 @@ export default function PaymentPage() {
       // Use custom page size if provided, otherwise use state page size
       const currentPageSize = customPageSize ?? pageSize;
       
-      // If search term exists, use search API, otherwise use regular pagination API
-      if (searchTerm && searchTerm.trim() !== '') {
+      // If search query exists, use search API, otherwise use regular pagination API
+      if (searchQuery && searchQuery.trim() !== '') {
         response = await PaymentApi.getPaymentsContainingReceiptNo(
-          searchTerm.trim(),
+          searchQuery.trim(),
           currentPageSize,
           direction,
           serializedCursor
@@ -45,7 +53,8 @@ export default function PaymentPage() {
         response = await PaymentApi.getPayments(
           currentPageSize, 
           direction,
-          serializedCursor
+          serializedCursor,
+          userRole
         );
       }
       
@@ -68,13 +77,13 @@ export default function PaymentPage() {
         setPrevCursor(undefined);
       }
       
-    } catch (error) {
-      const errorMessage = extractErrorMessage(error, 'Failed to load payments. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
+      if (direction && cursor) {
+        setCurrentCursor(cursor);
+      } else {
+        setCurrentCursor(undefined);
+      }
+    } catch (err) {
+      setError('Failed to load payments. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -89,10 +98,10 @@ export default function PaymentPage() {
     fetchPayments();
   }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
-  // Debounce search term changes (but not on initial mount with empty search)
+  // Debounce search query changes (but not on initial mount with empty search)
   useEffect(() => {
-    // Only debounce if there's actually a search term
-    if (searchTerm === '') {
+    // Only debounce if there's actually a search query
+    if (searchQuery === '') {
       return; // Skip - initial load is handled by the other useEffect
     }
 
@@ -101,7 +110,7 @@ export default function PaymentPage() {
     }, 500); // 500ms delay
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchQuery]);
 
   const headers = [
     { key: 'receiptNo', label: 'RECEIPT NO' },
@@ -110,6 +119,22 @@ export default function PaymentPage() {
     { key: 'paymentAmount', label: 'PAYMENT AMOUNT' },
     { key: 'status', label: 'STATUS' }
   ];
+
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
 
   const getStatusBadge = (status: StatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
@@ -129,7 +154,7 @@ export default function PaymentPage() {
     
     return (
       <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
+        {getStatusText(status)}
       </span>
     );
   };
@@ -149,6 +174,7 @@ export default function PaymentPage() {
     setPageSize(newPageSize);
     setNextCursor(undefined);
     setPrevCursor(undefined);
+    setCurrentCursor(undefined);
     // Fetch with new page size and no cursor (like initial load)
     fetchPayments(undefined, undefined, newPageSize);
   };
@@ -163,9 +189,22 @@ export default function PaymentPage() {
   }) || [];
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -179,42 +218,42 @@ export default function PaymentPage() {
         </nav>
       </div>
 
-      {/* Header */}
-      <div>
-        <PaymentHeader
-          searchTerm={searchTerm}
-          onSearchChange={(value: string) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchTerm('');
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchPayments();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
+      {/* Header Bar */}
+      <PaymentHeader
+        searchQuery={searchQuery}
+        onSearchChange={(value: string) => {
+          setSearchQuery(value);
+          // Reset pagination when search query changes
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchQuery('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchPayments();
+        }}
+        onCreateClick={handleCreateClick}
+        isLoading={isLoading}
+        canCreate={isAdminUser}
+      />
 
       {/* Table */}
-      <div>
-        <PaymentTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchTerm={searchTerm}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchPayments('prev', prevCursor)}
-          onNext={() => fetchPayments('next', nextCursor)}
-        />
-      </div>
+      <PaymentTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchQuery={searchQuery}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchPayments('prev', prevCursor)}
+        onNext={() => fetchPayments('next', nextCursor)}
+      />
     </div>
   );
 }

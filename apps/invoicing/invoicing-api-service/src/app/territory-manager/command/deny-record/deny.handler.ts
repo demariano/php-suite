@@ -76,7 +76,7 @@ export class DenyTerritoryManagerHandler implements ICommandHandler<DenyTerritor
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyTerritoryManager(existingRecord, user);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, user);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -93,15 +93,19 @@ export class DenyTerritoryManagerHandler implements ICommandHandler<DenyTerritor
     ): Promise<ResponseDto<TerritoryManagerDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Territory manager denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
+        // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        
+        // Clear forApprovalVersion first, then reset changeReason
         existingRecord.forApprovalVersion = {};
+        existingRecord.changeReason = null;
 
         // Update record in database
         const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
@@ -113,9 +117,24 @@ export class DenyTerritoryManagerHandler implements ICommandHandler<DenyTerritor
     /**
      * Denies deletion of a territory manager
      */
-    private async denyDeletion(existingRecord: TerritoryManagerDto): Promise<ResponseDto<TerritoryManagerDto>> {
+    private async denyDeletion(existingRecord: TerritoryManagerDto, user: UserCognito): Promise<ResponseDto<TerritoryManagerDto>> {
         this.logger.log(`Territory manager deletion denied: ${existingRecord.territoryManagerId}`);
+        
+        // Reset changeReason to null before reverting status
+        existingRecord.changeReason = null;
         existingRecord.status = StatusEnum.ACTIVE;
+        
+        // Add activity log entry
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Territory manager deletion denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+        
+        // Limit activity logs to last 10 entries
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        
         const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<TerritoryManagerDto>(updatedRecord, HTTP_STATUS_OK);
     }
@@ -125,6 +144,8 @@ export class DenyTerritoryManagerHandler implements ICommandHandler<DenyTerritor
      */
     private async deleteRecord(existingRecord: TerritoryManagerDto): Promise<ResponseDto<TerritoryManagerDto>> {
         this.logger.log(`Territory manager deleted: ${existingRecord.territoryManagerId}`);
+        // Reset changeReason to null before deleting
+        existingRecord.changeReason = null;
         await this.territoryManagerDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<TerritoryManagerDto>(existingRecord, HTTP_STATUS_OK);
     }

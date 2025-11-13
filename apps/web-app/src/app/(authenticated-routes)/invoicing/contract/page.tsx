@@ -6,7 +6,7 @@ import { ContractHeader, ContractTable } from './components';
 
 export default function ContractsPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [contracts, setContracts] = useState<ContractDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { env } = useEnv();
@@ -39,10 +39,10 @@ export default function ContractsPage() {
       // Use custom page size if provided, otherwise use state page size
       const currentPageSize = customPageSize ?? pageSize;
       
-      // If search term exists, use search API, otherwise use regular pagination API
-      if (searchTerm && searchTerm.trim() !== '') {
+      // If search query exists, use search API, otherwise use regular pagination API
+      if (searchQuery && searchQuery.trim() !== '') {
         response = await ContractApi.getContractsContainingContractNo(
-          searchTerm.trim(),
+          searchQuery.trim(),
           currentPageSize,
           direction,
           serializedCursor
@@ -96,10 +96,10 @@ export default function ContractsPage() {
     fetchContracts();
   }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
-  // Debounce search term changes (but not on initial mount with empty search)
+  // Debounce search query changes (but not on initial mount with empty search)
   useEffect(() => {
-    // Only debounce if there's actually a search term
-    if (searchTerm === '') {
+    // Only debounce if there's actually a search query
+    if (searchQuery === '') {
       return; // Skip - initial load is handled by the other useEffect
     }
 
@@ -108,7 +108,7 @@ export default function ContractsPage() {
     }, 500); // 500ms delay
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchQuery]);
 
   const headers = [
     { key: 'contractNo', label: 'CONTRACT NO' },
@@ -118,6 +118,22 @@ export default function ContractsPage() {
     { key: 'endDate', label: 'END DATE' },
     { key: 'status', label: 'STATUS' }
   ];
+
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
 
   const getStatusBadge = (status: StatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
@@ -137,7 +153,7 @@ export default function ContractsPage() {
     
     return (
       <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
+        {getStatusText(status)}
       </span>
     );
   };
@@ -177,7 +193,20 @@ export default function ContractsPage() {
   }) || [];
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
+          >
+            ×
+          </button>
+        </div>
+      )}
+
       {/* Breadcrumbs */}
       <div className="mb-6">
         <nav className="flex items-center gap-2">
@@ -196,16 +225,16 @@ export default function ContractsPage() {
       {/* Header */}
       <div>
         <ContractHeader
-          searchTerm={searchTerm}
+          searchQuery={searchQuery}
           onSearchChange={(value: string) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
+            setSearchQuery(value);
+            // Reset pagination when search query changes
             setCurrentCursor(undefined);
             setNextCursor(undefined);
             setPrevCursor(undefined);
           }}
           onRefresh={() => {
-            setSearchTerm('');
+            setSearchQuery('');
             setCurrentCursor(undefined);
             setNextCursor(undefined);
             setPrevCursor(undefined);
@@ -221,7 +250,7 @@ export default function ContractsPage() {
           isLoading={isLoading}
           tableData={tableData}
           headers={headers}
-          searchTerm={searchTerm}
+          searchQuery={searchQuery}
           onRowClick={handleRowClick}
           pageSize={pageSize}
           onPageSizeChange={handlePageSizeChange}

@@ -335,6 +335,27 @@ export class ProductController {
         example: 'iPhone',
     })
     @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: false,
+        description: 'Number of records to return (1-100)',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Pagination direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor pointer returned from previous request',
+        example: 'cursor_abc123',
+    })
+    @ApiQuery({
         name: 'userRole',
         type: String,
         required: false,
@@ -345,11 +366,34 @@ export class ProductController {
     @ApiResponse({
         status: 200,
         description: 'Products retrieved successfully',
-        type: [ProductDto],
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        data: {
+                            type: 'array',
+                            items: { $ref: '#/components/schemas/ProductDto' },
+                        },
+                        nextCursorPointer: { type: 'string', nullable: true },
+                        prevCursorPointer: { type: 'string', nullable: true },
+                    },
+                },
+            },
+        },
     })
-    getByName(@Param('name') name: string, @Query('userRole') userRole: string) {
+    getByName(
+        @Param('name') name: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('userRole') userRole: string
+    ) {
         // Note: userRole is included for Swagger consistency but not used in query endpoints
-        const query = new GetProductByNameQuery(name);
+        const normalizedLimit = limit ? Number(limit) : 10;
+        const query = new GetProductByNameQuery(name, normalizedLimit, direction, cursorPointer);
         return this.queryBus.execute(query);
     }
 

@@ -20,11 +20,16 @@ export class GetInvoiceByDocnoHandler implements IQueryHandler<GetInvoiceByDocno
         this.logger.log(`Processing get by docno request for invoice: ${query.docno}`);
 
         try {
+            const limit = query.limit || 10;
+            const direction = query.direction || undefined;
+            const cursorPointer = query.cursorPointer || undefined;
+            const docno = query.docno || '';
+
             const invoices = await this.invoiceDatabaseService.findRecordContainingDocno(
-                query.limit,
-                query.docno,
-                query.direction,
-                query.cursorPointer
+                limit,
+                docno,
+                direction,
+                cursorPointer
             );
 
             this.logger.log(`Invoices retrieved successfully: ${invoices.data.length} records`);

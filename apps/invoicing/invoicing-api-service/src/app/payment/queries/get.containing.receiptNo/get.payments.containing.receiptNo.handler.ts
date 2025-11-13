@@ -22,11 +22,16 @@ export class GetPaymentsContainingReceiptNoHandler implements IQueryHandler<GetP
         this.logger.log(`Processing get payments containing receipt number request for: ${query.receiptNo}`);
 
         try {
+            const limit = query.limit || 10;
+            const direction = query.direction || undefined;
+            const cursorPointer = query.cursorPointer || undefined;
+            const receiptNo = query.receiptNo || '';
+
             const payments = await this.paymentDatabaseService.findRecordContainingReceiptNo(
-                query.limit,
-                query.receiptNo,
-                query.direction,
-                query.cursorPointer
+                limit,
+                receiptNo,
+                direction,
+                cursorPointer
             );
 
             this.logger.log(`Payments retrieved successfully: ${payments.data.length} records`);

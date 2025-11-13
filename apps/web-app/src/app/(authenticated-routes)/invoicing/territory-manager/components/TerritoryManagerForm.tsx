@@ -1,6 +1,7 @@
 'use client';
 
 import { StatusEnum, TerritoryManagerDto } from '@data-access/index';
+import { useEffect, useState } from 'react';
 
 interface TerritoryManagerFormProps {
   isCreateMode: boolean;
@@ -9,6 +10,7 @@ interface TerritoryManagerFormProps {
   onSave: (territoryManager: TerritoryManagerDto) => void;
   onDelete: () => void;
   onCancel: () => void;
+  isAdminUser?: boolean;
 }
 
 export default function TerritoryManagerForm({
@@ -17,31 +19,71 @@ export default function TerritoryManagerForm({
   successMessage,
   onSave,
   onDelete,
-  onCancel
+  onCancel,
+  isAdminUser = false
 }: TerritoryManagerFormProps) {
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [userHasMadeSelections, setUserHasMadeSelections] = useState(false);
+  const [formData, setFormData] = useState({
+    territoryManagerName: '',
+    contactNo: '',
+    changeReason: ''
+  });
+
+  // Set initial values when editing (only when user hasn't made selections)
+  useEffect(() => {
+    if (!isCreateMode && selectedTerritoryManager && !userHasMadeSelections) {
+      setFormData({
+        territoryManagerName: selectedTerritoryManager.territoryManagerName || '',
+        contactNo: selectedTerritoryManager.contactNo || '',
+        changeReason: selectedTerritoryManager.changeReason || ''
+      });
+    }
+  }, [isCreateMode, selectedTerritoryManager, userHasMadeSelections]);
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const territoryManagerName = formData.get('territoryManagerName') as string;
-    const contactNo = formData.get('contactNo') as string;
-    
+
+    const errors: string[] = [];
+
+    if (!formData.territoryManagerName.trim()) {
+      errors.push('Territory Manager Name is required.');
+    }
+
+    if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+      errors.push('Please provide a reason for the change.');
+    }
+
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      return;
+    }
+
+    setValidationErrors([]);
+
     if (isCreateMode) {
       const newTerritoryManager = {
-        territoryManagerName: territoryManagerName,
-        contactNo: contactNo,
-        status: StatusEnum.ACTIVE // Default status for new territory managers
-      };
-      onSave(newTerritoryManager as TerritoryManagerDto);
+        territoryManagerName: formData.territoryManagerName,
+        contactNo: formData.contactNo,
+        status: StatusEnum.NEW_RECORD
+      } as TerritoryManagerDto;
+      onSave(newTerritoryManager);
     } else {
+      // Determine status based on user role
+      const newStatus = isAdminUser ? StatusEnum.ACTIVE : StatusEnum.FOR_APPROVAL;
+      
       const updatedTerritoryManager = {
         ...selectedTerritoryManager,
-        territoryManagerName: territoryManagerName,
-        contactNo: contactNo,
-        status: StatusEnum.ACTIVE
-      };
-      onSave(updatedTerritoryManager as TerritoryManagerDto);
+        territoryManagerName: formData.territoryManagerName,
+        contactNo: formData.contactNo,
+        status: newStatus,
+        changeReason: formData.changeReason.trim() || undefined
+      } as TerritoryManagerDto;
+      onSave(updatedTerritoryManager);
     }
   };
+
+  const isFormDisabled = !isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE;
 
   return (
     <form onSubmit={handleSubmit}>
@@ -82,172 +124,124 @@ export default function TerritoryManagerForm({
           </span>
         </div>
       )}
-      
-      {/* Pending approval or deletion warning */}
-      {!isCreateMode && selectedTerritoryManager && 
-       (selectedTerritoryManager.status === StatusEnum.FOR_APPROVAL || selectedTerritoryManager.status === StatusEnum.NEW_RECORD || selectedTerritoryManager.status === StatusEnum.FOR_DELETION) && (
+
+      {/* Validation errors */}
+      {validationErrors.length > 0 && (
         <div style={{
-          backgroundColor: '#fef3c7',
-          border: '2px solid #f59e0b',
+          backgroundColor: '#fef2f2',
+          border: '2px solid #dc2626',
           borderRadius: '8px',
           padding: '16px',
           marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-          animation: 'pulse 2s infinite'
         }}>
           <div style={{
-            width: '24px',
-            height: '24px',
-            backgroundColor: '#f59e0b',
-            borderRadius: '50%',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontSize: '14px',
-            fontWeight: 'bold'
+            gap: '12px',
+            marginBottom: '8px'
           }}>
-            ⚠
+            <span style={{ fontSize: '20px' }}>⚠️</span>
+            <span style={{ color: '#dc2626', fontWeight: '600' }}>
+              Please fix the following errors:
+            </span>
           </div>
-          <span style={{
-            color: '#92400e',
-            fontSize: '14px',
-            fontWeight: '600'
+          <ul style={{
+            margin: 0,
+            paddingLeft: '20px',
+            color: '#dc2626'
           }}>
-            {selectedTerritoryManager.status === StatusEnum.FOR_DELETION 
-              ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-              : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-          </span>
+            {validationErrors.map((error, index) => (
+              <li key={index} style={{ marginBottom: '4px' }}>
+                {error}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
-      
-      {/* Record Fields Container */}
-      <div style={{
-        backgroundColor: '#f8fafc',
-        border: '2px solid #e2e8f0',
-        borderRadius: '12px',
-        padding: '20px',
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06)'
-      }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          marginBottom: '16px'
-        }}>
-          <div style={{
-            width: '20px',
-            height: '20px',
-            backgroundColor: '#3b82f6',
-            borderRadius: '4px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            fontSize: '12px',
-            fontWeight: 'bold'
-          }}>
-            📋
+
+      {!isCreateMode && selectedTerritoryManager &&
+        (selectedTerritoryManager.status === StatusEnum.FOR_APPROVAL ||
+          selectedTerritoryManager.status === StatusEnum.NEW_RECORD ||
+          selectedTerritoryManager.status === StatusEnum.FOR_DELETION) && (
+          <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
+              ⚠
+            </div>
+            <span className="text-sm font-semibold">
+              {selectedTerritoryManager.status === StatusEnum.FOR_DELETION
+                ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
+                : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
+            </span>
           </div>
-          <h3 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            margin: 0
-          }}>
-            Record Details
-          </h3>
+        )}
+
+      <div className="space-y-6">
+        <div className="space-y-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+              </div>
+              <h3 className="text-base font-bold text-blue-600 m-0">
+                Territory Manager Information
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                  Territory Manager Name
+                </label>
+                <input
+                  type="text"
+                  name="territoryManagerName"
+                  value={formData.territoryManagerName}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, territoryManagerName: e.target.value }));
+                    setUserHasMadeSelections(true);
+                  }}
+                  placeholder={isCreateMode ? 'Enter territory manager name' : ''}
+                  disabled={isFormDisabled}
+                  className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    isFormDisabled
+                      ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                  required
+                />
+              </div>
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                  Contact Number
+                </label>
+                <input
+                  type="text"
+                  name="contactNo"
+                  value={formData.contactNo}
+                  onChange={(e) => {
+                    setFormData(prev => ({ ...prev, contactNo: e.target.value }));
+                    setUserHasMadeSelections(true);
+                  }}
+                  placeholder={isCreateMode ? 'Enter contact number' : ''}
+                  disabled={isFormDisabled}
+                  className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    isFormDisabled
+                      ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Territory Manager Name
-          </label>
-          <input
-            type="text"
-            name="territoryManagerName"
-            defaultValue={isCreateMode ? '' : selectedTerritoryManager?.territoryManagerName || ''}
-            placeholder={isCreateMode ? 'Enter territory manager name' : ''}
-            disabled={!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-            onFocus={(e) => {
-              if (isCreateMode || selectedTerritoryManager?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-              }
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-            required
-          />
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Contact Number
-          </label>
-          <input
-            type="text"
-            name="contactNo"
-            defaultValue={isCreateMode ? '' : selectedTerritoryManager?.contactNo || ''}
-            placeholder={isCreateMode ? 'Enter contact number' : ''}
-            disabled={!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-              color: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-              transition: 'all 0.2s ease',
-              cursor: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-            }}
-            onFocus={(e) => {
-              if (isCreateMode || selectedTerritoryManager?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.borderColor = '#3b82f6';
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-              }
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#d1d5db';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
-          />
-        </div>
-        
-        {!isCreateMode && selectedTerritoryManager && (
-          <div>
+        {/* Change Reason and Modification Made Field - Only show for non-create mode and non-admin users */}
+        {!isCreateMode && !isAdminUser && (
+          <div style={{ marginTop: '24px', marginBottom: '20px' }}>
             <label style={{
               display: 'block',
               fontSize: '14px',
@@ -255,25 +249,47 @@ export default function TerritoryManagerForm({
               color: '#374151',
               marginBottom: '8px'
             }}>
-              Status
+              Change Reason and Modification Made
             </label>
+            <textarea
+              name="changeReason"
+              value={formData.changeReason}
+              onChange={(e) => {
+                setFormData(prev => ({ ...prev, changeReason: e.target.value }));
+                setUserHasMadeSelections(true);
+              }}
+              placeholder="Please explain the reason for this change..."
+              rows={3}
+              disabled={isFormDisabled}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: '2px solid #d1d5db',
+                borderRadius: '8px',
+                fontSize: '14px',
+                outline: 'none',
+                backgroundColor: isFormDisabled ? '#f9fafb' : 'white',
+                color: isFormDisabled ? '#6b7280' : 'inherit',
+                transition: 'all 0.2s ease',
+                resize: 'vertical',
+                minHeight: '80px',
+                cursor: isFormDisabled ? 'not-allowed' : 'text'
+              }}
+              required={!isAdminUser}
+            />
             <div style={{
-              padding: '12px 16px',
-              border: '2px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              backgroundColor: '#f9fafb',
+              fontSize: '12px',
               color: '#6b7280',
-              fontWeight: '500'
+              marginTop: '4px'
             }}>
-              {selectedTerritoryManager.status || 'ACTIVE'}
+              This field is required when making changes to the territory manager record.
             </div>
           </div>
         )}
       </div>
 
-      <div className="flex justify-between items-center mt-6">
-        {!isCreateMode && (
+      <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        {!isCreateMode && selectedTerritoryManager?.status === StatusEnum.ACTIVE ? (
           <button
             type="button"
             onClick={(e) => {
@@ -281,69 +297,38 @@ export default function TerritoryManagerForm({
               e.stopPropagation();
               onDelete();
             }}
-            disabled={selectedTerritoryManager?.status !== StatusEnum.ACTIVE}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: selectedTerritoryManager?.status !== StatusEnum.ACTIVE ? 'transparent' : '#dc2626',
-              color: selectedTerritoryManager?.status !== StatusEnum.ACTIVE ? '#9ca3af' : 'white',
-              border: selectedTerritoryManager?.status !== StatusEnum.ACTIVE ? '1px solid #d1d5db' : 'none',
-              borderRadius: '6px',
-              cursor: selectedTerritoryManager?.status !== StatusEnum.ACTIVE ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: selectedTerritoryManager?.status !== StatusEnum.ACTIVE ? 0.5 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (selectedTerritoryManager?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#b91c1c';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (selectedTerritoryManager?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#dc2626';
-              }
-            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"
           >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
             Delete
           </button>
+        ) : (
+          <div className="hidden sm:block" />
         )}
-        
-        <div className="flex gap-3 ml-auto">
+
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+          {(isCreateMode || selectedTerritoryManager?.status === StatusEnum.ACTIVE) && (
+            <button
+              type="submit"
+              className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {isCreateMode ? 'Create Territory Manager' : 'Save Changes'}
+            </button>
+          )}
           <button
             type="button"
             onClick={onCancel}
-            className="px-5 py-2.5 bg-transparent text-gray-600 border border-gray-300 rounded-md cursor-pointer text-sm font-medium hover:bg-gray-50 transition-colors duration-200"
+            className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
             Cancel
-          </button>
-          <button
-            type="submit"
-            disabled={!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? '#9ca3af' : '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              transition: 'all 0.2s ease',
-              opacity: (!isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE) ? 0.7 : 1
-            }}
-            onMouseEnter={(e) => {
-              if (isCreateMode || selectedTerritoryManager?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#2563eb';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (isCreateMode || selectedTerritoryManager?.status === StatusEnum.ACTIVE) {
-                e.currentTarget.style.backgroundColor = '#3b82f6';
-              }
-            }}
-          >
-            {isCreateMode ? 'Create Territory Manager' : 'Save Changes'}
           </button>
         </div>
       </div>

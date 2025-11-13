@@ -28,7 +28,8 @@ export class GetReturnGoodSoldRecordsByStatusPaginationHandler
                 query.limit,
                 query.status,
                 query.direction,
-                query.cursorPointer
+                query.cursorPointer,
+                query.rgsDocno
             );
 
             this.logger.log(`Return Good Sold records retrieved successfully for status: ${query.status}`);

@@ -244,10 +244,45 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     router.push('/invoicing/invoice');
   };
 
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
+
+  const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+    
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'bg-green-600 text-white shadow-sm';
+      case StatusEnum.FOR_APPROVAL:
+        return 'bg-yellow-500 text-white shadow-sm';
+      case StatusEnum.FOR_DELETION:
+        return 'bg-red-600 text-white shadow-sm';
+      case StatusEnum.NEW_RECORD:
+        return 'bg-blue-600 text-white shadow-sm';
+      default:
+        return 'bg-gray-500 text-white shadow-sm';
+    }
+  };
+
   if (!selectedInvoice && !isLoading) {
     return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>Invoice not found</span>
         </div>
       </div>
@@ -255,7 +290,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Breadcrumbs */}
       <div className="mb-6">
         <nav className="flex items-center gap-2">
@@ -284,20 +319,22 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
 
       {/* Invoice Form */}
       {selectedInvoice && (
-        <InvoiceForm
-          isCreateMode={false}
-          selectedInvoice={selectedInvoice}
-          successMessage={null}
-          isAdminUser={isAdminUser}
-          isLoading={isLoading}
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-          onSave={handleSave}
-          onDelete={handleDelete}
-          onApprove={handleApprove}
-          onDeny={handleDeny}
-          onCancel={handleCancel}
-        />
+        <div className="flex justify-center">
+          <InvoiceForm
+            isCreateMode={false}
+            selectedInvoice={selectedInvoice}
+            successMessage={null}
+            isAdminUser={isAdminUser}
+            isLoading={isLoading}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onSave={handleSave}
+            onDelete={handleDelete}
+            onApprove={handleApprove}
+            onDeny={handleDeny}
+            onCancel={handleCancel}
+          />
+        </div>
       )}
     </div>
   );

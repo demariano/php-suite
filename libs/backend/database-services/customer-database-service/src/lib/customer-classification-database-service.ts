@@ -57,6 +57,7 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
         customerClassificationRecord.GSI2PK = `CUSTOMER_CLASSIFICATION#${record.status}`;
         customerClassificationRecord.GSI2SK = record.customerClassificationName;
         customerClassificationRecord.forApprovalVersion = record.forApprovalVersion;
+        customerClassificationRecord.changeReason = record.changeReason;
 
         const updatedCustomerClassificationRecord: CustomerClassificationDataType =
             await this.customerClassificationTable.update(customerClassificationRecord);
@@ -77,11 +78,11 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
         return await this.convertToDto(record);
     }
 
-    async findRecordContainingName(
+    async findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<CustomerClassificationDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
@@ -95,8 +96,6 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
             },
             dynamoDbOption
         );
-
-        console.log('Records:', records);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -249,6 +248,8 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
+        dto.changeReason =
+            (record as CustomerClassificationDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
@@ -275,6 +276,7 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
             GSI2SK: dto.customerClassificationName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
+            changeReason: dto.changeReason,
         };
         return customerClassificationData;
     }

@@ -54,8 +54,10 @@ export default function CreateSupplierPage() {
     router.replace('/inventory/suppliers');
   };
 
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
           <span>{error}</span>
@@ -86,17 +88,20 @@ export default function CreateSupplierPage() {
         </nav>
       </div>
 
-      <h1 className="text-3xl font-bold text-gray-900 mb-6">Create New Supplier</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6">Create New Supplier</h1>
 
-      <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200">
-        <SupplierForm
-          isCreateMode={true}
-          selectedSupplier={null}
-          successMessage={null}
-          onSave={handleSave}
-          onDelete={() => {}} // Not applicable in create mode
-          onCancel={handleCancel}
-        />
+      <div className="flex justify-center">
+        <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-200 w-full sm:max-w-4xl">
+          <SupplierForm
+            isCreateMode={true}
+            selectedSupplier={null}
+            successMessage={null}
+            onSave={handleSave}
+            onDelete={() => {}} // Not applicable in create mode
+            onCancel={handleCancel}
+            isAdminUser={isAdminUser}
+          />
+        </div>
       </div>
     </div>
   );

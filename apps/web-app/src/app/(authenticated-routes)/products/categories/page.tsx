@@ -1,33 +1,31 @@
 'use client';
 
-import { ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { CategoryHeader, CategoryTable } from './components';
 
 export default function ProductCategoriesPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<ProductCategoryDto[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
   
   // Check if user is admin or super admin
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+  const canCreateCategory = isAdminUser;
   
-  const [nextCursor, setNextCursor] = useState<any>(undefined);
-  const [prevCursor, setPrevCursor] = useState<any>(undefined);
-  const [currentCursor, setCurrentCursor] = useState<any>(undefined);
+  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+  const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
   const [pageSize, setPageSize] = useState<number>(10);
 
   // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
 
-
   // Fetch categories from API
-  const fetchCategories = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
+  const fetchCategories = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -46,10 +44,10 @@ export default function ProductCategoriesPage() {
       // Use custom page size if provided, otherwise use state page size
       const currentPageSize = customPageSize ?? pageSize;
       
-      // If search term exists, use search API, otherwise use regular pagination API
-      if (searchTerm && searchTerm.trim() !== '') {
+      // If search query exists, use search API, otherwise use regular pagination API
+      if (searchQuery && searchQuery.trim() !== '') {
         response = await ProductApi.getProductCategoriesByName(
-          searchTerm.trim(),
+          searchQuery.trim(),
           currentPageSize,
           direction,
           serializedCursor,
@@ -89,7 +87,7 @@ export default function ProductCategoriesPage() {
       } else {
         setCurrentCursor(undefined);
       }
-    } catch (err) {
+    } catch {
       setError('Failed to load categories. Please try again.');
     } finally {
       setIsLoading(false);
@@ -105,10 +103,10 @@ export default function ProductCategoriesPage() {
     fetchCategories();
   }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
-  // Debounce search term changes (but not on initial mount with empty search)
+  // Debounce search query changes (but not on initial mount with empty search)
   useEffect(() => {
-    // Only debounce if there's actually a search term
-    if (searchTerm === '') {
+    // Only debounce if there's actually a search query
+    if (searchQuery === '') {
       return; // Skip - initial load is handled by the other useEffect
     }
 
@@ -117,12 +115,28 @@ export default function ProductCategoriesPage() {
     }, 500); // 500ms delay
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchQuery]);
 
   const headers = [
     { key: 'productCategoryName', label: 'NAME' },
     { key: 'status', label: 'STATUS' }
   ];
+
+  // Helper function to get status text
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
 
   const getStatusBadge = (status: StatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
@@ -141,8 +155,8 @@ export default function ProductCategoriesPage() {
     }
     
     return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
+      <span className={`${baseClasses} ${colorClasses}`}>
+        {getStatusText(status)}
       </span>
     );
   };
@@ -176,10 +190,10 @@ export default function ProductCategoriesPage() {
   }) || [];
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
@@ -191,7 +205,7 @@ export default function ProductCategoriesPage() {
       )}
 
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -207,22 +221,24 @@ export default function ProductCategoriesPage() {
 
       {/* Header */}
       <CategoryHeader
-        searchTerm={searchTerm}
+        searchQuery={searchQuery}
         onSearchChange={(value) => {
-          setSearchTerm(value);
-          // Reset pagination when search term changes
+          setSearchQuery(value);
+          // Reset pagination when search query changes
           setCurrentCursor(undefined);
           setNextCursor(undefined);
           setPrevCursor(undefined);
         }}
         onRefresh={() => {
-          setSearchTerm('');
+          setSearchQuery('');
           setCurrentCursor(undefined);
           setNextCursor(undefined);
           setPrevCursor(undefined);
           fetchCategories();
         }}
         onCreateClick={handleCreateClick}
+        isLoading={isLoading}
+        canCreate={canCreateCategory}
       />
 
       {/* Table */}
@@ -230,7 +246,7 @@ export default function ProductCategoriesPage() {
         isLoading={isLoading}
         tableData={tableData}
         headers={headers}
-        searchTerm={searchTerm}
+        searchQuery={searchQuery}
         onRowClick={handleRowClick}
         pageSize={pageSize}
         onPageSizeChange={handlePageSizeChange}

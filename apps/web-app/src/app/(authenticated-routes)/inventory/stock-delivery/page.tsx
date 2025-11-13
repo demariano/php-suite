@@ -6,13 +6,14 @@ import { StockDeliveryHeader, StockDeliveryTable } from './components';
 
 export default function StockDeliveryPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [stockDeliveries, setStockDeliveries] = useState<StockDeliveryDto[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
   const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
   const [pageSize, setPageSize] = useState<number>(10);
 
   // Track if initial fetch has been made to prevent duplicate calls
@@ -24,6 +25,10 @@ export default function StockDeliveryPage() {
       setIsLoading(true);
       setError(null);
       
+      // SECURITY: Only get user role if BYPASS_AUTH is enabled
+      // This prevents role parameter leakage when bypass auth is disabled
+      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+      
       // Serialize cursor object to JSON string if it's an object
       const serializedCursor = cursor && typeof cursor === 'object' 
         ? JSON.stringify(cursor) 
@@ -34,25 +39,14 @@ export default function StockDeliveryPage() {
       // Use custom page size if provided, otherwise use state page size
       const currentPageSize = customPageSize ?? pageSize;
       
-      // If search term exists, use search API, otherwise use regular pagination API
-      if (searchTerm && searchTerm.trim() !== '') {
-        const searchResults = await StockDeliveryApi.getStockDeliveryByDocno(searchTerm.trim());
-        // Convert array response to paginated format
-        if (Array.isArray(searchResults)) {
-          response = {
-            statusCode: 200,
-            data: searchResults,
-            nextCursorPointer: undefined,
-            prevCursorPointer: undefined
-          };
-        } else {
-          response = {
-            statusCode: 200,
-            data: [],
-            nextCursorPointer: undefined,
-            prevCursorPointer: undefined
-          };
-        }
+      // If search query exists, use search API, otherwise use regular pagination API
+      if (searchQuery && searchQuery.trim() !== '') {
+        response = await StockDeliveryApi.getStockDeliveryByDocno(
+          searchQuery.trim(),
+          currentPageSize,
+          direction,
+          serializedCursor
+        );
       } else {
         response = await StockDeliveryApi.getStockDeliveries(
           currentPageSize, 
@@ -62,11 +56,16 @@ export default function StockDeliveryPage() {
       }
       
       if (response && response.statusCode === 200 && response.data) {
-        // The response.data contains the array of stock deliveries
-        if (Array.isArray(response.data)) {
+        // Handle PageDto response structure
+        if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+          // PageDto structure: { data: [...], nextCursorPointer: ..., prevCursorPointer: ... }
+          const pageData = response.data as { data: StockDeliveryDto[]; nextCursorPointer?: string; prevCursorPointer?: string };
+          setStockDeliveries(pageData.data || []);
+          setNextCursor(pageData.nextCursorPointer || undefined);
+          setPrevCursor(pageData.prevCursorPointer || undefined);
+        } else if (Array.isArray(response.data)) {
+          // Fallback: array response (for backward compatibility)
           setStockDeliveries(response.data);
-          
-          // Set pagination cursors from response
           setNextCursor(response.nextCursorPointer || undefined);
           setPrevCursor(response.prevCursorPointer || undefined);
         } else {
@@ -78,6 +77,12 @@ export default function StockDeliveryPage() {
         setStockDeliveries([]);
         setNextCursor(undefined);
         setPrevCursor(undefined);
+      }
+      
+      if (direction && cursor) {
+        setCurrentCursor(cursor);
+      } else {
+        setCurrentCursor(undefined);
       }
     } catch {
       setError('Failed to load stock deliveries. Please try again.');
@@ -95,10 +100,10 @@ export default function StockDeliveryPage() {
     fetchStockDeliveries();
   }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
-  // Debounce search term changes (but not on initial mount with empty search)
+  // Debounce search query changes (but not on initial mount with empty search)
   useEffect(() => {
-    // Only debounce if there's actually a search term
-    if (searchTerm === '') {
+    // Only debounce if there's actually a search query
+    if (searchQuery === '') {
       return; // Skip - initial load is handled by the other useEffect
     }
 
@@ -107,7 +112,7 @@ export default function StockDeliveryPage() {
     }, 500); // 500ms delay
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  }, [searchQuery]);
 
   const headers = [
     { key: 'docno', label: 'DOC NO' },
@@ -115,6 +120,21 @@ export default function StockDeliveryPage() {
     { key: 'supplierName', label: 'SUPPLIER NAME' },
     { key: 'status', label: 'STATUS' }
   ];
+
+  const getStatusText = (status: StatusEnum): string => {
+    switch (status) {
+      case StatusEnum.ACTIVE:
+        return 'Active';
+      case StatusEnum.FOR_APPROVAL:
+        return 'For Approval';
+      case StatusEnum.FOR_DELETION:
+        return 'For Deletion';
+      case StatusEnum.NEW_RECORD:
+        return 'New Record';
+      default:
+        return status;
+    }
+  };
 
   const getStatusBadge = (status: StatusEnum) => {
     const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
@@ -134,7 +154,7 @@ export default function StockDeliveryPage() {
     
     return (
       <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
+        {getStatusText(status)}
       </span>
     );
   };
@@ -199,15 +219,17 @@ export default function StockDeliveryPage() {
       {/* Header */}
       <div>
         <StockDeliveryHeader
-          searchTerm={searchTerm}
+          searchQuery={searchQuery}
           onSearchChange={(value: string) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
+            setSearchQuery(value);
+            // Reset pagination when search query changes
+            setCurrentCursor(undefined);
             setNextCursor(undefined);
             setPrevCursor(undefined);
           }}
           onRefresh={() => {
-            setSearchTerm('');
+            setSearchQuery('');
+            setCurrentCursor(undefined);
             setNextCursor(undefined);
             setPrevCursor(undefined);
             fetchStockDeliveries();
@@ -222,7 +244,7 @@ export default function StockDeliveryPage() {
           isLoading={isLoading}
           tableData={tableData}
           headers={headers}
-          searchTerm={searchTerm}
+          searchQuery={searchQuery}
           onRowClick={handleRowClick}
           pageSize={pageSize}
           onPageSizeChange={handlePageSizeChange}

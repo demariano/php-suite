@@ -6,6 +6,7 @@ export interface ProductUnitDto {
     status?: StatusEnum;
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
+    changeReason?: string;
 }
 
 export interface CreateProductUnitDto {

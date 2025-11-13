@@ -14,7 +14,7 @@ import { UpdateReturnGoodSoldHandler } from './command/update/update.handler';
 import { GetReturnGoodSoldByCustomerIdHandler } from './queries/get.by.customerId/get.return.good.sold.by.customerId.handler';
 import { GetReturnGoodSoldByIdHandler } from './queries/get.by.id/get.return.good.sold.by.id.handler';
 import { GetReturnGoodSoldByInvoiceIdHandler } from './queries/get.by.invoiceId/get.return.good.sold.by.invoiceId.handler';
-import { GetReturnGoodSoldContainingDocnoHandler } from './queries/get.containing.docno/get.return.good.sold.containing.docno.handler';
+import { GetReturnGoodSoldByRgsDocnoHandler } from './queries/get.by.rgsDocno/get.return.good.sold.by.rgsDocno.handler';
 import { GetReturnGoodSoldRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetReturnGoodSoldRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
 import { ReturnGoodSoldController } from './return.good.sold.controller';
@@ -42,7 +42,7 @@ import { ReturnGoodSoldController } from './return.good.sold.controller';
         GetReturnGoodSoldByIdHandler,
         GetReturnGoodSoldByInvoiceIdHandler,
         GetReturnGoodSoldByCustomerIdHandler,
-        GetReturnGoodSoldContainingDocnoHandler,
+        GetReturnGoodSoldByRgsDocnoHandler,
         GetReturnGoodSoldRecordsPaginationHandler,
         GetReturnGoodSoldRecordsByStatusPaginationHandler,
         UpdateReturnGoodSoldHandler,

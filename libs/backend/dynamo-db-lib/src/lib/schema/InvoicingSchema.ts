@@ -100,6 +100,7 @@ export const InvoicingSchema = {
             taxable: { type: Boolean, required: false },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
             GSI1PK: { type: String, value: 'SALES_TYPE', hidden: false },
             GSI1SK: { type: String, value: '${salesTypeName}', hidden: false },
             GSI2PK: { type: String, value: 'SALES_TYPE#${status}', hidden: false },
@@ -113,6 +114,7 @@ export const InvoicingSchema = {
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
             contactNo: { type: String, required: false },
+            changeReason: { type: String, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],

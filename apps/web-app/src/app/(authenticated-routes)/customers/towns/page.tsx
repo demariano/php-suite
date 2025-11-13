@@ -187,11 +187,14 @@ export default function CustomerTownsPage() {
     };
   }) || [];
 
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+  const canCreateTown = isAdminUser;
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
           <span>{error}</span>
           <button
             onClick={() => setError(null)}
@@ -203,7 +206,7 @@ export default function CustomerTownsPage() {
       )}
 
       {/* Breadcrumbs */}
-      <div className="mb-6">
+      <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
             Home
@@ -217,44 +220,42 @@ export default function CustomerTownsPage() {
         </nav>
       </div>
 
-      {/* Header */}
-      <div>
-        <TownHeader
-          searchQuery={searchQuery}
-          onSearchChange={(value: string) => {
-            setSearchQuery(value);
-            // Reset pagination when search query changes
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchQuery('');
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchCustomerTowns();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
+      {/* Header Bar */}
+      <TownHeader
+        searchQuery={searchQuery}
+        onSearchChange={(value: string) => {
+          setSearchQuery(value);
+          // Reset pagination when search query changes
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchQuery('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchCustomerTowns();
+        }}
+        onCreateClick={handleCreateClick}
+        isLoading={isLoading}
+        canCreate={canCreateTown}
+      />
 
       {/* Table */}
-      <div>
-        <TownTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchQuery={searchQuery}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchCustomerTowns('prev', prevCursor)}
-          onNext={() => fetchCustomerTowns('next', nextCursor)}
-        />
-      </div>
+      <TownTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchQuery={searchQuery}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchCustomerTowns('prev', prevCursor)}
+        onNext={() => fetchCustomerTowns('next', nextCursor)}
+      />
     </div>
   );
 }

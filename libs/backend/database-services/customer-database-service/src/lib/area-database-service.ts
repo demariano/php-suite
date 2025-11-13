@@ -61,6 +61,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         areaRecord.forApprovalVersion = record.forApprovalVersion;
         areaRecord.territoryManagerId = record.territoryManagerId;
         areaRecord.territoryManagerName = record.territoryManagerName;
+        areaRecord.changeReason = record.changeReason;
 
         const updatedAreaRecord: AreaDataType = await this.areaTable.update(areaRecord);
 
@@ -249,7 +250,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.territoryManagerId = record.territoryManagerId ? record.territoryManagerId : '';
         dto.territoryManagerName = record.territoryManagerName ? record.territoryManagerName : '';
-        dto.changeReason = record.changeReason ? record.changeReason : undefined;
+        dto.changeReason = (record as AreaDataType & { changeReason?: string }).changeReason || undefined;
         return dto;
     }
 
