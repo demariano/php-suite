@@ -3,7 +3,7 @@
 import { extractErrorMessage, InvoiceApi, ReturnGoodSoldApi, ReturnGoodSoldDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import ReturnGoodSoldForm from './components/ReturnGoodSoldForm';
 
 interface EditReturnGoodSoldPageProps {

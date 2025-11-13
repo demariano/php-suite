@@ -480,55 +480,6 @@ export class InvoiceController {
         );
     }
 
-    @Get(':id')
-    @ApiOperation({
-        summary: 'Get invoice by ID',
-        description: 'Retrieves an invoice record by their unique identifier',
-    })
-    @ApiParam({
-        name: 'id',
-        description: 'Invoice ID',
-        example: 'invoice-123',
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Invoice retrieved successfully',
-        schema: {
-            type: 'object',
-            properties: {
-                statusCode: { type: 'number', example: 200 },
-                data: {
-                    type: 'object',
-                    properties: {
-                        invoiceId: { type: 'string', example: 'invoice-123' },
-                        docno: { type: 'string', example: 'INV-001' },
-                        invoiceDate: { type: 'string', example: '2024-01-01' },
-                        customerName: { type: 'string', example: 'John Doe' },
-                        finalAmount: { type: 'number', example: 1000.0 },
-                        status: { type: 'string', example: 'ACTIVE' },
-                        activityLogs: { type: 'array', items: { type: 'string' } },
-                    },
-                },
-            },
-        },
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Invoice not found',
-        schema: {
-            type: 'object',
-            properties: {
-                statusCode: { type: 'number', example: 404 },
-                message: { type: 'string', example: 'Invoice not found' },
-            },
-        },
-    })
-    getById(@Param('id') id: string) {
-        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
-        // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetInvoiceByIdQuery(id));
-    }
-
     @Get('customer/:customerId/pending-payment')
     @ApiOperation({
         summary: 'Get pending payment invoices for customer',
@@ -590,5 +541,54 @@ export class InvoiceController {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
         return this.queryBus.execute(new GetPendingPaymentInvoicesQuery(customerId, status));
+    }
+
+    @Get(':id')
+    @ApiOperation({
+        summary: 'Get invoice by ID',
+        description: 'Retrieves an invoice record by their unique identifier',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Invoice ID',
+        example: 'invoice-123',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoice retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        invoiceId: { type: 'string', example: 'invoice-123' },
+                        docno: { type: 'string', example: 'INV-001' },
+                        invoiceDate: { type: 'string', example: '2024-01-01' },
+                        customerName: { type: 'string', example: 'John Doe' },
+                        finalAmount: { type: 'number', example: 1000.0 },
+                        status: { type: 'string', example: 'ACTIVE' },
+                        activityLogs: { type: 'array', items: { type: 'string' } },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Invoice not found',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 404 },
+                message: { type: 'string', example: 'Invoice not found' },
+            },
+        },
+    })
+    getById(@Param('id') id: string) {
+        // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
+        // This is kept for consistency in Swagger documentation
+        return this.queryBus.execute(new GetInvoiceByIdQuery(id));
     }
 }

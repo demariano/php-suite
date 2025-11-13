@@ -4,7 +4,7 @@ import { extractErrorMessage, PaymentApi, PaymentDto, StatusEnum, useEnv, useLoc
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import PaymentForm from './components/PaymentForm';
-import DeleteConfirmationModal from '../components/DeleteConfirmationModal';
+import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
 interface EditPaymentPageProps {
   params: {

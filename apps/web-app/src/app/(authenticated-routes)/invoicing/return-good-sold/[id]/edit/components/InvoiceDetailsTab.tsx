@@ -292,7 +292,7 @@ export default function InvoiceDetailsTab({
     <div className="space-y-6">
       {/* Original Invoice Details Section */}
       <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-        <div className="bg-gray-50 border-b-2 border-gray-200 p-3 sm:p-4">
+        <div className="bg-gray-50 border-b-2 border-gray-200 p-4 sm:p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -318,22 +318,24 @@ export default function InvoiceDetailsTab({
                       : 'bg-gray-50'
                 }`}
               >
+                {/* Product Details Section - On Top */}
+                <div className="mb-4">
+                  <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
+                    {detail.productName}
+                    {getDetailTypeBadge(detail.invoiceDetailType)}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {detail.lotNo && `Lot: ${detail.lotNo}`}
+                    {detail.stockTypeName && ` • ${detail.stockTypeName}`}
+                  </div>
+                </div>
+
+                {/* Textbox Components Section - Below */}
                 <div className={`grid gap-4 items-center ${
                   isReadOnly 
-                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-7' 
-                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-8'
+                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-5' 
+                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-6'
                 }`}>
-                  <div className="sm:col-span-2">
-                    <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
-                      {detail.productName}
-                      {getDetailTypeBadge(detail.invoiceDetailType)}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      {detail.lotNo && `Lot: ${detail.lotNo}`}
-                      {detail.stockTypeName && ` • ${detail.stockTypeName}`}
-                    </div>
-                  </div>
-
                   <div className="group">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Qty
@@ -407,9 +409,12 @@ export default function InvoiceDetailsTab({
                       <button
                         type="button"
                         onClick={() => handleCopyToModified(detail)}
-                        className="px-3 py-2 bg-blue-600 text-white border-none rounded-lg cursor-pointer text-xs font-semibold transition-all duration-200 hover:bg-blue-700 shadow-sm"
+                        className="p-2 bg-blue-600 text-white border-none rounded-lg cursor-pointer transition-all duration-200 hover:bg-blue-700 shadow-sm flex items-center justify-center"
+                        title="Copy"
                       >
-                        Copy
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
                       </button>
                     </div>
                   )}
@@ -463,7 +468,7 @@ export default function InvoiceDetailsTab({
             <div className="group">
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                Quantity *
+                Quantity
               </label>
               <input
                 type="number"
@@ -507,11 +512,11 @@ export default function InvoiceDetailsTab({
 
       {/* Modified Invoice Details Section */}
       <div className="border-2 border-gray-200 rounded-xl overflow-hidden">
-        <div className="bg-gray-50 border-b-2 border-gray-200 p-3 sm:p-4">
+        <div className="bg-gray-50 border-b-2 border-gray-200 p-4 sm:p-6">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
             </div>
             <h4 className="text-base font-bold text-blue-600 m-0">
@@ -533,22 +538,24 @@ export default function InvoiceDetailsTab({
                       : 'bg-gray-50'
                 }`}
               >
+                {/* Product Details Section - On Top */}
+                <div className="mb-4">
+                  <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
+                    {detail.productName}
+                    {getDetailTypeBadge(detail.invoiceDetailType)}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {detail.lotNo && `Lot: ${detail.lotNo}`}
+                    {detail.stockTypeName && ` • ${detail.stockTypeName}`}
+                  </div>
+                </div>
+
+                {/* Textbox Components Section - Below */}
                 <div className={`grid gap-4 items-center ${
                   isReadOnly 
-                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-7' 
-                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-8'
+                    ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-5' 
+                    : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-6'
                 }`}>
-                  <div className="sm:col-span-2">
-                    <div className="text-sm font-medium text-gray-900 mb-1 flex items-center">
-                      {detail.productName}
-                      {getDetailTypeBadge(detail.invoiceDetailType)}
-                    </div>
-                    <div className="text-xs text-gray-600">
-                      {detail.lotNo && `Lot: ${detail.lotNo}`}
-                      {detail.stockTypeName && ` • ${detail.stockTypeName}`}
-                    </div>
-                  </div>
-
                   <div className="group">
                     <label className="block text-xs font-semibold text-gray-700 mb-1">
                       Qty
@@ -622,16 +629,22 @@ export default function InvoiceDetailsTab({
                       <button
                         type="button"
                         onClick={() => handleEditModified(index)}
-                        className="px-3 py-2 bg-blue-600 text-white border-none rounded-lg cursor-pointer text-xs font-semibold transition-all duration-200 hover:bg-blue-700 shadow-sm"
+                        className="p-2 bg-blue-600 text-white border-none rounded-lg cursor-pointer transition-all duration-200 hover:bg-blue-700 shadow-sm flex items-center justify-center"
+                        title="Edit"
                       >
-                        Edit
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleDeleteModified(index)}
-                        className="px-3 py-2 bg-red-600 text-white border-none rounded-lg cursor-pointer text-xs font-semibold transition-all duration-200 hover:bg-red-700 shadow-sm"
+                        className="p-2 bg-red-600 text-white border-none rounded-lg cursor-pointer transition-all duration-200 hover:bg-red-700 shadow-sm flex items-center justify-center"
+                        title="Delete"
                       >
-                        Delete
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   )}
@@ -660,14 +673,18 @@ export default function InvoiceDetailsTab({
       {editingItem && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]"
-          onClick={() => {
-            setEditingIndex(null);
-            setEditingItem(null);
+          onClick={(e) => {
+            // Only close if clicking directly on the backdrop, not on modal content
+            if (e.target === e.currentTarget) {
+              setEditingIndex(null);
+              setEditingItem(null);
+            }
           }}
         >
           <div
             className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-5 pb-4 border-b-2 border-gray-200">
               <h3 className="text-lg font-semibold text-gray-900 m-0">

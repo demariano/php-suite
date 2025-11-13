@@ -302,7 +302,7 @@ export default function ReturnGoodSoldForm({
     };
     
     return (
-      <div className="space-y-6 animate-fadeIn border-2 border-green-400 rounded-xl p-4 sm:p-6 bg-white shadow-sm">
+      <div className="space-y-6 animate-fadeIn border-2 border-blue-200 rounded-xl p-4 sm:p-6 bg-white shadow-sm">
         {/* Change Reason and Modification Made */}
         {selectedRecord?.changeReason && (
           <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
@@ -385,7 +385,8 @@ export default function ReturnGoodSoldForm({
 
   // Render logs tab content
   const renderLogsTab = () => {
-    if (!selectedRecord) return null;
+    // Use formData activityLogs if available, otherwise fall back to selectedRecord
+    const activityLogs = formData?.activityLogs || selectedRecord?.activityLogs || [];
     
     return (
       <div className="space-y-6 animate-fadeIn">
@@ -401,10 +402,10 @@ export default function ReturnGoodSoldForm({
             </h3>
           </div>
           
-          {selectedRecord?.activityLogs && selectedRecord.activityLogs.length > 0 ? (
+          {activityLogs && activityLogs.length > 0 ? (
             <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
               <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedRecord.activityLogs.map((log, index) => (
+                {activityLogs.map((log, index) => (
                   <li 
                     key={index} 
                     className="px-4 py-3"
@@ -526,9 +527,9 @@ export default function ReturnGoodSoldForm({
         </div>
       )}
 
-      {activeTab === 'approval' && !isCreateMode && renderApprovalTab()}
+      {activeTab === 'approval' && !isCreateMode && selectedRecord && renderApprovalTab()}
 
-      {activeTab === 'logs' && !isCreateMode && renderLogsTab()}
+      {activeTab === 'logs' && !isCreateMode && selectedRecord && renderLogsTab()}
     </>
   );
 }

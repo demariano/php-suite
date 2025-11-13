@@ -167,7 +167,7 @@ export default function RecordDetailsTab({
             <div className="group">
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                Invoice *
+                Invoice
               </label>
               <div className="relative">
                 <input
@@ -227,7 +227,7 @@ export default function RecordDetailsTab({
             <div className="group">
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                RGS Doc No *
+                RGS Doc No
               </label>
               <input
                 type="text"
@@ -248,7 +248,7 @@ export default function RecordDetailsTab({
             <div className="group">
               <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                 <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                Date Returned *
+                Date Returned
               </label>
               <DatePicker
                 value={formData.dateReturned || ''}
