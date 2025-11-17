@@ -2,6 +2,7 @@
 
 import { ProductDto, StatusEnum } from '@data-access/index';
 import { useEffect, useMemo, useState } from 'react';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../../../components';
 import NumberInput from '../../../../../components/NumberInput';
 import ProductCategorySearchableSelectionModal from '../../../../../search-modals/ProductCategorySearchableSelectionModal';
 import ProductClassSearchableSelectionModal from '../../../../../search-modals/ProductClassSearchableSelectionModal';
@@ -413,6 +414,12 @@ export default function ProductForm({
 
     const renderDetailsTab = () => (
         <div className="space-y-6">
+            <ChangeReasonField
+                value={formData.changeReason}
+                onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+                disabled={isFormDisabled}
+            />
+            
             <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-blue-600 rounded-lg shadow-md">
@@ -719,24 +726,7 @@ export default function ProductForm({
 
         return (
             <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
-                {/* Change Reason and Modification Made */}
-                {selectedProduct?.changeReason && (
-                    <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
-                        <div className="mb-4 flex items-center gap-3">
-                            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                </svg>
-                            </div>
-                            <h4 className="m-0 text-base font-bold text-blue-600">
-                                Change Reason and Modification Made
-                            </h4>
-                        </div>
-                        <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
-                            {selectedProduct.changeReason}
-                        </div>
-                    </div>
-                )}
+                <ChangeReasonReadOnly value={selectedProduct?.changeReason} />
 
                 {/* Product Information Section */}
                 <div className="space-y-4">

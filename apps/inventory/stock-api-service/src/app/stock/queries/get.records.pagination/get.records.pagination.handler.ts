@@ -51,8 +51,8 @@ export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPagi
             throw new BadRequestException(`Direction must be one of: ${VALID_DIRECTIONS.join(', ')}`);
         }
 
-        // Validate status
-        if (!query.status || !VALID_STATUSES.includes(query.status)) {
+        // Validate status only if provided (allow null/undefined to fetch all records)
+        if (query.status && !VALID_STATUSES.includes(query.status)) {
             throw new BadRequestException(`Status must be one of: ${VALID_STATUSES.join(', ')}`);
         }
     }

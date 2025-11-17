@@ -524,37 +524,11 @@ export default function RecordDetailsTab({
 
   return (
     <div className="space-y-6">
-      {/* Change Reason Field - Only for non-admin users editing existing invoices */}
-      {!isCreateMode && !isAdminUser && !isReadOnly && (
-        <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </div>
-            <h3 className="text-base font-bold text-blue-600 m-0">
-              Change Reason
-            </h3>
-          </div>
-          <div className="group">
-            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-              Change Reason and Modification Made
-            </label>
-            <textarea
-              value={formData.changeReason || ''}
-              onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
-              placeholder="Please provide a reason for the changes (minimum 10 characters)"
-              rows={3}
-              className="min-h-[80px] w-full resize-vertical rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-            />
-            <div className="mt-2 text-xs text-gray-500">
-              Minimum 10 characters required when making changes to the invoice record.
-            </div>
-          </div>
-        </div>
-      )}
+      <ChangeReasonField
+        value={formData.changeReason || ''}
+        onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
+        disabled={isReadOnly}
+      />
 
       {/* Basic Information Section */}
       <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">

@@ -239,44 +239,11 @@ export default function RecordDetailsTab({
       </div>
       </div>
 
-      {/* Change Reason Section - Only show for non-admin users when not in create mode */}
-      {!isCreateMode && !isAdminUser && (
-        <div className="space-y-4">
-          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </div>
-            <h3 className="text-base font-bold text-blue-600">
-              Change Reason
-            </h3>
-          </div>
-          <div className="group">
-            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-              <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-              Change Reason and Modification Made
-            </label>
-            <textarea
-              value={formData.changeReason || ''}
-              onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
-              placeholder="Explain the reason for this change (minimum 10 characters)"
-              disabled={isReadOnly}
-              rows={3}
-              className={`min-h-[80px] w-full resize-vertical rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                isReadOnly
-                  ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-              }`}
-            />
-            <div className="mt-2 text-xs text-gray-500">
-              {formData.changeReason?.length || 0} characters (minimum 10 required when making changes to the payment record)
-            </div>
-          </div>
-        </div>
-        </div>
-      )}
+      <ChangeReasonField
+        value={formData.changeReason || ''}
+        onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
+        disabled={isReadOnly}
+      />
 
       {/* Customer Selection Modal */}
       <CustomerSearchableSelectionModal

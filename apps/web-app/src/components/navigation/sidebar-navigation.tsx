@@ -137,12 +137,6 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
           onClick: (route: string) => onNavigate?.(route),
           subItems: [
             { 
-              label: "Inventory", 
-              route: "/inventory/stock", 
-              icon: File,
-              onClick: (route: string) => onNavigate?.(route)
-            },
-            { 
               label: "Stock", 
               route: "/inventory/stock", 
               icon: File,

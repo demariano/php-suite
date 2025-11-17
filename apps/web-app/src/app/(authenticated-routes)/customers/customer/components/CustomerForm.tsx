@@ -2,14 +2,15 @@
 
 import { AreaDto, CustomerClassificationDto, CustomerDto, CustomerTypeDto, StatusEnum, TermsDto, TownDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../components';
 import { useNumberFormatting } from '../../../components/NumberFormatting';
 import {
-  AreaSearchableSelectionModal,
-  CustomerClassificationSearchableSelectionModal,
-  CustomerTypeSearchableSelectionModal,
-  ProductSearchableSelectionModal,
-  TermsSearchableSelectionModal,
-  TownSearchableSelectionModal
+    AreaSearchableSelectionModal,
+    CustomerClassificationSearchableSelectionModal,
+    CustomerTypeSearchableSelectionModal,
+    ProductSearchableSelectionModal,
+    TermsSearchableSelectionModal,
+    TownSearchableSelectionModal
 } from '../../../search-modals';
 import SelectionField from './SelectionField';
 
@@ -455,6 +456,15 @@ export default function CustomerForm({
         </div>
       )}
       
+      {/* Change Reason Field - First component when displayed */}
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+          disabled={selectedCustomer?.status !== StatusEnum.ACTIVE}
+        />
+      )}
+      
       {/* Details Container */}
       <div className="space-y-6">
             {/* Basic Information Section */}
@@ -790,51 +800,6 @@ export default function CustomerForm({
         </div>
               </div>
             </div>
-
-            {/* Change Reason and Modification Made Field - Only show for non-create mode and non-admin users */}
-            {!isCreateMode && !isAdminUser && (
-              <div style={{ marginTop: '24px', marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
-                  Change Reason and Modification Made
-                </label>
-                <textarea
-                  name="changeReason"
-                  value={formData.changeReason}
-                  onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
-                  placeholder="Please explain the reason for this change..."
-                  rows={3}
-                  disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '2px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    backgroundColor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#f9fafb' : 'white',
-                    color: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? '#6b7280' : 'inherit',
-                    transition: 'all 0.2s ease',
-                    resize: 'vertical',
-                    minHeight: '80px',
-                    cursor: (!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) ? 'not-allowed' : 'text'
-                  }}
-                  required={!isAdminUser}
-                />
-                <div style={{
-                  fontSize: '12px',
-                  color: '#6b7280',
-                  marginTop: '4px'
-                }}>
-                  This field is required when making changes to the customer record.
-                </div>
-              </div>
-            )}
 
             {/* Customer Terms Section */}
             <div className="space-y-4">

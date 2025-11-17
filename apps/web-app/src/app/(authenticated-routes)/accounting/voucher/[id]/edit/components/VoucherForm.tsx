@@ -2,6 +2,7 @@
 
 import { AccountTypeEnum, StatusEnum, VoucherDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonReadOnly } from '../../../../../components';
 import PaymentDetailsTab from './PaymentDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
 import VoucherDetailsTab from './VoucherDetailsTab';
@@ -385,23 +386,7 @@ export default function VoucherForm({
             <div>
               {/* Change Reason - Highlighted field */}
               <div className="mb-5">
-                {selectedVoucher?.changeReason && (
-                  <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
-                    <div className="mb-4 flex items-center gap-3">
-                      <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </div>
-                      <h4 className="m-0 text-base font-bold text-blue-600">
-                        Change Reason and Modification Made
-                      </h4>
-                    </div>
-                    <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
-                      {selectedVoucher.changeReason}
-                    </div>
-                  </div>
-                )}
+                <ChangeReasonReadOnly value={selectedVoucher?.changeReason} />
               </div>
               
               {/* Use the same components as Details tab but with merged data and read-only */}

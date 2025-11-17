@@ -3,6 +3,7 @@
 import TownApi from '@data-access/api/town.api';
 import { AreaDto, StatusEnum, TerritoryManagerDto, TownDto, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../components';
 import TerritoryManagerSearchableSelectionModal from '../../../search-modals/TerritoryManagerSearchableSelectionModal';
 import SelectionField from '../../customer/components/SelectionField';
 
@@ -273,6 +274,18 @@ export default function AreaForm({
         </div>
       )}
       
+      {/* Change Reason Field - First component when displayed */}
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => {
+            setFormData(prev => ({ ...prev, changeReason: e.target.value }));
+            setUserHasMadeSelections(true);
+          }}
+          disabled={selectedArea?.status !== StatusEnum.ACTIVE}
+        />
+      )}
+      
       {/* Details Container */}
       <div className="space-y-6">
         {/* Basic Information Section */}
@@ -482,49 +495,6 @@ export default function AreaForm({
           </div>
         )}
 
-        {/* Change Reason and Modification Made Field - Only show for non-create mode and non-admin users */}
-        {!isCreateMode && !isAdminUser && (
-          <div className="space-y-4">
-            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="p-2 bg-blue-600 text-white rounded-lg shadow-sm">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <h3 className="m-0 text-base font-bold text-blue-600">
-                  Change Reason
-                </h3>
-              </div>
-              <div className="group">
-                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-                  Change Reason and Modification Made
-                </label>
-                <textarea
-                  name="changeReason"
-                  value={formData.changeReason}
-                  onChange={(e) => {
-                    setFormData(prev => ({ ...prev, changeReason: e.target.value }));
-                    setUserHasMadeSelections(true);
-                  }}
-                  placeholder="Please explain the reason for this change..."
-                  rows={3}
-                  disabled={!isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE}
-                  className={`min-h-[80px] w-full resize-vertical rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                    !isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
-                      : 'border-gray-200 bg-white text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40'
-                  }`}
-                  required={!isAdminUser}
-                />
-                <div className="mt-2 text-xs text-gray-500">
-                  This field is required when making changes to the area record.
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Action Buttons */}

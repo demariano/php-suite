@@ -1,5 +1,6 @@
 import { ErrorResponseDto, ResponseDto, StatusEnum, StockDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -85,6 +86,8 @@ export class UpdateStockHandler implements ICommandHandler<UpdateStockCommand> {
             existingRecord.productUnitId = command.stockDto.productUnitId;
             existingRecord.productUnitName = command.stockDto.productUnitName;
             existingRecord.expirationDate = command.stockDto.expirationDate;
+            existingRecord.stockTypeId = command.stockDto.stockTypeId;
+            existingRecord.stockTypeName = command.stockDto.stockTypeName;
 
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
@@ -93,16 +96,49 @@ export class UpdateStockHandler implements ICommandHandler<UpdateStockCommand> {
 
             // Limit activity logs to last 10 entries
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Clear changeReason for admin users since changes are applied directly
+            existingRecord.changeReason = undefined;
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+
+            // Detect field changes
+            const fieldChanges = detectFieldChanges(existingRecord, command.stockDto);
+            const formattedChanges = formatFieldChanges(fieldChanges);
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Stock updated by ${command.user.username} for approval`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLogMessage];
 
             // Limit activity logs to last 10 entries
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Preserve user's manually entered changeReason and combine with auto-generated changes
+            const userChangeReason = command.stockDto.changeReason?.trim();
+            if (userChangeReason && formattedChanges) {
+                // User provided changeReason and we have formatted changes - combine them
+                existingRecord.changeReason = `${userChangeReason}${formattedChanges}`;
+            } else if (userChangeReason) {
+                // User provided changeReason but no formatted changes - use user's input
+                existingRecord.changeReason = userChangeReason;
+            } else if (formattedChanges) {
+                // No user input but we have formatted changes - use formatted changes
+                existingRecord.changeReason = formattedChanges;
+            } else {
+                // No user input and no formatted changes
+                existingRecord.changeReason = undefined;
+            }
+
+            // Store new values in forApprovalVersion (keep original values in main fields)
             existingRecord.forApprovalVersion = {
                 ...existingRecord.forApprovalVersion,
                 productName: command.stockDto.productName,
@@ -113,6 +149,8 @@ export class UpdateStockHandler implements ICommandHandler<UpdateStockCommand> {
                 productUnitId: command.stockDto.productUnitId,
                 productUnitName: command.stockDto.productUnitName,
                 expirationDate: command.stockDto.expirationDate,
+                stockTypeId: command.stockDto.stockTypeId,
+                stockTypeName: command.stockDto.stockTypeName,
             };
         }
     }

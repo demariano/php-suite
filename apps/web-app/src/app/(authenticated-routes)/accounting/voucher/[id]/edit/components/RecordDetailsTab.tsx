@@ -2,6 +2,7 @@
 
 import { AccountApi, AccountTypeEnum, AccountsDto, AreaDto, CustomerDto, PaymentTypeEnum, StatusEnum, VoucherDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../../../components';
 import DatePicker from '../../../../../components/DatePicker';
 import AccountSearchableSelectionModal from '../../../../../search-modals/AccountSearchableSelectionModal';
 import AreaSearchableSelectionModal from '../../../../../search-modals/AreaSearchableSelectionModal';
@@ -171,28 +172,10 @@ export default function RecordDetailsTab({
     <div className="space-y-6">
       {/* Change Reason Field - Only for non-admin users editing existing vouchers */}
       {!isCreateMode && !isAdminUser && !isReadOnly && (
-        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-            </div>
-            <label className="flex items-center gap-2 text-sm font-bold text-yellow-900">
-              <span className="h-1.5 w-1.5 rounded-full bg-yellow-600" />
-              <span>Change Reason</span>
-            </label>
-          </div>
-          <textarea
-            value={formData.changeReason || ''}
-            onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
-            placeholder="Please provide a reason for the changes (minimum 10 characters)"
-            className="w-full rounded-xl border-2 border-yellow-400 px-4 py-3 text-sm text-yellow-900 bg-white shadow-sm transition-all duration-200 focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/40 resize-vertical min-h-[80px]"
-          />
-          <p className="mt-2 text-xs text-yellow-800 italic">
-            Minimum 10 characters required
-          </p>
-        </div>
+        <ChangeReasonField
+          value={formData.changeReason || ''}
+          onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
+        />
       )}
 
       {/* Basic Information Section */}

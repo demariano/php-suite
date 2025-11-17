@@ -7,6 +7,13 @@ export abstract class StockDatabaseServiceAbstract {
 
     abstract findRecordContainingName(name: string): Promise<StockDto[] | null>;
 
+    abstract findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<StockDto>>;
+
     abstract updateRecord(stockData: StockDto): Promise<StockDto>;
 
     abstract findRecordsPagination(

@@ -1,4 +1,4 @@
-import { ResponseDto, StockDto } from '@dto';
+import { PageDto, ResponseDto, StockDto } from '@dto';
 import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
@@ -18,18 +18,18 @@ export class GetStockByNameHandler implements IQueryHandler<GetStockByNameQuery>
         private readonly stockDatabaseService: StockDatabaseServiceAbstract
     ) {}
 
-    async execute(query: GetStockByNameQuery): Promise<ResponseDto<StockDto[]>> {
+    async execute(query: GetStockByNameQuery): Promise<ResponseDto<PageDto<StockDto>>> {
         this.logger.log(`Processing get stocks by name request: ${query.name}`);
 
         try {
             // Validate name parameter
             this.validateNameParameter(query.name);
 
-            // Fetch stocks by name
-            const stocks = await this.fetchStocksByName(query.name);
+            // Fetch stocks by name with pagination
+            const paginatedResult = await this.fetchStocksByName(query);
 
-            this.logger.log(`Stocks retrieved successfully: ${stocks.length} found`);
-            return new ResponseDto<StockDto[]>(stocks, HTTP_STATUS_OK);
+            this.logger.log(`Stocks retrieved successfully: ${paginatedResult.data.length} found`);
+            return new ResponseDto<PageDto<StockDto>>(paginatedResult, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, query.name);
         }
@@ -49,11 +49,22 @@ export class GetStockByNameHandler implements IQueryHandler<GetStockByNameQuery>
     }
 
     /**
-     * Fetches stocks by name
+     * Fetches stocks by name with pagination support
      */
-    private async fetchStocksByName(name: string): Promise<StockDto[]> {
-        const stocks = await this.stockDatabaseService.findRecordContainingName(name);
-        return stocks || [];
+    private async fetchStocksByName(query: GetStockByNameQuery): Promise<PageDto<StockDto>> {
+        const limit = query.limit || 10;
+        const direction = query.direction || undefined;
+        const cursorPointer = query.cursorPointer || undefined;
+        const name = query.name || '';
+
+        const paginatedResult = await this.stockDatabaseService.findRecordsByNamePagination(
+            limit,
+            direction,
+            cursorPointer,
+            name
+        );
+
+        return paginatedResult;
     }
 
     /**

@@ -121,6 +121,12 @@ export default function StockTypeForm({
             </span>
           </div>
         )}
+      
+      <ChangeReasonField
+        value={formData.changeReason}
+        onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+        disabled={isFormDisabled}
+      />
 
       <div className="space-y-6">
         <div className="space-y-4">

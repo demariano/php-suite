@@ -5,6 +5,7 @@ export { default as ProductDealSearchableSelectionModal } from './ProductDealSea
 export { default as ProductPriceTypeSearchableSelectionModal } from './ProductPriceTypeSearchableSelectionModal';
 export { default as ProductSearchableSelectionModal } from './ProductSearchableSelectionModal';
 export { default as ProductUnitPriceSelectionModal } from './ProductUnitPriceSelectionModal';
+export { default as ProductUnitSearchableSelectionModal } from './ProductUnitSearchableSelectionModal';
 
 // Other Selection Modals
 export { default as AreaSearchableSelectionModal } from './AreaSearchableSelectionModal';

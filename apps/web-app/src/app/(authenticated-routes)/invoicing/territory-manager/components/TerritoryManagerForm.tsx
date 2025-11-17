@@ -239,54 +239,13 @@ export default function TerritoryManagerForm({
           </div>
         </div>
 
-        {/* Change Reason and Modification Made Field - Only show for non-create mode and non-admin users */}
-        {!isCreateMode && !isAdminUser && (
-          <div style={{ marginTop: '24px', marginBottom: '20px' }}>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Change Reason and Modification Made
-            </label>
-            <textarea
-              name="changeReason"
-              value={formData.changeReason}
-              onChange={(e) => {
-                setFormData(prev => ({ ...prev, changeReason: e.target.value }));
-                setUserHasMadeSelections(true);
-              }}
-              placeholder="Please explain the reason for this change..."
-              rows={3}
-              disabled={isFormDisabled}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                border: '2px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                outline: 'none',
-                backgroundColor: isFormDisabled ? '#f9fafb' : 'white',
-                color: isFormDisabled ? '#6b7280' : 'inherit',
-                transition: 'all 0.2s ease',
-                resize: 'vertical',
-                minHeight: '80px',
-                cursor: isFormDisabled ? 'not-allowed' : 'text'
-              }}
-              required={!isAdminUser}
-            />
-            <div style={{
-              fontSize: '12px',
-              color: '#6b7280',
-              marginTop: '4px'
-            }}>
-              This field is required when making changes to the territory manager record.
+        </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
+
+      <div style={{
 
       <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
         {!isCreateMode && selectedTerritoryManager?.status === StatusEnum.ACTIVE ? (

@@ -114,6 +114,15 @@ export default function CategoryForm({
         </div>
       )}
       
+      <ChangeReasonField
+        value={formData.changeReason}
+        onChange={(e) => {
+          setFormData(prev => ({ ...prev, changeReason: e.target.value }));
+          setUserHasMadeSelections(true);
+        }}
+        disabled={!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE}
+      />
+      
       {/* Details Container */}
       <div className="space-y-6">
         {/* Basic Information Section */}
@@ -157,50 +166,6 @@ export default function CategoryForm({
             </div>
           </div>
         </div>
-
-        {/* Change Reason and Modification Made Field - Only show for non-create mode and non-admin users */}
-        {!isCreateMode && !isAdminUser && (
-          <div className="space-y-4">
-            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <div className="p-2 bg-blue-600 text-white rounded-lg shadow-sm">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </div>
-                <h3 className="text-base font-bold text-blue-600 m-0">
-                  Change Reason
-                </h3>
-              </div>
-              <div className="group">
-                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                  Change Reason and Modification Made
-                </label>
-                <textarea
-                  name="changeReason"
-                  value={formData.changeReason}
-                  onChange={(e) => {
-                    setFormData(prev => ({ ...prev, changeReason: e.target.value }));
-                    setUserHasMadeSelections(true);
-                  }}
-                  placeholder="Please explain the reason for this change..."
-                  rows={3}
-                  disabled={!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE}
-                  className={`min-h-[80px] w-full resize-vertical rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 ${
-                    !isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE
-                      ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
-                      : 'border-gray-300 bg-white text-gray-700'
-                  }`}
-                  required={!isAdminUser}
-                />
-                <div className="text-xs text-gray-500 mt-2">
-                  This field is required when making changes to the category record.
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Action Buttons */}

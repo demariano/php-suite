@@ -386,12 +386,35 @@ export class StockController {
     @Get('name/:name')
     @ApiOperation({
         summary: 'Get stock items by name',
-        description: 'Retrieves stock items that contain the specified name in their stock name.',
+        description:
+            'Retrieves stock items that contain the specified name in their product name with pagination support.',
     })
     @ApiParam({
         name: 'name',
-        description: 'Stock name to search for',
+        description: 'Product name to search for',
         example: 'Widget',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: false,
+        description: 'Number of records to return (1-100)',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination',
+        example: 'cursor_abc123',
     })
     @ApiQuery({
         name: 'userRole',
@@ -403,12 +426,28 @@ export class StockController {
     })
     @ApiResponse({
         status: 200,
-        description: 'Stock items retrieved successfully',
-        type: [StockDto],
+        description: 'Stock items retrieved successfully with pagination',
+        schema: {
+            type: 'object',
+            properties: {
+                data: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/StockDto' },
+                },
+                nextCursorPointer: { type: 'object' },
+                prevCursorPointer: { type: 'object' },
+            },
+        },
     })
-    getByName(@Param('name') name: string, @Query('userRole') userRole: string) {
+    getByName(
+        @Param('name') name: string,
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string,
+        @Query('userRole') userRole?: string
+    ) {
         // Note: userRole is included for Swagger consistency but not used in query endpoints
-        const query = new GetStockByNameQuery(name);
+        const query = new GetStockByNameQuery(name, limit, direction, cursorPointer);
         return this.queryBus.execute(query);
     }
 
@@ -468,7 +507,9 @@ export class StockController {
         @Query('cursorPointer') cursorPointer: string,
         @Query('userRole') userRole: string
     ) {
-        const query = new GetRecordsPaginationQuery('ACTIVE', limit, direction, cursorPointer);
+        // Don't filter by status - let the database service handle filtering based on userRole
+        // Pass null/undefined to fetch all records (backend will filter appropriately)
+        const query = new GetRecordsPaginationQuery(null, limit, direction, cursorPointer);
         return this.queryBus.execute(query);
     }
 

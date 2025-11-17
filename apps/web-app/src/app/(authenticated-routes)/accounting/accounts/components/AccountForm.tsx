@@ -2,6 +2,7 @@
 
 import { AccountTypeEnum, AccountsDto, StatusEnum } from '@data-access/index';
 import { useEffect, useMemo, useState } from 'react';
+import { ChangeReasonField } from '../../../components';
 
 interface AccountFormProps {
   isCreateMode: boolean;
@@ -11,6 +12,7 @@ interface AccountFormProps {
   onDelete: () => void;
   onCancel: () => void;
   isAdminUser: boolean;
+  isReadOnly?: boolean;
 }
 
 const initialFormState = {
@@ -28,6 +30,7 @@ export default function AccountForm({
   onDelete,
   onCancel,
   isAdminUser,
+  isReadOnly = false,
 }: AccountFormProps) {
   const [formData, setFormData] = useState(initialFormState);
   const [newSubAccount, setNewSubAccount] = useState('');
@@ -155,6 +158,15 @@ export default function AccountForm({
         </div>
       )}
 
+      {/* Change Reason Field - First component when displayed */}
+      {!isCreateMode && !isAdminUser && !isReadOnly && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => updateField('changeReason', e.target.value)}
+          disabled={!canEditFields}
+        />
+      )}
+
       <section className="space-y-4">
         <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
           <header className="mb-4 flex items-center gap-3">
@@ -195,24 +207,6 @@ export default function AccountForm({
               </select>
             </div>
           </div>
-          {!isCreateMode && !isAdminUser && (
-            <div className="mt-6 space-y-2">
-              <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" /> Change Reason
-              </label>
-              <textarea
-                rows={4}
-                value={formData.changeReason}
-                onChange={(event) => updateField('changeReason', event.target.value)}
-                disabled={!canEditFields}
-                className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-sm font-medium text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-500"
-                placeholder="Provide context for this change"
-              />
-              <p className="m-0 text-xs font-medium text-gray-500">
-                This field is required when submitting updates for approval.
-              </p>
-            </div>
-          )}
         </div>
       </section>
 

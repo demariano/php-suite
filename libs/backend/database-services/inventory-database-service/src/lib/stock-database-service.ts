@@ -123,6 +123,42 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         return await this.convertToDtoList(stockRecords);
     }
 
+    async findRecordsByNamePagination(
+        limit: number,
+        direction: string,
+        cursorPointer: string,
+        name: string
+    ): Promise<PageDto<StockDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.stockTable.find(
+            {
+                GSI1PK: `STOCK`,
+                ...(name != null && name.trim() !== '' ? { GSI1SK: { begins: name.trim() } } : {}),
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
     async getDatabaseRecordById(recordId: string): Promise<StockDataType | undefined> {
         const record: StockDataType | undefined = await this.stockTable.get({
             PK: 'STOCK',
@@ -141,21 +177,32 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         cursorPointer: string
     ): Promise<PageDto<StockDto>> {
         limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
 
-        const records = await this.stockTable.find(
-            {
-                GSI2PK: `STOCK#${status}`,
-            },
-            dynamoDbOption
-        );
+        // If no status provided, fetch all records using GSI1 (similar to customer module)
+        // Otherwise, use GSI2 for status-specific queries
+        const queryCondition = status
+            ? {
+                  GSI2PK: `STOCK#${status}`,
+              }
+            : {
+                  GSI1PK: `STOCK`,
+              };
+
+        const indexToUse = status ? 'GSI2' : 'GSI1';
+        dynamoDbOption.index = indexToUse;
+
+        const records = await this.stockTable.find(queryCondition, dynamoDbOption);
+
+        const pkField = status ? 'GSI2PK' : 'GSI1PK';
+        const skField = status ? 'GSI2SK' : 'GSI1SK';
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
             limit,
             direction,
-            'GSI2PK',
-            'GSI2SK',
+            pkField,
+            skField,
             'PK',
             'SK',
             JSON.stringify(records.next),
