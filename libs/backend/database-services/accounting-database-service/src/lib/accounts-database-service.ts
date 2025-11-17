@@ -28,13 +28,25 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
             .getModel('Accounts');
     }
     async createRecord(dto: CreateAccountsDto): Promise<AccountsDto> {
+        const normalizedStatus = dto.status ?? StatusEnum.NEW_RECORD;
+        const normalizedAccountType = dto.accountType ?? AccountTypeEnum.OTHERS;
         const record = await this.accountsTable.create({
             accountName: dto.accountName,
-            accountType: dto.accountType,
-            subAccounts: dto.subAccounts,
-            status: dto.status,
-            activityLogs: dto.activityLogs,
-        });
+            accountType: normalizedAccountType,
+            subAccounts: dto.subAccounts ?? [],
+            status: normalizedStatus,
+            activityLogs: dto.activityLogs ?? [],
+            changeReason: dto.changeReason,
+            forApprovalVersion: dto.forApprovalVersion,
+            GSI1PK: 'ACCOUNTS',
+            GSI1SK: dto.accountName,
+            GSI2PK: `ACCOUNTS#${normalizedStatus}`,
+            GSI2SK: dto.accountName,
+            GSI3PK: `ACCOUNTS#${normalizedAccountType}`,
+            GSI3SK: dto.accountName,
+            GSI4PK: `ACCOUNTS#${normalizedAccountType}#${normalizedStatus}`,
+            GSI4SK: dto.accountName,
+        } as AccountsDataType);
         return await this.convertToDto(record);
     }
 
@@ -60,21 +72,20 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
         return await this.convertToDto(record);
     }
 
-    async findRecordContainingName(
+    async findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<AccountsDto>> {
         limit = Number(limit);
+        const trimmedName = name?.trim();
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
 
         const accountsRecords = await this.accountsTable.find(
             {
                 GSI1PK: `ACCOUNTS`,
-                GSI1SK: {
-                    begins: name,
-                },
+                ...(trimmedName ? { GSI1SK: { begins: trimmedName } } : {}),
             },
             dynamoDbOption
         );
@@ -205,16 +216,14 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
     ): Promise<PageDto<AccountsDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
-        console.log('name', name);
+        const trimmedName = name?.trim();
         const records = await this.accountsTable.find(
             {
                 GSI2PK: `ACCOUNTS#${status}`,
-                ...(name != null ? { GSI2SK: { begins: name } } : {}),
+                ...(trimmedName ? { GSI2SK: { begins: trimmedName } } : {}),
             },
             dynamoDbOption
         );
-
-        console.log('records', records);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -287,23 +296,26 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
     }
 
     async convertToDataType(dto: AccountsDto): Promise<AccountsDataType> {
+        const normalizedStatus = dto.status ?? StatusEnum.ACTIVE;
+        const normalizedAccountType = dto.accountType ?? AccountTypeEnum.OTHERS;
+        const normalizedAccountName = dto.accountName ?? '';
         const accountsData: AccountsDataType = {
             accountingId: dto.accountingId,
-            accountName: dto.accountName,
-            accountType: dto.accountType,
-            status: dto.status as StatusEnum,
-            activityLogs: dto.activityLogs,
+            accountName: normalizedAccountName,
+            accountType: normalizedAccountType,
+            status: normalizedStatus,
+            activityLogs: dto.activityLogs ?? [],
             changeReason: dto.changeReason,
             subAccounts: dto.subAccounts ? dto.subAccounts : [],
             forApprovalVersion: dto.forApprovalVersion,
             GSI1PK: `ACCOUNTS`,
-            GSI1SK: dto.accountingId,
-            GSI2PK: `ACCOUNTS#${dto.status}`,
-            GSI2SK: dto.accountName,
-            GSI3PK: `ACCOUNTS#${dto.accountType}`,
-            GSI3SK: dto.accountName,
-            GSI4PK: `ACCOUNTS#${dto.accountType}#${dto.status}`,
-            GSI4SK: dto.accountName,
+            GSI1SK: normalizedAccountName,
+            GSI2PK: `ACCOUNTS#${normalizedStatus}`,
+            GSI2SK: normalizedAccountName,
+            GSI3PK: `ACCOUNTS#${normalizedAccountType}`,
+            GSI3SK: normalizedAccountName,
+            GSI4PK: `ACCOUNTS#${normalizedAccountType}#${normalizedStatus}`,
+            GSI4SK: normalizedAccountName,
         };
         return accountsData;
     }

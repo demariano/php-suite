@@ -96,7 +96,7 @@ export default function AccountSearchableSelectionModal({
       const direction = currentPage > 1 ? (isGoingBack ? 'prev' : 'next') : undefined;
       const cursor = currentCursor || undefined;
       
-      const response = await AccountApi.getAccountsPaginationByStatus(
+      const response = await AccountApi.getAccountsByStatus(
         'ACTIVE',
         limit,
         direction,

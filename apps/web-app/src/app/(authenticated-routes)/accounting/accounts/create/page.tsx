@@ -3,113 +3,99 @@
 import { AccountApi, AccountsDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import AccountFormWrapper from '../[id]/edit/components/AccountFormWrapper';
+import AccountForm from '../components/AccountForm';
 
 export default function CreateAccountPage() {
-  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
-  const router = useRouter();
-  
-  // Check if user is admin or super admin
+
+  const [isLoading, setIsLoading] = useState(false);
+  const userRoleParam = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
   const handleSave = async (account: AccountsDto) => {
     try {
       setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      // Create new account
-      await AccountApi.createAccount({
-        accountName: account.accountName,
-        accountType: account.accountType,
-        changeReason: account.changeReason,
-        subAccounts: account.subAccounts,
-        status: account.status
-      }, userRole);
-      
+      await AccountApi.createAccount(
+        {
+          accountName: account.accountName,
+          accountType: account.accountType,
+          subAccounts: account.subAccounts,
+          changeReason: account.changeReason,
+          status: account.status,
+        },
+        userRoleParam
+      );
       setFlashNotification({
-        title: 'Success!',
-        message: 'Account created successfully!',
-        alertType: 'success'
+        title: 'Account created',
+        message: 'New account was added successfully.',
+        alertType: 'success',
       });
-      
-      // Navigate back to accounts list after a short delay
-      setTimeout(() => {
-        router.push('/accounting/accounts');
-      }, 1500);
-      
+      router.push('/accounting/accounts');
     } catch (error) {
-      console.error('Error creating account:', error);
+      console.error('Error creating account', error);
       setFlashNotification({
-        title: 'Error',
-        message: 'Failed to create account. Please try again.',
-        alertType: 'error'
+        title: 'Create failed',
+        message: 'Please review the form and try again.',
+        alertType: 'error',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    router.push('/accounting/accounts');
-  };
-
-  const handleDelete = () => {
-    // Not applicable for create mode
-  };
-
-  const handleApprove = () => {
-    // Not applicable for create mode
-  };
-
-  const handleDeny = () => {
-    // Not applicable for create mode
-  };
+  const handleCancel = () => router.push('/accounting/accounts');
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Breadcrumbs */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
+    <div className="p-4 sm:p-6 space-y-6">
+      <div>
+        <nav className="flex items-center gap-2 text-sm">
+          <a href="/dashboard" className="text-blue-500 no-underline hover:text-blue-600 transition-colors duration-200">
             Home
           </a>
           <span className="text-gray-400">/</span>
-          <a href="/accounting" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
+          <a href="/accounting" className="text-blue-500 no-underline hover:text-blue-600 transition-colors duration-200">
             Accounting
           </a>
           <span className="text-gray-400">/</span>
-          <a href="/accounting/accounts" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
+          <a href="/accounting/accounts" className="text-blue-500 no-underline hover:text-blue-600 transition-colors duration-200">
             Accounts
           </a>
           <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Create</span>
+          <span className="text-gray-800 font-medium">Create</span>
         </nav>
       </div>
 
-      {/* Account Form */}
-      <AccountFormWrapper
-        isCreateMode={true}
-        selectedAccount={null}
-        successMessage={null}
-        isAdminUser={isAdminUser}
-        isLoading={isLoading}
-        activeTab="details"
-        onTabChange={() => {}} // Not used in create mode
-        onSave={handleSave}
-        onDelete={handleDelete}
-        onApprove={handleApprove}
-        onDeny={handleDeny}
-        onCancel={handleCancel}
-      />
+      <div className="flex justify-center">
+        <div className="w-full rounded-xl border border-gray-200 bg-white shadow-xl sm:max-w-4xl">
+          <div className="overflow-x-auto border-b-2 border-blue-200 bg-gray-50 p-2">
+            <div className="flex flex-nowrap gap-2">
+              <button className="flex-shrink-0 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm">
+                <span className="flex items-center gap-2">
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Account Information
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 sm:p-6">
+            <AccountForm
+              isCreateMode
+              selectedAccount={null}
+              successMessage={null}
+              onSave={handleSave}
+              onDelete={() => {}}
+              onCancel={handleCancel}
+              isAdminUser={isAdminUser}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
-

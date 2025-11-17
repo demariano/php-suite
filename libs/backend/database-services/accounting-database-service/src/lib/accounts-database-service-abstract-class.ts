@@ -10,11 +10,11 @@ export abstract class AccountsDatabaseServiceAbstract {
 
     abstract findRecordByName(name: string): Promise<AccountsDto | null>;
 
-    abstract findRecordContainingName(
+    abstract findRecordsByNamePagination(
         limit: number,
-        name: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        name: string
     ): Promise<PageDto<AccountsDto>>;
 
     abstract getDatabaseRecordById(recordId: string): Promise<AccountsDataType | undefined>;

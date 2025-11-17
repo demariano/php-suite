@@ -1,11 +1,14 @@
 import { AccountsDatabaseServiceAbstract } from '@accounting-database-service';
 import { AccountsDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateAccountsCommand } from './update.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(UpdateAccountsCommand)
 export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsCommand> {
@@ -33,10 +36,12 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
-            this.updateAccountStatus(command, existingRecord, hasApprovalPermission);
+            const recordToPersist = hasApprovalPermission
+                ? this.applyAdminUpdates(command, existingRecord)
+                : this.applyNonAdminUpdates(command, existingRecord);
 
             // Update record in database
-            const updatedRecord = await this.accountsDatabaseService.updateRecord(existingRecord);
+            const updatedRecord = await this.accountsDatabaseService.updateRecord(recordToPersist);
 
             this.logger.log(`Account updated successfully: ${updatedRecord.accountingId}`);
             return new ResponseDto<AccountsDto>(updatedRecord, HTTP_STATUS_OK);
@@ -95,37 +100,62 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
     /**
      * Updates account status and activity logs based on user permissions
      */
-    private updateAccountStatus(
-        command: UpdateAccountsCommand,
-        existingRecord: AccountsDto,
-        hasApprovalPermission: boolean
-    ): void {
-        if (hasApprovalPermission) {
-            // User can approve directly - update the existing record
-            existingRecord.status = StatusEnum.ACTIVE;
-            existingRecord.accountName = command.accountsDto.accountName;
-            existingRecord.accountType = command.accountsDto.accountType;
-            existingRecord.subAccounts = command.accountsDto.subAccounts;
-            existingRecord.changeReason = command.accountsDto.changeReason;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+    private applyAdminUpdates(command: UpdateAccountsCommand, existingRecord: AccountsDto): AccountsDto {
+        const updatedRecord: AccountsDto = {
+            ...existingRecord,
+            ...command.accountsDto,
+        };
+
+        updatedRecord.status = StatusEnum.ACTIVE;
+        updatedRecord.activityLogs = updatedRecord.activityLogs || [];
+        updatedRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Account updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-        } else {
-            // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
-            existingRecord.status = StatusEnum.FOR_APPROVAL;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Account updated by ${command.user.username} for approval`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-            existingRecord.forApprovalVersion = {
-                ...existingRecord.forApprovalVersion,
-                accountName: command.accountsDto.accountName,
-                accountType: command.accountsDto.accountType,
-                subAccounts: command.accountsDto.subAccounts,
-                changeReason: command.accountsDto.changeReason,
-            };
+            })}, Account updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+        updatedRecord.activityLogs = reduceArrayContents(updatedRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        updatedRecord.changeReason = undefined;
+        updatedRecord.forApprovalVersion = {};
+
+        return updatedRecord;
+    }
+
+    private applyNonAdminUpdates(command: UpdateAccountsCommand, existingRecord: AccountsDto): AccountsDto {
+        const updatedRecord: AccountsDto = { ...existingRecord };
+        updatedRecord.status = StatusEnum.FOR_APPROVAL;
+        updatedRecord.activityLogs = updatedRecord.activityLogs || [];
+
+        const fieldChanges = detectFieldChanges(existingRecord, command.accountsDto);
+        const formattedChanges = formatFieldChanges(fieldChanges);
+
+        let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Account updated by ${command.user.username} for approval`;
+        if (formattedChanges) {
+            activityLogMessage += ` - ${formattedChanges}`;
         }
+        updatedRecord.activityLogs.push(activityLogMessage);
+        updatedRecord.activityLogs = reduceArrayContents(updatedRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+        const userChangeReason = command.accountsDto.changeReason?.trim();
+        if (userChangeReason && formattedChanges) {
+            updatedRecord.changeReason = `${userChangeReason}\n\n${formattedChanges}`;
+        } else if (userChangeReason) {
+            updatedRecord.changeReason = userChangeReason;
+        } else if (formattedChanges) {
+            updatedRecord.changeReason = formattedChanges;
+        } else {
+            updatedRecord.changeReason = undefined;
+        }
+
+        updatedRecord.forApprovalVersion = {
+            ...(updatedRecord.forApprovalVersion ?? {}),
+            accountName: command.accountsDto.accountName,
+            accountType: command.accountsDto.accountType,
+            subAccounts: command.accountsDto.subAccounts,
+        };
+
+        return updatedRecord;
     }
 
     /**

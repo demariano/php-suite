@@ -1,11 +1,13 @@
 import { VoucherDatabaseServiceAbstract } from '@accounting-database-service';
 import { CreateVoucherDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole, VoucherDto } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateVoucherCommand } from './create.command';
 
 // Constants
 const HTTP_STATUS_CREATED = 201;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(CreateVoucherCommand)
 export class CreateVoucherHandler implements ICommandHandler<CreateVoucherCommand> {
@@ -93,6 +95,9 @@ export class CreateVoucherHandler implements ICommandHandler<CreateVoucherComman
                     timeZone: 'Asia/Manila',
                 })}, Voucher created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
+
+            // Limit activity logs to last 10 entries
+            command.voucherDto.activityLogs = reduceArrayContents(command.voucherDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to NEW_RECORD
             command.voucherDto.status = StatusEnum.NEW_RECORD;
@@ -102,6 +107,11 @@ export class CreateVoucherHandler implements ICommandHandler<CreateVoucherComman
                     timeZone: 'Asia/Manila',
                 })}, Voucher created by ${command.user.username} for approval`
             );
+
+            // Limit activity logs to last 10 entries
+            command.voucherDto.activityLogs = reduceArrayContents(command.voucherDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            //set the forApprovalVersion
             command.voucherDto.forApprovalVersion = {};
             command.voucherDto.forApprovalVersion.voucherNo = command.voucherDto.voucherNo;
             command.voucherDto.forApprovalVersion.voucherDate = command.voucherDto.voucherDate;
@@ -116,6 +126,10 @@ export class CreateVoucherHandler implements ICommandHandler<CreateVoucherComman
             command.voucherDto.forApprovalVersion.accountId = command.voucherDto.accountId;
             command.voucherDto.forApprovalVersion.accountName = command.voucherDto.accountName;
             command.voucherDto.forApprovalVersion.accountType = command.voucherDto.accountType;
+            command.voucherDto.forApprovalVersion.customerId = command.voucherDto.customerId;
+            command.voucherDto.forApprovalVersion.customerName = command.voucherDto.customerName;
+            command.voucherDto.forApprovalVersion.areaId = command.voucherDto.areaId;
+            command.voucherDto.forApprovalVersion.areaName = command.voucherDto.areaName;
             command.voucherDto.forApprovalVersion.changeReason = command.voucherDto.changeReason;
         }
     }

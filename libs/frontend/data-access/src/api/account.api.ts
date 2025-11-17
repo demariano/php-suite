@@ -15,7 +15,7 @@ class AccountsApi extends AxiosConfig {
         super('API_ACCOUNTING_URL', true, false);
     }
 
-    public getAccountsPagination = async (
+    public getAccounts = async (
         limit = 10,
         direction?: string,
         cursorPointer?: string,
@@ -33,16 +33,14 @@ class AccountsApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
 
-        return await this.axiosInstance.get(`/accounts?${params.toString()}`);
+        return this.axiosInstance.get(`/accounts?${params.toString()}`);
     };
 
-    public getAccountsPaginationByStatus = async (
+    public getAccountsByStatus = async (
         status: string,
         limit = 10,
         direction?: string,
@@ -52,7 +50,7 @@ class AccountsApi extends AxiosConfig {
     ): Promise<AccountsResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
-            status: status,
+            status,
         });
 
         if (direction) {
@@ -67,31 +65,41 @@ class AccountsApi extends AxiosConfig {
             params.append('name', name);
         }
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
 
-        return await this.axiosInstance.get(`/accounts/status?${params.toString()}`);
+        return this.axiosInstance.get(`/accounts/status?${params.toString()}`);
     };
 
-    public getAccountById = async (id: string, userRole?: string): Promise<AccountsDto> => {
-        const params = new URLSearchParams();
+    public getAccountsByAccountType = async (
+        accountType: string,
+        limit = 10,
+        direction?: string,
+        cursorPointer?: string,
+        userRole?: string
+    ): Promise<AccountsResponse> => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+            accountType,
+        });
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
         if (userRole) {
             params.append('userRole', userRole);
         }
 
-        const queryString = params.toString();
-        const url = queryString ? `/accounts/${id}?${queryString}` : `/accounts/${id}`;
-
-        return await this.axiosInstance.get(url);
+        return this.axiosInstance.get(`/accounts/account-type?${params.toString()}`);
     };
 
-    public getAccountByName = async (
+    public getAccountsByName = async (
         name: string,
         limit = 10,
         direction?: string,
@@ -110,49 +118,29 @@ class AccountsApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
 
-        return await this.axiosInstance.get(`/accounts/name/${name}?${params.toString()}`);
+        return this.axiosInstance.get(`/accounts/name/${name}?${params.toString()}`);
     };
 
-    public getAccountsByAccountType = async (
-        accountType: string,
-        limit = 10,
-        direction?: string,
-        cursorPointer?: string,
-        userRole?: string
-    ): Promise<AccountsResponse> => {
-        const params = new URLSearchParams({
-            limit: limit.toString(),
-            accountType: accountType,
-        });
+    public getAccountById = async (id: string, userRole?: string): Promise<AccountsDto> => {
+        const params = new URLSearchParams();
 
-        if (direction) {
-            params.append('direction', direction);
-        }
-
-        if (cursorPointer) {
-            params.append('cursorPointer', cursorPointer);
-        }
-
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
 
-        return await this.axiosInstance.get(`/accounts/account-type?${params.toString()}`);
+        const queryString = params.toString();
+        const url = queryString ? `/accounts/${id}?${queryString}` : `/accounts/${id}`;
+
+        return this.axiosInstance.get(url);
     };
 
     public createAccount = async (account: CreateAccountsDto, userRole?: string): Promise<AccountsDto> => {
         const params = new URLSearchParams();
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
@@ -160,7 +148,7 @@ class AccountsApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/accounts?${queryString}` : '/accounts';
 
-        return await this.axiosInstance.post(url, account);
+        return this.axiosInstance.post(url, account);
     };
 
     public updateAccount = async (
@@ -170,8 +158,6 @@ class AccountsApi extends AxiosConfig {
     ): Promise<AccountsDto> => {
         const params = new URLSearchParams();
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
@@ -179,30 +165,27 @@ class AccountsApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/accounts/${id}?${queryString}` : `/accounts/${id}`;
 
-        return await this.axiosInstance.put(url, account);
+        return this.axiosInstance.put(url, account);
     };
 
-    public deleteAccount = async (id: string, account: AccountsDto, userRole?: string): Promise<void> => {
+    public deleteAccount = async (account: AccountsDto, userRole?: string): Promise<void> => {
         const params = new URLSearchParams();
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/accounts/${id}?${queryString}` : `/accounts/${id}`;
+        const url = queryString
+            ? `/accounts/${account.accountingId}?${queryString}`
+            : `/accounts/${account.accountingId}`;
 
-        // Send the entire account object in the request body
-        return await this.axiosInstance.delete(url, { data: account });
+        return this.axiosInstance.delete(url, { data: account });
     };
 
     public approveAccount = async (id: string, userRole?: string): Promise<AccountsDto> => {
         const params = new URLSearchParams();
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
@@ -210,14 +193,12 @@ class AccountsApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/accounts/${id}/approve?${queryString}` : `/accounts/${id}/approve`;
 
-        return await this.axiosInstance.post(url);
+        return this.axiosInstance.post(url);
     };
 
     public denyAccount = async (id: string, userRole?: string): Promise<AccountsDto> => {
         const params = new URLSearchParams();
 
-        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
         if (userRole) {
             params.append('userRole', userRole);
         }
@@ -225,7 +206,7 @@ class AccountsApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/accounts/${id}/deny?${queryString}` : `/accounts/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return this.axiosInstance.post(url);
     };
 }
 

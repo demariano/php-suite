@@ -1,6 +1,13 @@
 'use client';
 
-import { AccountApi, AccountsDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import {
+  AccountApi,
+  AccountsDto,
+  StatusEnum,
+  useEnv,
+  useLocalStore,
+  useSessionStore,
+} from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AccountFormWrapper from './components/AccountFormWrapper';
@@ -12,45 +19,42 @@ interface EditAccountPageProps {
 }
 
 export default function EditAccountPage({ params }: EditAccountPageProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState<AccountsDto | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const router = useRouter();
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
-  const router = useRouter();
-  
-  // Check if user is admin or super admin
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
-  // Fetch account details on component mount
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<AccountsDto | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+
+  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+  const userRoleParam = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
   useEffect(() => {
     const fetchAccount = async () => {
       try {
         setIsLoading(true);
-        
-        // SECURITY: Only get user role if BYPASS_AUTH is enabled
-        // This prevents role parameter leakage when bypass auth is disabled
-        const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-        
-        const account = await AccountApi.getAccountById(params.id, userRole);
+        const account = await AccountApi.getAccountById(params.id, userRoleParam);
         setSelectedAccount(account);
-        
-        // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-        if ((account.status === StatusEnum.FOR_APPROVAL || account.status === StatusEnum.NEW_RECORD || account.status === StatusEnum.FOR_DELETION) && isAdminUser) {
+
+        if (
+          isAdminUser &&
+          account.status &&
+          [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(account.status)
+        ) {
           setActiveTab('approval');
         } else {
-          // Default to details tab
           setActiveTab('details');
         }
-        
-      } catch (err) {
-        console.error('Error fetching account:', err);
+      } catch (error) {
+        console.error('Error fetching account details', error);
         setFlashNotification({
-          title: 'Error',
-          message: 'Failed to load account details. Please try again.',
-          alertType: 'error'
+          title: 'Account not found',
+          message: 'We were unable to load the requested account.',
+          alertType: 'error',
         });
+        router.push('/accounting/accounts');
       } finally {
         setIsLoading(false);
       }
@@ -59,48 +63,26 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
     if (params.id) {
       fetchAccount();
     }
-  }, [params.id, env.BYPASS_AUTH, authedUser?.userRole, isAdminUser, setFlashNotification]);
+  }, [params.id, userRoleParam, isAdminUser, router, setFlashNotification]);
 
   const handleSave = async (account: AccountsDto) => {
     if (!selectedAccount) return;
-    
     try {
       setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      // Update existing account
-      const updatedAccount = await AccountApi.updateAccount(selectedAccount.accountingId, {
-        accountingId: selectedAccount.accountingId,
-        accountName: account.accountName,
-        accountType: account.accountType,
-        changeReason: account.changeReason,
-        subAccounts: account.subAccounts,
-        status: account.status
-      }, userRole);
-      
-      setSelectedAccount(updatedAccount);
+      const updated = await AccountApi.updateAccount(selectedAccount.accountingId, account, userRoleParam);
       setFlashNotification({
-        title: 'Success!',
-        message: 'Account updated successfully!',
-        alertType: 'success'
+        title: 'Success',
+        message: 'Account updated successfully.',
+        alertType: 'success',
       });
-      
-      // Navigate back to accounts list after a short delay
-      setTimeout(() => {
-        router.push('/accounting/accounts');
-      }, 1500);
-      
+      setTimeout(() => router.push('/accounting/accounts'), 1000);
+      setSelectedAccount(updated);
     } catch (error) {
-      console.error('Error updating account:', error);
+      console.error('Error updating account', error);
       setFlashNotification({
-        title: 'Error',
-        message: 'Failed to update account. Please try again.',
-        alertType: 'error'
+        title: 'Update failed',
+        message: 'Please try saving the account again.',
+        alertType: 'error',
       });
     } finally {
       setIsLoading(false);
@@ -108,38 +90,22 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
   };
 
   const handleDelete = async () => {
-    if (!selectedAccount) {
-      return;
-    }
-    
+    if (!selectedAccount) return;
     try {
       setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
-      // This prevents role parameter leakage in production
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await AccountApi.deleteAccount(selectedAccount.accountingId, selectedAccount, userRole);
-      
+      await AccountApi.deleteAccount(selectedAccount, userRoleParam);
       setFlashNotification({
-        title: 'Success!',
-        message: 'Account deleted successfully!',
-        alertType: 'success'
+        title: 'Account deleted',
+        message: 'The account was removed successfully.',
+        alertType: 'success',
       });
-      
-      // Navigate back to accounts list after a short delay
-      setTimeout(() => {
-        router.push('/accounting/accounts');
-      }, 1500);
-      
+      router.push('/accounting/accounts');
     } catch (error) {
-      console.error('Error deleting account:', error);
+      console.error('Error deleting account', error);
       setFlashNotification({
-        title: 'Error',
-        message: 'Failed to delete account. Please try again.',
-        alertType: 'error'
+        title: 'Delete failed',
+        message: 'We were unable to delete this account.',
+        alertType: 'error',
       });
     } finally {
       setIsLoading(false);
@@ -148,119 +114,82 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
 
   const handleApprove = async () => {
     if (!selectedAccount) return;
-    
     try {
       setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to approve the record
-      const approvedAccount = await AccountApi.approveAccount(selectedAccount.accountingId, userRole);
-      setSelectedAccount(approvedAccount);
+      await AccountApi.approveAccount(selectedAccount.accountingId, userRoleParam);
       setFlashNotification({
-        title: 'Success!',
-        message: 'Account approved successfully!',
-        alertType: 'success'
+        title: 'Account approved',
+        message: 'Changes were approved successfully.',
+        alertType: 'success',
       });
-      
-      // Navigate back to accounts list after a short delay
-      setTimeout(() => {
-        router.push('/accounting/accounts');
-      }, 1500);
-      
-    } catch (err) {
-      console.error('Error approving account:', err);
+      router.push('/accounting/accounts');
+    } catch (error) {
+      console.error('Error approving account', error);
       setFlashNotification({
-        title: 'Error',
-        message: 'Failed to approve account. Please try again.',
-        alertType: 'error'
+        title: 'Approval failed',
+        message: 'Please try again later.',
+        alertType: 'error',
       });
     } finally {
       setIsLoading(false);
     }
   };
-  
+
   const handleDeny = async () => {
     if (!selectedAccount) return;
-    
     try {
       setIsLoading(true);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Call the API to deny the record
-      const deniedAccount = await AccountApi.denyAccount(selectedAccount.accountingId, userRole);
-      setSelectedAccount(deniedAccount);
+      await AccountApi.denyAccount(selectedAccount.accountingId, userRoleParam);
       setFlashNotification({
-        title: 'Success!',
-        message: 'Account changes denied successfully!',
-        alertType: 'success'
+        title: 'Changes denied',
+        message: 'Pending changes were denied successfully.',
+        alertType: 'success',
       });
-      
-      // Navigate back to accounts list after a short delay
-      setTimeout(() => {
-        router.push('/accounting/accounts');
-      }, 1500);
-      
-    } catch (err) {
-      console.error('Error denying account:', err);
+      router.push('/accounting/accounts');
+    } catch (error) {
+      console.error('Error denying account', error);
       setFlashNotification({
-        title: 'Error',
-        message: 'Failed to deny account. Please try again.',
-        alertType: 'error'
+        title: 'Unable to deny changes',
+        message: 'Please try again later.',
+        alertType: 'error',
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCancel = () => {
-    router.push('/accounting/accounts');
-  };
-
-  if (!selectedAccount && !isLoading) {
-    return (
-      <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
-          <span>Account not found</span>
-        </div>
-      </div>
-    );
-  }
+  const handleCancel = () => router.push('/accounting/accounts');
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Breadcrumbs */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Home
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/accounting" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Accounting
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/accounting/accounts" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Accounts
-          </a>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Edit</span>
-        </nav>
-      </div>
+    <div className="p-4 sm:p-6 space-y-6">
+      <nav className="flex items-center gap-2 text-sm">
+        <a href="/dashboard" className="text-blue-500 transition hover:text-blue-600">
+          Home
+        </a>
+        <span className="text-gray-400">/</span>
+        <a href="/accounting" className="text-blue-500 transition hover:text-blue-600">
+          Accounting
+        </a>
+        <span className="text-gray-400">/</span>
+        <a href="/accounting/accounts" className="text-blue-500 transition hover:text-blue-600">
+          Accounts
+        </a>
+        <span className="text-gray-400">/</span>
+        <span className="text-gray-800 font-medium">Edit</span>
+      </nav>
 
-      {/* Loading State */}
-      {isLoading && !selectedAccount && (
-        <div className="flex justify-center items-center min-h-96">
-          <div className="text-gray-600">Loading account details...</div>
+      {isLoading && !selectedAccount ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm">
+          Loading account details...
         </div>
-      )}
+      ) : null}
 
-      {/* Account Form */}
+      {!isLoading && !selectedAccount ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center text-red-600 shadow-sm">
+          Account not found.
+        </div>
+      ) : null}
+
       {selectedAccount && (
         <AccountFormWrapper
           isCreateMode={false}
@@ -280,4 +209,3 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
     </div>
   );
 }
-

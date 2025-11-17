@@ -45,7 +45,7 @@ class VoucherApi extends AxiosConfig {
         return await this.axiosInstance.put(url, voucher);
     };
 
-    public deleteVoucher = async (id: string, voucher: VoucherDto, userRole?: string): Promise<void> => {
+    public deleteVoucher = async (voucher: VoucherDto, userRole?: string): Promise<void> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -55,7 +55,7 @@ class VoucherApi extends AxiosConfig {
         }
 
         const queryString = params.toString();
-        const url = queryString ? `/vouchers/${id}?${queryString}` : `/vouchers/${id}`;
+        const url = queryString ? `/vouchers/${voucher.voucherId}?${queryString}` : `/vouchers/${voucher.voucherId}`;
 
         // Send the entire voucher object in the request body
         return await this.axiosInstance.delete(url, { data: voucher });
@@ -91,15 +91,29 @@ class VoucherApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public getVoucherByVoucherNo = async (voucherNo: string): Promise<VoucherDto> => {
-        return await this.axiosInstance.get(`/vouchers/voucher-no/${voucherNo}`);
+    public getVoucherByVoucherNo = async (voucherNo: string, userRole?: string): Promise<VoucherDto> => {
+        const params = new URLSearchParams();
+
+        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
+        // This prevents role parameter leakage when bypass auth is disabled
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString
+            ? `/vouchers/voucher-no/${voucherNo}?${queryString}`
+            : `/vouchers/voucher-no/${voucherNo}`;
+
+        return await this.axiosInstance.get(url);
     };
 
     public getVouchersContainingVoucherNo = async (
         limit: number,
         voucherNo: string,
         direction?: string,
-        cursorPointer?: string
+        cursorPointer?: string,
+        userRole?: string
     ): Promise<VouchersResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -114,13 +128,20 @@ class VoucherApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
+        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
+        // This prevents role parameter leakage when bypass auth is disabled
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
         return await this.axiosInstance.get(`/vouchers/containing-voucher-no?${params.toString()}`);
     };
 
     public getVouchersPagination = async (
         limit = 10,
         direction?: string,
-        cursorPointer?: string
+        cursorPointer?: string,
+        userRole?: string
     ): Promise<VouchersResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -134,6 +155,12 @@ class VoucherApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
+        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
+        // This prevents role parameter leakage when bypass auth is disabled
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
         return await this.axiosInstance.get(`/vouchers?${params.toString()}`);
     };
 
@@ -142,7 +169,8 @@ class VoucherApi extends AxiosConfig {
         limit = 10,
         direction?: string,
         cursorPointer?: string,
-        voucherNo?: string
+        voucherNo?: string,
+        userRole?: string
     ): Promise<VouchersResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -161,18 +189,27 @@ class VoucherApi extends AxiosConfig {
             params.append('voucherNo', voucherNo);
         }
 
+        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
+        // This prevents role parameter leakage when bypass auth is disabled
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
         return await this.axiosInstance.get(`/vouchers/status?${params.toString()}`);
     };
 
     public getVouchersByVoucherDate = async (
         limit: number,
-        voucherDate: string,
+        startDate: string,
+        endDate: string,
         direction?: string,
-        cursorPointer?: string
+        cursorPointer?: string,
+        userRole?: string
     ): Promise<VouchersResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
-            voucherDate: voucherDate,
+            startDate: startDate,
+            endDate: endDate,
         });
 
         if (direction) {
@@ -183,11 +220,28 @@ class VoucherApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
+        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
+        // This prevents role parameter leakage when bypass auth is disabled
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
         return await this.axiosInstance.get(`/vouchers/voucher-date?${params.toString()}`);
     };
 
-    public getVoucherById = async (id: string): Promise<VoucherDto> => {
-        return await this.axiosInstance.get(`/vouchers/${id}`);
+    public getVoucherById = async (id: string, userRole?: string): Promise<VoucherDto> => {
+        const params = new URLSearchParams();
+
+        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
+        // This prevents role parameter leakage when bypass auth is disabled
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/vouchers/${id}?${queryString}` : `/vouchers/${id}`;
+
+        return await this.axiosInstance.get(url);
     };
 }
 

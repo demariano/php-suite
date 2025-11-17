@@ -10,7 +10,7 @@ export abstract class VoucherDatabaseServiceAbstract {
 
     abstract findRecordByVoucherNo(voucherNo: string): Promise<VoucherDto | null>;
 
-    abstract findRecordContainingVoucherNo(
+    abstract findRecordsByVoucherNoPagination(
         limit: number,
         voucherNo: string,
         direction: string,
@@ -35,7 +35,8 @@ export abstract class VoucherDatabaseServiceAbstract {
 
     abstract findRecordsByVoucherDatePagination(
         limit: number,
-        voucherDate: string,
+        startDate: string,
+        endDate: string,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<VoucherDto>>;

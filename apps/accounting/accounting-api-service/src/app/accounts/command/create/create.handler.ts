@@ -1,11 +1,13 @@
 import { AccountsDatabaseServiceAbstract } from '@accounting-database-service';
 import { AccountsDto, CreateAccountsDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateAccountsCommand } from './create.command';
 
 // Constants
 const HTTP_STATUS_CREATED = 201;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(CreateAccountsCommand)
 export class CreateAccountsHandler implements ICommandHandler<CreateAccountsCommand> {
@@ -82,26 +84,34 @@ export class CreateAccountsHandler implements ICommandHandler<CreateAccountsComm
         if (hasApprovalPermission) {
             // User can approve directly - set to ACTIVE
             command.accountsDto.status = StatusEnum.ACTIVE;
-            command.accountsDto.activityLogs = [];
-            command.accountsDto.activityLogs.push(
+            command.accountsDto.activityLogs = [
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
-                })}, Account created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+                })}, Account created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`,
+            ];
+            command.accountsDto.activityLogs = reduceArrayContents(
+                command.accountsDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
             );
+            command.accountsDto.forApprovalVersion = undefined;
         } else {
             // User needs approval - set to NEW_RECORD
             command.accountsDto.status = StatusEnum.NEW_RECORD;
-            command.accountsDto.activityLogs = [];
-            command.accountsDto.activityLogs.push(
+            command.accountsDto.activityLogs = [
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
-                })}, Account created by ${command.user.username} for approval`
+                })}, Account created by ${command.user.username} for approval`,
+            ];
+            command.accountsDto.activityLogs = reduceArrayContents(
+                command.accountsDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
             );
-            command.accountsDto.forApprovalVersion = {};
-            command.accountsDto.forApprovalVersion.accountName = command.accountsDto.accountName;
-            command.accountsDto.forApprovalVersion.accountType = command.accountsDto.accountType;
-            command.accountsDto.forApprovalVersion.subAccounts = command.accountsDto.subAccounts;
-            command.accountsDto.forApprovalVersion.changeReason = command.accountsDto.changeReason;
+            command.accountsDto.forApprovalVersion = {
+                accountName: command.accountsDto.accountName,
+                accountType: command.accountsDto.accountType,
+                subAccounts: command.accountsDto.subAccounts,
+                changeReason: command.accountsDto.changeReason,
+            };
         }
     }
 

@@ -81,8 +81,8 @@ export const AccountingSchema = {
             GSI1SK: { type: String, value: '${voucherNo}', hidden: false },
             GSI2PK: { type: String, value: 'VOUCHER#${status}', hidden: false },
             GSI2SK: { type: String, value: '${voucherNo}', hidden: false },
-            GSI3PK: { type: String, value: 'VOUCHER#${voucherDate}', hidden: false },
-            GSI3SK: { type: String, value: '${voucherNo}', hidden: false },
+            GSI3PK: { type: String, value: 'VOUCHER', hidden: false },
+            GSI3SK: { type: String, value: '${voucherDate}', hidden: false },
         },
     } as const,
     params: {

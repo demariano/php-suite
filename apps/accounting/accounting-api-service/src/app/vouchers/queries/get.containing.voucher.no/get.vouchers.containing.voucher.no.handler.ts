@@ -72,7 +72,7 @@ export class GetVouchersContainingVoucherNoHandler implements IQueryHandler<GetV
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<VoucherDto>> {
-        const vouchers = await this.voucherDatabaseService.findRecordContainingVoucherNo(
+        const vouchers = await this.voucherDatabaseService.findRecordsByVoucherNoPagination(
             limit,
             voucherNo,
             direction,

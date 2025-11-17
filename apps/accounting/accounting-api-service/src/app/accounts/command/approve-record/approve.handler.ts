@@ -84,7 +84,7 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
      * Approves an account for approval
      */
     private async approveAccount(existingRecord: AccountsDto, user: UserCognito): Promise<ResponseDto<AccountsDto>> {
-        // Update status and add activity log
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
@@ -92,19 +92,20 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
             })}, Account approved by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
         if (forApprovalVersion) {
-            existingRecord.accountName = forApprovalVersion.accountName as string;
-            existingRecord.accountType = forApprovalVersion.accountType as AccountTypeEnum;
-            existingRecord.subAccounts = forApprovalVersion.subAccounts as string[];
-            existingRecord.changeReason = forApprovalVersion.changeReason as string;
-            existingRecord.forApprovalVersion = {};
+            existingRecord.accountName =
+                (forApprovalVersion.accountName as string) ?? existingRecord.accountName;
+            existingRecord.accountType =
+                (forApprovalVersion.accountType as AccountTypeEnum) ?? existingRecord.accountType;
+            existingRecord.subAccounts =
+                (forApprovalVersion.subAccounts as string[]) ?? existingRecord.subAccounts;
         }
+        existingRecord.forApprovalVersion = {};
+        existingRecord.changeReason = null;
 
-        // Update record in database
         const updatedRecord = await this.accountsDatabaseService.updateRecord(existingRecord);
 
         this.logger.log(`Account approved successfully: ${existingRecord.accountingId}`);
@@ -115,6 +116,7 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
      * Approves deletion of an account
      */
     private async approveDeletion(existingRecord: AccountsDto): Promise<ResponseDto<AccountsDto>> {
+        existingRecord.changeReason = null;
         await this.accountsDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Account deletion approved: ${existingRecord.accountingId}`);

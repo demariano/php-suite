@@ -158,14 +158,15 @@ export default function VoucherPage() {
   }) || [];
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
+    <div className="p-4 sm:p-6 space-y-6">
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
-          <span>{error}</span>
+        <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl flex justify-between items-center shadow-sm">
+          <span className="text-sm font-medium">{error}</span>
           <button
             onClick={() => setError(null)}
-            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
+            className="text-red-700 hover:text-red-900 text-xl font-bold transition-colors duration-200"
+            aria-label="Close error message"
           >
             ×
           </button>
@@ -173,56 +174,51 @@ export default function VoucherPage() {
       )}
 
       {/* Breadcrumbs */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Home
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/accounting" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Accounting
-          </a>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Voucher</span>
-        </nav>
-      </div>
+      <nav className="flex items-center gap-2 text-sm">
+        <a href="/dashboard" className="text-blue-600 hover:text-blue-700 transition-colors duration-200 font-medium">
+          Home
+        </a>
+        <span className="text-gray-400">/</span>
+        <a href="/accounting" className="text-blue-600 hover:text-blue-700 transition-colors duration-200 font-medium">
+          Accounting
+        </a>
+        <span className="text-gray-400">/</span>
+        <span className="text-gray-800 font-semibold">Voucher</span>
+      </nav>
 
       {/* Header */}
-      <div>
-        <VoucherHeader
-          searchTerm={searchTerm}
-          onSearchChange={(value: string) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchTerm('');
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchVouchers();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
+      <VoucherHeader
+        searchTerm={searchTerm}
+        onSearchChange={(value: string) => {
+          setSearchTerm(value);
+          // Reset pagination when search term changes
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchTerm('');
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchVouchers();
+        }}
+        onCreateClick={handleCreateClick}
+        isLoading={isLoading}
+      />
 
       {/* Table */}
-      <div>
-        <VoucherTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchTerm={searchTerm}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchVouchers('prev', prevCursor)}
-          onNext={() => fetchVouchers('next', nextCursor)}
-        />
-      </div>
+      <VoucherTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchTerm={searchTerm}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchVouchers('prev', prevCursor)}
+        onNext={() => fetchVouchers('next', nextCursor)}
+      />
     </div>
   );
 }

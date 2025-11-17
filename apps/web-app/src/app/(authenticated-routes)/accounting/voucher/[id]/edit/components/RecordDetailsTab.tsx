@@ -6,6 +6,7 @@ import DatePicker from '../../../../../components/DatePicker';
 import AccountSearchableSelectionModal from '../../../../../search-modals/AccountSearchableSelectionModal';
 import AreaSearchableSelectionModal from '../../../../../search-modals/AreaSearchableSelectionModal';
 import CustomerSearchableSelectionModal from '../../../../../search-modals/CustomerSearchableSelectionModal';
+import { SelectionField } from '../../../components';
 
 interface RecordDetailsTabProps {
   formData: VoucherDto;
@@ -13,6 +14,7 @@ interface RecordDetailsTabProps {
   isCreateMode: boolean;
   isAdminUser: boolean;
   isReadOnly?: boolean;
+  isFieldChanged?: (fieldName: string) => boolean;
 }
 
 export default function RecordDetailsTab({
@@ -20,7 +22,8 @@ export default function RecordDetailsTab({
   onFormDataChange,
   isCreateMode,
   isAdminUser,
-  isReadOnly = false
+  isReadOnly = false,
+  isFieldChanged
 }: RecordDetailsTabProps) {
   // State management for modals
   const [showAccountModal, setShowAccountModal] = useState(false);
@@ -165,618 +168,291 @@ export default function RecordDetailsTab({
   };
 
   return (
-    <div>
-      <h3 style={{
-        fontSize: '18px',
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: '20px'
-      }}>
-        Voucher Details
-      </h3>
-
+    <div className="space-y-6">
       {/* Change Reason Field - Only for non-admin users editing existing vouchers */}
       {!isCreateMode && !isAdminUser && !isReadOnly && (
-        <div style={{
-          backgroundColor: '#fef3c7',
-          border: '2px solid #f59e0b',
-          borderRadius: '8px',
-          padding: '16px',
-          marginBottom: '20px',
-          boxShadow: '0 2px 4px 0 rgba(245, 158, 11, 0.1)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '12px'
-          }}>
-            <div style={{
-              width: '20px',
-              height: '20px',
-              backgroundColor: '#f59e0b',
-              borderRadius: '4px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              fontSize: '12px',
-              fontWeight: 'bold'
-            }}>
-              📝
+        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center">
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
             </div>
-            <h4 style={{
-              fontSize: '14px',
-              fontWeight: '600',
-              color: '#92400e',
-              margin: 0
-            }}>
-              Change Reason *
-            </h4>
+            <label className="flex items-center gap-2 text-sm font-bold text-yellow-900">
+              <span className="h-1.5 w-1.5 rounded-full bg-yellow-600" />
+              <span>Change Reason</span>
+            </label>
           </div>
           <textarea
             value={formData.changeReason || ''}
             onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
             placeholder="Please provide a reason for the changes (minimum 10 characters)"
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #f59e0b',
-              borderRadius: '6px',
-              fontSize: '14px',
-              color: '#92400e',
-              lineHeight: '1.5',
-              backgroundColor: 'white',
-              outline: 'none',
-              resize: 'vertical',
-              minHeight: '80px',
-              fontFamily: 'inherit'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = '#d97706';
-              e.currentTarget.style.boxShadow = '0 0 0 3px rgba(245, 158, 11, 0.1)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = '#f59e0b';
-              e.currentTarget.style.boxShadow = 'none';
-            }}
+            className="w-full rounded-xl border-2 border-yellow-400 px-4 py-3 text-sm text-yellow-900 bg-white shadow-sm transition-all duration-200 focus:border-yellow-500 focus:outline-none focus:ring-2 focus:ring-yellow-500/40 resize-vertical min-h-[80px]"
           />
-          <div style={{
-            fontSize: '12px',
-            color: '#92400e',
-            marginTop: '8px',
-            fontStyle: 'italic'
-          }}>
+          <p className="mt-2 text-xs text-yellow-800 italic">
             Minimum 10 characters required
-          </div>
+          </p>
         </div>
       )}
 
-      {/* Basic Information */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '20px',
-        marginBottom: '24px'
-      }}>
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Voucher Number *
-          </label>
-          <input
-            type="text"
-            value={formData.voucherNo || ''}
-            onChange={(e) => onFormDataChange({ voucherNo: e.target.value })}
-            readOnly={!isCreateMode || isReadOnly}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: (!isCreateMode || isReadOnly) ? '#f9fafb' : 'white'
-            }}
-            placeholder="Enter voucher number"
-          />
-        </div>
+      {/* Basic Information Section */}
+      <div className="space-y-4">
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-blue-600">
+              Basic Information
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Voucher Number */}
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Voucher Number
+              </label>
+              <input
+                type="text"
+                value={formData.voucherNo || ''}
+                onChange={(e) => onFormDataChange({ voucherNo: e.target.value })}
+                readOnly={!isCreateMode || isReadOnly}
+                disabled={!isCreateMode || isReadOnly}
+                placeholder={isCreateMode ? 'Enter voucher number' : ''}
+                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                  isFieldChanged && isFieldChanged('voucherNo')
+                    ? 'border-blue-500 bg-blue-50 text-gray-700'
+                    : !isCreateMode || isReadOnly
+                    ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40'
+                }`}
+              />
+            </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Voucher Date *
-          </label>
-          <DatePicker
-            value={formData.voucherDate || ''}
-            onChange={(date) => onFormDataChange({ voucherDate: date })}
-            placeholder="Select voucher date"
-            disabled={!isCreateMode || isReadOnly}
-          />
+            {/* Voucher Date */}
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Voucher Date
+              </label>
+              <DatePicker
+                value={formData.voucherDate || ''}
+                onChange={(date) => onFormDataChange({ voucherDate: date })}
+                placeholder="Select voucher date"
+                disabled={!isCreateMode || isReadOnly}
+              />
+            </div>
+          </div>
         </div>
+      </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Account Name *
-          </label>
-          <div style={{ position: 'relative' }}>
-            <input
-              type="text"
-              value={formData.accountName || ''}
-              readOnly
-              onClick={() => isCreateMode && !isReadOnly && setShowAccountModal(true)}
-              disabled={!isCreateMode || isReadOnly}
-              style={{
-                width: '100%',
-                padding: '12px 16px',
-                paddingRight: (formData.accountName && isCreateMode && !isReadOnly) ? '40px' : '16px',
-                border: '1px solid #d1d5db',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                color: formData.accountName ? '#1f2937' : '#6b7280',
-                cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                outline: 'none',
-                transition: 'all 0.2s ease',
-                opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
-              }}
-              placeholder={(!isCreateMode || isReadOnly) ? "Account cannot be changed" : "Click to select account"}
-              onMouseEnter={(e) => {
-                if (isCreateMode && !isReadOnly) {
-                  e.currentTarget.style.borderColor = '#3b82f6';
-                  e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#d1d5db';
-                e.currentTarget.style.boxShadow = 'none';
-              }}
-            />
-            
-            {formData.accountName && isCreateMode && !isReadOnly && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleClearAccount();
-                }}
-                style={{
-                  position: 'absolute',
-                  right: '12px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '20px',
-                  height: '20px',
-                  backgroundColor: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#6b7280',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  zIndex: 10,
-                  transition: 'color 0.2s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#dc2626';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#6b7280';
-                }}
-                title="Clear account selection"
-              >
-                ×
-              </button>
+      {/* Account Information Section */}
+      <div className="space-y-4">
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-blue-600">
+              Account Information
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Account Name */}
+            <div className="group">
+              <SelectionField
+                label="Account Name"
+                selectedItem={formData.accountName ? { id: formData.accountId || '', name: formData.accountName } : null}
+                onSelect={() => setShowAccountModal(true)}
+                onClear={handleClearAccount}
+                buttonText="Select account"
+                disabled={!isCreateMode || isReadOnly}
+                isHighlighted={isFieldChanged && (isFieldChanged('accountId') || isFieldChanged('accountName'))}
+              />
+            </div>
+
+            {/* Account Type */}
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Account Type
+              </label>
+              <input
+                type="text"
+                value={formData.accountType || ''}
+                readOnly
+                disabled
+                placeholder="Auto-populated from account"
+                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+                  isFieldChanged && isFieldChanged('accountType')
+                    ? 'border-blue-500 bg-blue-50 text-gray-700'
+                    : 'border-gray-200 bg-white text-gray-500'
+                }`}
+              />
+            </div>
+
+            {/* Customer Name - Conditional */}
+            {formData.accountType === AccountTypeEnum.CUSTOMER && (
+              <div className="group">
+                <SelectionField
+                  label="Customer Name"
+                  selectedItem={formData.customerName ? { id: formData.customerId || '', name: formData.customerName } : null}
+                  onSelect={() => setShowCustomerModal(true)}
+                  onClear={handleClearCustomer}
+                  buttonText="Select customer"
+                  disabled={!isCreateMode || isReadOnly}
+                  isHighlighted={isFieldChanged && (isFieldChanged('customerId') || isFieldChanged('customerName'))}
+                />
+              </div>
+            )}
+
+            {/* Area Name - Conditional */}
+            {formData.accountType === AccountTypeEnum.AREA && (
+              <div className="group">
+                <SelectionField
+                  label="Area Name"
+                  selectedItem={formData.areaName ? { id: formData.areaId || '', name: formData.areaName } : null}
+                  onSelect={() => setShowAreaModal(true)}
+                  onClear={handleClearArea}
+                  buttonText="Select area"
+                  disabled={!isCreateMode || isReadOnly}
+                  isHighlighted={isFieldChanged && (isFieldChanged('areaId') || isFieldChanged('areaName'))}
+                />
+              </div>
             )}
           </div>
         </div>
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Account Type
-          </label>
-          <input
-            type="text"
-            value={formData.accountType || ''}
-            readOnly
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              backgroundColor: '#f9fafb',
-              color: '#6b7280'
-            }}
-            placeholder="Auto-populated from account"
-          />
-        </div>
-
-        {/* Customer Name - Only enabled when accountType === 'CUSTOMER' */}
-        {formData.accountType === AccountTypeEnum.CUSTOMER && (
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Customer Name *
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={formData.customerName || ''}
-                readOnly
-                onClick={() => isCreateMode && !isReadOnly && setShowCustomerModal(true)}
-                disabled={!isCreateMode || isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  paddingRight: (formData.customerName && isCreateMode && !isReadOnly) ? '40px' : '16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                  color: formData.customerName ? '#1f2937' : '#6b7280',
-                  cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                  opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
-                }}
-                placeholder={(!isCreateMode || isReadOnly) ? "Customer cannot be changed" : "Click to select customer"}
-                onMouseEnter={(e) => {
-                  if (isCreateMode && !isReadOnly) {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-              
-              {formData.customerName && isCreateMode && !isReadOnly && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClearCustomer();
-                  }}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#6b7280',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    zIndex: 10,
-                    transition: 'color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#dc2626';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#6b7280';
-                  }}
-                  title="Clear customer selection"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Area Name - Only enabled when accountType === 'AREA' */}
-        {formData.accountType === AccountTypeEnum.AREA && (
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '500',
-              color: '#374151',
-              marginBottom: '8px'
-            }}>
-              Area Name *
-            </label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={formData.areaName || ''}
-                readOnly
-                onClick={() => isCreateMode && !isReadOnly && setShowAreaModal(true)}
-                disabled={!isCreateMode || isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  paddingRight: (formData.areaName && isCreateMode && !isReadOnly) ? '40px' : '16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  backgroundColor: (!isCreateMode || isReadOnly) ? '#f3f4f6' : '#f9fafb',
-                  color: formData.areaName ? '#1f2937' : '#6b7280',
-                  cursor: (isCreateMode && !isReadOnly) ? 'pointer' : 'not-allowed',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                  opacity: (!isCreateMode || isReadOnly) ? 0.6 : 1
-                }}
-                placeholder={(!isCreateMode || isReadOnly) ? "Area cannot be changed" : "Click to select area"}
-                onMouseEnter={(e) => {
-                  if (isCreateMode && !isReadOnly) {
-                    e.currentTarget.style.borderColor = '#3b82f6';
-                    e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#d1d5db';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-              
-              {formData.areaName && isCreateMode && !isReadOnly && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClearArea();
-                  }}
-                  style={{
-                    position: 'absolute',
-                    right: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    width: '20px',
-                    height: '20px',
-                    backgroundColor: 'transparent',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#6b7280',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    zIndex: 10,
-                    transition: 'color 0.2s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.color = '#dc2626';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.color = '#6b7280';
-                  }}
-                  title="Clear area selection"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Remarks
-          </label>
-          <input
-            type="text"
-            value={formData.remarks || ''}
-            onChange={(e) => onFormDataChange({ remarks: e.target.value })}
-            readOnly={isReadOnly}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: isReadOnly ? '#f9fafb' : 'white'
-            }}
-            placeholder="Enter remarks"
-          />
-        </div>
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Payment Type
-          </label>
-          <select
-            value={formData.paymentType || 'CASH'}
-            onChange={(e) => onFormDataChange({ paymentType: e.target.value as PaymentTypeEnum })}
-            disabled={isReadOnly}
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              backgroundColor: isReadOnly ? '#f9fafb' : 'white',
-              cursor: isReadOnly ? 'not-allowed' : 'pointer'
-            }}
-          >
-            <option value="CASH">CASH</option>
-            <option value="CHEQUE">CHEQUE</option>
-            <option value="BANK_TRANSFER">BANK_TRANSFER</option>
-            <option value="OTHER">OTHER</option>
-          </select>
-        </div>
-
-        {/* Payment Type dependent fields */}
-        {formData.paymentType === 'CHEQUE' && (
-          <>
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Bank Name
-              </label>
-              <input
-                type="text"
-                value={formData.bankName || ''}
-                onChange={(e) => onFormDataChange({ bankName: e.target.value })}
-                readOnly={isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: isReadOnly ? '#f9fafb' : 'white'
-                }}
-                placeholder="Enter bank name"
-              />
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Cheque Number
-              </label>
-              <input
-                type="text"
-                value={formData.chequeNo || ''}
-                onChange={(e) => onFormDataChange({ chequeNo: e.target.value })}
-                readOnly={isReadOnly}
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  outline: 'none',
-                  backgroundColor: isReadOnly ? '#f9fafb' : 'white'
-                }}
-                placeholder="Enter cheque number"
-              />
-            </div>
-
-            <div>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#374151',
-                marginBottom: '8px'
-              }}>
-                Cheque Date
-              </label>
-              <DatePicker
-                value={formData.chequeDate || ''}
-                onChange={(date) => onFormDataChange({ chequeDate: date })}
-                placeholder="Select cheque date"
-                disabled={isReadOnly}
-              />
-            </div>
-          </>
-        )}
       </div>
 
-      {/* Status Information */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '20px',
-        marginBottom: '24px'
-      }}>
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Status
-          </label>
-          <div style={{ padding: '8px 0' }}>
-            {getStatusBadge(formData.status || StatusEnum.ACTIVE)}
+      {/* Payment Information Section */}
+      <div className="space-y-4">
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
+            </div>
+            <h3 className="text-base font-bold text-blue-600">
+              Payment Information
+            </h3>
           </div>
-        </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Payment Type */}
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Payment Type
+              </label>
+              <select
+                value={formData.paymentType || 'CASH'}
+                onChange={(e) => onFormDataChange({ paymentType: e.target.value as PaymentTypeEnum })}
+                disabled={isReadOnly}
+                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                  isFieldChanged && isFieldChanged('paymentType')
+                    ? 'border-blue-500 bg-blue-50 text-gray-700'
+                    : isReadOnly
+                    ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                    : 'border-gray-200 bg-white text-gray-700 cursor-pointer group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40'
+                }`}
+              >
+                <option value="CASH">CASH</option>
+                <option value="CHEQUE">CHEQUE</option>
+                <option value="BANK_TRANSFER">BANK TRANSFER</option>
+                <option value="OTHER">OTHER</option>
+              </select>
+            </div>
 
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: '14px',
-            fontWeight: '500',
-            color: '#374151',
-            marginBottom: '8px'
-          }}>
-            Total Amount
-          </label>
-          <input
-            type="number"
-            value={formData.totalAmount || 0}
-            readOnly
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '1px solid #d1d5db',
-              borderRadius: '8px',
-              fontSize: '14px',
-              backgroundColor: '#f9fafb',
-              color: '#6b7280',
-              fontWeight: '500'
-            }}
-          />
+            {/* Remarks */}
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Remarks
+              </label>
+              <input
+                type="text"
+                value={formData.remarks || ''}
+                onChange={(e) => onFormDataChange({ remarks: e.target.value })}
+                readOnly={isReadOnly}
+                disabled={isReadOnly}
+                placeholder={isCreateMode ? 'Enter remarks' : ''}
+                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                  isFieldChanged && isFieldChanged('remarks')
+                    ? 'border-blue-500 bg-blue-50 text-gray-700'
+                    : isReadOnly
+                    ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40'
+                }`}
+              />
+            </div>
+
+            {/* Cheque-specific fields */}
+            {formData.paymentType === 'CHEQUE' && (
+              <>
+                <div className="group">
+                  <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                    Bank Name
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.bankName || ''}
+                    onChange={(e) => onFormDataChange({ bankName: e.target.value })}
+                    readOnly={isReadOnly}
+                    disabled={isReadOnly}
+                    placeholder={isCreateMode ? 'Enter bank name' : ''}
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                      isFieldChanged && isFieldChanged('bankName')
+                        ? 'border-blue-500 bg-blue-50 text-gray-700'
+                        : isReadOnly
+                        ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                        : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40'
+                    }`}
+                  />
+                </div>
+
+                <div className="group">
+                  <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                    Cheque Number
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.chequeNo || ''}
+                    onChange={(e) => onFormDataChange({ chequeNo: e.target.value })}
+                    readOnly={isReadOnly}
+                    disabled={isReadOnly}
+                    placeholder={isCreateMode ? 'Enter cheque number' : ''}
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                      isFieldChanged && isFieldChanged('chequeNo')
+                        ? 'border-blue-500 bg-blue-50 text-gray-700'
+                        : isReadOnly
+                        ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                        : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40'
+                    }`}
+                  />
+                </div>
+
+                <div className="group">
+                  <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                    Cheque Date
+                  </label>
+                  <DatePicker
+                    value={formData.chequeDate || ''}
+                    onChange={(date) => onFormDataChange({ chequeDate: date })}
+                    placeholder="Select cheque date"
+                    disabled={isReadOnly}
+                  />
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

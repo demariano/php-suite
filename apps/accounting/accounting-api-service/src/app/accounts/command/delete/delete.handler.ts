@@ -1,11 +1,13 @@
 import { AccountsDatabaseServiceAbstract } from '@accounting-database-service';
 import { AccountsDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { DeleteAccountsCommand } from './delete.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(DeleteAccountsCommand)
 export class DeleteAccountsHandler implements ICommandHandler<DeleteAccountsCommand> {
@@ -26,11 +28,11 @@ export class DeleteAccountsHandler implements ICommandHandler<DeleteAccountsComm
             // Check user authorization
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
-            // Update status and activity logs based on permissions
-            this.updateAccountStatus(command, existingRecord, hasApprovalPermission);
+            const recordForDeletion = this.prepareRecordForDeletion(command, existingRecord, hasApprovalPermission);
 
-            // Delete or mark for deletion based on permissions
-            const deletedRecord = await this.performDeletion(command, hasApprovalPermission);
+            const deletedRecord = hasApprovalPermission
+                ? await this.accountsDatabaseService.deleteRecord(recordForDeletion)
+                : await this.accountsDatabaseService.updateRecord(recordForDeletion);
 
             this.logger.log(`Account deleted successfully: ${deletedRecord.accountingId}`);
             return new ResponseDto<AccountsDto>(deletedRecord, HTTP_STATUS_OK);
@@ -64,48 +66,34 @@ export class DeleteAccountsHandler implements ICommandHandler<DeleteAccountsComm
         return userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
     }
 
-    /**
-     * Updates account status and activity logs based on user permissions
-     */
-    private updateAccountStatus(
+    private prepareRecordForDeletion(
         command: DeleteAccountsCommand,
         existingRecord: AccountsDto,
         hasApprovalPermission: boolean
-    ): void {
-        // Set the ID
-        command.accountsDto.accountingId = command.recordId;
+    ): AccountsDto {
+        const record: AccountsDto = { ...existingRecord };
+        record.status = StatusEnum.FOR_DELETION;
+        record.activityLogs = record.activityLogs || [];
+
+        const activityLog = hasApprovalPermission
+            ? `Date: ${new Date().toLocaleString('en-US', {
+                  timeZone: 'Asia/Manila',
+              })}, Account deleted by ${command.user.username}`
+            : `Date: ${new Date().toLocaleString('en-US', {
+                  timeZone: 'Asia/Manila',
+              })}, Account marked for deletion by ${command.user.username}`;
+
+        record.activityLogs.push(activityLog);
+        record.activityLogs = reduceArrayContents(record.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.accountsDto.status = StatusEnum.FOR_DELETION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Account deleted by ${command.user.username}`;
-            command.accountsDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            record.changeReason = null;
         } else {
-            // User needs approval - set to FOR_DELETION for soft delete
-            command.accountsDto.status = StatusEnum.FOR_DELETION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Account marked for deletion by ${command.user.username}`;
-            command.accountsDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            const deletionReason = command.accountsDto.changeReason?.trim();
+            record.changeReason = deletionReason || record.changeReason || undefined;
         }
-    }
 
-    /**
-     * Performs the actual deletion based on user permissions
-     */
-    private async performDeletion(
-        command: DeleteAccountsCommand,
-        hasApprovalPermission: boolean
-    ): Promise<AccountsDto> {
-        if (hasApprovalPermission) {
-            // Hard delete
-            return await this.accountsDatabaseService.deleteRecord(command.accountsDto);
-        } else {
-            // Soft delete (mark for deletion)
-            return await this.accountsDatabaseService.updateRecord(command.accountsDto);
-        }
+        return record;
     }
 
     /**

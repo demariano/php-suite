@@ -34,11 +34,16 @@ import {
     StatusEnum,
     StockDto,
     StockTypeDto,
+    SupplierDto,
     TermsDto,
     TerritoryManagerDto,
     TownDto,
 } from '@dto';
-import { StockDatabaseServiceAbstract, StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
+import {
+    StockDatabaseServiceAbstract,
+    StockTypeDatabaseServiceAbstract,
+    SupplierDatabaseServiceAbstract,
+} from '@inventory-database-service';
 import {
     ContractDatabaseServiceAbstract,
     InvoiceDatabaseServiceAbstract,
@@ -112,7 +117,10 @@ export class AppService {
         private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
 
         @Inject('AccountsDatabaseService')
-        private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract
+        private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract,
+
+        @Inject('SupplierDatabaseService')
+        private readonly supplierDatabaseService: SupplierDatabaseServiceAbstract
     ) {}
 
     healthCheck(): { status: string; version: string } {
@@ -557,6 +565,25 @@ export class AppService {
         accountData2.status = StatusEnum.ACTIVE;
         accountData2.subAccounts = ['Sub Account 1 - Customer', 'Sub Account 2 - Customer'];
         await this.accountsDatabaseService.createRecord(accountData2);
+
+        //create 2 supplier
+        const supplierData1 = new SupplierDto();
+        supplierData1.supplierName = 'Supplier 1';
+        supplierData1.status = StatusEnum.ACTIVE;
+        supplierData1.supplierAddress = 'Supplier Address 1';
+        supplierData1.supplierPhone = 'Supplier Phone 1';
+        supplierData1.supplierEmail = 'Supplier Email 1';
+        supplierData1.supplierContactPerson = 'Supplier Contact Person 1';
+        await this.supplierDatabaseService.createRecord(supplierData1);
+
+        const supplierData2 = new SupplierDto();
+        supplierData2.supplierName = 'Supplier 2';
+        supplierData2.status = StatusEnum.ACTIVE;
+        supplierData2.supplierAddress = 'Supplier Address 2';
+        supplierData2.supplierPhone = 'Supplier Phone 2';
+        supplierData2.supplierEmail = 'Supplier Email 2';
+        supplierData2.supplierContactPerson = 'Supplier Contact Person 2';
+        await this.supplierDatabaseService.createRecord(supplierData2);
     }
 
     async deleteAllRecords() {
@@ -579,5 +606,6 @@ export class AppService {
         await this.invoiceDatabaseService.deleteAllRecords();
         await this.contractDatabaseService.deleteAllRecords();
         await this.accountsDatabaseService.deleteAllRecords();
+        await this.supplierDatabaseService.deleteAllRecords();
     }
 }

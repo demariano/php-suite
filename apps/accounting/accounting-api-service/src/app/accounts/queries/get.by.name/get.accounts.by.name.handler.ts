@@ -26,12 +26,7 @@ export class GetAccountsByNameHandler implements IQueryHandler<GetAccountsByName
             this.validateNameParameter(query.name);
 
             // Fetch accounts by name
-            const accounts = await this.fetchAccountsByName(
-                query.name,
-                query.limit,
-                query.direction,
-                query.cursorPointer
-            );
+            const accounts = await this.fetchAccountsByName(query);
 
             this.logger.log(`Accounts retrieved successfully: ${accounts.data.length} found`);
             return new ResponseDto<PageDto<AccountsDto>>(accounts, HTTP_STATUS_OK);
@@ -56,20 +51,13 @@ export class GetAccountsByNameHandler implements IQueryHandler<GetAccountsByName
     /**
      * Fetches accounts by name
      */
-    private async fetchAccountsByName(
-        name: string,
-        limit: number,
-        direction: string,
-        cursorPointer: string
-    ): Promise<PageDto<AccountsDto>> {
-        const accounts = await this.accountsDatabaseService.findRecordContainingName(
-            limit,
-            name,
-            direction,
-            cursorPointer
+    private async fetchAccountsByName(query: GetAccountsByNameQuery): Promise<PageDto<AccountsDto>> {
+        return this.accountsDatabaseService.findRecordsByNamePagination(
+            query.limit,
+            query.direction,
+            query.cursorPointer,
+            query.name
         );
-
-        return accounts;
     }
 
     /**

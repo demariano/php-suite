@@ -24,7 +24,7 @@ export class VoucherDto {
     forApprovalVersion!: Record<string, unknown>;
 
     @ApiProperty()
-    changeReason!: string;
+    changeReason?: string;
 
     @ApiProperty()
     status!: StatusEnum;

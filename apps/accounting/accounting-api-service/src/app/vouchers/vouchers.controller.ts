@@ -717,12 +717,14 @@ export class VouchersController {
         @Query('limit') limit: number,
         @Query('direction') direction: string,
         @Query('cursorPointer') cursorPointer: string,
-        @Query('voucherDate') voucherDate: string
+        @Query('startDate') startDate: string,
+        @Query('endDate') endDate: string
     ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
         return this.queryBus.execute(
-            new GetVouchersByVoucherDatePaginationQuery(limit, voucherDate, direction, cursorPointer)
+            new GetVouchersByVoucherDatePaginationQuery(limit, startDate, endDate
+                , direction, cursorPointer)
         );
     }
 

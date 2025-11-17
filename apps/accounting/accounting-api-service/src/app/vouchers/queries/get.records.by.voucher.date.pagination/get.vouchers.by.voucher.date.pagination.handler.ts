@@ -21,7 +21,9 @@ export class GetVouchersByVoucherDatePaginationHandler
     ) {}
 
     async execute(query: GetVouchersByVoucherDatePaginationQuery): Promise<ResponseDto<PageDto<VoucherDto>>> {
-        this.logger.log(`Processing get vouchers by voucher date pagination request: ${query.voucherDate}`);
+        this.logger.log(
+            `Processing get vouchers by voucher date pagination request: ${query.startDate} to ${query.endDate}`
+        );
 
         try {
             // Validate parameters
@@ -33,7 +35,7 @@ export class GetVouchersByVoucherDatePaginationHandler
             this.logger.log(`Vouchers retrieved successfully: ${vouchers.data.length} found`);
             return new ResponseDto<PageDto<VoucherDto>>(vouchers, HTTP_STATUS_OK);
         } catch (error) {
-            return this.handleError(error, query.voucherDate);
+            return this.handleError(error, `${query.startDate} to ${query.endDate}`);
         }
     }
 
@@ -46,9 +48,13 @@ export class GetVouchersByVoucherDatePaginationHandler
             throw new BadRequestException(`Limit must be between ${MIN_LIMIT} and ${MAX_LIMIT}`);
         }
 
-        // Validate voucher date
-        if (!query.voucherDate || typeof query.voucherDate !== 'string') {
-            throw new BadRequestException('Voucher date is required and must be a string');
+        // Validate voucher dates
+        if (!query.startDate || typeof query.startDate !== 'string') {
+            throw new BadRequestException('Start date is required and must be a string');
+        }
+
+        if (!query.endDate || typeof query.endDate !== 'string') {
+            throw new BadRequestException('End date is required and must be a string');
         }
     }
 
@@ -60,7 +66,8 @@ export class GetVouchersByVoucherDatePaginationHandler
     ): Promise<PageDto<VoucherDto>> {
         return await this.voucherDatabaseService.findRecordsByVoucherDatePagination(
             query.limit,
-            query.voucherDate,
+            query.startDate,
+            query.endDate,
             query.direction,
             query.cursorPointer
         );

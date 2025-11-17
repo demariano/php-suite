@@ -4,241 +4,206 @@ import { AccountApi, AccountsDto, StatusEnum, useEnv, useLocalStore } from '@dat
 import { useEffect, useRef, useState } from 'react';
 import { AccountHeader, AccountTable } from './components';
 
+const getStatusText = (status: StatusEnum): string => {
+  switch (status) {
+    case StatusEnum.ACTIVE:
+      return 'Active';
+    case StatusEnum.FOR_APPROVAL:
+      return 'For Approval';
+    case StatusEnum.FOR_DELETION:
+      return 'For Deletion';
+    case StatusEnum.NEW_RECORD:
+      return 'New Record';
+    default:
+      return status || 'Inactive';
+  }
+};
+
+const getStatusBadge = (status: StatusEnum) => {
+  const baseClasses =
+    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide shadow-sm';
+  const variants: Record<StatusEnum | string, string> = {
+    [StatusEnum.ACTIVE]: 'bg-green-100 text-green-800 border border-green-200',
+    [StatusEnum.FOR_APPROVAL]: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
+    [StatusEnum.FOR_DELETION]: 'bg-red-100 text-red-800 border border-red-200',
+    [StatusEnum.NEW_RECORD]: 'bg-blue-100 text-blue-800 border border-blue-200',
+  };
+
+  return (
+    <span className={`${baseClasses} ${variants[status] ?? 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+      {getStatusText(status)}
+    </span>
+  );
+};
+
 export default function AccountsPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [accounts, setAccounts] = useState<AccountsDto[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState(10);
+  const [nextCursor, setNextCursor] = useState<any>(undefined);
+  const [prevCursor, setPrevCursor] = useState<any>(undefined);
+  const [currentCursor, setCurrentCursor] = useState<any>(undefined);
+
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
-  
-  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
-  const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-  const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
-  const [pageSize, setPageSize] = useState<number>(10);
-
-  // Track if initial fetch has been made to prevent duplicate calls
   const hasFetchedRef = useRef(false);
 
-  // Fetch accounts from API
-  const fetchAccounts = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
+  const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+  const canCreateAccount = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
+  const fetchAccounts = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Serialize cursor object to JSON string if it's an object
-      const serializedCursor = cursor && typeof cursor === 'object' 
-        ? JSON.stringify(cursor) 
-        : cursor;
-      
-      let response;
-      
-      // Use custom page size if provided, otherwise use state page size
+
+      const serializedCursor =
+        cursor && typeof cursor === 'object'
+          ? JSON.stringify(cursor)
+          : cursor;
       const currentPageSize = customPageSize ?? pageSize;
-      
-      // If search term exists, use search API, otherwise use regular pagination API
-      if (searchTerm && searchTerm.trim() !== '') {
-        response = await AccountApi.getAccountByName(
-          searchTerm.trim(),
-          currentPageSize,
-          direction,
-          serializedCursor,
-          userRole
-        );
-      } else {
-        response = await AccountApi.getAccountsPagination(
-          currentPageSize,
-          direction,
-          serializedCursor,
-          userRole
-        );
-      }
-      
-      if (response && response.statusCode === 200 && response.data) {
-        // The response.data contains the array of accounts
-        if (Array.isArray(response.data)) {
-          setAccounts(response.data);
-          
-          // Set pagination cursors from response
-          setNextCursor(response.nextCursorPointer || undefined);
-          setPrevCursor(response.prevCursorPointer || undefined);
-        } else {
-          setAccounts([]);
-          setNextCursor(undefined);
-          setPrevCursor(undefined);
-        }
+      const trimmedQuery = searchQuery.trim();
+
+      const response = trimmedQuery
+        ? await AccountApi.getAccountsByName(trimmedQuery, currentPageSize, direction, serializedCursor, userRole)
+        : await AccountApi.getAccounts(currentPageSize, direction, serializedCursor, userRole);
+
+      if (response?.statusCode === 200 && Array.isArray(response.data)) {
+        setAccounts(response.data);
+        setNextCursor(response.nextCursorPointer || undefined);
+        setPrevCursor(response.prevCursorPointer || undefined);
       } else {
         setAccounts([]);
         setNextCursor(undefined);
         setPrevCursor(undefined);
       }
-      
+
       if (direction && cursor) {
         setCurrentCursor(cursor);
       } else {
         setCurrentCursor(undefined);
       }
-    } catch {
+    } catch (err) {
+      console.error('Failed to load accounts:', err);
       setError('Failed to load accounts. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch on initial load and when these dependencies change
   useEffect(() => {
-    // Prevent duplicate calls in React Strict Mode
     if (hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    
     fetchAccounts();
   }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
-  // Debounce search term changes (but not on initial mount with empty search)
   useEffect(() => {
-    // Only debounce if there's actually a search term
-    if (searchTerm === '') {
-      return; // Skip - initial load is handled by the other useEffect
+    if (searchQuery === '') {
+      fetchAccounts();
+      return;
     }
 
-    const delayDebounceFn = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
       fetchAccounts();
-    }, 500); // 500ms delay
+    }, 500);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+    return () => clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
 
   const headers = [
-    { key: 'accountName', label: 'NAME' },
+    { key: 'accountName', label: 'ACCOUNT NAME' },
     { key: 'accountType', label: 'ACCOUNT TYPE' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
   ];
 
-  const getStatusBadge = (status: StatusEnum) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
-    
-    let colorClasses = "";
-    if (status === StatusEnum.ACTIVE) {
-      colorClasses = "!bg-green-100 !text-green-800";
-    } else if (status === StatusEnum.FOR_APPROVAL) {
-      colorClasses = "!bg-yellow-100 !text-yellow-800";
-    } else if (status === StatusEnum.FOR_DELETION) {
-      colorClasses = "!bg-red-100 !text-red-800";
-    } else if (status === StatusEnum.NEW_RECORD) {
-      colorClasses = "!bg-blue-100 !text-blue-800";
-    } else {
-      colorClasses = "!bg-gray-100 !text-gray-600";
-    }
-    
-    return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {status}
-      </span>
-    );
-  };
-
-  const handleRowClick = async (account: AccountsDto) => {
-    // Navigate to edit account page
-    if (account && account.accountingId) {
+  const handleRowClick = (account: AccountsDto) => {
+    if (account?.accountingId) {
       window.location.href = `/accounting/accounts/${account.accountingId}/edit`;
     }
   };
 
   const handleCreateClick = () => {
-    // Navigate to create account page
     window.location.href = '/accounting/accounts/create';
   };
 
-  // Handle page size change - reset pagination and fetch fresh data
   const handlePageSizeChange = (newPageSize: number) => {
     setPageSize(newPageSize);
     setNextCursor(undefined);
     setPrevCursor(undefined);
     setCurrentCursor(undefined);
-    // Fetch with new page size and no cursor (like initial load)
     fetchAccounts(undefined, undefined, newPageSize);
   };
 
-  // Transform data for table display
-  const tableData = accounts?.map(account => {
-    return {
+  const tableData =
+    accounts?.map((account) => ({
       ...account,
-      status: getStatusBadge(account.status || StatusEnum.ACTIVE)
-    };
-  }) || [];
+      status: getStatusBadge(account.status || StatusEnum.ACTIVE),
+    })) ?? [];
 
   return (
-    <div className="p-6 bg-gradient-to-br from-gray-50 to-white min-h-screen">
-      {/* Error Message */}
+    <div className="p-4 sm:p-6 space-y-6">
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+        <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-600 shadow-sm">
           <span>{error}</span>
           <button
+            type="button"
             onClick={() => setError(null)}
-            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
+            className="text-lg font-bold leading-none text-red-600 transition-colors duration-200 hover:text-red-800"
           >
             ×
           </button>
         </div>
       )}
 
-      {/* Breadcrumbs */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
+      <div>
+        <nav className="flex items-center gap-2 text-sm">
+          <a href="/dashboard" className="text-blue-500 transition-colors duration-200 hover:text-blue-600">
             Home
           </a>
           <span className="text-gray-400">/</span>
-          <a href="/accounting" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
+          <a href="/accounting" className="text-blue-500 transition-colors duration-200 hover:text-blue-600">
             Accounting
           </a>
           <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Accounts</span>
+          <span className="text-gray-800 font-medium">Accounts</span>
         </nav>
       </div>
 
-      {/* Header */}
-      <div>
-        <AccountHeader
-          searchTerm={searchTerm}
-          onSearchChange={(value: string) => {
-            setSearchTerm(value);
-            // Reset pagination when search term changes
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchTerm('');
-            setCurrentCursor(undefined);
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchAccounts();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
+      <AccountHeader
+        searchQuery={searchQuery}
+        onSearchChange={(value: string) => {
+          setSearchQuery(value);
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+        }}
+        onRefresh={() => {
+          setSearchQuery('');
+          setCurrentCursor(undefined);
+          setNextCursor(undefined);
+          setPrevCursor(undefined);
+          fetchAccounts();
+        }}
+        onCreateClick={handleCreateClick}
+        isLoading={isLoading}
+        canCreate={canCreateAccount}
+      />
 
-      {/* Table */}
-      <div>
-        <AccountTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchTerm={searchTerm}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchAccounts('prev', prevCursor)}
-          onNext={() => fetchAccounts('next', nextCursor)}
-        />
-      </div>
+      <AccountTable
+        isLoading={isLoading}
+        tableData={tableData}
+        headers={headers}
+        searchQuery={searchQuery}
+        onRowClick={handleRowClick}
+        pageSize={pageSize}
+        onPageSizeChange={handlePageSizeChange}
+        prevCursor={prevCursor}
+        nextCursor={nextCursor}
+        onPrevious={() => fetchAccounts('prev', prevCursor)}
+        onNext={() => fetchAccounts('next', nextCursor)}
+      />
     </div>
   );
 }

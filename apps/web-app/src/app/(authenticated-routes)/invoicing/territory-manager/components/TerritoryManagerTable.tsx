@@ -1,6 +1,7 @@
 'use client';
 
 import { StatusEnum, TerritoryManagerDto } from '@data-access/index';
+import { isValidElement, type ReactNode } from 'react';
 
 interface TerritoryManagerTableProps {
   isLoading: boolean;
@@ -29,8 +30,8 @@ export default function TerritoryManagerTable({
   onPrevious,
   onNext
 }: TerritoryManagerTableProps) {
-  // Helper function to get status text
-  const getStatusText = (status: StatusEnum): string => {
+  // Helper function to get status text when we don't receive the pre-rendered badge
+  const getStatusText = (status: StatusEnum | string): string => {
     switch (status) {
       case StatusEnum.ACTIVE:
         return 'Active';
@@ -41,24 +42,24 @@ export default function TerritoryManagerTable({
       case StatusEnum.NEW_RECORD:
         return 'New Record';
       default:
-        return status;
+        return typeof status === 'string' ? status : '';
     }
   };
 
-  // Helper function to get status badge classes
-  const getStatusBadgeClasses = (status: StatusEnum): string => {
-    switch (status) {
-      case StatusEnum.ACTIVE:
-        return 'bg-green-100 text-green-800 border-green-200';
-      case StatusEnum.FOR_APPROVAL:
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case StatusEnum.FOR_DELETION:
-        return 'bg-red-100 text-red-800 border-red-200';
-      case StatusEnum.NEW_RECORD:
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+  const renderStatus = (value: ReactNode | StatusEnum | string | undefined) => {
+    if (value === null || value === undefined) {
+      return '-';
     }
+
+    if (isValidElement(value) || typeof value === 'object') {
+      return value;
+    }
+
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    return getStatusText(value);
   };
 
   return (
@@ -93,9 +94,7 @@ export default function TerritoryManagerTable({
                         {territoryManager.territoryManagerName || '-'}
                       </td>
                       <td className="px-6 py-5">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase border ${getStatusBadgeClasses(territoryManager.status || StatusEnum.ACTIVE)}`}>
-                          {getStatusText(territoryManager.status || StatusEnum.ACTIVE)}
-                        </span>
+                        {renderStatus(territoryManager.status)}
                       </td>
                     </tr>
                   ))
@@ -129,11 +128,7 @@ export default function TerritoryManagerTable({
                       {territoryManager.territoryManagerName || '-'}
                     </h3>
                   </div>
-                  <div>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase border ${getStatusBadgeClasses(territoryManager.status || StatusEnum.ACTIVE)}`}>
-                      {getStatusText(territoryManager.status || StatusEnum.ACTIVE)}
-                    </span>
-                  </div>
+                  <div>{renderStatus(territoryManager.status)}</div>
                 </div>
               </button>
             ))

@@ -85,7 +85,7 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
      * Denies an account for approval
      */
     private async denyAccount(existingRecord: AccountsDto, user: UserCognito): Promise<ResponseDto<AccountsDto>> {
-        // Update status and add activity log
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
@@ -93,11 +93,10 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
             })}, Account denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
+        existingRecord.changeReason = null;
 
-        // Update record in database
         const updatedRecord = await this.accountsDatabaseService.updateRecord(existingRecord);
 
         this.logger.log(`Account denied successfully: ${existingRecord.accountingId}`);
@@ -110,6 +109,14 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
     private async denyDeletion(existingRecord: AccountsDto): Promise<ResponseDto<AccountsDto>> {
         this.logger.log(`Account deletion denied: ${existingRecord.accountingId}`);
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Account deletion denied, status reverted to ${StatusEnum.ACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.changeReason = null;
         const updatedRecord = await this.accountsDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<AccountsDto>(updatedRecord, HTTP_STATUS_OK);
     }
@@ -119,6 +126,7 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
      */
     private async deleteRecord(existingRecord: AccountsDto): Promise<ResponseDto<AccountsDto>> {
         this.logger.log(`Account deleted: ${existingRecord.accountingId}`);
+        existingRecord.changeReason = null;
         await this.accountsDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<AccountsDto>(existingRecord, HTTP_STATUS_OK);
     }

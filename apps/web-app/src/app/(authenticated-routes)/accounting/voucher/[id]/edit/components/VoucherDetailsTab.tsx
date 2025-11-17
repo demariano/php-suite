@@ -8,6 +8,8 @@ interface VoucherDetailsTabProps {
   onFormDataChange: (updatedData: Partial<VoucherDto>) => void;
   isCreateMode: boolean;
   isReadOnly?: boolean;
+  selectedVoucher?: VoucherDto | null;
+  hasArrayChanges?: (fieldName: string) => boolean;
 }
 
 
@@ -16,7 +18,9 @@ export default function VoucherDetailsTab({
   formData,
   onFormDataChange,
   isCreateMode,
-  isReadOnly = false
+  isReadOnly = false,
+  selectedVoucher,
+  hasArrayChanges
 }: VoucherDetailsTabProps) {
   const [selectedAccount, setSelectedAccount] = useState<AccountsDto | null>(null);
   const [selectedSubAccount, setSelectedSubAccount] = useState<string>('');
@@ -304,94 +308,44 @@ export default function VoucherDetailsTab({
   );
 
   return (
-    <div>
-      <h3 style={{
-        fontSize: '18px',
-        fontWeight: '600',
-        color: '#1f2937',
-        marginBottom: '20px'
-      }}>
-        Voucher Details
-      </h3>
-
+    <div className="space-y-6">
       {/* Add Detail Section - Hidden when read-only */}
       {!isReadOnly && (
-        <div style={{
-          backgroundColor: '#f8fafc',
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          padding: '20px',
-          marginBottom: '24px'
-        }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            marginBottom: '16px'
-          }}>
-            Add Voucher Detail
-          </h4>
+        <div className="mt-6 border-2 border-gray-200 rounded-xl p-4 sm:p-6 bg-gray-50">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+            </div>
+            <h4 className="text-base font-bold text-blue-600">
+              Add Voucher Detail
+            </h4>
+          </div>
 
           {!formData.accountId ? (
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#fef3c7',
-              border: '1px solid #f59e0b',
-              borderRadius: '6px',
-              color: '#92400e'
-            }}>
+            <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-xl text-yellow-900">
               Please select an account first before adding voucher details.
             </div>
           ) : subAccounts.length === 0 ? (
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#fee2e2',
-              border: '1px solid #ef4444',
-              borderRadius: '6px',
-              color: '#991b1b'
-            }}>
+            <div className="p-4 bg-red-50 border-2 border-red-400 rounded-xl text-red-900">
               The selected account has no sub accounts available.
             </div>
           ) : availableSubAccounts.length === 0 ? (
-            <div style={{
-              padding: '16px',
-              backgroundColor: '#fef3c7',
-              border: '1px solid #f59e0b',
-              borderRadius: '6px',
-              color: '#92400e'
-            }}>
+            <div className="p-4 bg-yellow-50 border-2 border-yellow-400 rounded-xl text-yellow-900">
               All sub accounts have been added. No more items can be added.
             </div>
           ) : (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr auto',
-              gap: '16px',
-              alignItems: 'end'
-            }}>
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
-                  Sub Account *
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end">
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                  Sub Account
                 </label>
                 <select
                   value={selectedSubAccount}
                   onChange={(e) => setSelectedSubAccount(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none',
-                    backgroundColor: 'white',
-                    cursor: 'pointer'
-                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium shadow-sm bg-white text-gray-700 cursor-pointer transition-all duration-200 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                 >
                   <option value="">Select sub account</option>
                   {availableSubAccounts.map((subAccount) => (
@@ -402,15 +356,10 @@ export default function VoucherDetailsTab({
                 </select>
               </div>
 
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: '#374151',
-                  marginBottom: '8px'
-                }}>
-                  Amount *
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                  Amount
                 </label>
                 <input
                   type="text"
@@ -418,14 +367,7 @@ export default function VoucherDetailsTab({
                   onChange={handleAddDetailAmountChange}
                   onFocus={handleAddDetailAmountFocus}
                   onBlur={handleAddDetailAmountBlur}
-                  style={{
-                    width: '100%',
-                    padding: '12px 16px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    outline: 'none'
-                  }}
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-sm font-medium shadow-sm text-gray-700 transition-all duration-200 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                   placeholder="Enter amount"
                 />
               </div>
@@ -434,28 +376,7 @@ export default function VoucherDetailsTab({
                 type="button"
                 onClick={handleAddDetail}
                 disabled={!selectedSubAccount || !amount || parseFloat(removeCommas(amount)) <= 0}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: (!selectedSubAccount || !amount || parseFloat(removeCommas(amount)) <= 0) ? '#9ca3af' : '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: (!selectedSubAccount || !amount || parseFloat(removeCommas(amount)) <= 0) ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease',
-                  opacity: (!selectedSubAccount || !amount || parseFloat(removeCommas(amount)) <= 0) ? 0.7 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedSubAccount && amount && parseFloat(removeCommas(amount)) > 0) {
-                    e.currentTarget.style.backgroundColor = '#059669';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedSubAccount && amount && parseFloat(removeCommas(amount)) > 0) {
-                    e.currentTarget.style.backgroundColor = '#10b981';
-                  }
-                }}
+                className="px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm transition-all duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
               >
                 Add Detail
               </button>
@@ -465,128 +386,99 @@ export default function VoucherDetailsTab({
       )}
 
       {/* Voucher Details Table */}
-      <div style={{
-        border: '1px solid #e5e7eb',
-        borderRadius: '8px',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          backgroundColor: '#f8fafc',
-          padding: '12px 16px',
-          borderBottom: '1px solid #e5e7eb'
-        }}>
-          <h4 style={{
-            fontSize: '16px',
-            fontWeight: '600',
-            color: '#1f2937',
-            margin: 0
-          }}>
-            Voucher Details ({formData.voucherDetails?.length || 0} items)
-          </h4>
-        </div>
+      <div className="mt-6">
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+            <h4 className={`text-base font-bold ${
+              hasArrayChanges && hasArrayChanges('voucherDetails')
+                ? 'px-3 py-1 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700'
+                : 'text-gray-700'
+            }`}>
+              Voucher Details
+            </h4>
+          </div>
 
-        {formData.voucherDetails && formData.voucherDetails.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              backgroundColor: 'white'
-            }}>
-              <thead>
-                <tr style={{ backgroundColor: '#f8fafc' }}>
-                  <th style={{ padding: '12px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#374151', borderBottom: '1px solid #e5e7eb' }}>
-                    Sub Account
-                  </th>
-                  <th style={{ padding: '12px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#374151', borderBottom: '1px solid #e5e7eb' }}>
-                    Amount
-                  </th>
-                  {!isReadOnly && (
-                    <th style={{ padding: '12px', textAlign: 'center', fontSize: '12px', fontWeight: '600', color: '#374151', borderBottom: '1px solid #e5e7eb' }}>
-                      Actions
-                    </th>
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {formData.voucherDetails.map((detail, index) => (
-                  <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '12px', fontSize: '14px', color: '#1f2937' }}>
-                      {detail.subAccount}
-                    </td>
-                    <td style={{ padding: '12px', fontSize: '14px', color: '#1f2937', textAlign: 'right' }}>
-                      {isReadOnly ? (
-                        <span>{formatNumberWithCommas(detail.amount || 0)}</span>
-                      ) : (
-                        <input
-                          type="text"
-                          value={getTableAmountDisplayValue(index)}
-                          onChange={(e) => handleTableAmountChange(index, e)}
-                          onFocus={() => handleTableAmountFocus(index)}
-                          onBlur={() => handleTableAmountBlur(index)}
-                          style={{
-                            width: '100%',
-                            padding: '8px 12px',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '6px',
-                            fontSize: '14px',
-                            textAlign: 'right',
-                            outline: 'none'
-                          }}
-                        />
+          {formData.voucherDetails && formData.voucherDetails.length > 0 ? (
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead className="bg-white border-b border-gray-200">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                        Sub Account
+                      </th>
+                      <th className="px-6 py-4 text-right text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                        Amount
+                      </th>
+                      {!isReadOnly && (
+                        <th className="px-6 py-4 text-center text-gray-700 font-semibold text-xs uppercase tracking-wider w-24">
+                          Actions
+                        </th>
                       )}
-                    </td>
-                    {!isReadOnly && (
-                      <td style={{ padding: '12px', textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteDetail(index)}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: '#dc2626',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontSize: '12px',
-                            fontWeight: '500',
-                            transition: 'all 0.2s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#b91c1c';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#dc2626';
-                          }}
-                        >
-                          Delete
-                        </button>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {formData.voucherDetails.map((detail, index) => (
+                      <tr key={index} className="transition-all duration-200 bg-white hover:bg-gray-50">
+                        <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                          {detail.subAccount}
+                        </td>
+                        <td className="px-6 py-5 text-sm text-gray-600 text-right">
+                          {isReadOnly ? (
+                            <span>{formatNumberWithCommas(detail.amount || 0)}</span>
+                          ) : (
+                            <input
+                              type="text"
+                              value={getTableAmountDisplayValue(index)}
+                              onChange={(e) => handleTableAmountChange(index, e)}
+                              onFocus={() => handleTableAmountFocus(index)}
+                              onBlur={() => handleTableAmountBlur(index)}
+                              className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg text-sm text-right font-medium focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                            />
+                          )}
+                        </td>
+                        {!isReadOnly && (
+                          <td className="px-6 py-5">
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteDetail(index)}
+                              className="p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center bg-red-600 hover:bg-red-700"
+                              title="Remove"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                    <tr className="bg-gray-100 border-t-2 border-gray-300">
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900">
+                        Total
                       </td>
-                    )}
-                  </tr>
-                ))}
-                <tr style={{ backgroundColor: '#f8fafc', fontWeight: '600' }}>
-                  <td style={{ padding: '12px', fontSize: '14px', color: '#1f2937' }}>
-                    Total
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '14px', color: '#1f2937', textAlign: 'right' }}>
-                    {formatNumberWithCommas(formData.totalAmount || 0)}
-                  </td>
-                  {!isReadOnly && (
-                    <td style={{ padding: '12px' }}></td>
-                  )}
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div style={{
-            padding: '40px',
-            textAlign: 'center',
-            color: '#6b7280'
-          }}>
-            No voucher details added yet
-          </div>
-        )}
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900 text-right">
+                        {formatNumberWithCommas(formData.totalAmount || 0)}
+                      </td>
+                      {!isReadOnly && (
+                        <td className="px-6 py-4"></td>
+                      )}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ) : (
+            <div className="p-10 text-center text-gray-500 text-base">
+              No voucher details added yet.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

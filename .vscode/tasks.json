@@ -123,9 +123,6 @@
         "Email API Service",
         "Email Template API Service",
         "Configuration API Service",
-        "Test Service",
-        "Test Service Sqs",
-        "Test Service",
         "Disconnect Service",
         "Product Api Service",
         "Customer Api Service",
@@ -138,36 +135,6 @@
       "group": {
         "kind": "build",
         "isDefault": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Test Service",
-      "type": "shell",
-      "command": "npx nx serve test-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Test Service Sqs",
-      "type": "shell",
-      "command": "npx nx serve test-service-sqs",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Test Service",
-      "type": "shell",
-      "command": "npx nx serve test-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
       },
       "problemMatcher": []
     },

@@ -1,11 +1,14 @@
 import { VoucherDatabaseServiceAbstract } from '@accounting-database-service';
 import { ErrorResponseDto, ResponseDto, StatusEnum, UserRole, VoucherDto } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
+import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateVoucherCommand } from './update.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(UpdateVoucherCommand)
 export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherCommand> {
@@ -33,10 +36,15 @@ export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherComman
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
-            this.updateVoucherStatus(command, existingRecord, hasApprovalPermission);
+            // When FOR_APPROVAL: keeps original values in main fields, stores new values in forApprovalVersion
+            // When ACTIVE: applies new values directly to main fields
+            this.updateVoucherStatus(command, hasApprovalPermission, existingRecord);
 
             // Update record in database
-            const updatedRecord = await this.voucherDatabaseService.updateRecord(existingRecord);
+            // When FOR_APPROVAL: existingRecord has original values + forApprovalVersion with new values
+            // When ACTIVE: command.voucherDto has new values applied directly
+            const recordToUpdate = hasApprovalPermission ? command.voucherDto : existingRecord;
+            const updatedRecord = await this.voucherDatabaseService.updateRecord(recordToUpdate);
 
             this.logger.log(`Voucher updated successfully: ${updatedRecord.voucherId}`);
             return new ResponseDto<VoucherDto>(updatedRecord, HTTP_STATUS_OK);
@@ -99,44 +107,75 @@ export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherComman
 
     /**
      * Updates voucher status and activity logs based on user permissions
+     * When FOR_APPROVAL: keeps original values in main fields, stores new values in forApprovalVersion
+     * When ACTIVE: applies new values directly to main fields
      */
     private updateVoucherStatus(
         command: UpdateVoucherCommand,
-        existingRecord: VoucherDto,
-        hasApprovalPermission: boolean
+        hasApprovalPermission: boolean,
+        existingRecord: VoucherDto
     ): void {
         if (hasApprovalPermission) {
-            // User can approve directly - update the existing record
-            existingRecord.status = StatusEnum.ACTIVE;
-            existingRecord.voucherNo = command.voucherDto.voucherNo;
-            existingRecord.voucherDate = command.voucherDto.voucherDate;
-            existingRecord.voucherAmount = command.voucherDto.voucherAmount;
-            existingRecord.remarks = command.voucherDto.remarks;
-            existingRecord.voucherDetails = command.voucherDto.voucherDetails;
-            existingRecord.paymentType = command.voucherDto.paymentType;
-            existingRecord.bankName = command.voucherDto.bankName;
-            existingRecord.chequeNo = command.voucherDto.chequeNo;
-            existingRecord.chequeDate = command.voucherDto.chequeDate;
-            existingRecord.totalAmount = command.voucherDto.totalAmount;
-            existingRecord.accountId = command.voucherDto.accountId;
-            existingRecord.accountName = command.voucherDto.accountName;
-            existingRecord.accountType = command.voucherDto.accountType;
-            existingRecord.customerId = command.voucherDto.customerId;
-            existingRecord.customerName = command.voucherDto.customerName;
-            existingRecord.areaId = command.voucherDto.areaId;
-            existingRecord.areaName = command.voucherDto.areaName;
-            existingRecord.changeReason = command.voucherDto.changeReason;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Voucher updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            // User can approve directly - set to ACTIVE and apply new values to main fields
+            command.voucherDto.status = StatusEnum.ACTIVE;
+            command.voucherDto.activityLogs = existingRecord.activityLogs || [];
+            command.voucherDto.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Voucher updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+            );
+
+            // Limit activity logs to last 10 entries
+            command.voucherDto.activityLogs = reduceArrayContents(command.voucherDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Clear changeReason for admin users since changes are applied directly
+            command.voucherDto.changeReason = undefined;
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+
+            // Detect field changes
+            const fieldChanges = detectFieldChanges(existingRecord, command.voucherDto, {
+                arrayIdFields: {
+                    voucherDetails: 'subAccount',
+                },
+            });
+            const formattedChanges = formatFieldChanges(fieldChanges);
+
+            // Build activity log message
+            let activityLogMessage = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Voucher updated by ${command.user.username} for approval`;
-            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+
+            // Append changes to activity log if any changes detected
+            if (formattedChanges) {
+                activityLogMessage += ` - ${formattedChanges}`;
+            }
+
+            existingRecord.activityLogs.push(activityLogMessage);
+
+            // Limit activity logs to last 10 entries
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Preserve user's manually entered changeReason and combine with auto-generated changes
+            const userChangeReason = command.voucherDto.changeReason?.trim();
+            if (userChangeReason && formattedChanges) {
+                // User provided changeReason and we have formatted changes - combine them
+                // formatFieldChanges already starts with \n, so we just concatenate
+                existingRecord.changeReason = `${userChangeReason}${formattedChanges}`;
+            } else if (userChangeReason) {
+                // User provided changeReason but no formatted changes - use user's input
+                existingRecord.changeReason = userChangeReason;
+            } else if (formattedChanges) {
+                // No user input but we have formatted changes - use formatted changes
+                existingRecord.changeReason = formattedChanges;
+            } else {
+                // No user input and no formatted changes
+                existingRecord.changeReason = undefined;
+            }
+
+            // Store new values in forApprovalVersion (keep original values in main fields)
             existingRecord.forApprovalVersion = {
                 ...existingRecord.forApprovalVersion,
                 voucherNo: command.voucherDto.voucherNo,
@@ -156,7 +195,6 @@ export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherComman
                 customerName: command.voucherDto.customerName,
                 areaId: command.voucherDto.areaId,
                 areaName: command.voucherDto.areaName,
-                changeReason: command.voucherDto.changeReason,
             };
         }
     }

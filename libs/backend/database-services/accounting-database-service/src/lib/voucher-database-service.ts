@@ -29,6 +29,7 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
     }
 
     async createRecord(dto: CreateVoucherDto): Promise<VoucherDto> {
+        const normalizedStatus = dto.status ?? StatusEnum.ACTIVE;
         const record = await this.voucherTable.create({
             voucherNo: dto.voucherNo,
             voucherDate: dto.voucherDate,
@@ -43,7 +44,7 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
             areaId: dto.areaId,
             areaName: dto.areaName,
             changeReason: dto.changeReason,
-            status: dto.status,
+            status: normalizedStatus,
             remarks: dto.remarks,
             voucherDetails: dto.voucherDetails,
             paymentType: dto.paymentType,
@@ -51,7 +52,13 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
             chequeNo: dto.chequeNo,
             chequeDate: dto.chequeDate,
             totalAmount: dto.totalAmount,
-        });
+            GSI1PK: `VOUCHER`,
+            GSI1SK: dto.voucherNo,
+            GSI2PK: `VOUCHER#${normalizedStatus}`,
+            GSI2SK: dto.voucherNo,
+            GSI3PK: `VOUCHER`,
+            GSI3SK: dto.voucherDate,
+        } as VoucherDataType);
         return await this.convertToDto(record);
     }
 
@@ -77,7 +84,7 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
         return await this.convertToDto(record);
     }
 
-    async findRecordContainingVoucherNo(
+    async findRecordsByVoucherNoPagination(
         limit: number,
         voucherNo: string,
         direction: string,
@@ -176,7 +183,8 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
 
     async findRecordsByVoucherDatePagination(
         limit: number,
-        voucherDate: string,
+        startDate: string,
+        endDate: string,
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<VoucherDto>> {
@@ -185,7 +193,8 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
 
         const records = await this.voucherTable.find(
             {
-                GSI3PK: `VOUCHER#${voucherDate}`,
+                GSI3PK: `VOUCHER`,
+                ...(startDate && endDate ? { GSI3SK: { between: [startDate, endDate] } } : {}),
             },
             dynamoDbOption
         );
@@ -339,8 +348,8 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
             GSI1SK: dto.voucherNo,
             GSI2PK: `VOUCHER#${dto.status}`,
             GSI2SK: dto.voucherNo,
-            GSI3PK: `VOUCHER#${dto.voucherDate}`,
-            GSI3SK: dto.voucherNo,
+            GSI3PK: `VOUCHER`,
+            GSI3SK: dto.voucherDate,
         };
         return voucherData;
     }
