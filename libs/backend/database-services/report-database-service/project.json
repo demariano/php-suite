@@ -1,0 +1,9 @@
+{
+    "name": "report-database-service",
+    "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "libs/backend/database-services/report-database-service/src",
+    "projectType": "library",
+    "tags": [],
+    "// targets": "to see all targets run: nx show project report-database-service --web",
+    "targets": {}
+}

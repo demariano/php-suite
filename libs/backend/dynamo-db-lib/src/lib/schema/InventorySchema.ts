@@ -32,6 +32,7 @@ export const InventorySchema = {
             stockTypeId: { type: String, required: false },
             stockTypeName: { type: String, required: false },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             activityLogs: { type: Array },
             changeReason: { type: String, required: false },
             GSI1PK: { type: String, value: 'STOCK', hidden: false },

@@ -238,14 +238,7 @@ export default function TerritoryManagerForm({
             </div>
           </div>
         </div>
-
-        </div>
-            </div>
-          </div>
-        </div>
       </div>
-
-      <div style={{
 
       <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
         {!isCreateMode && selectedTerritoryManager?.status === StatusEnum.ACTIVE ? (

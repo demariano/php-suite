@@ -55,4 +55,7 @@ export class StockDto {
 
     @ApiProperty()
     changeReason?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

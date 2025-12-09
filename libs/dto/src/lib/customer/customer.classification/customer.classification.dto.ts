@@ -19,4 +19,7 @@ export class CustomerClassificationDto {
 
     @ApiProperty()
     changeReason?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

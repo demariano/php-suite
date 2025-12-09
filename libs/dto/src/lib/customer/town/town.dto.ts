@@ -25,4 +25,7 @@ export class TownDto {
 
     @ApiProperty()
     changeReason?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

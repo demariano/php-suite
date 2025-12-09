@@ -59,4 +59,7 @@ export class PaymentDto {
 
     @ApiProperty({ type: [PaymentInvoiceDetailsDto], isArray: true })
     paymentInvoiceDetails!: PaymentInvoiceDetailsDto[];
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

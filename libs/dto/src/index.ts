@@ -124,3 +124,12 @@ export * from './lib/accounting/create.voucher.dto';
 export * from './lib/accounting/voucher.detail.dto';
 export * from './lib/accounting/voucher.dto';
 export * from './lib/enums/account.type.enum';
+
+//reports
+export * from './lib/enums/report.status.enum';
+export * from './lib/reports/create.report.dto';
+export * from './lib/reports/report.dto';
+export * from './lib/reports/report.file.detail.dto';
+
+//file details
+export * from './lib/file-details/file.details.dto';

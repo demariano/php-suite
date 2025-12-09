@@ -54,6 +54,7 @@ export const InvoicingSchema = {
             paymentStatus: { type: String, enum: ['PENDING', 'PARTIAL', 'PAID'], required: false },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             invoiceDetails: { type: Array },
             GSI1PK: { type: String, value: 'INVOICE', hidden: false },
             GSI1SK: { type: String, value: '${invoiceId}', hidden: false },
@@ -99,6 +100,7 @@ export const InvoicingSchema = {
             incomeGenerating: { type: Boolean, required: false },
             taxable: { type: Boolean, required: false },
             activityLogs: { type: Array },
+            approverMessage: { type: String, required: false },
             forApprovalVersion: { type: Object },
             changeReason: { type: String, required: false },
             GSI1PK: { type: String, value: 'SALES_TYPE', hidden: false },
@@ -112,6 +114,7 @@ export const InvoicingSchema = {
             territoryManagerId: { type: String, generate: 'ulid' },
             territoryManagerName: { type: String },
             activityLogs: { type: Array },
+            approverMessage: { type: String, required: false },
             forApprovalVersion: { type: Object },
             contactNo: { type: String, required: false },
             changeReason: { type: String, required: false },
@@ -147,6 +150,7 @@ export const InvoicingSchema = {
             changeReason: { type: String, required: false },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
@@ -187,6 +191,7 @@ export const InvoicingSchema = {
             paymentDetails: { type: Array }, //will hold 1 to many payment details , cheque no , cheque date , bank or cash payment
             paymentInvoiceDetails: { type: Array }, // will hold invoice to apply the payment
             changeReason: { type: String, required: false },
+            approverMessage: { type: String, required: false },
             GSI1PK: { type: String, value: 'PAYMENT', hidden: false },
             GSI1SK: { type: String, value: '${receiptNo}', hidden: false },
             GSI2PK: { type: String, value: 'PAYMENT#${status}', hidden: false },
@@ -212,6 +217,7 @@ export const InvoicingSchema = {
             activityLogs: { type: Array },
             dateReturned: { type: String },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],

@@ -28,4 +28,7 @@ export class StockTypeDto {
 
     @ApiProperty()
     changeReason?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

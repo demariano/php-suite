@@ -28,5 +28,7 @@ export const configuration = async () => {
         DYNAMO_DB_INVENTORY_TABLE: process.env['DYNAMO_DB_INVENTORY_TABLE'],
         DYNAMO_DB_INVOICING_TABLE: process.env['DYNAMO_DB_INVOICING_TABLE'],
         DYNAMO_DB_ACCOUNTING_TABLE: process.env['DYNAMO_DB_ACCOUNTING_TABLE'],
+        DYNAMO_DB_REPORT_TABLE: process.env['DYNAMO_DB_REPORT_TABLE'],
+        REPORT_S3_BUCKET: process.env['REPORT_S3_BUCKET'],
     };
 };

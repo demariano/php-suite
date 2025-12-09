@@ -43,4 +43,7 @@ export class SupplierDto {
         required: false,
     })
     changeReason?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

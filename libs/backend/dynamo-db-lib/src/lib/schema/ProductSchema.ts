@@ -31,6 +31,7 @@ export const ProductSchema = {
             productUnitPrice: { type: Array },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             changeReason: { type: String },
             GSI1PK: { type: String, value: 'PRODUCT', hidden: false },
             GSI1SK: { type: String, value: '${productName}', hidden: false },
@@ -53,6 +54,7 @@ export const ProductSchema = {
             productCategoryId: { type: String, generate: 'ulid' },
             productCategoryName: { type: String },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             changeReason: { type: String, required: false },
             GSI1PK: { type: String, value: 'PRODUCT_CATEGORY', hidden: false },
             GSI1SK: { type: String, value: '${productCategoryName}', hidden: false },
@@ -66,6 +68,7 @@ export const ProductSchema = {
             productClassName: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             changeReason: { type: String, required: false },
             status: {
                 type: String,
@@ -84,6 +87,7 @@ export const ProductSchema = {
             productUnitName: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             changeReason: { type: String, required: false },
             status: {
                 type: String,
@@ -102,6 +106,7 @@ export const ProductSchema = {
             productPriceTypeName: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             changeReason: { type: String, required: false },
             status: {
                 type: String,
@@ -122,6 +127,7 @@ export const ProductSchema = {
             minQty: { type: Number },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
             changeReason: { type: String, required: false },
             status: {
                 type: String,

@@ -18,4 +18,7 @@ export class ProductClassDto {
 
     @ApiProperty()
     changeReason?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

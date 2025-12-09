@@ -1,0 +1,9 @@
+{
+    "name": "excel-generator-service",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "libs/backend/excel-generator-service/src",
+    "projectType": "library",
+    "tags": [],
+    "// targets": "to see all targets run: nx show project excel-generator-service --web",
+    "targets": {}
+}

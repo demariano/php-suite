@@ -225,7 +225,7 @@ export default function InvoiceForm({
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-4xl">
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-6xl">
       {/* Tab Navigation */}
       <div className="bg-gray-50 border-b-2 border-blue-200 rounded-t-xl p-2 overflow-x-auto">
         <div className="flex gap-2 flex-nowrap">

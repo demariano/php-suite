@@ -37,4 +37,7 @@ export class SalesTypeDto {
 
     @ApiProperty()
     changeReason?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

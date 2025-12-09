@@ -117,11 +117,13 @@ export default function RecordDetailsTab({
 
   return (
     <div className="space-y-6">
-      <ChangeReasonField
-        value={formData.changeReason || ''}
-        onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
-        disabled={isReadOnly}
-      />
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason || ''}
+          onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
+          disabled={isReadOnly}
+        />
+      )}
 
       {/* Basic Information Section */}
       <div className="space-y-4">

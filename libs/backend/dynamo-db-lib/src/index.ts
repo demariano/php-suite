@@ -22,4 +22,5 @@ export * from './lib/schema/WebSocketConnectionSchema';
 
 export * from './lib/utils/date.to.last.millisecond.iso.string.util';
 
+export * from './lib/schema/ReportSchema';
 export * from './lib/utils/date.to.midnight.iso.string.util';

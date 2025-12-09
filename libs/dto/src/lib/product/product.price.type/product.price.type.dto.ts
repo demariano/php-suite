@@ -18,4 +18,7 @@ export class ProductPriceTypeDto {
 
     @ApiProperty()
     changeReason?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

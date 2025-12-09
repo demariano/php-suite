@@ -307,10 +307,6 @@ export default function SalesTypeForm({
           </div>
         </section>
 
-                </div>
-      </div>
-
-      <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
       </div>
 
       <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">

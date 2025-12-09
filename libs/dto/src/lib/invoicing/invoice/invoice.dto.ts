@@ -91,4 +91,7 @@ export class InvoiceDto {
 
     @ApiProperty()
     contractSales?: boolean;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

@@ -41,6 +41,7 @@ export const CustomerSchema = {
             customerTypeName: { type: String, required: false },
             forApprovalVersion: { type: Object },
             changeReason: { type: String, required: false },
+            approverMessage: { type: String, required: false },
             activityLogs: { type: Array },
             customerTerms: { type: Array },
             customerProductDeals: { type: Array },

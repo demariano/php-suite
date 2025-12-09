@@ -1,0 +1,38 @@
+{
+    "name": "report-api-service",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/reports/report-api-service/src",
+    "projectType": "application",
+    "tags": [],
+    "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/reports/report-api-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+        "serve": {
+            "executor": "@nx/js:node",
+            "defaultConfiguration": "development",
+            "dependsOn": ["build"],
+            "options": {
+                "buildTarget": "report-api-service:build",
+                "runBuildTargetDependencies": false
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "report-api-service:build:development"
+                },
+                "production": {
+                    "buildTarget": "report-api-service:build:production"
+                }
+            }
+        }
+    }
+}

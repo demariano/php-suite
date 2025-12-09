@@ -70,4 +70,7 @@ export class VoucherDto {
 
     @ApiProperty({ required: false })
     areaName?: string;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

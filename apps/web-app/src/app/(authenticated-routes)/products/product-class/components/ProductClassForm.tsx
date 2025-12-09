@@ -2,6 +2,7 @@
 
 import { ProductClassDto, StatusEnum } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../components';
 
 interface ProductClassFormProps {
   isCreateMode: boolean;
@@ -120,11 +121,13 @@ export default function ProductClassForm({
           </div>
         )}
 
-      <ChangeReasonField
-        value={formData.changeReason}
-        onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
-        disabled={isFormDisabled}
-      />
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+          disabled={isFormDisabled}
+        />
+      )}
 
       <div className="space-y-6">
         <div className="space-y-4">

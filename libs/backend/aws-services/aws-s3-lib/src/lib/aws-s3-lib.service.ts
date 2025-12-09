@@ -1,8 +1,4 @@
-import {
-    GetObjectCommand,
-    PutObjectCommand,
-    S3Client,
-} from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -17,22 +13,16 @@ export class AwsS3LibService {
     constructor(private readonly configService: ConfigService) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const s3Config: any = {
-            region: this.configService.get<string>('DEFAULT_REGION')
+            region: this.configService.get<string>('DEFAULT_REGION'),
         };
-
         if (process.env['LOCALSTACK_STATUS'] === 'ENABLED') {
-            s3Config.credentials = {
-                accessKeyId: process.env['AWS_ACCESS_KEY_LOCAL_DEV'],
-                secretAccessKey: process.env['AWS_SECRET_ACCESS_KEY_LOCAL_DEV'],
-            };
-            this.logger.log('Using AWS credentials from LOCAL_DEV for actual S3');
+            s3Config.endpoint = this.configService.get<string>('LOCALSTACK_ENDPOINT');
+            s3Config.forcePathStyle = true;
         }
-
         this.awsS3Config = new S3Client(s3Config);
     }
 
     async getS3Object(bucket: string, name: string) {
-
         this.logger.log(`Getting S3 Object from bucket ${bucket} with key ${name}`);
 
         const input = {
@@ -46,7 +36,6 @@ export class AwsS3LibService {
     }
 
     async getS3ObjectAsBuffer(bucket: string, key: string, mimeType: string) {
-
         this.logger.log(`Getting S3 Object as buffer from bucket ${bucket} with key ${key}`);
 
         const input = {
@@ -70,13 +59,7 @@ export class AwsS3LibService {
         return buffer;
     }
 
-    async getDownloadSignedUrl(
-        bucket: string,
-        key: string,
-        mimeType: string,
-        expiration: number
-    ) {
-
+    async getDownloadSignedUrl(bucket: string, key: string, mimeType: string, expiration: number) {
         this.logger.log(`Getting S3 Object as signed url from bucket ${bucket} with key ${key}`);
 
         const input = {
@@ -99,8 +82,9 @@ export class AwsS3LibService {
         file: any,
         newFileName: string
     ) {
-
-        this.logger.log(`Uploading file to bucket ${bucketName} with folder ${folderName} and new file name ${newFileName}`);
+        this.logger.log(
+            `Uploading file to bucket ${bucketName} with folder ${folderName} and new file name ${newFileName}`
+        );
 
         const { originalname } = file;
         let fileName = originalname;
@@ -111,12 +95,7 @@ export class AwsS3LibService {
 
         const bucketS3 = bucketName;
 
-        return await this.uploadS3(
-            file,
-            file.mimetype,
-            bucketS3,
-            folderName + '/' + fileName
-        );
+        return await this.uploadS3(file, file.mimetype, bucketS3, folderName + '/' + fileName);
     }
 
     async uploadS3(
@@ -126,7 +105,6 @@ export class AwsS3LibService {
         bucket: string,
         key: string
     ) {
-
         this.logger.log(`Uploading file to bucket ${bucket} with key ${key}`);
         const input = {
             Bucket: bucket,
@@ -140,24 +118,14 @@ export class AwsS3LibService {
         return response;
     }
 
-    async uploadBuffer(
-        folderName: string,
-        bucketName: string,
-        originalname: string,
-        data: Buffer,
-        mimetype: unknown
-    ) {
-
-        this.logger.log(`Uploading file to bucket ${bucketName} with folder ${folderName} and original name ${originalname}`);
+    async uploadBuffer(folderName: string, bucketName: string, originalname: string, data: Buffer, mimetype: unknown) {
+        this.logger.log(
+            `Uploading file to bucket ${bucketName} with folder ${folderName} and original name ${originalname}`
+        );
 
         const bucketS3 = bucketName;
 
-        return await this.uploadS3FromBuffer(
-            data,
-            mimetype,
-            bucketS3,
-            folderName + '/' + originalname
-        );
+        return await this.uploadS3FromBuffer(data, mimetype, bucketS3, folderName + '/' + originalname);
     }
 
     async uploadS3FromBuffer(
@@ -167,7 +135,6 @@ export class AwsS3LibService {
         bucket: string,
         name: string
     ) {
-
         this.logger.log(`Uploading file to bucket ${bucket} with key ${name}`);
 
         const input = {
@@ -182,13 +149,7 @@ export class AwsS3LibService {
         return response;
     }
 
-    async getUploadSignedUrl(
-        bucket: string,
-        key: string,
-        mimeType: string,
-        expiration: number
-    ) {
-
+    async getUploadSignedUrl(bucket: string, key: string, mimeType: string, expiration: number) {
         this.logger.log(`Getting S3 Object as signed url from bucket ${bucket} with key ${key}`);
 
         const input = {

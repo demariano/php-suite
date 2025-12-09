@@ -78,4 +78,7 @@ export class CustomerDto {
 
     @ApiProperty()
     customerProductDeals?: CustomerProductDealDto[];
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

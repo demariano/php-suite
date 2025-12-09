@@ -130,7 +130,9 @@
         "Invoicing Api Service",
         "Accounts Api Service",
         "Accounting Api Service",
-        "Inventory Api Service"
+        "Inventory Api Service",
+        "Local Test Service",
+        "Report Api Service"
       ],
       "group": {
         "kind": "build",
@@ -212,6 +214,26 @@
       "label": "Inventory Api Service",
       "type": "shell",
       "command": "npx nx serve inventory-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Local Test Service",
+      "type": "shell",
+      "command": "npx nx serve local-test-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Report Api Service",
+      "type": "shell",
+      "command": "npx nx serve report-api-service",
       "presentation": {
         "reveal": "always",
         "panel": "new"

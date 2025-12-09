@@ -1,0 +1,38 @@
+{
+    "name": "local-test-service",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/local-test/local-test-service/src",
+    "projectType": "application",
+    "tags": [],
+    "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/local-test/local-test-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+        "serve": {
+            "executor": "@nx/js:node",
+            "defaultConfiguration": "development",
+            "dependsOn": ["build"],
+            "options": {
+                "buildTarget": "local-test-service:build",
+                "runBuildTargetDependencies": false
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "local-test-service:build:development"
+                },
+                "production": {
+                    "buildTarget": "local-test-service:build:production"
+                }
+            }
+        }
+    }
+}

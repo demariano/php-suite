@@ -2,6 +2,7 @@
 
 import { ProductCategoryDto, StatusEnum } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../components';
 
 interface CategoryFormProps {
   isCreateMode: boolean;
@@ -114,14 +115,16 @@ export default function CategoryForm({
         </div>
       )}
       
-      <ChangeReasonField
-        value={formData.changeReason}
-        onChange={(e) => {
-          setFormData(prev => ({ ...prev, changeReason: e.target.value }));
-          setUserHasMadeSelections(true);
-        }}
-        disabled={!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE}
-      />
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => {
+            setFormData(prev => ({ ...prev, changeReason: e.target.value }));
+            setUserHasMadeSelections(true);
+          }}
+          disabled={!isCreateMode && selectedCategory?.status !== StatusEnum.ACTIVE}
+        />
+      )}
       
       {/* Details Container */}
       <div className="space-y-6">

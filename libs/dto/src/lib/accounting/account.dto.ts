@@ -26,4 +26,7 @@ export class AccountsDto {
 
     @ApiProperty()
     forApprovalVersion?: Record<string, unknown>;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }

@@ -333,11 +333,13 @@ export default function StockForm({
         </div>
       )}
       
-      <ChangeReasonField
-        value={formData.changeReason}
-        onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
-        disabled={!isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE}
-      />
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+          disabled={!isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE}
+        />
+      )}
       
       {/* Details Container */}
       <div className="space-y-6">

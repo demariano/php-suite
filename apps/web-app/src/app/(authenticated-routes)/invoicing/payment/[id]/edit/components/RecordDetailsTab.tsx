@@ -239,10 +239,13 @@ export default function RecordDetailsTab({
       </div>
       </div>
 
-      <ChangeReasonField
-        value={formData.changeReason || ''}
-        onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
-        disabled={isReadOnly}
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason || ''}
+          onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
+          disabled={isReadOnly}
+        />
+      )}
       />
 
       {/* Customer Selection Modal */}

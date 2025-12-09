@@ -414,11 +414,13 @@ export default function ProductForm({
 
     const renderDetailsTab = () => (
         <div className="space-y-6">
-            <ChangeReasonField
-                value={formData.changeReason}
-                onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
-                disabled={isFormDisabled}
-            />
+            {!isCreateMode && !isAdminUser && (
+                <ChangeReasonField
+                    value={formData.changeReason}
+                    onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+                    disabled={!canEditDetails}
+                />
+            )}
             
             <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">

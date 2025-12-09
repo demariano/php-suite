@@ -109,7 +109,7 @@ export default function AccountsPage() {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [searchQuery]);
 
   const headers = [

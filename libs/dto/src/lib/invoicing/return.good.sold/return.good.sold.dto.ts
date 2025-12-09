@@ -42,4 +42,7 @@ export class ReturnGoodSoldDto {
 
     @ApiProperty({ type: Array, isArray: true })
     modifiedInvoiceDetails!: Array<any>;
+
+    @ApiProperty()
+    approverMessage?: string | null;
 }
