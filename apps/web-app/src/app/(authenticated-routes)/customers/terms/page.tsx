@@ -3,6 +3,7 @@
 import { StatusEnum, TermsApi, TermsDto, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { TermsHeader, TermsTable } from './components';
+import { parseActivityLog, getActivityStyle } from '@web-app/utils/activityLogUtils';
 
 export default function TermsPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -116,7 +117,8 @@ export default function TermsPage() {
   const headers = [
     { key: 'termsName', label: 'NAME' },
     { key: 'days', label: 'DAYS' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   const getStatusText = (status: StatusEnum): string => {
@@ -179,9 +181,22 @@ export default function TermsPage() {
 
   // Transform data for table display
   const tableData = terms?.map(terms => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (terms.activityLogs && terms.activityLogs.length > 0) {
+      const lastLog = terms.activityLogs[terms.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...terms,
-      status: getStatusBadge(terms.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(terms.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

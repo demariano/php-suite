@@ -28,5 +28,5 @@ export class AccountsDto {
     forApprovalVersion?: Record<string, unknown>;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

@@ -1,10 +1,12 @@
 'use client';
 
 import { AreaApi, AreaDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AreaForm from '../../components/AreaForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 
 interface EditAreaPageProps {
   params: {
@@ -17,6 +19,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
   const [selectedArea, setSelectedArea] = useState<AreaDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -81,7 +84,8 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
         territoryManagerId: area.territoryManagerId,
         territoryManagerName: area.territoryManagerName,
         status: area.status,
-        changeReason: area.changeReason
+        changeReason: area.changeReason,
+        towns: area.towns
       }, userRole);
       
       setSelectedArea(updatedArea);
@@ -195,18 +199,23 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedArea) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
-      const deniedArea = await AreaApi.denyArea(selectedArea.areaId, userRole);
+      // Call the API to deny the record with approverMessage
+      const deniedArea = await AreaApi.denyArea(selectedArea.areaId, approverMessage, userRole);
       setSelectedArea(deniedArea);
       setFlashNotification({
         title: 'Success!',
@@ -230,6 +239,10 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -531,21 +544,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
             <h3 className="m-0 text-base font-bold text-blue-600">Activity Logs</h3>
           </div>
 
-          {selectedArea?.activityLogs && selectedArea.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-              {selectedArea.activityLogs.map((log, index) => (
-                  <li key={index} className="px-4 py-3">
-                  {log}
-                  </li>
-              ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedArea?.activityLogs)}
         </div>
         
         <div className="flex justify-end">
@@ -677,6 +676,13 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
           </div>
         </div>
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        area={selectedArea}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
 
       <DeleteConfirmationModal
         show={showDeleteModal}

@@ -134,7 +134,7 @@ class PaymentApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyPayment = async (id: string, userRole?: string): Promise<PaymentDto> => {
+    public denyPayment = async (id: string, approverMessage: string, userRole?: string): Promise<PaymentDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -144,7 +144,7 @@ class PaymentApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/payment/${id}/deny?${queryString}` : `/payment/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

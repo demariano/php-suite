@@ -70,8 +70,6 @@ export * from './lib/customer/customer/customer.filter.dto';
 export * from './lib/customer/customer/customer.product.deal.dto';
 export * from './lib/customer/terms/create.terms.dto';
 export * from './lib/customer/terms/terms.dto';
-export * from './lib/customer/town/create.town.dto';
-export * from './lib/customer/town/town.dto';
 
 //StockSchema
 export * from './lib/inventory/stock-delivery/create.stock-delivery.dto';

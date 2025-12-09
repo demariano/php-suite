@@ -153,14 +153,14 @@ class AreaApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyArea = async (id: string, userRole?: string): Promise<AreaDto> => {
+    public denyArea = async (id: string, approverMessage: string, userRole?: string): Promise<AreaDto> => {
         const params = new URLSearchParams();
         if (userRole) {
             params.append('userRole', userRole);
         }
         const queryString = params.toString();
         const url = queryString ? `/area/${id}/deny?${queryString}` : `/area/${id}/deny`;
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 
     public getAreasByTerritoryManagerId = async (territoryManagerId: string, userRole?: string): Promise<AreaDto[]> => {

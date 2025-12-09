@@ -3,6 +3,7 @@
 import { CustomerClassificationApi, CustomerClassificationDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { CustomerClassificationHeader, CustomerClassificationTable } from './components';
+import { parseActivityLog, getActivityStyle } from '@web-app/utils/activityLogUtils';
 
 export default function CustomerClassificationsPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -115,7 +116,8 @@ export default function CustomerClassificationsPage() {
 
   const headers = [
     { key: 'customerClassificationName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -179,9 +181,22 @@ export default function CustomerClassificationsPage() {
 
   // Transform data for table display
   const tableData = customerClassifications?.map(customerClassification => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (customerClassification.activityLogs && customerClassification.activityLogs.length > 0) {
+      const lastLog = customerClassification.activityLogs[customerClassification.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...customerClassification,
-      status: getStatusBadge(customerClassification.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(customerClassification.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

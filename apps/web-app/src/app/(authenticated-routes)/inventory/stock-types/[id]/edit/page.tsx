@@ -3,6 +3,8 @@
 import { StatusEnum, StockTypeApi, StockTypeDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import StockTypeForm from '../../components/StockTypeForm';
 
@@ -22,6 +24,7 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
 
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
@@ -164,15 +167,20 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
     }
   };
 
-  const handleDenyRecord = async () => {
+  const handleDenyRecord = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedStockType) return;
 
     try {
       setIsLoading(true);
       setError(null);
+      setShowDenyDialog(false);
 
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      await StockTypeApi.denyStockType(selectedStockType.stockTypeId!, userRole);
+      await StockTypeApi.denyStockType(selectedStockType.stockTypeId!, approverMessage, userRole);
 
       setFlashNotification({
         title: 'Success!',
@@ -191,6 +199,10 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -469,24 +481,7 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
             </h3>
           </div>
 
-          {selectedStockType?.activityLogs && selectedStockType.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedStockType.activityLogs.map((log, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedStockType?.activityLogs)}
         </div>
 
         <div className="flex justify-end">
@@ -525,6 +520,13 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <DenyReasonDialog
+        show={showDenyDialog}
+        stockType={selectedStockType}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
+
       <DeleteConfirmationModal
         show={showDeleteConfirm}
         stockType={selectedStockType}

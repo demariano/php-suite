@@ -34,6 +34,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             forApprovalVersion: areaDto.forApprovalVersion,
             territoryManagerId: areaDto.territoryManagerId,
             territoryManagerName: areaDto.territoryManagerName,
+            towns: areaDto.towns,
             GSI1PK: `AREA`,
             GSI1SK: areaDto.areaName,
             GSI2PK: `AREA#${areaDto.status}`,
@@ -62,6 +63,8 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         areaRecord.territoryManagerId = record.territoryManagerId;
         areaRecord.territoryManagerName = record.territoryManagerName;
         areaRecord.changeReason = record.changeReason;
+        areaRecord.approverMessage = record.approverMessage;
+        areaRecord.towns = record.towns || [];
 
         const updatedAreaRecord: AreaDataType = await this.areaTable.update(areaRecord);
 
@@ -251,6 +254,8 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         dto.territoryManagerId = record.territoryManagerId ? record.territoryManagerId : '';
         dto.territoryManagerName = record.territoryManagerName ? record.territoryManagerName : '';
         dto.changeReason = (record as AreaDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
+        dto.towns = record.towns ? record.towns : [];
         return dto;
     }
 
@@ -277,11 +282,13 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             GSI2SK: dto.areaName,
             GSI3PK: `AREA`,
             GSI3SK: dto.territoryManagerId,
+            towns: dto.towns,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             territoryManagerId: dto.territoryManagerId,
             territoryManagerName: dto.territoryManagerName,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return areaData;
     }

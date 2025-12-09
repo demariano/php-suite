@@ -7,6 +7,7 @@ import { ApproveProductCommand } from './command/approve-record/approve.command'
 import { CreateProductCommand } from './command/create/create.command';
 import { DeleteProductCommand } from './command/delete/delete.command';
 import { DenyProductCommand } from './command/deny-record/deny.command';
+import { DenyProductDto } from './command/deny-record/deny.dto';
 import { UpdateProductCommand } from './command/update/update.command';
 import { GetProductByIdQuery } from './queries/get.by.id/get.product.by.id.query';
 import { GetProductByNameQuery } from './queries/get.by.name/get.product.by.name.query';
@@ -301,10 +302,18 @@ export class ProductController {
         enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
         example: 'ADMIN',
     })
+    @ApiBody({
+        type: DenyProductDto,
+        description: 'Deny reason details',
+    })
     @ApiResponse({
         status: 200,
         description: 'Product successfully denied',
         type: ProductDto,
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
     })
     @ApiResponse({
         status: 403,
@@ -314,13 +323,18 @@ export class ProductController {
         status: 404,
         description: 'Product not found',
     })
-    denyRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    denyRecord(
+        @Param('id') id: string,
+        @Body() denyDto: DenyProductDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const command = new DenyProductCommand(id, user);
+        const command = new DenyProductCommand(id, user, denyDto.approverMessage);
         return this.commandBus.execute(command);
     }
 

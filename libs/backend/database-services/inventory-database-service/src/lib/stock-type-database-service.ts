@@ -56,7 +56,7 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         stockTypeRecord.GSI2SK = record.stockTypeName;
         stockTypeRecord.forApprovalVersion = record.forApprovalVersion;
         stockTypeRecord.changeReason = record.changeReason;
-
+        stockTypeRecord.approverMessage = record.approverMessage;
         const updatedStockTypeRecord: StockTypeDataType = await this.stockTypeTable.update(stockTypeRecord);
 
         return await this.convertToDto(updatedStockTypeRecord);
@@ -249,6 +249,7 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = (record as StockTypeDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -276,6 +277,7 @@ export class StockTypeDatabaseService implements StockTypeDatabaseServiceAbstrac
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return stockTypeData;
     }

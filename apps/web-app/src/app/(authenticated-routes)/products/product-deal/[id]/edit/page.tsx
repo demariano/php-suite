@@ -1,10 +1,12 @@
 'use client';
 
-import { ProductDealApi, ProductDealDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { extractErrorMessage, ProductDealApi, ProductDealDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import ProductDealForm from '../../components/ProductDealForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
+import ProductDealForm from '../../components/ProductDealForm';
 
 interface EditProductDealPageProps {
   params: {
@@ -17,6 +19,7 @@ export default function EditProductDealPage({ params }: EditProductDealPageProps
   const [selectedProductDeal, setSelectedProductDeal] = useState<ProductDealDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -177,15 +180,20 @@ export default function EditProductDealPage({ params }: EditProductDealPageProps
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedProductDeal) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      const deniedProductDeal = await ProductDealApi.denyProductDeal(selectedProductDeal.productDealId, userRole);
+      const deniedProductDeal = await ProductDealApi.denyProductDeal(selectedProductDeal.productDealId, approverMessage, userRole);
       setSelectedProductDeal(deniedProductDeal);
       setFlashNotification({
         title: 'Success!',
@@ -208,6 +216,10 @@ export default function EditProductDealPage({ params }: EditProductDealPageProps
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -498,24 +510,7 @@ export default function EditProductDealPage({ params }: EditProductDealPageProps
             </h3>
           </div>
 
-          {selectedProductDeal?.activityLogs && selectedProductDeal.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedProductDeal.activityLogs.map((log, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedProductDeal?.activityLogs)}
         </div>
 
         <div className="flex justify-end">
@@ -536,6 +531,13 @@ export default function EditProductDealPage({ params }: EditProductDealPageProps
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <DenyReasonDialog
+        show={showDenyDialog}
+        productDeal={selectedProductDeal}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
+
       <DeleteConfirmationModal
         show={showDeleteModal}
         productDeal={selectedProductDeal}

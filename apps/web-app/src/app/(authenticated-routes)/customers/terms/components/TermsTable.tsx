@@ -64,6 +64,20 @@ export default function TermsTable({
                         {terms.days || '-'}
                       </td>
                       <td className="px-6 py-5">{terms.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {terms.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${terms.latestActivity.style.bgColor} ${terms.latestActivity.style.textColor}`}
+                            title={terms.latestActivity.text}
+                          >
+                            {terms.latestActivity.text.length > 50 
+                              ? `${terms.latestActivity.text.substring(0, 50)}...` 
+                              : terms.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -98,6 +112,18 @@ export default function TermsTable({
                     <p className="mt-1 text-sm text-gray-600">
                       Days: {terms.days || '-'}
                     </p>
+                    {terms.latestActivity && (
+                      <p className="mt-2 text-xs">
+                        <span className="font-medium text-gray-700">Latest Activity: </span>
+                        <span 
+                          className={`px-2 py-1 rounded ${terms.latestActivity.style.bgColor} ${terms.latestActivity.style.textColor}`}
+                        >
+                          {terms.latestActivity.text.length > 60 
+                            ? `${terms.latestActivity.text.substring(0, 60)}...` 
+                            : terms.latestActivity.text}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div>{terms.status}</div>
                 </div>

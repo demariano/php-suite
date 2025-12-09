@@ -3,6 +3,7 @@
 import { extractErrorMessage, InvoiceApi, InvoiceDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import InvoiceForm from './components/InvoiceForm';
 
 interface EditInvoicePageProps {
@@ -15,6 +16,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -203,18 +205,23 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedInvoice) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
-      const deniedInvoice = await InvoiceApi.denyInvoice(selectedInvoice.invoiceId, userRole);
+      // Call the API to deny the record with approverMessage
+      const deniedInvoice = await InvoiceApi.denyInvoice(selectedInvoice.invoiceId, approverMessage, userRole);
       setSelectedInvoice(deniedInvoice);
       setFlashNotification({
         title: 'Success!',
@@ -238,6 +245,10 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -336,6 +347,13 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
           />
         </div>
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        invoice={selectedInvoice}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
     </div>
   );
 }

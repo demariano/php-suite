@@ -3,6 +3,7 @@
 import { AreaApi, AreaDto, StatusEnum, useEnv } from '@data-access/index';
 import { TerritoryManagerDto } from '@data-access/types/territory-manager.types';
 import { useEffect, useState } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import TerritoryManagerForm from './TerritoryManagerForm';
 
 interface TerritoryManagerModalProps {
@@ -604,24 +605,7 @@ export default function TerritoryManagerModal({
                 <h3 className="text-base font-semibold text-gray-800 mb-3">
                   Recent Activity
                 </h3>
-                {selectedTerritoryManager?.activityLogs && selectedTerritoryManager.activityLogs.length > 0 ? (
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-                    {selectedTerritoryManager.activityLogs.map((log, index) => (
-                      <div 
-                        key={index} 
-                        className={`py-2 ${
-                          index < selectedTerritoryManager.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                        }`}
-                      >
-                        {log}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">
-                    No activity logs available
-                  </p>
-                )}
+                {renderActivityLogsTable(selectedTerritoryManager?.activityLogs, 'No activity logs available')}
               </div>
               
               <div className="flex justify-end mt-6">

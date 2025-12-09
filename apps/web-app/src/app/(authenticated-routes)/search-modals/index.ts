@@ -20,4 +20,3 @@ export { default as StockTypeSearchableSelectionModal } from './StockTypeSearcha
 export { default as SupplierSearchableSelectionModal } from './SupplierSearchableSelectionModal';
 export { default as TermsSearchableSelectionModal } from './TermsSearchableSelectionModal';
 export { default as TerritoryManagerSearchableSelectionModal } from './TerritoryManagerSearchableSelectionModal';
-export { default as TownSearchableSelectionModal } from './TownSearchableSelectionModal';

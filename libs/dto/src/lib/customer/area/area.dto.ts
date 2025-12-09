@@ -1,6 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { StatusEnum } from '../../enums/status.enum';
-import { TownDto } from '../town/town.dto';
 
 export class AreaDto {
     @ApiProperty()
@@ -12,8 +11,8 @@ export class AreaDto {
     @ApiProperty({ enum: StatusEnum })
     status?: StatusEnum;
 
-    @ApiProperty({ type: [TownDto] })
-    towns?: TownDto[];
+    @ApiProperty({ type: [String], isArray: true })
+    towns?: string[];
 
     @ApiProperty()
     activityLogs?: string[];
@@ -31,5 +30,5 @@ export class AreaDto {
     changeReason?: string;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

@@ -174,7 +174,7 @@ class ContractApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyContract = async (id: string, userRole?: string): Promise<ContractDto> => {
+    public denyContract = async (id: string, approverMessage: string, userRole?: string): Promise<ContractDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -184,7 +184,7 @@ class ContractApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/contracts/${id}/deny?${queryString}` : `/contracts/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

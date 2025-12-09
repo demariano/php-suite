@@ -54,6 +54,7 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
         const accountsRecord: AccountsDataType = await this.convertToDataType(dto);
 
         accountsRecord.changeReason = dto.changeReason;
+        accountsRecord.approverMessage = dto.approverMessage;
 
         const updatedAccountsRecord: AccountsDataType = await this.accountsTable.update(accountsRecord);
         return await this.convertToDto(updatedAccountsRecord);
@@ -282,6 +283,7 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
         dto.subAccounts = record.subAccounts ? record.subAccounts : [];
         dto.changeReason = (record as AccountsDataType & { changeReason?: string }).changeReason || undefined;
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
 
         return dto;
     }
@@ -308,6 +310,7 @@ export class AccountsDatabaseService implements AccountsDatabaseServiceAbstract 
             changeReason: dto.changeReason,
             subAccounts: dto.subAccounts ? dto.subAccounts : [],
             forApprovalVersion: dto.forApprovalVersion,
+            approverMessage: dto.approverMessage,
             GSI1PK: `ACCOUNTS`,
             GSI1SK: normalizedAccountName,
             GSI2PK: `ACCOUNTS#${normalizedStatus}`,

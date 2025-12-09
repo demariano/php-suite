@@ -3,6 +3,7 @@
 import { CustomerApi, CustomerDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { CustomerHeader, CustomerTable } from './components';
+import { parseActivityLog, getActivityStyle } from '@web-app/utils/activityLogUtils';
 
 
 export default function CustomersMainPage() {
@@ -119,7 +120,8 @@ export default function CustomersMainPage() {
     { key: 'email', label: 'EMAIL' },
     { key: 'contactNo', label: 'CONTACT NO' },
     { key: 'customerTypeName', label: 'CUSTOMER TYPE' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -183,9 +185,22 @@ export default function CustomersMainPage() {
 
   // Transform data for table display
   const tableData = customers?.map(customer => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (customer.activityLogs && customer.activityLogs.length > 0) {
+      const lastLog = customer.activityLogs[customer.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...customer,
-      status: getStatusBadge(customer.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(customer.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

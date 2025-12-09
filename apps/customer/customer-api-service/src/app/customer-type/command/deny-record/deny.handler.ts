@@ -30,7 +30,7 @@ export class DenyCustomerTypeHandler implements ICommandHandler<DenyCustomerType
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -70,13 +70,13 @@ export class DenyCustomerTypeHandler implements ICommandHandler<DenyCustomerType
      */
     private async processDenial(
         existingRecord: CustomerTypeDto,
-        user: UserCognito
+        command: DenyCustomerTypeCommand
     ): Promise<ResponseDto<CustomerTypeDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyCustomerType(existingRecord, user);
+                return await this.denyCustomerType(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -89,20 +89,29 @@ export class DenyCustomerTypeHandler implements ICommandHandler<DenyCustomerType
      */
     private async denyCustomerType(
         existingRecord: CustomerTypeDto,
-        user: UserCognito
+        command: DenyCustomerTypeCommand
     ): Promise<ResponseDto<CustomerTypeDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Customer type denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Customer type denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
         );
+
+        // Add activity log for approver message if provided
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer type denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.customerTypeDatabaseService.updateRecord(existingRecord);
 
@@ -113,9 +122,34 @@ export class DenyCustomerTypeHandler implements ICommandHandler<DenyCustomerType
     /**
      * Denies deletion of a customer type
      */
-    private async denyDeletion(existingRecord: CustomerTypeDto): Promise<ResponseDto<CustomerTypeDto>> {
+    private async denyDeletion(
+        existingRecord: CustomerTypeDto,
+        command: DenyCustomerTypeCommand
+    ): Promise<ResponseDto<CustomerTypeDto>> {
         this.logger.log(`Customer type deletion denied: ${existingRecord.customerTypeId}`);
         existingRecord.status = StatusEnum.ACTIVE;
+        
+        // Add activity log for denial
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Customer type deletion denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+        );
+
+        // Add approver message if provided
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer type deletion denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
+
+        // Optimize activity logs
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.approverMessage = null;
+        
         const updatedRecord = await this.customerTypeDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<CustomerTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }

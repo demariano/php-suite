@@ -69,7 +69,7 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
         stockDeliveryRecord.GSI3SK = record.dateReceived;
         stockDeliveryRecord.forApprovalVersion = record.forApprovalVersion;
         stockDeliveryRecord.changeReason = record.changeReason;
-
+        stockDeliveryRecord.approverMessage = record.approverMessage;
         const updatedStockDeliveryRecord: StockDeliveryDataType = await this.stockDeliveryTable.update(
             stockDeliveryRecord
         );
@@ -354,6 +354,7 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = (record as StockDeliveryDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -387,6 +388,7 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return stockDeliveryData;
     }

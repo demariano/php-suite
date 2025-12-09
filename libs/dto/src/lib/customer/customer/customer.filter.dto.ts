@@ -14,7 +14,7 @@ export class CustomerFilterDto {
     areaId?: string[];
 
     @ApiProperty({ required: false, type: [String] })
-    townId?: string[];
+    townNames?: string[];
 
     @ApiProperty({ required: false, type: [String] })
     fields?: string[];

@@ -4,7 +4,6 @@ import { CustomerClassificationDatabaseService } from './customer-classification
 import { CustomerDatabaseService } from './customer-database-service';
 import { CustomerTypeDatabaseService } from './customer-type-database-service';
 import { TermsDatabaseService } from './terms-database-service';
-import { TownDatabaseService } from './town-database-service';
 
 @Module({
     controllers: [],
@@ -14,7 +13,6 @@ import { TownDatabaseService } from './town-database-service';
         CustomerTypeDatabaseService,
         TermsDatabaseService,
         AreaDatabaseService,
-        TownDatabaseService,
     ],
     exports: [
         CustomerDatabaseService,
@@ -22,7 +20,6 @@ import { TownDatabaseService } from './town-database-service';
         CustomerTypeDatabaseService,
         TermsDatabaseService,
         AreaDatabaseService,
-        TownDatabaseService,
     ],
 })
 export class CustomerDatabaseServiceModule {}

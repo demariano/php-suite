@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, ProductCategoryDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
@@ -29,8 +28,8 @@ export class DenyProductCategoryHandler implements ICommandHandler<DenyProductCa
             // Check user authorization
             this.validateUserAuthorization(command.user.roles);
 
-            // Process approval based on current status
-            return await this.processDeny(existingRecord, command.user);
+            // Process denial based on current status
+            return await this.processDeny(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.productCategoryId);
         }
@@ -51,69 +50,92 @@ export class DenyProductCategoryHandler implements ICommandHandler<DenyProductCa
     }
 
     /**
-     * Validates that the user has authorization to approve
+     * Validates that the user has authorization to deny
      */
     private validateUserAuthorization(userRoles?: string[]): void {
         if (!userRoles || userRoles.length === 0) {
             throw new ForbiddenException('User roles not found');
         }
 
-        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+        const hasDenyPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
 
-        if (!hasApprovalPermission) {
-            throw new ForbiddenException('Current user is not authorized to approve product category change request');
+        if (!hasDenyPermission) {
+            throw new ForbiddenException('Current user is not authorized to deny product category change request');
         }
     }
 
     /**
-     * Processes the approval based on the current status of the record
+     * Processes the denial based on the current status of the record
      */
     private async processDeny(
         existingRecord: ProductCategoryDto,
-        user: UserCognito
+        command: DenyProductCategoryCommand
     ): Promise<ResponseDto<ProductCategoryDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyProductCategory(existingRecord, user);
+                return await this.denyProductCategory(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
-                throw new BadRequestException(`Cannot approve product category with status: ${existingRecord.status}`);
+                throw new BadRequestException(`Cannot deny product category with status: ${existingRecord.status}`);
         }
     }
 
     /**
-     * Approves a product category for approval
+     * Denies a product category for approval
      */
     private async denyProductCategory(
         existingRecord: ProductCategoryDto,
-        user: UserCognito
+        command: DenyProductCategoryCommand
     ): Promise<ResponseDto<ProductCategoryDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
-            `Product category denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product category denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product category denied by ${command.user.username}, approver message: ${command.approverMessage}`
         );
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.productCategoryDatabaseService.updateRecord(existingRecord);
 
-        this.logger.log(`Product category approved successfully: ${existingRecord.productCategoryId}`);
+        this.logger.log(`Product category denied successfully: ${existingRecord.productCategoryId}`);
         return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
-     * Approves deletion of a product category
+     * Denies deletion of a product category
      */
-    private async denyDeletion(existingRecord: ProductCategoryDto): Promise<ResponseDto<ProductCategoryDto>> {
-        this.logger.log(`Product category deletion approved: ${existingRecord.productCategoryId}`);
+    private async denyDeletion(
+        existingRecord: ProductCategoryDto,
+        command: DenyProductCategoryCommand
+    ): Promise<ResponseDto<ProductCategoryDto>> {
+        this.logger.log(`Product category deletion denied: ${existingRecord.productCategoryId}`);
         existingRecord.status = StatusEnum.ACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product category deletion denied by ${command.user.username}, approver message: ${
+                command.approverMessage
+            }, status reverted to ${StatusEnum.ACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.changeReason = null;
         const updatedRecord = await this.productCategoryDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
     }
@@ -131,7 +153,7 @@ export class DenyProductCategoryHandler implements ICommandHandler<DenyProductCa
      * Centralized error handling
      */
     private handleError(error: unknown, productCategoryId: string): never {
-        this.logger.error(`Error processing approval request for ${productCategoryId}:`, error);
+        this.logger.error(`Error processing denial request for ${productCategoryId}:`, error);
 
         // Re-throw known exceptions
         if (error instanceof NotFoundException || error instanceof ForbiddenException) {

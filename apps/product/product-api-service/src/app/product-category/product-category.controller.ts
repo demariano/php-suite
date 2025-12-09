@@ -7,6 +7,7 @@ import { ApproveProductCategoryCommand } from './command/approve-record/approve.
 import { CreateProductCategoryCommand } from './command/create/create.command';
 import { DeleteProductCategoryCommand } from './command/delete/delete.command';
 import { DenyProductCategoryCommand } from './command/deny-record/deny.command';
+import { DenyProductCategoryDto } from './command/deny-record/deny.dto';
 import { UpdateProductCategoryCommand } from './command/update/update.command';
 import { GetProductCategoryByIdQuery } from './queries/get.by.id/get.product.category.by.id.query';
 import { GetProductCategoryByNameQuery } from './queries/get.by.name/get.product.category.by.name.query';
@@ -352,13 +353,26 @@ export class ProductCategoryController {
             },
         },
     })
-    denyRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyProductCategoryDto,
+        description: 'Deny reason details',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    denyRecord(
+        @Param('id') id: string,
+        @Body() denyDto: DenyProductCategoryDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const command = new DenyProductCategoryCommand(id, user);
+        const command = new DenyProductCategoryCommand(id, user, denyDto.approverMessage);
         return this.commandBus.execute(command);
     }
 

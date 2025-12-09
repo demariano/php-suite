@@ -61,6 +61,20 @@ export default function ProductClassTable({
                         {productClass.productClassName || '-'}
                       </td>
                       <td className="px-6 py-5">{productClass.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {productClass.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${productClass.latestActivity.style.bgColor} ${productClass.latestActivity.style.textColor}`}
+                            title={productClass.latestActivity.text}
+                          >
+                            {productClass.latestActivity.text.length > 50 
+                              ? `${productClass.latestActivity.text.substring(0, 50)}...` 
+                              : productClass.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -88,10 +102,22 @@ export default function ProductClassTable({
                 className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-base font-semibold text-gray-900">
                       {productClass.productClassName || '-'}
                     </h3>
+                    {productClass.latestActivity && (
+                      <p className="mt-2 text-xs">
+                        <span className="font-medium text-gray-700">Latest Activity: </span>
+                        <span 
+                          className={`px-2 py-1 rounded ${productClass.latestActivity.style.bgColor} ${productClass.latestActivity.style.textColor}`}
+                        >
+                          {productClass.latestActivity.text.length > 60 
+                            ? `${productClass.latestActivity.text.substring(0, 60)}...` 
+                            : productClass.latestActivity.text}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div>{productClass.status}</div>
                 </div>

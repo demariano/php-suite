@@ -3,6 +3,7 @@
 import { extractErrorMessage, InvoiceApi, ReturnGoodSoldApi, ReturnGoodSoldDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import ReturnGoodSoldForm from './components/ReturnGoodSoldForm';
 
@@ -17,6 +18,7 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
   const [selectedRecord, setSelectedRecord] = useState<ReturnGoodSoldDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -219,18 +221,23 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedRecord) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
-      const deniedRecord = await ReturnGoodSoldApi.denyReturnGoodSold(selectedRecord.returnGoodSoldId, userRole);
+      // Call the API to deny the record with approverMessage
+      const deniedRecord = await ReturnGoodSoldApi.denyReturnGoodSold(selectedRecord.returnGoodSoldId, approverMessage, userRole);
       setSelectedRecord(deniedRecord);
       setFlashNotification({
         title: 'Success!',
@@ -254,6 +261,10 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -416,6 +427,13 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
           </div>
         </div>
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        returnGoodSold={selectedRecord}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
 
       <DeleteConfirmationModal
         show={showDeleteModal}

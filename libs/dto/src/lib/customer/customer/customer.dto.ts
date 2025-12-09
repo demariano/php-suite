@@ -29,9 +29,6 @@ export class CustomerDto {
     contactPerson?: string;
 
     @ApiProperty()
-    townId?: string;
-
-    @ApiProperty()
     townName?: string;
 
     @ApiProperty()
@@ -80,5 +77,5 @@ export class CustomerDto {
     customerProductDeals?: CustomerProductDealDto[];
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

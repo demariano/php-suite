@@ -1,10 +1,12 @@
 'use client';
 
 import { CustomerTypeApi, CustomerTypeDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import CustomerTypeForm from '../../components/CustomerTypeForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 
 interface EditCustomerTypePageProps {
   params: {
@@ -17,6 +19,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
   const [selectedCustomerType, setSelectedCustomerType] = useState<CustomerTypeDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -175,15 +178,20 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedCustomerType) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      const deniedCustomerType = await CustomerTypeApi.denyCustomerType(selectedCustomerType.customerTypeId, userRole);
+      const deniedCustomerType = await CustomerTypeApi.denyCustomerType(selectedCustomerType.customerTypeId, approverMessage, userRole);
       setSelectedCustomerType(deniedCustomerType);
       setFlashNotification({
         title: 'Success!',
@@ -206,6 +214,10 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -494,24 +506,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
             </h3>
           </div>
 
-          {selectedCustomerType?.activityLogs && selectedCustomerType.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedCustomerType.activityLogs.map((log, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedCustomerType?.activityLogs)}
         </div>
 
         <div className="flex justify-end">
@@ -537,6 +532,13 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
         customerType={selectedCustomerType}
         onConfirm={handleConfirmDelete}
         onCancel={() => setShowDeleteModal(false)}
+      />
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        customerType={selectedCustomerType}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
       />
       <div>
         <nav className="flex items-center gap-2">

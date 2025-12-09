@@ -67,10 +67,11 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
 
     async updateRecord(record: PaymentDto): Promise<PaymentDto> {
         const paymentRecord: PaymentDataType = await this.convertToDataType(record);
-        
+
         // CRITICAL: Explicitly set changeReason on the record before calling update()
         // This ensures the field is persisted even if convertToDataType is called separately
         paymentRecord.changeReason = record.changeReason;
+        paymentRecord.approverMessage = record.approverMessage;
 
         console.log('Payment Record to update:', paymentRecord);
 
@@ -345,7 +346,8 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         dto.chequeClearStatus = record.chequeClearStatus as ChequeClearStatusEnum;
         dto.paymentDetails = record.paymentDetails ? record.paymentDetails : [];
         dto.paymentInvoiceDetails = record.paymentInvoiceDetails ? record.paymentInvoiceDetails : [];
-        dto.changeReason = (record as PaymentDataType & { changeReason?: string }).changeReason || undefined;
+        dto.changeReason = (record as PaymentDataType & { changeReason?: string }).changeReason || '';
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -392,6 +394,7 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             GSI6PK: `PAYMENT#${dto.contractId}`,
             GSI6SK: dto.paymentDate,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return paymentData;
     }

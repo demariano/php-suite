@@ -2,11 +2,12 @@ import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreateInvoiceDto, InvoiceDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveInvoiceCommand } from './command/approve-record/approve.command';
 import { CreateInvoiceCommand } from './command/create/create.command';
 import { DeleteInvoiceCommand } from './command/delete/delete.command';
 import { DenyInvoiceCommand } from './command/deny-record/deny.command';
+import { DenyInvoiceDto } from './command/deny-record/deny.dto';
 import { UpdateInvoiceCommand } from './command/update/update.command';
 import { GetInvoiceByDocnoQuery } from './queries/get.by.docno/get.invoice.by.docno.query';
 import { GetInvoiceByIdQuery } from './queries/get.by.id/get.invoice.by.id.query';
@@ -258,6 +259,10 @@ export class InvoiceController {
         enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
         example: 'ADMIN',
     })
+    @ApiBody({
+        type: DenyInvoiceDto,
+        description: 'Deny reason details',
+    })
     @ApiResponse({
         status: 200,
         description: 'Invoice denied successfully',
@@ -280,13 +285,22 @@ export class InvoiceController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenyInvoiceDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyInvoiceCommand(id, user));
+        return this.commandBus.execute(new DenyInvoiceCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('docno/:docno')

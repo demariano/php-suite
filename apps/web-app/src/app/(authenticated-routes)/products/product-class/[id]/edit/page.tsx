@@ -1,10 +1,12 @@
 'use client';
 
-import { ProductClassApi, ProductClassDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { extractErrorMessage, ProductClassApi, ProductClassDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import ProductClassForm from '../../components/ProductClassForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
+import ProductClassForm from '../../components/ProductClassForm';
 
 interface EditProductClassPageProps {
   params: {
@@ -17,6 +19,7 @@ export default function EditProductClassPage({ params }: EditProductClassPagePro
   const [selectedProductClass, setSelectedProductClass] = useState<ProductClassDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -175,15 +178,20 @@ export default function EditProductClassPage({ params }: EditProductClassPagePro
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedProductClass) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      const deniedProductClass = await ProductClassApi.denyProductClass(selectedProductClass.productClassId, userRole);
+      const deniedProductClass = await ProductClassApi.denyProductClass(selectedProductClass.productClassId, approverMessage, userRole);
       setSelectedProductClass(deniedProductClass);
       setFlashNotification({
         title: 'Success!',
@@ -206,6 +214,10 @@ export default function EditProductClassPage({ params }: EditProductClassPagePro
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -494,24 +506,7 @@ export default function EditProductClassPage({ params }: EditProductClassPagePro
             </h3>
           </div>
 
-          {selectedProductClass?.activityLogs && selectedProductClass.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedProductClass.activityLogs.map((log, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedProductClass?.activityLogs)}
         </div>
 
         <div className="flex justify-end">
@@ -532,6 +527,13 @@ export default function EditProductClassPage({ params }: EditProductClassPagePro
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <DenyReasonDialog
+        show={showDenyDialog}
+        productClass={selectedProductClass}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
+
       <DeleteConfirmationModal
         show={showDeleteModal}
         productClass={selectedProductClass}

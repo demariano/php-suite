@@ -1,6 +1,6 @@
 'use client';
 
-import { AreaDto, CustomerClassificationDto, CustomerDto, CustomerTypeDto, StatusEnum, TermsDto, TownDto } from '@data-access/index';
+import { AreaDto, CustomerClassificationDto, CustomerDto, CustomerTypeDto, StatusEnum, TermsDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../components';
 import { useNumberFormatting } from '../../../components/NumberFormatting';
@@ -9,8 +9,7 @@ import {
     CustomerClassificationSearchableSelectionModal,
     CustomerTypeSearchableSelectionModal,
     ProductSearchableSelectionModal,
-    TermsSearchableSelectionModal,
-    TownSearchableSelectionModal
+    TermsSearchableSelectionModal
 } from '../../../search-modals';
 import SelectionField from './SelectionField';
 
@@ -50,11 +49,10 @@ export default function CustomerForm({
   isAdminUser = false,
   activeTab = 'details'
 }: CustomerFormProps) {
-  const [selectedTown, setSelectedTown] = useState<{id: string, name: string} | null>(null);
   const [selectedArea, setSelectedArea] = useState<{id: string, name: string} | null>(null);
   const [selectedClassification, setSelectedClassification] = useState<{id: string, name: string} | null>(null);
   const [selectedType, setSelectedType] = useState<{id: string, name: string} | null>(null);
-  const [showTownModal, setShowTownModal] = useState(false);
+  const [townName, setTownName] = useState<string>('');
   const [showAreaModal, setShowAreaModal] = useState(false);
   const [showClassificationModal, setShowClassificationModal] = useState(false);
   const [showTypeModal, setShowTypeModal] = useState(false);
@@ -89,17 +87,17 @@ export default function CustomerForm({
   // Set initial values when editing (only when user hasn't made selections)
   useEffect(() => {
     if (!isCreateMode && selectedCustomer && !userHasMadeSelections) {
-      if (selectedCustomer.townId && selectedCustomer.townName) {
-        setSelectedTown({
-          id: selectedCustomer.townId,
-          name: selectedCustomer.townName
-        });
+      if (selectedCustomer.townName) {
+        setTownName(selectedCustomer.townName);
       }
       if (selectedCustomer.areaId && selectedCustomer.areaName) {
         setSelectedArea({
           id: selectedCustomer.areaId,
           name: selectedCustomer.areaName
         });
+      }
+      if (selectedCustomer.townName) {
+        setTownName(selectedCustomer.townName);
       }
       if (selectedCustomer.customerClassificationId && selectedCustomer.customerClassificationName) {
         setSelectedClassification({
@@ -158,9 +156,7 @@ export default function CustomerForm({
       errors.push('Customer name is required.');
     }
     
-    if (selectedArea && !selectedTown) {
-      errors.push('Please select a town.');
-    }
+    // Town is now optional text input, no validation needed
     
     if (!selectedArea) {
       errors.push('Please select an area.');
@@ -210,8 +206,8 @@ export default function CustomerForm({
         balance: parseFloat(formData.balance) || 0,
         contactNo: formData.contactNo,
         contactPerson: formData.contactPerson,
-        townId: selectedTown?.id || '',
-        townName: selectedTown?.name || '',
+        townId: '',
+        townName: townName || '',
         creditLimit: parseFloat(formData.creditLimit) || 0,
         customerCredit: parseFloat(formData.customerCredit) || 0,
         tinNumber: formData.tinNumber,
@@ -245,8 +241,8 @@ export default function CustomerForm({
         balance: parseFloat(formData.balance) || 0,
         contactNo: formData.contactNo,
         contactPerson: formData.contactPerson,
-        townId: selectedTown?.id || '',
-        townName: selectedTown?.name || '',
+        townId: '',
+        townName: townName || '',
         creditLimit: parseFloat(formData.creditLimit) || 0,
         customerCredit: parseFloat(formData.customerCredit) || 0,
         tinNumber: formData.tinNumber,
@@ -273,15 +269,8 @@ export default function CustomerForm({
     }
   };
 
-  const handleTownSelect = (town: TownDto) => {
-    setSelectedTown({ id: town.townId, name: town.townName || '' });
-    setUserHasMadeSelections(true);
-  };
-
   const handleAreaSelect = (area: AreaDto) => {
     setSelectedArea({ id: area.areaId, name: area.areaName || '' });
-    // Clear town selection when area changes
-    setSelectedTown(null);
     setUserHasMadeSelections(true);
   };
 
@@ -295,9 +284,6 @@ export default function CustomerForm({
     setUserHasMadeSelections(true);
   };
 
-  const handleClearTown = () => {
-    setSelectedTown(null);
-  };
 
   const handleClearArea = () => {
     setSelectedArea(null);
@@ -670,14 +656,27 @@ export default function CustomerForm({
               disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
             />
 
-            <SelectionField
-              label="Town"
-              selectedItem={selectedTown}
-              onSelect={() => setShowTownModal(true)}
-              onClear={handleClearTown}
-              buttonText="Select Town"
-              disabled={(!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE) || !selectedArea}
-            />
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Town
+              </label>
+              <input
+                type="text"
+                value={townName}
+                onChange={(e) => {
+                  setTownName(e.target.value);
+                  setUserHasMadeSelections(true);
+                }}
+                placeholder="Enter town name"
+                disabled={!isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE}
+                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                  !isCreateMode && selectedCustomer?.status !== StatusEnum.ACTIVE
+                    ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                }`}
+              />
+            </div>
 
             <SelectionField
               label="Customer Classification"
@@ -1044,14 +1043,6 @@ export default function CustomerForm({
      </form>
 
      {/* Searchable Selection Modals */}
-     <TownSearchableSelectionModal
-       show={showTownModal}
-       title="Select Town"
-       areaId={selectedArea?.id || ''}
-       selectedValue={selectedTown?.id || null}
-       onSelect={handleTownSelect}
-       onClose={() => setShowTownModal(false)}
-     />
 
      <AreaSearchableSelectionModal
        show={showAreaModal}

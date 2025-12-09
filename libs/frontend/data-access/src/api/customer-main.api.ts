@@ -188,7 +188,7 @@ class CustomerMainApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyCustomer = async (id: string, userRole?: string): Promise<CustomerDto> => {
+    public denyCustomer = async (id: string, approverMessage: string, userRole?: string): Promise<CustomerDto> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -200,7 +200,7 @@ class CustomerMainApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/customers/${id}/deny?${queryString}` : `/customers/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

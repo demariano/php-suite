@@ -3,6 +3,8 @@
 import { AreaApi, AreaDto, StatusEnum, TerritoryManagerApi, TerritoryManagerDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import TerritoryManagerForm from '../../components/TerritoryManagerForm';
 
@@ -22,6 +24,7 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const [areas, setAreas] = useState<AreaDto[]>([]);
   const [areasLoading, setAreasLoading] = useState(false);
   const [areasError, setAreasError] = useState<string | null>(null);
@@ -202,15 +205,20 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
     }
   };
 
-  const handleDenyRecord = async () => {
+  const handleDenyRecord = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedTerritoryManager) return;
 
     try {
       setIsLoading(true);
       setError(null);
+      setShowDenyDialog(false);
 
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      await TerritoryManagerApi.denyTerritoryManager(selectedTerritoryManager.territoryManagerId, userRole);
+      await TerritoryManagerApi.denyTerritoryManager(selectedTerritoryManager.territoryManagerId, approverMessage, userRole);
 
       setFlashNotification({
         title: 'Success!',
@@ -229,6 +237,10 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -533,22 +545,7 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
       <div className="p-4 sm:p-6 bg-white">
         <div className="mb-5">
           <h3 className="text-base font-semibold text-gray-800 mb-3">Recent Activity</h3>
-          {selectedTerritoryManager?.activityLogs && selectedTerritoryManager.activityLogs.length > 0 ? (
-            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-              {selectedTerritoryManager.activityLogs.map((log, index) => (
-                <div
-                  key={index}
-                  className={`py-2 ${
-                    index < selectedTerritoryManager.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                  }`}
-                >
-                  {log}
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-gray-500 italic">No activity logs available</p>
-          )}
+          {renderActivityLogsTable(selectedTerritoryManager?.activityLogs, 'No activity logs available')}
         </div>
       </div>
     );
@@ -659,6 +656,13 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
           </div>
         </div>
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        territoryManager={selectedTerritoryManager}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
 
       <DeleteConfirmationModal
         show={showDeleteConfirm}

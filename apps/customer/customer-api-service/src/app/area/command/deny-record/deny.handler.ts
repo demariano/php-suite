@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
 import { AreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
@@ -30,7 +29,7 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -68,12 +67,12 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDenial(existingRecord: AreaDto, user: UserCognito): Promise<ResponseDto<AreaDto>> {
+    private async processDenial(existingRecord: AreaDto, command: DenyAreaCommand): Promise<ResponseDto<AreaDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyArea(existingRecord, user);
+                return await this.denyArea(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -84,19 +83,28 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
     /**
      * Denies an area for approval
      */
-    private async denyArea(existingRecord: AreaDto, user: UserCognito): Promise<ResponseDto<AreaDto>> {
+    private async denyArea(existingRecord: AreaDto, command: DenyAreaCommand): Promise<ResponseDto<AreaDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Area denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Area denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
         );
+
+        //add a new activity log for the using the approver message
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Area denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
-
+        existingRecord.approverMessage = null;
         // Reset changeReason after clearing forApprovalVersion
         existingRecord.changeReason = null;
 
@@ -110,9 +118,31 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
     /**
      * Denies deletion of an area
      */
-    private async denyDeletion(existingRecord: AreaDto): Promise<ResponseDto<AreaDto>> {
+    private async denyDeletion(existingRecord: AreaDto, command: DenyAreaCommand): Promise<ResponseDto<AreaDto>> {
         // Reset changeReason when denying deletion
         existingRecord.changeReason = null;
+
+        // Add activity log for denial
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Area deletion denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+        );
+
+        // Add approver message if provided
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Area deletion denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
+
+        // Optimize activity logs
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.approverMessage = null;
+
         this.logger.log(`Area deletion denied: ${existingRecord.areaId}`);
         existingRecord.status = StatusEnum.ACTIVE;
         const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);

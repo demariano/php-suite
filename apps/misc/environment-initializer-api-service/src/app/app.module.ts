@@ -11,7 +11,6 @@ import {
     CustomerDatabaseServiceModule,
     CustomerTypeDatabaseService,
     TermsDatabaseService,
-    TownDatabaseService,
 } from '@customer-database-service';
 import {
     InventoryDatabaseServiceModule,
@@ -92,10 +91,7 @@ import { AppService } from './app.service';
             provide: 'AreaDatabaseService',
             useClass: AreaDatabaseService,
         },
-        {
-            provide: 'TownDatabaseService',
-            useClass: TownDatabaseService,
-        },
+
         {
             provide: 'TermsDatabaseService',
             useClass: TermsDatabaseService,

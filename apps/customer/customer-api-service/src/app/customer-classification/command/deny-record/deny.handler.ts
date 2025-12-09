@@ -32,7 +32,7 @@ export class DenyCustomerClassificationHandler implements ICommandHandler<DenyCu
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -74,13 +74,13 @@ export class DenyCustomerClassificationHandler implements ICommandHandler<DenyCu
      */
     private async processDenial(
         existingRecord: CustomerClassificationDto,
-        user: UserCognito
+        command: DenyCustomerClassificationCommand
     ): Promise<ResponseDto<CustomerClassificationDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyCustomerClassification(existingRecord, user);
+                return await this.denyCustomerClassification(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -95,20 +95,29 @@ export class DenyCustomerClassificationHandler implements ICommandHandler<DenyCu
      */
     private async denyCustomerClassification(
         existingRecord: CustomerClassificationDto,
-        user: UserCognito
+        command: DenyCustomerClassificationCommand
     ): Promise<ResponseDto<CustomerClassificationDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Customer classification denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Customer classification denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
         );
+
+        // Add activity log for approver message if provided
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer classification denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.customerClassificationDatabaseService.updateRecord(existingRecord);
 
@@ -120,10 +129,33 @@ export class DenyCustomerClassificationHandler implements ICommandHandler<DenyCu
      * Denies deletion of a customer classification
      */
     private async denyDeletion(
-        existingRecord: CustomerClassificationDto
+        existingRecord: CustomerClassificationDto,
+        command: DenyCustomerClassificationCommand
     ): Promise<ResponseDto<CustomerClassificationDto>> {
         this.logger.log(`Customer classification deletion denied: ${existingRecord.customerClassificationId}`);
         existingRecord.status = StatusEnum.ACTIVE;
+        
+        // Add activity log for denial
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Customer classification deletion denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+        );
+
+        // Add approver message if provided
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer classification deletion denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
+
+        // Optimize activity logs
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.approverMessage = null;
+        
         const updatedRecord = await this.customerClassificationDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<CustomerClassificationDto>(updatedRecord, HTTP_STATUS_OK);
     }

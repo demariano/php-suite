@@ -7,6 +7,7 @@ import { ApproveCustomerCommand } from './command/approve-record/approve.command
 import { CreateCustomerCommand } from './command/create/create.command';
 import { DeleteCustomerCommand } from './command/delete/delete.command';
 import { DenyCustomerCommand } from './command/deny-record/deny.command';
+import { DenyCustomerDto } from './command/deny-record/deny.dto';
 import { UpdateCustomerCommand } from './command/update/update.command';
 import { GetCustomerByIdQuery } from './queries/get.by.id/get.customer.by.id.query';
 import { GetCustomerByNameQuery } from './queries/get.by.name/get.customer.by.name.query';
@@ -300,20 +301,30 @@ export class CustomerController {
         status: 404,
         description: 'Customer not found',
     })
-    denyRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyCustomerDto,
+        description: 'Deny reason details',
+    })
+    denyRecord(
+        @Param('id') id: string,
+        @Body() denyDto: DenyCustomerDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const command = new DenyCustomerCommand(id, user);
+        const command = new DenyCustomerCommand(id, user, denyDto.approverMessage);
         return this.commandBus.execute(command);
     }
 
     @Get('name/:name')
     @ApiOperation({
         summary: 'Get customers by name',
-        description: 'Retrieves customers that contain the specified name in their customer name with pagination support.',
+        description:
+            'Retrieves customers that contain the specified name in their customer name with pagination support.',
     })
     @ApiParam({
         name: 'name',

@@ -70,5 +70,5 @@ export class ContractDto {
     productDealQty?: ProductDealQtyDto;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

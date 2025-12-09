@@ -3,6 +3,7 @@
 import { extractErrorMessage, StatusEnum, StockDeliveryApi, StockDeliveryDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import StockDeliveryForm from './components/StockDeliveryForm';
 
 interface EditStockDeliveryPageProps {
@@ -647,24 +648,7 @@ export default function EditStockDeliveryPage({ params }: EditStockDeliveryPageP
             </h3>
           </div>
 
-          {selectedStockDelivery?.activityLogs && selectedStockDelivery.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedStockDelivery.activityLogs.map((log, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedStockDelivery?.activityLogs)}
         </div>
 
         <div className="flex justify-end">

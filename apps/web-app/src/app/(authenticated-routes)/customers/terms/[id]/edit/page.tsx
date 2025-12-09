@@ -1,10 +1,12 @@
 'use client';
 
-import { TermsApi, TermsDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { extractErrorMessage, StatusEnum, TermsApi, TermsDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import TermsForm from '../../components/TermsForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
+import TermsForm from '../../components/TermsForm';
 
 interface EditTermsPageProps {
   params: {
@@ -17,6 +19,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
   const [selectedTerms, setSelectedTerms] = useState<TermsDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -176,15 +179,20 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedTerms) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      const deniedTerms = await TermsApi.denyTerms(selectedTerms.termsId, userRole);
+      const deniedTerms = await TermsApi.denyTerms(selectedTerms.termsId, approverMessage, userRole);
       setSelectedTerms(deniedTerms);
       setFlashNotification({
         title: 'Success!',
@@ -207,6 +215,10 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -479,6 +491,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     );
   };
 
+
   const renderLogsTab = () => {
     if (!selectedTerms) return null;
 
@@ -496,24 +509,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
             </h3>
           </div>
 
-          {selectedTerms?.activityLogs && selectedTerms.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedTerms.activityLogs.map((log, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedTerms?.activityLogs)}
         </div>
 
         <div className="flex justify-end">
@@ -540,6 +536,14 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
         onConfirm={handleConfirmDelete}
         onCancel={() => setShowDeleteModal(false)}
       />
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        terms={selectedTerms}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
+
       <div>
         <nav className="flex items-center gap-2">
           <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">

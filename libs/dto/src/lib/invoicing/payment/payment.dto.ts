@@ -61,5 +61,5 @@ export class PaymentDto {
     paymentInvoiceDetails!: PaymentInvoiceDetailsDto[];
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

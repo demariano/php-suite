@@ -4,6 +4,7 @@ import { extractErrorMessage, ProductApi, ProductDto, StatusEnum, useEnv, useLoc
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import ProductForm from './components/ProductForm';
 
 interface EditProductPageProps {
@@ -17,6 +18,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
   const [selectedProduct, setSelectedProduct] = useState<ProductDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -200,18 +202,23 @@ export default function EditProductPage({ params }: EditProductPageProps) {
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedProduct) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
-      await ProductApi.denyProduct(selectedProduct.productId, userRole);
+      // Call the API to deny the record with approverMessage
+      await ProductApi.denyProduct(selectedProduct.productId, approverMessage, userRole);
       
       setFlashNotification({
         title: 'Success!',
@@ -235,6 +242,10 @@ export default function EditProductPage({ params }: EditProductPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -335,6 +346,13 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         product={selectedProduct}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+      />
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        product={selectedProduct}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
       />
     </div>
   );

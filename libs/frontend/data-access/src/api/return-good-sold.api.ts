@@ -185,7 +185,7 @@ class ReturnGoodSoldApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyReturnGoodSold = async (id: string, userRole?: string): Promise<ReturnGoodSoldDto> => {
+    public denyReturnGoodSold = async (id: string, approverMessage: string, userRole?: string): Promise<ReturnGoodSoldDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -195,7 +195,7 @@ class ReturnGoodSoldApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/return-good-sold/${id}/deny?${queryString}` : `/return-good-sold/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

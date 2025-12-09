@@ -20,5 +20,5 @@ export class ProductUnitDto {
     changeReason?: string;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

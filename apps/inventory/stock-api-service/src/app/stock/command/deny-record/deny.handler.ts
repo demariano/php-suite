@@ -98,9 +98,16 @@ export class DenyStockHandler implements ICommandHandler<DenyStockCommand> {
         })}, Stock changes denied by ${user.username}`;
         existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
 
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Stock denied by ${user.username}, approver message: ${existingRecord.approverMessage}`
+        );
+
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.stockDatabaseService.updateRecord(existingRecord);
 

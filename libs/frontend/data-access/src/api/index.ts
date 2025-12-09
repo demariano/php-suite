@@ -16,7 +16,6 @@ export { default as StockApi } from './stock.api';
 export { default as SupplierApi } from './supplier.api';
 export { default as TermsApi } from './terms.api';
 export { default as TerritoryManagerApi } from './territory-manager.api';
-export { default as TownApi } from './town.api';
 export { default as UserApi } from './user';
 export { default as VoucherApi } from './voucher.api';
 

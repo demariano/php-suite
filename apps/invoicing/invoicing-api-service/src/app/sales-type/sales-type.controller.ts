@@ -2,11 +2,12 @@ import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreateSalesTypeDto, SalesTypeDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveSalesTypeCommand } from './command/approve-record/approve.command';
 import { CreateSalesTypeCommand } from './command/create/create.command';
 import { DeleteSalesTypeCommand } from './command/delete/delete.command';
 import { DenySalesTypeCommand } from './command/deny-record/deny.command';
+import { DenySalesTypeDto } from './command/deny-record/deny.dto';
 import { UpdateSalesTypeCommand } from './command/update/update.command';
 import { GetSalesTypeByIdQuery } from './queries/get.by.id/get.sales.type.by.id.query';
 import { GetSalesTypeByNameQuery } from './queries/get.by.name/get.sales.type.by.name.query';
@@ -267,13 +268,26 @@ export class SalesTypeController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenySalesTypeDto,
+        description: 'Deny reason details',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenySalesTypeDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenySalesTypeCommand(id, user));
+        return this.commandBus.execute(new DenySalesTypeCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('name/:name')

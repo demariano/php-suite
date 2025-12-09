@@ -1,7 +1,6 @@
 'use client';
 
-import TownApi from '@data-access/api/town.api';
-import { AreaDto, StatusEnum, TerritoryManagerDto, TownDto, useEnv, useLocalStore } from '@data-access/index';
+import { AreaDto, StatusEnum, TerritoryManagerDto, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../components';
 import TerritoryManagerSearchableSelectionModal from '../../../search-modals/TerritoryManagerSearchableSelectionModal';
@@ -32,9 +31,8 @@ export default function AreaForm({
   const [showTerritoryManagerModal, setShowTerritoryManagerModal] = useState(false);
   const [userHasMadeSelections, setUserHasMadeSelections] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [towns, setTowns] = useState<TownDto[]>([]);
-  const [townsLoading, setTownsLoading] = useState(false);
-  const [townsError, setTownsError] = useState<string | null>(null);
+  const [towns, setTowns] = useState<string[]>([]);
+  const [newTownInput, setNewTownInput] = useState('');
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   
@@ -44,55 +42,27 @@ export default function AreaForm({
     changeReason: ''
   });
 
-  // Get user role for API calls
-  const getUserRole = () => {
-    return env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+  // Handle adding a new town
+  const handleAddTown = () => {
+    const trimmedTown = newTownInput.trim();
+    if (trimmedTown && !towns.includes(trimmedTown)) {
+      setTowns([...towns, trimmedTown]);
+      setNewTownInput('');
+      setUserHasMadeSelections(true);
+    }
   };
 
-  // Fetch towns for the area
-  const fetchTownsForArea = async () => {
-    const currentAreaId = areaId || selectedArea?.areaId;
-    if (!currentAreaId || isCreateMode) {
-      return;
-    }
+  // Handle removing a town
+  const handleRemoveTown = (index: number) => {
+    setTowns(towns.filter((_, i) => i !== index));
+    setUserHasMadeSelections(true);
+  };
 
-    try {
-      setTownsLoading(true);
-      setTownsError(null);
-
-      // Get towns for all statuses
-      const [activeResponse, pendingResponse, deletedResponse] = await Promise.all([
-        TownApi.getTownsByAreaStatus(currentAreaId, StatusEnum.ACTIVE, getUserRole()),
-        TownApi.getTownsByAreaStatus(currentAreaId, StatusEnum.FOR_APPROVAL, getUserRole()),
-        TownApi.getTownsByAreaStatus(currentAreaId, StatusEnum.FOR_DELETION, getUserRole())
-      ]);
-
-      // Convert response objects to arrays
-      const activeTownsArray = Object.values(activeResponse).filter(item => 
-        typeof item === 'object' && item !== null && item.townId
-      );
-      
-      const pendingTownsArray = Object.values(pendingResponse).filter(item => 
-        typeof item === 'object' && item !== null && item.townId
-      );
-      
-      const deletedTownsArray = Object.values(deletedResponse).filter(item => 
-        typeof item === 'object' && item !== null && item.townId
-      );
-      
-      // Combine all towns
-      const allTowns = [
-        ...activeTownsArray,
-        ...pendingTownsArray,
-        ...deletedTownsArray
-      ];
-
-      setTowns(allTowns);
-    } catch (err) {
-      console.error('Error fetching towns for area:', err);
-      setTownsError('Failed to load towns for this area. Please try again.');
-    } finally {
-      setTownsLoading(false);
+  // Handle town input key press
+  const handleTownInputKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTown();
     }
   };
 
@@ -110,15 +80,12 @@ export default function AreaForm({
         areaName: selectedArea.areaName || '',
         changeReason: selectedArea.changeReason || ''
       });
+      // Initialize towns from selectedArea
+      if (selectedArea.towns && Array.isArray(selectedArea.towns)) {
+        setTowns(selectedArea.towns);
+      }
     }
   }, [isCreateMode, selectedArea, userHasMadeSelections]);
-
-  // Fetch towns when areaId is available
-  useEffect(() => {
-    if (!isCreateMode && (areaId || selectedArea?.areaId)) {
-      fetchTownsForArea();
-    }
-  }, [areaId, selectedArea?.areaId, isCreateMode]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -155,7 +122,8 @@ export default function AreaForm({
         territoryManagerId: selectedTerritoryManager?.id || '',
         territoryManagerName: selectedTerritoryManager?.name || '',
         status,
-        changeReason: ''
+        changeReason: '',
+        towns: towns.filter(town => town.trim() !== '')
       };
       onSave(newArea as AreaDto);
     } else {
@@ -166,7 +134,8 @@ export default function AreaForm({
         territoryManagerId: selectedTerritoryManager?.id || '',
         territoryManagerName: selectedTerritoryManager?.name || '',
         status: selectedArea?.status ?? StatusEnum.ACTIVE,
-        changeReason: trimmedReason
+        changeReason: trimmedReason,
+        towns: towns.filter(town => town.trim() !== '')
       };
       onSave(updatedArea as AreaDto);
     }
@@ -341,159 +310,88 @@ export default function AreaForm({
           </div>
         </div>
 
-        {/* Towns Section - Only show in edit mode when areaId exists */}
-        {!isCreateMode && (areaId || selectedArea?.areaId) && (
-          <div className="space-y-4">
-            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                </div>
-                <h3 className="text-base font-bold text-blue-600 m-0">
-                  Towns In Area
-                </h3>
+        {/* Towns Section */}
+        <div className="space-y-4">
+          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-blue-600 rounded-lg shadow-sm text-white">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
               </div>
-              
-              {townsError && (
-                <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-red-600 text-sm font-semibold">{townsError}</span>
+              <h3 className="text-base font-bold text-blue-600 m-0">
+                Towns In Area
+              </h3>
+            </div>
+
+            {/* Add Town Input */}
+            <div className="mb-4">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Add Town
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newTownInput}
+                  onChange={(e) => setNewTownInput(e.target.value)}
+                  onKeyPress={handleTownInputKeyPress}
+                  placeholder="Enter town name and press Enter or click Add"
+                  disabled={!isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE}
+                  className={`flex-1 px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE
+                      ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddTown}
+                  disabled={(!isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE) || !newTownInput.trim() || towns.includes(newTownInput.trim())}
+                  className="px-6 py-3 bg-blue-600 text-white font-semibold rounded-xl shadow-sm hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Towns List */}
+            {towns.length === 0 ? (
+              <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-8 text-center">
+                <div className="mb-3 text-4xl">🏘️</div>
+                <p className="font-medium text-gray-600">No towns added</p>
+                <p className="mt-1 text-sm text-gray-500">Add towns using the input above.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                  Towns ({towns.length})
+                </h4>
+                <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
+                  <div className="divide-y divide-gray-200">
+                    {towns.map((town, index) => (
+                      <div key={index} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
+                        <span className="text-sm font-medium text-gray-900">{town}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTown(index)}
+                          disabled={!isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE}
+                          className="text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                          title="Remove town"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
-
-              {townsLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-blue-600"></div>
-                  <span className="ml-3 text-sm text-gray-600">Loading towns...</span>
-                </div>
-              ) : towns.length === 0 ? (
-                <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-8 text-center">
-                  <div className="mb-3 text-4xl">🏘️</div>
-                  <p className="font-medium text-gray-600">No towns found</p>
-                  <p className="mt-1 text-sm text-gray-500">This area doesn&apos;t have any towns yet.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {(() => {
-                    const groupedTowns = {
-                      [StatusEnum.ACTIVE]: towns.filter(town => town.status === StatusEnum.ACTIVE),
-                      [StatusEnum.FOR_APPROVAL]: towns.filter(town => town.status === StatusEnum.FOR_APPROVAL),
-                      [StatusEnum.FOR_DELETION]: towns.filter(town => town.status === StatusEnum.FOR_DELETION),
-                      [StatusEnum.NEW_RECORD]: towns.filter(town => town.status === StatusEnum.NEW_RECORD),
-                      other: towns.filter(town => {
-                        const status = town.status ?? StatusEnum.ACTIVE;
-                        return ![StatusEnum.ACTIVE, StatusEnum.FOR_APPROVAL, StatusEnum.FOR_DELETION, StatusEnum.NEW_RECORD].includes(status);
-                      })
-                    };
-
-                    return (
-                      <>
-                        {groupedTowns[StatusEnum.ACTIVE].length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                              <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                              Active Towns ({groupedTowns[StatusEnum.ACTIVE].length})
-                            </h4>
-                            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                              <div className="divide-y divide-gray-200">
-                                {groupedTowns[StatusEnum.ACTIVE].map((town, index) => (
-                                  <div key={town.townId || index} className="px-4 py-3 flex items-center justify-between hover:bg-gray-50">
-                                    <span className="text-sm font-medium text-gray-900">{town.townName || '-'}</span>
-                                    {getStatusBadge(town.status ?? StatusEnum.ACTIVE)}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {groupedTowns[StatusEnum.FOR_APPROVAL].length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                              <span className="w-2 h-2 bg-yellow-500 rounded-full"></span>
-                              Pending Approval ({groupedTowns[StatusEnum.FOR_APPROVAL].length})
-                            </h4>
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg overflow-hidden shadow-sm">
-                              <div className="divide-y divide-yellow-200">
-                                {groupedTowns[StatusEnum.FOR_APPROVAL].map((town, index) => (
-                                  <div key={town.townId || index} className="px-4 py-3 flex items-center justify-between hover:bg-yellow-100">
-                                    <span className="text-sm font-medium text-yellow-900">{town.townName || '-'}</span>
-                                    {getStatusBadge(town.status ?? StatusEnum.FOR_APPROVAL)}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {groupedTowns[StatusEnum.NEW_RECORD].length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                              <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                              New Records ({groupedTowns[StatusEnum.NEW_RECORD].length})
-                            </h4>
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg overflow-hidden shadow-sm">
-                              <div className="divide-y divide-blue-200">
-                                {groupedTowns[StatusEnum.NEW_RECORD].map((town, index) => (
-                                  <div key={town.townId || index} className="px-4 py-3 flex items-center justify-between hover:bg-blue-100">
-                                    <span className="text-sm font-medium text-blue-900">{town.townName || '-'}</span>
-                                    {getStatusBadge(town.status ?? StatusEnum.NEW_RECORD)}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {groupedTowns[StatusEnum.FOR_DELETION].length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                              Pending Deletion ({groupedTowns[StatusEnum.FOR_DELETION].length})
-                            </h4>
-                            <div className="bg-red-50 border border-red-200 rounded-lg overflow-hidden shadow-sm">
-                              <div className="divide-y divide-red-200">
-                                {groupedTowns[StatusEnum.FOR_DELETION].map((town, index) => (
-                                  <div key={town.townId || index} className="px-4 py-3 flex items-center justify-between hover:bg-red-100">
-                                    <span className="text-sm font-medium text-red-900">{town.townName || '-'}</span>
-                                    {getStatusBadge(town.status ?? StatusEnum.FOR_DELETION)}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {groupedTowns.other.length > 0 && (
-                          <div>
-                            <h4 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                              <span className="w-2 h-2 bg-gray-500 rounded-full"></span>
-                              Other Status ({groupedTowns.other.length})
-                            </h4>
-                            <div className="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                              <div className="divide-y divide-gray-200">
-                                {groupedTowns.other.map((town, index) => (
-                                  <div key={town.townId || index} className="px-4 py-3 flex items-center justify-between hover:bg-gray-100">
-                                    <span className="text-sm font-medium text-gray-900">{town.townName || '-'}</span>
-                                    {getStatusBadge(town.status ?? StatusEnum.ACTIVE)}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
 
       </div>
 

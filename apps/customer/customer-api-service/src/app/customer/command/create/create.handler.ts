@@ -108,7 +108,6 @@ export class CreateCustomerHandler implements ICommandHandler<CreateCustomerComm
             command.customerDto.forApprovalVersion.balance = command.customerDto.balance;
             command.customerDto.forApprovalVersion.contactNo = command.customerDto.contactNo;
             command.customerDto.forApprovalVersion.contactPerson = command.customerDto.contactPerson;
-            command.customerDto.forApprovalVersion.townId = command.customerDto.townId;
             command.customerDto.forApprovalVersion.townName = command.customerDto.townName;
             command.customerDto.forApprovalVersion.creditLimit = command.customerDto.creditLimit;
             command.customerDto.forApprovalVersion.customerCredit = command.customerDto.customerCredit;

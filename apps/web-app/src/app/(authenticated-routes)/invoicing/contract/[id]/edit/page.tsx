@@ -1,10 +1,12 @@
 'use client';
 
 import { ContractApi, ContractDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import ContractForm from '../../components/ContractForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 
 interface EditContractPageProps {
   params: {
@@ -22,6 +24,7 @@ export default function EditContractPage({ params }: EditContractPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
 
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
@@ -168,15 +171,20 @@ export default function EditContractPage({ params }: EditContractPageProps) {
     }
   };
 
-  const handleDenyRecord = async () => {
+  const handleDenyRecord = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedContract) return;
 
     try {
       setIsLoading(true);
       setError(null);
+      setShowDenyDialog(false);
 
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      await ContractApi.denyContract(selectedContract.contractId, userRole);
+      await ContractApi.denyContract(selectedContract.contractId, approverMessage, userRole);
 
       setFlashNotification({
         title: 'Success!',
@@ -196,6 +204,10 @@ export default function EditContractPage({ params }: EditContractPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -573,24 +585,7 @@ export default function EditContractPage({ params }: EditContractPageProps) {
             </h3>
           </div>
           
-          {selectedContract?.activityLogs && selectedContract.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedContract.activityLogs.map((log, index) => (
-                  <li 
-                    key={index} 
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedContract?.activityLogs)}
         </div>
 
         {/* Action Buttons */}
@@ -749,6 +744,13 @@ export default function EditContractPage({ params }: EditContractPageProps) {
           </div>
         </div>
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        contract={selectedContract}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
 
       <DeleteConfirmationModal
         show={showDeleteConfirm}

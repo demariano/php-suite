@@ -58,6 +58,7 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
         customerClassificationRecord.GSI2SK = record.customerClassificationName;
         customerClassificationRecord.forApprovalVersion = record.forApprovalVersion;
         customerClassificationRecord.changeReason = record.changeReason;
+        customerClassificationRecord.approverMessage = record.approverMessage;
 
         const updatedCustomerClassificationRecord: CustomerClassificationDataType =
             await this.customerClassificationTable.update(customerClassificationRecord);
@@ -250,6 +251,7 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason =
             (record as CustomerClassificationDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -277,6 +279,7 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return customerClassificationData;
     }

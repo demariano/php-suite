@@ -77,6 +77,20 @@ export default function CustomerTable({
                       <td className="px-6 py-5">
                         {customer.status}
                       </td>
+                      <td className="px-6 py-5 text-sm">
+                        {customer.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${customer.latestActivity.style.bgColor} ${customer.latestActivity.style.textColor}`}
+                            title={customer.latestActivity.text}
+                          >
+                            {customer.latestActivity.text.length > 50 
+                              ? `${customer.latestActivity.text.substring(0, 50)}...` 
+                              : customer.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -121,6 +135,20 @@ export default function CustomerTable({
                     <dt className="font-medium text-gray-500">Type</dt>
                     <dd className="text-right text-gray-900">{customer.customerTypeName || '-'}</dd>
                   </div>
+                  {customer.latestActivity && (
+                    <div className="mt-2">
+                      <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                      <dd>
+                        <span 
+                          className={`px-2 py-1 rounded text-xs ${customer.latestActivity.style.bgColor} ${customer.latestActivity.style.textColor}`}
+                        >
+                          {customer.latestActivity.text.length > 60 
+                            ? `${customer.latestActivity.text.substring(0, 60)}...` 
+                            : customer.latestActivity.text}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </button>
             ))

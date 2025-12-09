@@ -7,6 +7,7 @@ import { ApproveAreaCommand } from './command/approve-record/approve.command';
 import { CreateAreaCommand } from './command/create/create.command';
 import { DeleteAreaCommand } from './command/delete/delete.command';
 import { DenyAreaCommand } from './command/deny-record/deny.command';
+import { DenyAreaDto } from './command/deny-record/deny.dto';
 import { UpdateAreaCommand } from './command/update/update.command';
 import { GetAreaByIdQuery } from './queries/get.by.id/get.area.by.id.query';
 import { GetAreaByNameQuery } from './queries/get.by.name/get.area.by.name.query';
@@ -322,13 +323,22 @@ export class AreaController {
             },
         },
     })
-    denyArea(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyAreaDto,
+        description: 'Deny reason details',
+    })
+    denyArea(
+        @Param('id') id: string,
+        @Body() denyDto: DenyAreaDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyAreaCommand(id, user));
+        return this.commandBus.execute(new DenyAreaCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('name/:name')

@@ -28,6 +28,7 @@ export interface CustomerDto {
     status?: StatusEnum;
     forApprovalVersion?: Record<string, unknown>;
     changeReason?: string;
+    approverMessage?: string;
     activityLogs?: string[];
     customerTerms?: TermsDto[];
     customerProductDeals?: CustomerProductDealDto[];

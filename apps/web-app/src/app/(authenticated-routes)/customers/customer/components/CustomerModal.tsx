@@ -2,6 +2,7 @@
 
 import { CustomerDto, StatusEnum } from '@data-access/index';
 import { useEffect } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import CustomerForm from './CustomerForm';
 
 interface CustomerModalProps {
@@ -995,24 +996,7 @@ export default function CustomerModal({
                 <h3 className="text-base font-semibold text-gray-800 mb-3">
                   Recent Activity
                 </h3>
-                {selectedCustomer?.activityLogs && selectedCustomer.activityLogs.length > 0 ? (
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-                    {selectedCustomer.activityLogs.map((log, index) => (
-                      <div 
-                        key={index} 
-                        className={`py-2 ${
-                          index < selectedCustomer.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                        }`}
-                      >
-                        {log}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">
-                    No activity logs available
-                  </p>
-                )}
+                {renderActivityLogsTable(selectedCustomer?.activityLogs, 'No activity logs available')}
               </div>
               
               <div className="flex justify-end mt-6">

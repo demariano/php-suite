@@ -2,11 +2,12 @@ import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { ContractDto, CreateContractDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveContractCommand } from './command/approve-record/approve.command';
 import { CreateContractCommand } from './command/create/create.command';
 import { DeleteContractCommand } from './command/delete/delete.command';
 import { DenyContractCommand } from './command/deny-record/deny.command';
+import { DenyContractDto } from './command/deny-record/deny.dto';
 import { UpdateContractCommand } from './command/update/update.command';
 import { GetContractByContractNoQuery } from './queries/get.by.contractNo/get.contract.by.contractNo.query';
 import { GetContractsByCustomerIdQuery } from './queries/get.by.customerId/get.contracts.by.customerId.query';
@@ -260,6 +261,10 @@ export class ContractController {
         enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
         example: 'ADMIN',
     })
+    @ApiBody({
+        type: DenyContractDto,
+        description: 'Deny reason details',
+    })
     @ApiResponse({
         status: 200,
         description: 'Contract denied successfully',
@@ -282,13 +287,22 @@ export class ContractController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenyContractDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyContractCommand(id, user));
+        return this.commandBus.execute(new DenyContractCommand(id, user, denyDto.approverMessage));
     }
 
     @Get()

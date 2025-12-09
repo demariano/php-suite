@@ -46,7 +46,7 @@ export abstract class CustomerDatabaseServiceAbstract {
 
     abstract findAllCustomersByAreaId(areaId: string): Promise<CustomerDto[]>;
 
-    abstract findAllCustomersByTownId(townId: string): Promise<CustomerDto[]>;
+    abstract findAllCustomersByTownName(townName: string): Promise<CustomerDto[]>;
 
     abstract deleteRecord(customerDto: CustomerDto): Promise<CustomerDto>;
 

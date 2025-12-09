@@ -90,10 +90,10 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
     private async denySupplier(existingRecord: SupplierDto, user: UserCognito): Promise<ResponseDto<SupplierDto>> {
         // Clear forApprovalVersion and revert to ACTIVE
         existingRecord.forApprovalVersion = {};
-        
+
         // Reset changeReason to null after clearing forApprovalVersion
         existingRecord.changeReason = null;
-        
+
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
@@ -102,9 +102,16 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
         })}, Supplier changes denied by ${user.username}`;
         existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
 
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Supplier denied by ${user.username}, approver message: ${existingRecord.approverMessage}`
+        );
+
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.supplierDatabaseService.updateRecord(existingRecord);
 
@@ -117,7 +124,7 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
     private async denyDeletion(existingRecord: SupplierDto): Promise<ResponseDto<SupplierDto>> {
         // Reset changeReason to null before reverting status
         existingRecord.changeReason = null;
-        
+
         // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
 
@@ -142,7 +149,7 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
     private async deleteRecord(existingRecord: SupplierDto): Promise<ResponseDto<SupplierDto>> {
         // Reset changeReason to null before deleting
         existingRecord.changeReason = null;
-        
+
         this.logger.log(`Supplier deleted: ${existingRecord.supplierId}`);
         await this.supplierDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<SupplierDto>(existingRecord, HTTP_STATUS_OK);

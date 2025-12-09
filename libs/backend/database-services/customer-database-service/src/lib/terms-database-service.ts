@@ -57,6 +57,7 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         termsRecord.GSI2SK = record.termsName;
         termsRecord.forApprovalVersion = record.forApprovalVersion;
         termsRecord.changeReason = record.changeReason;
+        termsRecord.approverMessage = record.approverMessage;
 
         const updatedTermsRecord: TermsDataType = await this.termsTable.update(termsRecord);
 
@@ -245,6 +246,7 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
         dto.days = record.days ? record.days : 0;
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = (record as TermsDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -273,6 +275,7 @@ export class TermsDatabaseService implements TermsDatabaseServiceAbstract {
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return termsData;
     }

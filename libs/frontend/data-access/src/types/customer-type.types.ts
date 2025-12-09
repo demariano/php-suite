@@ -10,6 +10,7 @@ export interface CustomerTypeDto {
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
     changeReason?: string;
+    approverMessage?: string;
 }
 
 export interface CreateCustomerTypeDto {

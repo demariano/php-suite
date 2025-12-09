@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
@@ -30,7 +29,7 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -58,9 +57,9 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
             throw new ForbiddenException('User roles not found');
         }
 
-        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+        const hasDenyPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
 
-        if (!hasApprovalPermission) {
+        if (!hasDenyPermission) {
             throw new ForbiddenException('Current user is not authorized to deny invoice change request');
         }
     }
@@ -68,12 +67,15 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDenial(existingRecord: InvoiceDto, user: UserCognito): Promise<ResponseDto<InvoiceDto>> {
+    private async processDenial(
+        existingRecord: InvoiceDto,
+        command: DenyInvoiceCommand
+    ): Promise<ResponseDto<InvoiceDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyInvoice(existingRecord, user);
+                return await this.denyInvoice(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -84,19 +86,29 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
     /**
      * Denies an invoice for approval
      */
-    private async denyInvoice(existingRecord: InvoiceDto, user: UserCognito): Promise<ResponseDto<InvoiceDto>> {
+    private async denyInvoice(
+        existingRecord: InvoiceDto,
+        command: DenyInvoiceCommand
+    ): Promise<ResponseDto<InvoiceDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Invoice denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Invoice denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Invoice denied by ${command.user.username}, approver message: ${command.approverMessage}`
         );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-        
+        existingRecord.approverMessage = null;
         // Clear forApprovalVersion first, then reset changeReason
         existingRecord.forApprovalVersion = {};
         existingRecord.changeReason = null;
@@ -111,27 +123,32 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
     /**
      * Denies deletion of an invoice
      */
-    private async denyDeletion(existingRecord: InvoiceDto): Promise<ResponseDto<InvoiceDto>> {
+    private async denyDeletion(
+        existingRecord: InvoiceDto,
+        command: DenyInvoiceCommand
+    ): Promise<ResponseDto<InvoiceDto>> {
         // Reset changeReason before reverting status
         existingRecord.changeReason = null;
-        
+
         // Revert status to ACTIVE
         existingRecord.status = StatusEnum.ACTIVE;
-        
+
         // Add denial activity log
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Invoice deletion denied by admin, status reverted to ${StatusEnum.ACTIVE}`
+            })}, Invoice deletion denied by ${command.user.username}, approver message: ${
+                command.approverMessage
+            }, status reverted to ${StatusEnum.ACTIVE}`
         );
-        
+
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-        
+
         // Update record in database
         const updatedRecord = await this.invoiceDatabaseService.updateRecord(existingRecord);
-        
+
         this.logger.log(`Invoice deletion denied: ${existingRecord.invoiceId}`);
         return new ResponseDto<InvoiceDto>(updatedRecord, HTTP_STATUS_OK);
     }

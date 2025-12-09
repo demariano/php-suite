@@ -3,6 +3,7 @@
 import { ProductApi, ProductCategoryDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { CategoryHeader, CategoryTable } from './components';
+import { parseActivityLog, getActivityStyle } from '@web-app/utils/activityLogUtils';
 
 export default function ProductCategoriesPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -119,7 +120,8 @@ export default function ProductCategoriesPage() {
 
   const headers = [
     { key: 'productCategoryName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -183,9 +185,22 @@ export default function ProductCategoriesPage() {
 
   // Transform data for table display
   const tableData = categories?.map(category => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (category.activityLogs && category.activityLogs.length > 0) {
+      const lastLog = category.activityLogs[category.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...category,
-      status: getStatusBadge(category.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(category.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

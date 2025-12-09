@@ -87,6 +87,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         stockRecord.GSI5SK = record.expirationDate;
         stockRecord.forApprovalVersion = record.forApprovalVersion;
         stockRecord.changeReason = record.changeReason;
+        stockRecord.approverMessage = record.approverMessage;
 
         const updatedStockRecord: StockDataType = await this.stockTable.update(stockRecord);
 
@@ -347,6 +348,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         dto.stockTypeName = record.stockTypeName ? record.stockTypeName : '';
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = (record as StockDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -389,6 +391,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return stockData;
     }

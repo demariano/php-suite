@@ -195,7 +195,7 @@ class ProductClassApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyProductClass = async (id: string, userRole?: string): Promise<ProductClassDto> => {
+    public denyProductClass = async (id: string, approverMessage: string, userRole?: string): Promise<ProductClassDto> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -207,7 +207,7 @@ class ProductClassApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/product-classes/${id}/deny?${queryString}` : `/product-classes/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

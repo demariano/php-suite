@@ -62,6 +62,20 @@ export default function CustomerClassificationTable({
                     <td className="px-6 py-5">
                       {customerClassification.status}
                     </td>
+                    <td className="px-6 py-5 text-sm">
+                      {customerClassification.latestActivity ? (
+                        <span 
+                          className={`px-2 py-1 rounded ${customerClassification.latestActivity.style.bgColor} ${customerClassification.latestActivity.style.textColor}`}
+                          title={customerClassification.latestActivity.text}
+                        >
+                          {customerClassification.latestActivity.text.length > 50 
+                            ? `${customerClassification.latestActivity.text.substring(0, 50)}...` 
+                            : customerClassification.latestActivity.text}
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
                   </tr>
                 )) : (
                   <tr>
@@ -88,10 +102,22 @@ export default function CustomerClassificationTable({
                 className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-base font-semibold text-gray-900">
                       {customerClassification.customerClassificationName || '-'}
                     </h3>
+                    {customerClassification.latestActivity && (
+                      <p className="mt-2 text-xs">
+                        <span className="font-medium text-gray-700">Latest Activity: </span>
+                        <span 
+                          className={`px-2 py-1 rounded ${customerClassification.latestActivity.style.bgColor} ${customerClassification.latestActivity.style.textColor}`}
+                        >
+                          {customerClassification.latestActivity.text.length > 60 
+                            ? `${customerClassification.latestActivity.text.substring(0, 60)}...` 
+                            : customerClassification.latestActivity.text}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div>{customerClassification.status}</div>
                 </div>

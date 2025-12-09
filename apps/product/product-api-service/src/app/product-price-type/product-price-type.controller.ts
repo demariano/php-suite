@@ -7,6 +7,7 @@ import { ApproveProductPriceTypeCommand } from './command/approve-record/approve
 import { CreateProductPriceTypeCommand } from './command/create/create.command';
 import { DeleteProductPriceTypeCommand } from './command/delete/delete.command';
 import { DenyProductPriceTypeCommand } from './command/deny-record/deny.command';
+import { DenyProductPriceTypeDto } from './command/deny-record/deny.dto';
 import { UpdateProductPriceTypeCommand } from './command/update/update.command';
 import { GetProductPriceTypeByIdQuery } from './queries/get.by.id/get.product.price.type.by.id.query';
 import { GetProductPriceTypeByNameQuery } from './queries/get.by.name/get.product.price.type.by.name.query';
@@ -262,13 +263,26 @@ export class ProductPriceTypeController {
         status: 404,
         description: 'Product price type not found',
     })
-    denyRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyProductPriceTypeDto,
+        description: 'Deny reason details',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    denyRecord(
+        @Param('id') id: string,
+        @Body() denyDto: DenyProductPriceTypeDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const command = new DenyProductPriceTypeCommand(id, user);
+        const command = new DenyProductPriceTypeCommand(id, user, denyDto.approverMessage);
         return this.commandBus.execute(command);
     }
 

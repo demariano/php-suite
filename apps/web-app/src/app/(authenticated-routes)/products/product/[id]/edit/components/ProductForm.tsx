@@ -1,6 +1,7 @@
 'use client';
 
 import { ProductDto, StatusEnum } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useEffect, useMemo, useState } from 'react';
 import { ChangeReasonField, ChangeReasonReadOnly } from '../../../../../components';
 import NumberInput from '../../../../../components/NumberInput';
@@ -980,17 +981,7 @@ export default function ProductForm({
     const renderLogsTab = () => (
         <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
             <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Activity Logs</h3>
-            <div className="max-h-80 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-200">
-                {(selectedProduct?.activityLogs ?? []).length === 0 ? (
-                    <p className="p-4 text-sm text-gray-500">No activity logs available.</p>
-                ) : (
-                    (selectedProduct?.activityLogs ?? []).map((log, index) => (
-                        <p key={`${log}-${index}`} className="p-4 text-sm text-gray-700">
-                            {log}
-                        </p>
-                    ))
-                )}
-            </div>
+            {renderActivityLogsTable(selectedProduct?.activityLogs, 'No activity logs available.')}
         </div>
     );
 

@@ -135,7 +135,7 @@ class InvoiceApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyInvoice = async (id: string, userRole?: string): Promise<InvoiceDto> => {
+    public denyInvoice = async (id: string, approverMessage: string, userRole?: string): Promise<InvoiceDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -145,7 +145,7 @@ class InvoiceApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/invoices/${id}/deny?${queryString}` : `/invoices/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 
     public getPendingPaymentInvoices = async (customerId: string, status: string): Promise<InvoiceDto[]> => {

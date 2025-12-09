@@ -1,10 +1,12 @@
 'use client';
 
 import { CustomerClassificationApi, CustomerClassificationDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import CustomerClassificationForm from '../../components/CustomerClassificationForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 
 interface EditCustomerClassificationPageProps {
   params: {
@@ -17,6 +19,7 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
   const [selectedCustomerClassification, setSelectedCustomerClassification] = useState<CustomerClassificationDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -192,18 +195,23 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedCustomerClassification) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
       // Call the API to deny the record
-      const deniedCustomerClassification = await CustomerClassificationApi.denyCustomerClassification(selectedCustomerClassification.customerClassificationId, userRole);
+      const deniedCustomerClassification = await CustomerClassificationApi.denyCustomerClassification(selectedCustomerClassification.customerClassificationId, approverMessage, userRole);
       setSelectedCustomerClassification(deniedCustomerClassification);
       setFlashNotification({
         title: 'Success!',
@@ -227,6 +235,10 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -529,24 +541,7 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
             </h3>
           </div>
           
-          {selectedCustomerClassification?.activityLogs && selectedCustomerClassification.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedCustomerClassification.activityLogs.map((log, index) => (
-                  <li 
-                    key={index} 
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedCustomerClassification?.activityLogs)}
         </div>
         
         <div className="flex justify-end">
@@ -573,6 +568,14 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
         onConfirm={handleConfirmDelete}
         onCancel={() => setShowDeleteModal(false)}
       />
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        customerClassification={selectedCustomerClassification}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
+
       {/* Breadcrumbs */}
       <div>
         <nav className="flex items-center gap-2">

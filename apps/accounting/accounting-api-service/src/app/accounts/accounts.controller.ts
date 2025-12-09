@@ -7,6 +7,7 @@ import { ApproveAccountsCommand } from './command/approve-record/approve.command
 import { CreateAccountsCommand } from './command/create/create.command';
 import { DeleteAccountsCommand } from './command/delete/delete.command';
 import { DenyAccountsCommand } from './command/deny-record/deny.command';
+import { DenyAccountsDto } from './command/deny-record/deny.dto';
 import { UpdateAccountsCommand } from './command/update/update.command';
 import { GetAccountsByAccountTypeQuery } from './queries/get.by.account.type/get.accounts.by.account.type.query';
 import { GetAccountsByIdQuery } from './queries/get.by.id/get.accounts.by.id.query';
@@ -324,13 +325,26 @@ export class AccountsController {
             },
         },
     })
-    denyAccount(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyAccountsDto,
+        description: 'Deny reason details',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    denyAccount(
+        @Param('id') id: string,
+        @Body() denyDto: DenyAccountsDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyAccountsCommand(id, user));
+        return this.commandBus.execute(new DenyAccountsCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('name/:name')

@@ -46,7 +46,6 @@ export * from './types/stock.types';
 export * from './types/supplier.types';
 export * from './types/terms.types';
 export * from './types/territory-manager.types';
-export * from './types/town.types';
 export * from './types/voucher.types';
 
 // Export API types
@@ -65,7 +64,6 @@ export type { StockTypesResponse } from './api/stock-type.api';
 export type { StocksResponse } from './api/stock.api';
 export type { SuppliersResponse } from './api/supplier.api';
 export type { TermsResponse } from './api/terms.api';
-export type { TownsResponse } from './api/town.api';
 export type { VouchersResponse } from './api/voucher.api';
 export type { ProductDealsResponse } from './types/product-deal.types';
 

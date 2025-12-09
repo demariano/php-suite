@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, ProductClassDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
@@ -29,8 +28,8 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
             // Check user authorization
             this.validateUserAuthorization(command.user.roles);
 
-            // Process approval based on current status
-            return await this.processDeny(existingRecord, command.user);
+            // Process denial based on current status
+            return await this.processDeny(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.productClassId);
         }
@@ -51,36 +50,36 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
     }
 
     /**
-     * Validates that the user has authorization to approve
+     * Validates that the user has authorization to deny
      */
     private validateUserAuthorization(userRoles?: string[]): void {
         if (!userRoles || userRoles.length === 0) {
             throw new ForbiddenException('User roles not found');
         }
 
-        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+        const hasDenyPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
 
-        if (!hasApprovalPermission) {
-            throw new ForbiddenException('Current user is not authorized to approve product class change request');
+        if (!hasDenyPermission) {
+            throw new ForbiddenException('Current user is not authorized to deny product class change request');
         }
     }
 
     /**
-     * Processes the approval based on the current status of the record
+     * Processes the denial based on the current status of the record
      */
     private async processDeny(
         existingRecord: ProductClassDto,
-        user: UserCognito
+        command: DenyProductClassCommand
     ): Promise<ResponseDto<ProductClassDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyProductClass(existingRecord, user);
+                return await this.denyProductClass(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
-                throw new BadRequestException(`Cannot approve product class with status: ${existingRecord.status}`);
+                throw new BadRequestException(`Cannot deny product class with status: ${existingRecord.status}`);
         }
     }
 
@@ -89,7 +88,7 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
      */
     private async denyProductClass(
         existingRecord: ProductClassDto,
-        user: UserCognito
+        command: DenyProductClassCommand
     ): Promise<ResponseDto<ProductClassDto>> {
         // Clear forApprovalVersion
         existingRecord.forApprovalVersion = {};
@@ -101,14 +100,23 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
-        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-            timeZone: 'Asia/Manila',
-        })}, Product class denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
-        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product class denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product class denied by ${command.user.username}, approver message: ${command.approverMessage}`
+        );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.productClassDatabaseService.updateRecord(existingRecord);
 
@@ -119,7 +127,10 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
     /**
      * Denies deletion of a product class
      */
-    private async denyDeletion(existingRecord: ProductClassDto): Promise<ResponseDto<ProductClassDto>> {
+    private async denyDeletion(
+        existingRecord: ProductClassDto,
+        command: DenyProductClassCommand
+    ): Promise<ResponseDto<ProductClassDto>> {
         // Reset changeReason to null before reverting status
         existingRecord.changeReason = null;
 
@@ -127,10 +138,14 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
-        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-            timeZone: 'Asia/Manila',
-        })}, Product class deletion denied`;
-        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product class deletion denied by ${command.user.username}, approver message: ${
+                command.approverMessage
+            }, status reverted to ${StatusEnum.ACTIVE}`
+        );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
@@ -158,7 +173,7 @@ export class DenyProductClassHandler implements ICommandHandler<DenyProductClass
      * Centralized error handling
      */
     private handleError(error: unknown, productClassId: string): never {
-        this.logger.error(`Error processing approval request for ${productClassId}:`, error);
+        this.logger.error(`Error processing denial request for ${productClassId}:`, error);
 
         // Re-throw known exceptions
         if (error instanceof NotFoundException || error instanceof ForbiddenException) {

@@ -3,6 +3,8 @@
 import { extractErrorMessage, StatusEnum, StockApi, StockDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import StockForm from '../../components/StockForm';
 
@@ -17,6 +19,7 @@ export default function EditStockPage({ params }: EditStockPageProps) {
   const [selectedStock, setSelectedStock] = useState<StockDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -197,17 +200,22 @@ export default function EditStockPage({ params }: EditStockPageProps) {
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedStock) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
-      const deniedStock = await StockApi.denyStock(selectedStock.stockId!, userRole);
+      // Call the API to deny the record with approverMessage
+      const deniedStock = await StockApi.denyStock(selectedStock.stockId!, approverMessage, userRole);
       setSelectedStock(deniedStock);
       setFlashNotification({
         title: 'Success!',
@@ -231,6 +239,10 @@ export default function EditStockPage({ params }: EditStockPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -573,24 +585,7 @@ export default function EditStockPage({ params }: EditStockPageProps) {
             </h3>
           </div>
           
-          {selectedStock?.activityLogs && selectedStock.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedStock.activityLogs.map((log, index) => (
-                  <li 
-                    key={index} 
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedStock?.activityLogs)}
         </div>
 
         {/* Action Buttons */}
@@ -720,6 +715,13 @@ export default function EditStockPage({ params }: EditStockPageProps) {
           </div>
         </div>
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        stock={selectedStock}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
 
       <DeleteConfirmationModal
         show={showDeleteModal}

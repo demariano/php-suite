@@ -61,6 +61,20 @@ export default function CustomerTypeTable({
                         {customerType.customerTypeName || '-'}
                       </td>
                       <td className="px-6 py-5">{customerType.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {customerType.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${customerType.latestActivity.style.bgColor} ${customerType.latestActivity.style.textColor}`}
+                            title={customerType.latestActivity.text}
+                          >
+                            {customerType.latestActivity.text.length > 50 
+                              ? `${customerType.latestActivity.text.substring(0, 50)}...` 
+                              : customerType.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -88,10 +102,22 @@ export default function CustomerTypeTable({
                 className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-base font-semibold text-gray-900">
                       {customerType.customerTypeName || '-'}
                     </h3>
+                    {customerType.latestActivity && (
+                      <p className="mt-2 text-xs">
+                        <span className="font-medium text-gray-700">Latest Activity: </span>
+                        <span 
+                          className={`px-2 py-1 rounded ${customerType.latestActivity.style.bgColor} ${customerType.latestActivity.style.textColor}`}
+                        >
+                          {customerType.latestActivity.text.length > 60 
+                            ? `${customerType.latestActivity.text.substring(0, 60)}...` 
+                            : customerType.latestActivity.text}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div>{customerType.status}</div>
                 </div>

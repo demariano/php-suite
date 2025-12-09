@@ -2,11 +2,12 @@ import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreateTermsDto, TermsDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveTermsCommand } from './command/approve-record/approve.command';
 import { CreateTermsCommand } from './command/create/create.command';
 import { DeleteTermsCommand } from './command/delete/delete.command';
 import { DenyTermsCommand } from './command/deny-record/deny.command';
+import { DenyTermsDto } from './command/deny-record/deny.dto';
 import { UpdateTermsCommand } from './command/update/update.command';
 import { GetTermsByIdQuery } from './queries/get.by.id/get.terms.by.id.query';
 import { GetTermsByNameQuery } from './queries/get.by.name/get.terms.by.name.query';
@@ -267,13 +268,22 @@ export class TermsController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyTermsDto,
+        description: 'Deny reason details',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenyTermsDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyTermsCommand(id, user));
+        return this.commandBus.execute(new DenyTermsCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('name/:name')

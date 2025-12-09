@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, PaymentDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
@@ -30,7 +29,7 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -58,9 +57,9 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
             throw new ForbiddenException('User roles not found');
         }
 
-        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+        const hasDenyPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
 
-        if (!hasApprovalPermission) {
+        if (!hasDenyPermission) {
             throw new ForbiddenException('Current user is not authorized to deny payment change request');
         }
     }
@@ -68,12 +67,15 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDenial(existingRecord: PaymentDto, user: UserCognito): Promise<ResponseDto<PaymentDto>> {
+    private async processDenial(
+        existingRecord: PaymentDto,
+        command: DenyPaymentCommand
+    ): Promise<ResponseDto<PaymentDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyPayment(existingRecord, user);
+                return await this.denyPayment(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord, user);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -84,24 +86,34 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
     /**
      * Denies a payment for approval
      */
-    private async denyPayment(existingRecord: PaymentDto, user: UserCognito): Promise<ResponseDto<PaymentDto>> {
+    private async denyPayment(
+        existingRecord: PaymentDto,
+        command: DenyPaymentCommand
+    ): Promise<ResponseDto<PaymentDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Payment denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Payment denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Payment denied by ${command.user.username}, approver message: ${command.approverMessage}`
         );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-        
+
         // Clear forApprovalVersion (set to {})
         existingRecord.forApprovalVersion = {};
         // Reset changeReason to null (NOT undefined) AFTER clearing forApprovalVersion
         existingRecord.changeReason = null;
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.paymentDatabaseService.updateRecord(existingRecord);
 
@@ -112,7 +124,10 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
     /**
      * Denies deletion of a payment
      */
-    private async denyDeletion(existingRecord: PaymentDto, user: UserCognito): Promise<ResponseDto<PaymentDto>> {
+    private async denyDeletion(
+        existingRecord: PaymentDto,
+        command: DenyPaymentCommand
+    ): Promise<ResponseDto<PaymentDto>> {
         // Reset changeReason to null before reverting status
         existingRecord.changeReason = null;
         existingRecord.status = StatusEnum.ACTIVE;
@@ -120,7 +135,9 @@ export class DenyPaymentHandler implements ICommandHandler<DenyPaymentCommand> {
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Payment deletion denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Payment deletion denied by ${command.user.username}, approver message: ${
+                command.approverMessage
+            }, status set to ${StatusEnum.ACTIVE}`
         );
 
         // Limit activity logs to last 10 entries

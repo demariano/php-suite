@@ -2,11 +2,12 @@ import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreateTerritoryManagerDto, TerritoryManagerDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveTerritoryManagerCommand } from './command/approve-record/approve.command';
 import { CreateTerritoryManagerCommand } from './command/create/create.command';
 import { DeleteTerritoryManagerCommand } from './command/delete/delete.command';
 import { DenyTerritoryManagerCommand } from './command/deny-record/deny.command';
+import { DenyTerritoryManagerDto } from './command/deny-record/deny.dto';
 import { UpdateTerritoryManagerCommand } from './command/update/update.command';
 import { GetTerritoryManagerByIdQuery } from './queries/get.by.id/get.territory.manager.by.id.query';
 import { GetTerritoryManagerByNameQuery } from './queries/get.by.name/get.territory.manager.by.name.query';
@@ -271,13 +272,26 @@ export class TerritoryManagerController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyTerritoryManagerDto,
+        description: 'Deny reason details',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenyTerritoryManagerDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyTerritoryManagerCommand(id, user));
+        return this.commandBus.execute(new DenyTerritoryManagerCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('name/:name')

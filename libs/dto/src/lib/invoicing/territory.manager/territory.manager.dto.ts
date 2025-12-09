@@ -24,5 +24,5 @@ export class TerritoryManagerDto {
     changeReason?: string;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

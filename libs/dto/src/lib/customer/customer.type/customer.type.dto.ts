@@ -21,5 +21,5 @@ export class CustomerTypeDto {
     changeReason?: string;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

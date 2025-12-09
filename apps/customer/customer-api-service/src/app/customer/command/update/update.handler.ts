@@ -145,7 +145,6 @@ export class UpdateCustomerHandler implements ICommandHandler<UpdateCustomerComm
                 balance: command.customerDto.balance,
                 contactNo: command.customerDto.contactNo,
                 contactPerson: command.customerDto.contactPerson,
-                townId: command.customerDto.townId,
                 townName: command.customerDto.townName,
                 creditLimit: command.customerDto.creditLimit,
                 customerCredit: command.customerDto.customerCredit,

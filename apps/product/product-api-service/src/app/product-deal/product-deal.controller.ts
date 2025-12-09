@@ -7,6 +7,7 @@ import { ApproveProductDealCommand } from './command/approve-record/approve.comm
 import { CreateProductDealCommand } from './command/create/create.command';
 import { DeleteProductDealCommand } from './command/delete/delete.command';
 import { DenyProductDealCommand } from './command/deny-record/deny.command';
+import { DenyProductDealDto } from './command/deny-record/deny.dto';
 import { UpdateProductDealCommand } from './command/update/update.command';
 import { GetProductDealByIdQuery } from './queries/get.by.id/get.product.deal.by.id.query';
 import { GetProductDealByNameQuery } from './queries/get.by.name/get.product.deal.by.name.query';
@@ -267,13 +268,26 @@ export class ProductDealController {
         status: 404,
         description: 'Product deal not found',
     })
-    denyRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyProductDealDto,
+        description: 'Deny reason details',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    denyRecord(
+        @Param('id') id: string,
+        @Body() denyDto: DenyProductDealDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const command = new DenyProductDealCommand(id, user);
+        const command = new DenyProductDealCommand(id, user, denyDto.approverMessage);
         return this.commandBus.execute(command);
     }
 

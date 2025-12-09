@@ -57,6 +57,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
         productRecord.changeReason = record.changeReason;
+        productRecord.approverMessage = record.approverMessage;
         const updatedProductRecord: ProductPriceTypeDataType = await this.productPriceTypeTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
@@ -250,7 +251,8 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = (record as ProductPriceTypeDataType & { changeReason?: string }).changeReason || undefined;
+        dto.changeReason = (record as ProductPriceTypeDataType & { changeReason?: string }).changeReason || '';
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -278,6 +280,7 @@ export class ProductPriceTypeDatabaseService implements ProductPriceTypeDatabase
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return productPriceTypeData;
     }

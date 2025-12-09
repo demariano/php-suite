@@ -2,6 +2,7 @@
 
 import { AccountsDto, StatusEnum } from '@data-access/index';
 import { useState } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { ChangeReasonReadOnly } from '../../../../../components';
 import { AccountForm, DeleteConfirmationModal } from '../../../components';
 
@@ -337,21 +338,7 @@ export default function AccountFormWrapper({
           </div>
           <h3 className="m-0 text-base font-bold text-blue-600">Activity Logs</h3>
         </div>
-        {selectedAccount?.activityLogs?.length ? (
-          <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-            <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-              {selectedAccount.activityLogs.map((log, index) => (
-                <li key={`${log}-${index}`} className="px-4 py-3">
-                  {log}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : (
-          <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-            No activity logs available.
-          </p>
-        )}
+        {renderActivityLogsTable(selectedAccount?.activityLogs, 'No activity logs available.')}
       </div>
       <div className="flex justify-end">
         <button

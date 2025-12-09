@@ -180,7 +180,7 @@ class TerritoryManagerApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyTerritoryManager = async (id: string, userRole?: string): Promise<TerritoryManagerDto> => {
+    public denyTerritoryManager = async (id: string, approverMessage: string, userRole?: string): Promise<TerritoryManagerDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -190,7 +190,7 @@ class TerritoryManagerApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/territory-manager/${id}/deny?${queryString}` : `/territory-manager/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

@@ -219,7 +219,7 @@ class StockApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyStock = async (id: string, userRole?: string): Promise<StockDto> => {
+    public denyStock = async (id: string, approverMessage: string, userRole?: string): Promise<StockDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -229,7 +229,7 @@ class StockApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/stock/${id}/deny?${queryString}` : `/stock/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 
     public updateAvailableQuantity = async (

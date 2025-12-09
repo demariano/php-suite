@@ -34,7 +34,6 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
             productUnitName: productUnitDto.productUnitName,
             activityLogs: productUnitDto.activityLogs,
             forApprovalVersion: productUnitDto.forApprovalVersion,
-
             GSI1PK: `PRODUCT_UNIT`,
             GSI1SK: productUnitDto.productUnitName,
             GSI2PK: `PRODUCT_UNIT#${productUnitDto.status}`,
@@ -58,7 +57,7 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
         productRecord.changeReason = record.changeReason;
-
+        productRecord.approverMessage = record.approverMessage;
         const updatedProductRecord: ProductUnitDataType = await this.productUnitTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
@@ -95,8 +94,6 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
             },
             dynamoDbOption
         );
-
-     
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
@@ -252,7 +249,8 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = (record as ProductUnitDataType & { changeReason?: string }).changeReason || undefined;
+        dto.changeReason = (record as ProductUnitDataType & { changeReason?: string }).changeReason || '';
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -280,6 +278,7 @@ export class ProductUnitDatabaseService implements ProductUnitDatabaseServiceAbs
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return productUnitData;
     }

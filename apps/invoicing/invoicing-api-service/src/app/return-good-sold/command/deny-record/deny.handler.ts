@@ -30,7 +30,7 @@ export class DenyReturnGoodSoldHandler implements ICommandHandler<DenyReturnGood
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -70,15 +70,15 @@ export class DenyReturnGoodSoldHandler implements ICommandHandler<DenyReturnGood
      */
     private async processDenial(
         existingRecord: ReturnGoodSoldDto,
-        user: UserCognito
+        command: DenyReturnGoodSoldCommand
     ): Promise<ResponseDto<ReturnGoodSoldDto>> {
         switch (existingRecord.status) {
             case StatusEnum.NEW_RECORD:
                 return await this.denyNewRecord(existingRecord);
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyUpdate(existingRecord, user);
+                return await this.denyUpdate(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord, user);
+                return await this.denyDeletion(existingRecord, command);
             default:
                 throw new BadRequestException(`Cannot deny return good sold with status: ${existingRecord.status}`);
         }
@@ -90,7 +90,7 @@ export class DenyReturnGoodSoldHandler implements ICommandHandler<DenyReturnGood
     private async denyNewRecord(existingRecord: ReturnGoodSoldDto): Promise<ResponseDto<ReturnGoodSoldDto>> {
         // Reset changeReason to null before deleting
         existingRecord.changeReason = null;
-        
+
         // Delete record (hard delete)
         await this.returnGoodSoldDatabaseService.deleteRecord(existingRecord);
 
@@ -103,7 +103,7 @@ export class DenyReturnGoodSoldHandler implements ICommandHandler<DenyReturnGood
      */
     private async denyUpdate(
         existingRecord: ReturnGoodSoldDto,
-        user: UserCognito
+        command: DenyReturnGoodSoldCommand
     ): Promise<ResponseDto<ReturnGoodSoldDto>> {
         // Revert status back to ACTIVE
         existingRecord.status = StatusEnum.ACTIVE;
@@ -111,16 +111,23 @@ export class DenyReturnGoodSoldHandler implements ICommandHandler<DenyReturnGood
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Return Good Sold update denied by ${user.username}, status reverted to ${StatusEnum.ACTIVE}`
+            })}, Return Good Sold update denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Return Good Sold update denied by ${command.user.username}, approver message: ${command.approverMessage}`
         );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-        
+
         // Clear forApprovalVersion first, then reset changeReason
         existingRecord.forApprovalVersion = {};
         existingRecord.changeReason = null;
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.returnGoodSoldDatabaseService.updateRecord(existingRecord);
 
@@ -133,7 +140,7 @@ export class DenyReturnGoodSoldHandler implements ICommandHandler<DenyReturnGood
      */
     private async denyDeletion(
         existingRecord: ReturnGoodSoldDto,
-        user: UserCognito
+        command: DenyReturnGoodSoldCommand
     ): Promise<ResponseDto<ReturnGoodSoldDto>> {
         // Revert status back to ACTIVE
         existingRecord.status = StatusEnum.ACTIVE;
@@ -141,12 +148,12 @@ export class DenyReturnGoodSoldHandler implements ICommandHandler<DenyReturnGood
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Return Good Sold deletion denied by ${user.username}, status reverted to ${StatusEnum.ACTIVE}`
+            })}, Return Good Sold deletion denied by ${command.user.username}, approver message: ${command.approverMessage}, status reverted to ${StatusEnum.ACTIVE}`
         );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-        
+
         // Clear forApprovalVersion first, then reset changeReason
         existingRecord.forApprovalVersion = {};
         existingRecord.changeReason = null;

@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { ContractDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { ContractDatabaseServiceAbstract } from '@invoicing-database-service';
@@ -30,7 +29,7 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -58,9 +57,9 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
             throw new ForbiddenException('User roles not found');
         }
 
-        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+        const hasDenyPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
 
-        if (!hasApprovalPermission) {
+        if (!hasDenyPermission) {
             throw new ForbiddenException('Current user is not authorized to deny contract change request');
         }
     }
@@ -68,14 +67,17 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDenial(existingRecord: ContractDto, user: UserCognito): Promise<ResponseDto<ContractDto>> {
+    private async processDenial(
+        existingRecord: ContractDto,
+        command: DenyContractCommand
+    ): Promise<ResponseDto<ContractDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyContract(existingRecord, user);
+                return await this.denyContract(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord, user);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
-                return await this.deleteRecord(existingRecord, user);
+                return await this.deleteRecord(existingRecord);
             default:
                 throw new BadRequestException(`Cannot deny contract with status: ${existingRecord.status}`);
         }
@@ -84,19 +86,29 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
     /**
      * Denies a contract for approval
      */
-    private async denyContract(existingRecord: ContractDto, user: UserCognito): Promise<ResponseDto<ContractDto>> {
+    private async denyContract(
+        existingRecord: ContractDto,
+        command: DenyContractCommand
+    ): Promise<ResponseDto<ContractDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Contract denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Contract denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Contract denied by ${command.user.username}, approver message: ${command.approverMessage}`
         );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
+        existingRecord.approverMessage = null;
         // Clear forApprovalVersion first, then reset changeReason
         existingRecord.forApprovalVersion = {};
         existingRecord.changeReason = null;
@@ -111,14 +123,17 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
     /**
      * Denies deletion of a contract
      */
-    private async denyDeletion(existingRecord: ContractDto, user: UserCognito): Promise<ResponseDto<ContractDto>> {
+    private async denyDeletion(
+        existingRecord: ContractDto,
+        command: DenyContractCommand
+    ): Promise<ResponseDto<ContractDto>> {
         const timestamp = new Date().toLocaleString('en-US', {
             timeZone: 'Asia/Manila',
         });
 
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
-            `Date: ${timestamp}, Contract deletion denied by ${user.username} and status reverted to ${StatusEnum.ACTIVE}`
+            `Date: ${timestamp}, Contract deletion denied by ${command.user.username}, approver message: ${command.approverMessage}, status reverted to ${StatusEnum.ACTIVE}`
         );
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.status = StatusEnum.ACTIVE;
@@ -132,10 +147,10 @@ export class DenyContractHandler implements ICommandHandler<DenyContractCommand>
     /**
      * Deletes a contract when it is a new record and it was denied
      */
-    private async deleteRecord(existingRecord: ContractDto, user: UserCognito): Promise<ResponseDto<ContractDto>> {
+    private async deleteRecord(existingRecord: ContractDto): Promise<ResponseDto<ContractDto>> {
         existingRecord.changeReason = null;
         await this.contractDatabaseService.deleteRecord(existingRecord);
-        this.logger.log(`Contract deleted after denial: ${existingRecord.contractId} by ${user.username}`);
+        this.logger.log(`Contract deleted after denial: ${existingRecord.contractId}`);
         return new ResponseDto<ContractDto>(existingRecord, HTTP_STATUS_OK);
     }
 

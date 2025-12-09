@@ -68,11 +68,12 @@ export class SalesTypeDatabaseService implements SalesTypeDatabaseServiceAbstrac
         salesTypeRecord.incomeGenerating = record.incomeGenerating;
         salesTypeRecord.taxable = record.taxable;
         salesTypeRecord.forApprovalVersion = record.forApprovalVersion;
+        salesTypeRecord.approverMessage = record.approverMessage;
 
         // CRITICAL: Explicitly set changeReason on the record before calling update()
         // This ensures the field is persisted even if convertToDataType is called separately
         salesTypeRecord.changeReason = record.changeReason;
-
+        salesTypeRecord.approverMessage = record.approverMessage;
         console.log('Sales Type Record to update:', salesTypeRecord);
 
         const updatedSalesTypeRecord: SalesTypeDataType = await this.salesTypeTable.update(salesTypeRecord);
@@ -272,7 +273,8 @@ export class SalesTypeDatabaseService implements SalesTypeDatabaseServiceAbstrac
         dto.taxable = record.taxable ? record.taxable : false;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = (record as SalesTypeDataType & { changeReason?: string }).changeReason || undefined;
+        dto.changeReason = (record as SalesTypeDataType & { changeReason?: string }).changeReason || '';
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -306,6 +308,7 @@ export class SalesTypeDatabaseService implements SalesTypeDatabaseServiceAbstrac
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return salesTypeData;
     }

@@ -99,12 +99,6 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
               onClick: (route: string) => onNavigate?.(route)
             },
             { 
-              label: "Towns", 
-              route: "/customers/towns", 
-              icon: Groups,
-              onClick: (route: string) => onNavigate?.(route)
-            },
-            { 
               label: "Classifications", 
               route: "/customers/classifications", 
               icon: Groups,

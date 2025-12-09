@@ -66,11 +66,11 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
 
     async updateRecord(record: InvoiceDto): Promise<InvoiceDto> {
         const invoiceRecord: InvoiceDataType = await this.convertToDataType(record);
-        
+
         // CRITICAL: Explicitly set changeReason on the record before calling update()
         // This ensures the field is persisted even if convertToDataType is called separately
         invoiceRecord.changeReason = record.changeReason;
-
+        invoiceRecord.approverMessage = record.approverMessage;
         const updatedInvoiceRecord: InvoiceDataType = await this.invoiceTable.update(invoiceRecord);
 
         return await this.convertToDto(updatedInvoiceRecord);
@@ -314,6 +314,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = (record as InvoiceDataType & { changeReason?: string }).changeReason || undefined;
         dto.contractSales = record.contractSales ? record.contractSales : false;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -385,6 +386,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return invoiceData;
     }

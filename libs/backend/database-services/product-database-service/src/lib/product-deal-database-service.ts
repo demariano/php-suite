@@ -36,7 +36,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
             minQty: productDealDto.minQty,
             activityLogs: productDealDto.activityLogs,
             forApprovalVersion: productDealDto.forApprovalVersion,
-
+            approverMessage: productDealDto.approverMessage,
             GSI1PK: `PRODUCT_DEAL`,
             GSI1SK: productDealDto.productDealName,
             GSI2PK: `PRODUCT_DEAL#${productDealDto.status}`,
@@ -62,6 +62,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
         productRecord.changeReason = record.changeReason;
+        productRecord.approverMessage = record.approverMessage;
         const updatedProductRecord: ProductDealDataType = await this.productDealTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
@@ -257,7 +258,8 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = (record as ProductDealDataType & { changeReason?: string }).changeReason || undefined;
+        dto.changeReason = (record as ProductDealDataType & { changeReason?: string }).changeReason || '';
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -287,6 +289,7 @@ export class ProductDealDatabaseService implements ProductDealDatabaseServiceAbs
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return productDealData;
     }

@@ -1,6 +1,6 @@
 import { UserCognito } from '@auth-guard-lib';
 import { TermsDatabaseServiceAbstract } from '@customer-database-service';
-import { TermsDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { ErrorResponseDto, ResponseDto, StatusEnum, TermsDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -30,7 +30,7 @@ export class DenyTermsHandler implements ICommandHandler<DenyTermsCommand> {
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -68,15 +68,12 @@ export class DenyTermsHandler implements ICommandHandler<DenyTermsCommand> {
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDenial(
-        existingRecord: TermsDto,
-        user: UserCognito
-    ): Promise<ResponseDto<TermsDto>> {
+    private async processDenial(existingRecord: TermsDto, command: DenyTermsCommand): Promise<ResponseDto<TermsDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyTerms(existingRecord, user);
+                return await this.denyTerms(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -87,22 +84,28 @@ export class DenyTermsHandler implements ICommandHandler<DenyTermsCommand> {
     /**
      * Denies a terms for approval
      */
-    private async denyTerms(
-        existingRecord: TermsDto,
-        user: UserCognito
-    ): Promise<ResponseDto<TermsDto>> {
+    private async denyTerms(existingRecord: TermsDto, command: DenyTermsCommand): Promise<ResponseDto<TermsDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Terms denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Terms denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
         );
+
+        // Add activity log for approver message if provided
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Terms denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.termsDatabaseService.updateRecord(existingRecord);
 
@@ -113,9 +116,31 @@ export class DenyTermsHandler implements ICommandHandler<DenyTermsCommand> {
     /**
      * Denies deletion of a terms
      */
-    private async denyDeletion(existingRecord: TermsDto): Promise<ResponseDto<TermsDto>> {
+    private async denyDeletion(existingRecord: TermsDto, command: DenyTermsCommand): Promise<ResponseDto<TermsDto>> {
         this.logger.log(`Terms deletion denied: ${existingRecord.termsId}`);
         existingRecord.status = StatusEnum.ACTIVE;
+        
+        // Add activity log for denial
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Terms deletion denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+        );
+
+        // Add approver message if provided
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Terms deletion denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
+
+        // Optimize activity logs
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.approverMessage = null;
+        
         const updatedRecord = await this.termsDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<TermsDto>(updatedRecord, HTTP_STATUS_OK);
     }

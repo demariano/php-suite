@@ -26,5 +26,5 @@ export class ProductDealDto {
     changeReason?: string;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

@@ -77,6 +77,7 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
     async updateRecord(record: ContractDto): Promise<ContractDto> {
         const contractRecord: ContractDataType = await this.convertToDataType(record);
         contractRecord.changeReason = record.changeReason;
+        contractRecord.approverMessage = record.approverMessage;
 
         const updatedContractRecord: ContractDataType = await this.contractTable.update(contractRecord);
 
@@ -340,6 +341,7 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         dto.status = record.status as StatusEnum;
         dto.changeReason = (record as ContractDataType & { changeReason?: string }).changeReason || undefined;
         dto.productDealQty = record.productDealQty as ProductDealQtyDto;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -387,6 +389,7 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             GSI4SK: dto.contractNo,
             GSI5PK: `CONTRACT#${dto.customerId}#${dto.paymentStatus}`,
             GSI5SK: dto.contractNo,
+            approverMessage: dto.approverMessage,
         };
         return contractData;
     }

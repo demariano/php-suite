@@ -3,6 +3,7 @@
 import { AreaApi, AreaDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { AreaHeader, AreaTable } from './components';
+import { parseActivityLog, getActivityStyle } from '@web-app/utils/activityLogUtils';
 
 export default function CustomerAreasPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -118,7 +119,8 @@ export default function CustomerAreasPage() {
 
   const headers = [
     { key: 'areaName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -182,9 +184,22 @@ export default function CustomerAreasPage() {
 
   // Transform data for table display
   const tableData = customerAreas?.map(area => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (area.activityLogs && area.activityLogs.length > 0) {
+      const lastLog = area.activityLogs[area.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...area,
-      status: getStatusBadge(area.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(area.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

@@ -169,7 +169,7 @@ class TermsApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyTerms = async (id: string, userRole?: string): Promise<TermsDto> => {
+    public denyTerms = async (id: string, approverMessage: string, userRole?: string): Promise<TermsDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -179,7 +179,7 @@ class TermsApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/terms/${id}/deny?${queryString}` : `/terms/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

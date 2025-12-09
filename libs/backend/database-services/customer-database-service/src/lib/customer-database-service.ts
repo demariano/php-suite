@@ -38,7 +38,6 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             balance: customerDto.balance,
             contactNo: customerDto.contactNo,
             contactPerson: customerDto.contactPerson,
-            townId: customerDto.townId,
             townName: customerDto.townName,
             creditLimit: customerDto.creditLimit,
             customerCredit: customerDto.customerCredit,
@@ -64,7 +63,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             GSI4SK: customerDto.customerName,
             GSI5PK: `CUSTOMER#${customerDto.areaId}`,
             GSI5SK: customerDto.customerName,
-            GSI6PK: `CUSTOMER#${customerDto.townId}`,
+            GSI6PK: `CUSTOMER#${customerDto.townName}`,
             GSI6SK: customerDto.customerName,
         };
 
@@ -77,6 +76,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         const customerRecord: CustomerDataType = await this.convertToDataType(record);
 
         customerRecord.changeReason = record.changeReason;
+        customerRecord.approverMessage = record.approverMessage;
 
         const updatedCustomerRecord: CustomerDataType = await this.customerTable.update(customerRecord);
 
@@ -272,7 +272,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
                 ? '(${customerTypeId} IN (@{...customerTypes}))'
                 : null,
             filter.areaId && filter.areaId.length > 0 ? '(${areaId} IN (@{...areaIds}))' : null,
-            filter.townId && filter.townId.length > 0 ? '(${townId} IN (@{...townIds}))' : null,
+            filter.townNames && filter.townNames.length > 0 ? '(${townName} IN (@{...townNames}))' : null,
         ]
             .filter(Boolean)
             .join(' and ');
@@ -285,7 +285,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
                 }),
             ...(filter.customerTypeId && filter.customerTypeId.length > 0 && { customerTypes: filter.customerTypeId }),
             ...(filter.areaId && filter.areaId.length > 0 && { areaIds: filter.areaId }),
-            ...(filter.townId && filter.townId.length > 0 && { townIds: filter.townId }),
+            ...(filter.townNames && filter.townNames.length > 0 && { townNames: filter.townNames }),
         };
 
         //check if filter.fields not undefined but not an array , convert it to an array
@@ -369,10 +369,10 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         return await this.convertToDtoList(customerRecords);
     }
 
-    async findAllCustomersByTownId(townId: string): Promise<CustomerDto[]> {
+    async findAllCustomersByTownName(townName: string): Promise<CustomerDto[]> {
         const customerRecords = await this.customerTable.find(
             {
-                GSI6PK: `CUSTOMER#${townId}`,
+                GSI6PK: `CUSTOMER#${townName}`,
             },
             {
                 index: 'GSI6',
@@ -402,7 +402,6 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         dto.balance = record.balance ? record.balance : 0;
         dto.contactNo = record.contactNo ? record.contactNo : '';
         dto.contactPerson = record.contactPerson ? record.contactPerson : '';
-        dto.townId = record.townId ? record.townId : '';
         dto.townName = record.townName ? record.townName : '';
         dto.creditLimit = record.creditLimit ? record.creditLimit : 0;
         dto.customerCredit = record.customerCredit ? record.customerCredit : 0;
@@ -419,6 +418,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.customerTerms = record.customerTerms ? record.customerTerms : [];
         dto.customerProductDeals = record.customerProductDeals ? record.customerProductDeals : [];
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -445,7 +445,6 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             balance: dto.balance,
             contactNo: dto.contactNo,
             contactPerson: dto.contactPerson,
-            townId: dto.townId,
             townName: dto.townName,
             creditLimit: dto.creditLimit,
             customerCredit: dto.customerCredit,
@@ -471,8 +470,9 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             GSI4SK: dto.customerName,
             GSI5PK: `CUSTOMER#${dto.areaId}`,
             GSI5SK: dto.customerName,
-            GSI6PK: `CUSTOMER#${dto.townId}`,
+            GSI6PK: `CUSTOMER#${dto.townName}`,
             GSI6SK: dto.customerName,
+            approverMessage: dto.approverMessage,
         };
         return customerData;
     }

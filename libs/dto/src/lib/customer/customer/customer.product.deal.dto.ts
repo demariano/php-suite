@@ -29,5 +29,5 @@ export class CustomerProductDealDto {
     forApprovalVersion?: Record<string, unknown>;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

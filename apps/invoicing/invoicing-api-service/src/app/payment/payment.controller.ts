@@ -2,11 +2,12 @@ import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreatePaymentDto, PaymentDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApprovePaymentCommand } from './command/approve-record/approve.command';
 import { CreatePaymentCommand } from './command/create/create.command';
 import { DeletePaymentCommand } from './command/delete/delete.command';
 import { DenyPaymentCommand } from './command/deny-record/deny.command';
+import { DenyPaymentDto } from './command/deny-record/deny.dto';
 import { UpdatePaymentCommand } from './command/update/update.command';
 import { GetPaymentByIdQuery } from './queries/get.by.id/get.payment.by.id.query';
 import { GetPaymentByNameQuery } from './queries/get.by.name/get.payment.by.name.query';
@@ -285,13 +286,26 @@ export class PaymentController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyPaymentDto,
+        description: 'Deny reason details',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenyPaymentDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyPaymentCommand(id, user));
+        return this.commandBus.execute(new DenyPaymentCommand(id, user, denyDto.approverMessage));
     }
 
     @Get()

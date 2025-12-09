@@ -9,5 +9,3 @@ export * from './lib/customer-type-database-service';
 export * from './lib/customer-type-database-service-abstract-class';
 export * from './lib/terms-database-service';
 export * from './lib/terms-database-service-abstract-class';
-export * from './lib/town-database-service';
-export * from './lib/town-database-service-abstract-class';

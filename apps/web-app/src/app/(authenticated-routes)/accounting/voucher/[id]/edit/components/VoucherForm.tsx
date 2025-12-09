@@ -2,6 +2,7 @@
 
 import { AccountTypeEnum, StatusEnum, VoucherDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { ChangeReasonReadOnly } from '../../../../../components';
 import PaymentDetailsTab from './PaymentDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
@@ -470,24 +471,7 @@ export default function VoucherForm({
               <h3 className="text-base font-semibold text-gray-800 mb-3">
                 Recent Activity
               </h3>
-              {selectedVoucher?.activityLogs && selectedVoucher.activityLogs.length > 0 ? (
-                <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-                  {selectedVoucher.activityLogs.map((log, index) => (
-                    <div 
-                      key={index} 
-                      className={`py-2 ${
-                        index < selectedVoucher.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                      }`}
-                    >
-                      {log}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 italic">
-                  No activity logs available
-                </p>
-              )}
+              {renderActivityLogsTable(selectedVoucher?.activityLogs, 'No activity logs available')}
             </div>
             
             <div className="flex justify-end mt-6">

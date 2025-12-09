@@ -2,6 +2,7 @@
 
 import { CustomerProductDealDto, InvoiceDetailTypeEnum, InvoiceDto, PrintStatusEnum, ProductDealQtyDto, StatusEnum, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import InvoiceDetailsTab from './InvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
 
@@ -492,24 +493,7 @@ export default function InvoiceForm({
                 </h3>
               </div>
               
-              {selectedInvoice?.activityLogs && selectedInvoice.activityLogs.length > 0 ? (
-                <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-                  <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                    {selectedInvoice.activityLogs.map((log, index) => (
-                      <li 
-                        key={index} 
-                        className="px-4 py-3"
-                      >
-                        {log}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-                  No activity logs available
-                </p>
-              )}
+              {renderActivityLogsTable(selectedInvoice?.activityLogs)}
             </div>
 
             {/* Action Buttons */}

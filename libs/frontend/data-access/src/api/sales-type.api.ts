@@ -175,7 +175,7 @@ class SalesTypeApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denySalesType = async (id: string, userRole?: string): Promise<SalesTypeDto> => {
+    public denySalesType = async (id: string, approverMessage: string, userRole?: string): Promise<SalesTypeDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -185,7 +185,7 @@ class SalesTypeApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/sales-type/${id}/deny?${queryString}` : `/sales-type/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

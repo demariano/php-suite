@@ -2,11 +2,12 @@ import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreateCustomerTypeDto, CustomerTypeDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveCustomerTypeCommand } from './command/approve-record/approve.command';
 import { CreateCustomerTypeCommand } from './command/create/create.command';
 import { DeleteCustomerTypeCommand } from './command/delete/delete.command';
 import { DenyCustomerTypeCommand } from './command/deny-record/deny.command';
+import { DenyCustomerTypeDto } from './command/deny-record/deny.dto';
 import { UpdateCustomerTypeCommand } from './command/update/update.command';
 import { GetCustomerTypeByIdQuery } from './queries/get.by.id/get.customer.type.by.id.query';
 import { GetCustomerTypeByNameQuery } from './queries/get.by.name/get.customer.type.by.name.query';
@@ -267,13 +268,22 @@ export class CustomerTypeController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyCustomerTypeDto,
+        description: 'Deny reason details',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenyCustomerTypeDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyCustomerTypeCommand(id, user));
+        return this.commandBus.execute(new DenyCustomerTypeCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('name/:name')

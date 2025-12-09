@@ -2,11 +2,12 @@ import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreateReturnGoodSoldDto, ReturnGoodSoldDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveReturnGoodSoldCommand } from './command/approve-record/approve.command';
 import { CreateReturnGoodSoldCommand } from './command/create/create.command';
 import { DeleteReturnGoodSoldCommand } from './command/delete/delete.command';
 import { DenyReturnGoodSoldCommand } from './command/deny-record/deny.command';
+import { DenyReturnGoodSoldDto } from './command/deny-record/deny.dto';
 import { UpdateReturnGoodSoldCommand } from './command/update/update.command';
 import { GetReturnGoodSoldByCustomerIdQuery } from './queries/get.by.customerId/get.return.good.sold.by.customerId.query';
 import { GetReturnGoodSoldByIdQuery } from './queries/get.by.id/get.return.good.sold.by.id.query';
@@ -288,13 +289,26 @@ export class ReturnGoodSoldController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyReturnGoodSoldDto,
+        description: 'Deny reason details',
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invalid approver message',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenyReturnGoodSoldDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyReturnGoodSoldCommand(id, user));
+        return this.commandBus.execute(new DenyReturnGoodSoldCommand(id, user, denyDto.approverMessage));
     }
 
     @Get()

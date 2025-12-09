@@ -1,10 +1,12 @@
 'use client';
 
-import { ProductPriceTypeApi, ProductPriceTypeDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { extractErrorMessage, ProductPriceTypeApi, ProductPriceTypeDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import ProductPriceTypeForm from '../../components/ProductPriceTypeForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
+import ProductPriceTypeForm from '../../components/ProductPriceTypeForm';
 
 interface EditProductPriceTypePageProps {
   params: {
@@ -17,6 +19,7 @@ export default function EditProductPriceTypePage({ params }: EditProductPriceTyp
   const [selectedProductPriceType, setSelectedProductPriceType] = useState<ProductPriceTypeDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -175,15 +178,20 @@ export default function EditProductPriceTypePage({ params }: EditProductPriceTyp
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedProductPriceType) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      const deniedProductPriceType = await ProductPriceTypeApi.denyProductPriceType(selectedProductPriceType.productPriceTypeId, userRole);
+      const deniedProductPriceType = await ProductPriceTypeApi.denyProductPriceType(selectedProductPriceType.productPriceTypeId, approverMessage, userRole);
       setSelectedProductPriceType(deniedProductPriceType);
       setFlashNotification({
         title: 'Success!',
@@ -206,6 +214,10 @@ export default function EditProductPriceTypePage({ params }: EditProductPriceTyp
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -494,24 +506,7 @@ export default function EditProductPriceTypePage({ params }: EditProductPriceTyp
             </h3>
           </div>
 
-          {selectedProductPriceType?.activityLogs && selectedProductPriceType.activityLogs.length > 0 ? (
-            <div className="max-h-80 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
-              <ul className="divide-y divide-gray-200 text-sm text-gray-700">
-                {selectedProductPriceType.activityLogs.map((log, index) => (
-                  <li
-                    key={index}
-                    className="px-4 py-3"
-                  >
-                    {log}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-8 text-center text-sm italic text-gray-500">
-              No activity logs available
-            </p>
-          )}
+          {renderActivityLogsTable(selectedProductPriceType?.activityLogs)}
         </div>
 
         <div className="flex justify-end">
@@ -532,6 +527,13 @@ export default function EditProductPriceTypePage({ params }: EditProductPriceTyp
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <DenyReasonDialog
+        show={showDenyDialog}
+        productPriceType={selectedProductPriceType}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
+
       <DeleteConfirmationModal
         show={showDeleteModal}
         productPriceType={selectedProductPriceType}

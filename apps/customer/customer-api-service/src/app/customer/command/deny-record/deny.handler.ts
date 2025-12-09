@@ -72,6 +72,15 @@ export class DenyCustomerHandler implements ICommandHandler<DenyCustomerCommand>
             })}, Customer denied by ${command.user.username}`
         );
 
+        //add a new activity log for the using the approver message
+        if (command.approverMessage) {
+            updatedCustomer.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
+
         // Limit activity logs to last 10 entries
         updatedCustomer.activityLogs = reduceArrayContents(updatedCustomer.activityLogs, ACTIVITY_LOGS_LIMIT);
 
@@ -85,9 +94,11 @@ export class DenyCustomerHandler implements ICommandHandler<DenyCustomerCommand>
             updatedCustomer.forApprovalVersion = undefined;
             // Reset changeReason
             updatedCustomer.changeReason = null;
+            updatedCustomer.approverMessage = null;
         } else if (existingCustomer.status === StatusEnum.FOR_DELETION) {
             // Revert deletion request
             updatedCustomer.status = StatusEnum.ACTIVE;
+            updatedCustomer.approverMessage = null;
         }
 
         // Update record in database

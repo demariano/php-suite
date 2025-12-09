@@ -100,10 +100,17 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
             })}, Stock delivery denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Stock delivery denied by ${user.username}, approver message: ${existingRecord.approverMessage}`
+        );
+
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.stockDeliveryDatabaseService.updateRecord(existingRecord);
 
@@ -117,7 +124,7 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
     private async denyDeletion(existingRecord: StockDeliveryDto): Promise<ResponseDto<StockDeliveryDto>> {
         // Reset changeReason to null before reverting status
         existingRecord.changeReason = null;
-        
+
         // Revert to ACTIVE status
         existingRecord.status = StatusEnum.ACTIVE;
 
@@ -143,7 +150,7 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
     private async deleteRecord(existingRecord: StockDeliveryDto): Promise<ResponseDto<StockDeliveryDto>> {
         // Reset changeReason to null before deleting
         existingRecord.changeReason = null;
-        
+
         this.logger.log(`Stock delivery deleted: ${existingRecord.stockDeliveryId}`);
         await this.stockDeliveryDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<StockDeliveryDto>(existingRecord, HTTP_STATUS_OK);

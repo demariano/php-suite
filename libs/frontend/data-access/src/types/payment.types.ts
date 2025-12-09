@@ -39,6 +39,7 @@ export interface PaymentDto {
     contractName: string;
     contractNo: string;
     changeReason: string;
+    approverMessage?: string;
     chequeClearStatus: ChequeClearStatusEnum;
     paymentDetails: PaymentDetailsDto[];
     paymentInvoiceDetails: PaymentInvoiceDetailsDto[];

@@ -21,5 +21,5 @@ export class CustomerClassificationDto {
     changeReason?: string;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

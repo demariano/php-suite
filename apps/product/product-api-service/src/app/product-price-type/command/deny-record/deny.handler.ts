@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, ProductPriceTypeDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
@@ -29,8 +28,8 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
             // Check user authorization
             this.validateUserAuthorization(command.user.roles);
 
-            // Process approval based on current status
-            return await this.processDeny(existingRecord, command.user);
+            // Process denial based on current status
+            return await this.processDeny(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.productPriceTypeId);
         }
@@ -51,38 +50,36 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
     }
 
     /**
-     * Validates that the user has authorization to approve
+     * Validates that the user has authorization to deny
      */
     private validateUserAuthorization(userRoles?: string[]): void {
         if (!userRoles || userRoles.length === 0) {
             throw new ForbiddenException('User roles not found');
         }
 
-        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+        const hasDenyPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
 
-        if (!hasApprovalPermission) {
-            throw new ForbiddenException('Current user is not authorized to approve product price type change request');
+        if (!hasDenyPermission) {
+            throw new ForbiddenException('Current user is not authorized to deny product price type change request');
         }
     }
 
     /**
-     * Processes the approval based on the current status of the record
+     * Processes the denial based on the current status of the record
      */
     private async processDeny(
         existingRecord: ProductPriceTypeDto,
-        user: UserCognito
+        command: DenyProductPriceTypeCommand
     ): Promise<ResponseDto<ProductPriceTypeDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyProductPriceType(existingRecord, user);
+                return await this.denyProductPriceType(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
-                throw new BadRequestException(
-                    `Cannot approve product price type with status: ${existingRecord.status}`
-                );
+                throw new BadRequestException(`Cannot deny product price type with status: ${existingRecord.status}`);
         }
     }
 
@@ -91,7 +88,7 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
      */
     private async denyProductPriceType(
         existingRecord: ProductPriceTypeDto,
-        user: UserCognito
+        command: DenyProductPriceTypeCommand
     ): Promise<ResponseDto<ProductPriceTypeDto>> {
         // Clear forApprovalVersion
         existingRecord.forApprovalVersion = {};
@@ -103,14 +100,23 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
-        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-            timeZone: 'Asia/Manila',
-        })}, Product price type denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
-        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product price type denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product price type denied by ${command.user.username}, approver message: ${command.approverMessage}`
+        );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.productPriceTypeDatabaseService.updateRecord(existingRecord);
 
@@ -121,7 +127,10 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
     /**
      * Denies deletion of a product price type
      */
-    private async denyDeletion(existingRecord: ProductPriceTypeDto): Promise<ResponseDto<ProductPriceTypeDto>> {
+    private async denyDeletion(
+        existingRecord: ProductPriceTypeDto,
+        command: DenyProductPriceTypeCommand
+    ): Promise<ResponseDto<ProductPriceTypeDto>> {
         // Reset changeReason to null before reverting status
         existingRecord.changeReason = null;
 
@@ -129,10 +138,14 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
-        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-            timeZone: 'Asia/Manila',
-        })}, Product price type deletion denied`;
-        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product price type deletion denied by ${command.user.username}, approver message: ${
+                command.approverMessage
+            }, status reverted to ${StatusEnum.ACTIVE}`
+        );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
@@ -160,7 +173,7 @@ export class DenyProductPriceTypeHandler implements ICommandHandler<DenyProductP
      * Centralized error handling
      */
     private handleError(error: unknown, productPriceTypeId: string): never {
-        this.logger.error(`Error processing approval request for ${productPriceTypeId}:`, error);
+        this.logger.error(`Error processing denial request for ${productPriceTypeId}:`, error);
 
         // Re-throw known exceptions
         if (error instanceof NotFoundException || error instanceof ForbiddenException) {

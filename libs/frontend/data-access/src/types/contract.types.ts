@@ -25,6 +25,7 @@ export interface ContractDto {
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
     changeReason?: string;
+    approverMessage?: string;
     status?: StatusEnum;
     invoicedAmount?: number;
 }

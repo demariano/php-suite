@@ -307,6 +307,7 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
         dto.chequeNo = record.chequeNo ? record.chequeNo : '';
         dto.chequeDate = record.chequeDate ? record.chequeDate : '';
         dto.totalAmount = record.totalAmount ? record.totalAmount : 0;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
 
         return dto;
     }
@@ -344,6 +345,7 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
             chequeNo: dto.chequeNo,
             chequeDate: dto.chequeDate,
             totalAmount: dto.totalAmount,
+            approverMessage: dto.approverMessage,
             GSI1PK: `VOUCHER`,
             GSI1SK: dto.voucherNo,
             GSI2PK: `VOUCHER#${dto.status}`,

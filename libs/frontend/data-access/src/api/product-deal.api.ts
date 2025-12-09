@@ -172,7 +172,7 @@ class ProductDealApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyProductDeal = async (id: string, userRole?: string): Promise<ProductDealDto> => {
+    public denyProductDeal = async (id: string, approverMessage: string, userRole?: string): Promise<ProductDealDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -182,7 +182,7 @@ class ProductDealApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/product-deals/${id}/deny?${queryString}` : `/product-deals/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

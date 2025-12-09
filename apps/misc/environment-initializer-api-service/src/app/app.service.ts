@@ -6,7 +6,6 @@ import {
     CustomerDatabaseServiceAbstract,
     CustomerTypeDatabaseServiceAbstract,
     TermsDatabaseServiceAbstract,
-    TownDatabaseServiceAbstract,
 } from '@customer-database-service';
 import {
     AccountsDto,
@@ -37,7 +36,6 @@ import {
     SupplierDto,
     TermsDto,
     TerritoryManagerDto,
-    TownDto,
 } from '@dto';
 import {
     StockDatabaseServiceAbstract,
@@ -91,9 +89,6 @@ export class AppService {
 
         @Inject('AreaDatabaseService')
         private readonly areaDatabaseService: AreaDatabaseServiceAbstract,
-
-        @Inject('TownDatabaseService')
-        private readonly townDatabaseService: TownDatabaseServiceAbstract,
 
         @Inject('TermsDatabaseService')
         private readonly termsDatabaseService: TermsDatabaseServiceAbstract,
@@ -367,6 +362,7 @@ export class AppService {
         areaData.status = StatusEnum.ACTIVE;
         areaData.territoryManagerId = territoryManagerRecord1.territoryManagerId;
         areaData.territoryManagerName = territoryManagerRecord1.territoryManagerName;
+        areaData.towns = ['Town 1'];
         const areaRecord1 = await this.areaDatabaseService.createRecord(areaData);
 
         const areaData2 = new AreaDto();
@@ -374,22 +370,8 @@ export class AppService {
         areaData2.status = StatusEnum.ACTIVE;
         areaData2.territoryManagerId = territoryManagerRecord2.territoryManagerId;
         areaData2.territoryManagerName = territoryManagerRecord2.territoryManagerName;
+        areaData2.towns = ['Town 2'];
         const areaRecord2 = await this.areaDatabaseService.createRecord(areaData2);
-
-        //create 2 town
-        const townData = new TownDto();
-        townData.townName = 'Town 1';
-        townData.areaId = areaRecord1.areaId;
-        townData.areaName = areaRecord1.areaName;
-        townData.status = StatusEnum.ACTIVE;
-        const townRecord1 = await this.townDatabaseService.createRecord(townData);
-
-        const townData2 = new TownDto();
-        townData2.townName = 'Town 2';
-        townData2.areaId = areaRecord2.areaId;
-        townData2.areaName = areaRecord2.areaName;
-        townData2.status = StatusEnum.ACTIVE;
-        const townRecord2 = await this.townDatabaseService.createRecord(townData2);
 
         //create 2 terms
         const termsData = new TermsDto();
@@ -414,8 +396,7 @@ export class AppService {
         customerData.customerTypeName = customerTypeRecord1.customerTypeName;
         customerData.areaId = areaRecord1.areaId;
         customerData.areaName = areaRecord1.areaName;
-        customerData.townId = townRecord1.townId;
-        customerData.townName = townRecord1.townName;
+        customerData.townName = areaRecord1.towns[0];
         customerData.customerTerms = [termsRecord1];
         const customerProductDeal1 = new CustomerProductDealDto();
         customerProductDeal1.productId = productRecord1.productId;
@@ -436,8 +417,8 @@ export class AppService {
         customerData2.customerTypeName = customerTypeRecord2.customerTypeName;
         customerData2.areaId = areaRecord2.areaId;
         customerData2.areaName = areaRecord2.areaName;
-        customerData2.townId = townRecord2.townId;
-        customerData2.townName = townRecord2.townName;
+
+        customerData2.townName = areaRecord2.towns[0];
         customerData2.customerTerms = [termsRecord2];
         const customerProductDeal2 = new CustomerProductDealDto();
         customerProductDeal2.productId = productRecord2.productId;

@@ -1,6 +1,6 @@
 import { UserCognito } from '@auth-guard-lib';
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
-import { AreaDto, ErrorResponseDto, ResponseDto, StatusEnum, TownDto, UserRole } from '@dto';
+import { AreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -97,7 +97,7 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.areaName = forApprovalVersion.areaName as string;
-        existingRecord.towns = forApprovalVersion.towns as TownDto[];
+        existingRecord.towns = forApprovalVersion.towns as string[];
         existingRecord.territoryManagerId = forApprovalVersion.territoryManagerId as string;
         existingRecord.territoryManagerName = forApprovalVersion.territoryManagerName as string;
         existingRecord.forApprovalVersion = {};

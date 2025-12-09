@@ -62,10 +62,11 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
 
     async updateRecord(record: ReturnGoodSoldDto): Promise<ReturnGoodSoldDto> {
         const returnGoodSoldRecord: ReturnGoodSoldDataType = await this.convertToDataType(record);
-        
+
         // CRITICAL: Explicitly set changeReason on the record before calling update()
         // This ensures the field is persisted even if convertToDataType is called separately
         returnGoodSoldRecord.changeReason = record.changeReason;
+        returnGoodSoldRecord.approverMessage = record.approverMessage;
 
         console.log('Return Good Sold Record to update:', returnGoodSoldRecord);
 
@@ -382,7 +383,8 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
         dto.dateReturned = record.dateReturned ? record.dateReturned : '';
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.status = record.status ? (record.status as StatusEnum) : undefined;
-        dto.changeReason = (record as ReturnGoodSoldDataType & { changeReason?: string }).changeReason || undefined;
+        dto.changeReason = (record as ReturnGoodSoldDataType & { changeReason?: string }).changeReason || '';
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         dto.originalInvoiceDetails = record.originalInvoiceDetails ? record.originalInvoiceDetails : [];
         dto.modifiedInvoiceDetails = record.modifiedInvoiceDetails ? record.modifiedInvoiceDetails : [];
         return dto;
@@ -413,6 +415,7 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             forApprovalVersion: dto.forApprovalVersion,
             status: dto.status,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
             originalInvoiceDetails: dto.originalInvoiceDetails,
             modifiedInvoiceDetails: dto.modifiedInvoiceDetails,
             GSI1PK: `RETURN_GOOD_SOLD`,

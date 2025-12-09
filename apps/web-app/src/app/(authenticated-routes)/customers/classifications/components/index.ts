@@ -3,3 +3,4 @@ export { default as CustomerClassificationHeader } from './CustomerClassificatio
 export { default as CustomerClassificationModal } from './CustomerClassificationModal';
 export { default as CustomerClassificationTable } from './CustomerClassificationTable';
 export { default as DeleteConfirmationModal } from './DeleteConfirmationModal';
+export { default as DenyReasonDialog } from './DenyReasonDialog';

@@ -57,6 +57,7 @@ export class CustomerTypeDatabaseService implements CustomerTypeDatabaseServiceA
         customerTypeRecord.GSI2SK = record.customerTypeName;
         customerTypeRecord.forApprovalVersion = record.forApprovalVersion;
         customerTypeRecord.changeReason = record.changeReason;
+        customerTypeRecord.approverMessage = record.approverMessage;
 
         const updatedCustomerTypeRecord: CustomerTypeDataType = await this.customerTypeTable.update(customerTypeRecord);
 
@@ -248,6 +249,7 @@ export class CustomerTypeDatabaseService implements CustomerTypeDatabaseServiceA
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = (record as CustomerTypeDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -275,6 +277,7 @@ export class CustomerTypeDatabaseService implements CustomerTypeDatabaseServiceA
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return customerTypeData;
     }

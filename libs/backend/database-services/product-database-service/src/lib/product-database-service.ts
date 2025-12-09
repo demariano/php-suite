@@ -61,7 +61,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
 
         // CRITICAL: Explicitly set changeReason before update
         productRecord.changeReason = productDto.changeReason;
-
+        productRecord.approverMessage = productDto.approverMessage;
         const updatedProductRecord: ProductDataType = await this.productTable.update(productRecord);
 
         return await this.convertToDto(updatedProductRecord);
@@ -350,7 +350,8 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
-        dto.changeReason = (record as ProductDataType & { changeReason?: string }).changeReason || undefined;
+        dto.changeReason = (record as ProductDataType & { changeReason?: string }).changeReason || '';
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -389,6 +390,7 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
 
         return productData;

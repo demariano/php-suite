@@ -1,5 +1,4 @@
 import { AccountsDatabaseServiceAbstract } from '@accounting-database-service';
-import { UserCognito } from '@auth-guard-lib';
 import { AccountsDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
@@ -30,7 +29,7 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -58,9 +57,9 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
             throw new ForbiddenException('User roles not found');
         }
 
-        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+        const hasDenyPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
 
-        if (!hasApprovalPermission) {
+        if (!hasDenyPermission) {
             throw new ForbiddenException('Current user is not authorized to deny account change request');
         }
     }
@@ -68,12 +67,15 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDenial(existingRecord: AccountsDto, user: UserCognito): Promise<ResponseDto<AccountsDto>> {
+    private async processDenial(
+        existingRecord: AccountsDto,
+        command: DenyAccountsCommand
+    ): Promise<ResponseDto<AccountsDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyAccount(existingRecord, user);
+                return await this.denyAccount(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -84,18 +86,29 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
     /**
      * Denies an account for approval
      */
-    private async denyAccount(existingRecord: AccountsDto, user: UserCognito): Promise<ResponseDto<AccountsDto>> {
+    private async denyAccount(
+        existingRecord: AccountsDto,
+        command: DenyAccountsCommand
+    ): Promise<ResponseDto<AccountsDto>> {
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Account denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
+            })}, Account denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Account denied by ${command.user.username}, approver message: ${command.approverMessage}`
         );
 
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.forApprovalVersion = {};
         existingRecord.changeReason = null;
+        existingRecord.approverMessage = null;
 
         const updatedRecord = await this.accountsDatabaseService.updateRecord(existingRecord);
 
@@ -106,14 +119,19 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
     /**
      * Denies deletion of an account
      */
-    private async denyDeletion(existingRecord: AccountsDto): Promise<ResponseDto<AccountsDto>> {
+    private async denyDeletion(
+        existingRecord: AccountsDto,
+        command: DenyAccountsCommand
+    ): Promise<ResponseDto<AccountsDto>> {
         this.logger.log(`Account deletion denied: ${existingRecord.accountingId}`);
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Account deletion denied, status reverted to ${StatusEnum.ACTIVE}`
+            })}, Account deletion denied by ${command.user.username}, approver message: ${
+                command.approverMessage
+            }, status reverted to ${StatusEnum.ACTIVE}`
         );
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.changeReason = null;

@@ -60,11 +60,11 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
         territoryManagerRecord.GSI2SK = record.territoryManagerName;
         territoryManagerRecord.contactNo = record.contactNo;
         territoryManagerRecord.forApprovalVersion = record.forApprovalVersion;
-        
+        territoryManagerRecord.approverMessage = record.approverMessage;
         // CRITICAL: Explicitly set changeReason on the record before calling update()
         // This ensures the field is persisted even if convertToDataType is called separately
         territoryManagerRecord.changeReason = record.changeReason;
-
+        territoryManagerRecord.approverMessage = record.approverMessage;
         const updatedTerritoryManagerRecord: TerritoryManagerDataType = await this.territoryManagerTable.update(
             territoryManagerRecord
         );
@@ -273,6 +273,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = (record as TerritoryManagerDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -301,6 +302,7 @@ export class TerritoryManagerDatabaseService implements TerritoryManagerDatabase
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return territoryManagerData;
     }

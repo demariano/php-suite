@@ -44,5 +44,5 @@ export class ReturnGoodSoldDto {
     modifiedInvoiceDetails!: Array<any>;
 
     @ApiProperty()
-    approverMessage?: string | null;
+    approverMessage?: string;
 }

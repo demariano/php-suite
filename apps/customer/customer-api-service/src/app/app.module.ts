@@ -7,10 +7,9 @@ import { CustomerClassificationModule } from './customer-classification/customer
 import { CustomerTypeModule } from './customer-type/customer-type.module';
 import { CustomerModule } from './customer/customer.module';
 import { TermsModule } from './terms/terms.module';
-import { TownModule } from './town/town.module';
 
 @Module({
-    imports: [CustomerModule, CustomerClassificationModule, CustomerTypeModule, TermsModule, AreaModule, TownModule],
+    imports: [CustomerModule, CustomerClassificationModule, CustomerTypeModule, TermsModule, AreaModule],
     controllers: [AppController],
     providers: [AppService],
 })

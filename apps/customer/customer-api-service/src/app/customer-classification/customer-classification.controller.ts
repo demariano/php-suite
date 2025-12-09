@@ -7,6 +7,7 @@ import { ApproveCustomerClassificationCommand } from './command/approve-record/a
 import { CreateCustomerClassificationCommand } from './command/create/create.command';
 import { DeleteCustomerClassificationCommand } from './command/delete/delete.command';
 import { DenyCustomerClassificationCommand } from './command/deny-record/deny.command';
+import { DenyCustomerClassificationDto } from './command/deny-record/deny.dto';
 import { UpdateCustomerClassificationCommand } from './command/update/update.command';
 import { GetCustomerClassificationByIdQuery } from './queries/get.by.id/get.customer.classification.by.id.query';
 import { GetCustomerClassificationByNameQuery } from './queries/get.by.name/get.customer.classification.by.name.query';
@@ -349,13 +350,22 @@ export class CustomerClassificationController {
             },
         },
     })
-    denyRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    @ApiBody({
+        type: DenyCustomerClassificationDto,
+        description: 'Deny reason details',
+    })
+    denyRecord(
+        @Param('id') id: string,
+        @Body() denyDto: DenyCustomerClassificationDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const command = new DenyCustomerClassificationCommand(id, user);
+        const command = new DenyCustomerClassificationCommand(id, user, denyDto.approverMessage);
         return this.commandBus.execute(command);
     }
 

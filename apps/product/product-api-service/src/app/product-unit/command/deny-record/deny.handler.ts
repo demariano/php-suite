@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, ProductUnitDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
@@ -29,8 +28,8 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
             // Check user authorization
             this.validateUserAuthorization(command.user.roles);
 
-            // Process approval based on current status
-            return await this.processDeny(existingRecord, command.user);
+            // Process denial based on current status
+            return await this.processDeny(existingRecord, command);
         } catch (error) {
             return this.handleError(error, command.productUnitId);
         }
@@ -51,33 +50,36 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
     }
 
     /**
-     * Validates that the user has authorization to approve
+     * Validates that the user has authorization to deny
      */
     private validateUserAuthorization(userRoles?: string[]): void {
         if (!userRoles || userRoles.length === 0) {
             throw new ForbiddenException('User roles not found');
         }
 
-        const hasApprovalPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+        const hasDenyPermission = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
 
-        if (!hasApprovalPermission) {
-            throw new ForbiddenException('Current user is not authorized to approve product unit change request');
+        if (!hasDenyPermission) {
+            throw new ForbiddenException('Current user is not authorized to deny product unit change request');
         }
     }
 
     /**
-     * Processes the approval based on the current status of the record
+     * Processes the denial based on the current status of the record
      */
-    private async processDeny(existingRecord: ProductUnitDto, user: UserCognito): Promise<ResponseDto<ProductUnitDto>> {
+    private async processDeny(
+        existingRecord: ProductUnitDto,
+        command: DenyProductUnitCommand
+    ): Promise<ResponseDto<ProductUnitDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyProductUnit(existingRecord, user);
+                return await this.denyProductUnit(existingRecord, command);
             case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord);
+                return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
-                throw new BadRequestException(`Cannot approve product unit with status: ${existingRecord.status}`);
+                throw new BadRequestException(`Cannot deny product unit with status: ${existingRecord.status}`);
         }
     }
 
@@ -86,7 +88,7 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
      */
     private async denyProductUnit(
         existingRecord: ProductUnitDto,
-        user: UserCognito
+        command: DenyProductUnitCommand
     ): Promise<ResponseDto<ProductUnitDto>> {
         // Clear forApprovalVersion
         existingRecord.forApprovalVersion = {};
@@ -98,14 +100,23 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
-        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-            timeZone: 'Asia/Manila',
-        })}, Product unit denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`;
-        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product unit denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+
+        //add a new activity log for the using the approver message
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product unit denied by ${command.user.username}, approver message: ${command.approverMessage}`
+        );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
+        existingRecord.approverMessage = null;
         // Update record in database
         const updatedRecord = await this.productUnitDatabaseService.updateRecord(existingRecord);
 
@@ -116,7 +127,10 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
     /**
      * Denies deletion of a product unit
      */
-    private async denyDeletion(existingRecord: ProductUnitDto): Promise<ResponseDto<ProductUnitDto>> {
+    private async denyDeletion(
+        existingRecord: ProductUnitDto,
+        command: DenyProductUnitCommand
+    ): Promise<ResponseDto<ProductUnitDto>> {
         // Reset changeReason to null before reverting status
         existingRecord.changeReason = null;
 
@@ -124,10 +138,14 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
         existingRecord.status = StatusEnum.ACTIVE;
 
         // Add activity log
-        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-            timeZone: 'Asia/Manila',
-        })}, Product unit deletion denied`;
-        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product unit deletion denied by ${command.user.username}, approver message: ${
+                command.approverMessage
+            }, status reverted to ${StatusEnum.ACTIVE}`
+        );
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
@@ -155,7 +173,7 @@ export class DenyProductUnitHandler implements ICommandHandler<DenyProductUnitCo
      * Centralized error handling
      */
     private handleError(error: unknown, productUnitId: string): never {
-        this.logger.error(`Error processing approval request for ${productUnitId}:`, error);
+        this.logger.error(`Error processing denial request for ${productUnitId}:`, error);
 
         // Re-throw known exceptions
         if (error instanceof NotFoundException || error instanceof ForbiddenException) {

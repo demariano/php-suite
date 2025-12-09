@@ -3,6 +3,7 @@
 import { extractErrorMessage, PaymentApi, PaymentDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import PaymentForm from './components/PaymentForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 
@@ -17,6 +18,7 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
   const [selectedPayment, setSelectedPayment] = useState<PaymentDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -205,18 +207,23 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedPayment) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
-      const deniedPayment = await PaymentApi.denyPayment(selectedPayment.paymentId, userRole);
+      // Call the API to deny the record with approverMessage
+      const deniedPayment = await PaymentApi.denyPayment(selectedPayment.paymentId, approverMessage, userRole);
       setSelectedPayment(deniedPayment);
       setFlashNotification({
         title: 'Success!',
@@ -240,6 +247,10 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -338,6 +349,13 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
           />
         </div>
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        payment={selectedPayment}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
 
       <DeleteConfirmationModal
         show={showDeleteModal}

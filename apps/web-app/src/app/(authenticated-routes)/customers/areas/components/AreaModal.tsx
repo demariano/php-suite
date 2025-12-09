@@ -2,19 +2,19 @@
 
 import { AreaDto, StatusEnum } from '@data-access/index';
 import { useEffect } from 'react';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import AreaForm from './AreaForm';
-import AreaTownsTab from './AreaTownsTab';
 
 interface AreaModalProps {
   show: boolean;
   isCreateMode: boolean;
   selectedArea: AreaDto | null;
-  activeTab: 'details' | 'approval' | 'logs' | 'towns';
+  activeTab: 'details' | 'approval' | 'logs';
   successMessage: string | null;
   isAdminUser: boolean;
   isLoading: boolean;
   onClose: () => void;
-  onTabChange: (tab: 'details' | 'approval' | 'logs' | 'towns') => void;
+  onTabChange: (tab: 'details' | 'approval' | 'logs') => void;
   onSave: (area: AreaDto) => void;
   onDelete: () => void;
   onApprove: () => void;
@@ -177,39 +177,6 @@ export default function AreaModal({
               }}
             >
               Approval Version
-            </button>
-          )}
-          
-          {!isCreateMode && selectedArea && (
-            <button
-              onClick={() => onTabChange('towns')}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: activeTab === 'towns' ? 'white' : 'transparent',
-                color: activeTab === 'towns' ? '#1f2937' : '#6b7280',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: activeTab === 'towns' ? '600' : '500',
-                transition: 'all 0.2s ease',
-                boxShadow: activeTab === 'towns' ? '0 2px 4px rgba(0, 0, 0, 0.1)' : 'none',
-                marginRight: '4px'
-              }}
-              onMouseEnter={(e) => {
-                if (activeTab !== 'towns') {
-                  e.currentTarget.style.backgroundColor = '#f1f5f9';
-                  e.currentTarget.style.color = '#374151';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (activeTab !== 'towns') {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = '#6b7280';
-                }
-              }}
-            >
-              Towns
             </button>
           )}
           
@@ -612,18 +579,6 @@ export default function AreaModal({
             </div>
           )}
           
-          {/* Towns Tab */}
-          {activeTab === 'towns' && !isCreateMode && selectedArea && (
-            <div>
-              <AreaTownsTab
-                areaId={selectedArea.areaId}
-                areaName={selectedArea.areaName}
-                userRole={isAdminUser ? 'ADMIN' : undefined}
-                onClose={onClose}
-              />
-            </div>
-          )}
-          
           {/* Activity Logs Tab */}
           {activeTab === 'logs' && !isCreateMode && (
             <div>
@@ -631,24 +586,7 @@ export default function AreaModal({
                 <h3 className="text-base font-semibold text-gray-800 mb-3">
                   Recent Activity
                 </h3>
-                {selectedArea?.activityLogs && selectedArea.activityLogs.length > 0 ? (
-                  <div className="bg-gray-50 p-4 rounded-md border border-gray-200 max-h-72 overflow-y-auto">
-                    {selectedArea.activityLogs.map((log, index) => (
-                      <div 
-                        key={index} 
-                        className={`py-2 ${
-                          index < selectedArea.activityLogs!.length - 1 ? 'border-b border-gray-200' : ''
-                        }`}
-                      >
-                        {log}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">
-                    No activity logs available
-                  </p>
-                )}
+                {renderActivityLogsTable(selectedArea?.activityLogs, 'No activity logs available')}
               </div>
               
               <div className="flex justify-end mt-6">

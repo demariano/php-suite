@@ -65,7 +65,7 @@ export class SupplierDatabaseService implements SupplierDatabaseServiceAbstract 
         supplierRecord.GSI2SK = record.supplierName;
         supplierRecord.forApprovalVersion = record.forApprovalVersion;
         supplierRecord.changeReason = record.changeReason;
-
+        supplierRecord.approverMessage = record.approverMessage;
         const updatedSupplierRecord: SupplierDataType = await this.supplierTable.update(supplierRecord);
 
         return await this.convertToDto(updatedSupplierRecord);
@@ -352,6 +352,7 @@ export class SupplierDatabaseService implements SupplierDatabaseServiceAbstract 
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
         dto.changeReason = (record as SupplierDataType & { changeReason?: string }).changeReason || undefined;
+        dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         return dto;
     }
 
@@ -383,6 +384,7 @@ export class SupplierDatabaseService implements SupplierDatabaseServiceAbstract 
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
+            approverMessage: dto.approverMessage,
         };
         return supplierData;
     }
