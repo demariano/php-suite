@@ -57,6 +57,11 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             activityLogs: contractDto.activityLogs,
             forApprovalVersion: contractDto.forApprovalVersion,
             productDealQty: contractDto.productDealQty,
+            rebatePercentage: contractDto.rebatePercentage,
+            rebateType: contractDto.rebateType,
+            rebateAmount: contractDto.rebateAmount,
+            rebateClaimedAmount: contractDto.rebateClaimedAmount,
+            rebateClaimedStatus: contractDto.rebateClaimedStatus,
             GSI1PK: `CONTRACT`,
             GSI1SK: contractDto.contractNo,
             GSI2PK: `CONTRACT#${contractDto.status}`,
@@ -342,6 +347,11 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         dto.changeReason = (record as ContractDataType & { changeReason?: string }).changeReason || undefined;
         dto.productDealQty = record.productDealQty as ProductDealQtyDto;
         dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
+        dto.rebatePercentage = record.rebatePercentage ? record.rebatePercentage : undefined;
+        dto.rebateType = record.rebateType ? (record.rebateType as any) : undefined;
+        dto.rebateAmount = record.rebateAmount ? record.rebateAmount : undefined;
+        dto.rebateClaimedAmount = record.rebateClaimedAmount ? record.rebateClaimedAmount : undefined;
+        dto.rebateClaimedStatus = record.rebateClaimedStatus ? (record.rebateClaimedStatus as any) : undefined;
         return dto;
     }
 
@@ -390,6 +400,11 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             GSI5PK: `CONTRACT#${dto.customerId}#${dto.paymentStatus}`,
             GSI5SK: dto.contractNo,
             approverMessage: dto.approverMessage,
+            rebatePercentage: dto.rebatePercentage,
+            rebateType: dto.rebateType,
+            rebateAmount: dto.rebateAmount,
+            rebateClaimedAmount: dto.rebateClaimedAmount,
+            rebateClaimedStatus: dto.rebateClaimedStatus,
         };
         return contractData;
     }

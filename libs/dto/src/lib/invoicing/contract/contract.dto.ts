@@ -1,6 +1,8 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { DeliveryStatusEnum } from '../../enums/delivery.status.enum';
 import { PaymentStatusEnum } from '../../enums/payment.status.enum';
+import { RebateClaimedStatusEnum } from '../../enums/rebate.claimed.status.enum';
+import { RebateTypeEnum } from '../../enums/rebate.type.enum';
 import { StatusEnum } from '../../enums/status.enum';
 import { ProductDealQtyDto } from '../../product/product.deal/product.deal.qty.dto';
 
@@ -71,4 +73,19 @@ export class ContractDto {
 
     @ApiProperty()
     approverMessage?: string;
+
+    @ApiProperty()
+    rebatePercentage?: number;
+
+    @ApiProperty({ enum: RebateTypeEnum })
+    rebateType?: RebateTypeEnum;
+
+    @ApiProperty()
+    rebateAmount?: number;
+
+    @ApiProperty()
+    rebateClaimedAmount?: number;
+
+    @ApiProperty({ enum: RebateClaimedStatusEnum })
+    rebateClaimedStatus?: RebateClaimedStatusEnum;
 }

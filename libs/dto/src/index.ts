@@ -100,6 +100,8 @@ export * from './lib/invoicing/territory.manager/territory.manager.dto';
 
 //COntract
 export * from './lib/enums/delivery.status.enum';
+export * from './lib/enums/rebate.type.enum';
+export * from './lib/enums/rebate.claimed.status.enum';
 export * from './lib/invoicing/contract/contract.dto';
 export * from './lib/invoicing/contract/create.contract.dto';
 

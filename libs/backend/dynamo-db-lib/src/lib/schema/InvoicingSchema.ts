@@ -151,6 +151,11 @@ export const InvoicingSchema = {
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
             approverMessage: { type: String, required: false },
+            rebatePercentage: { type: Number, required: false },
+            rebateType: { type: String, enum: ['PERCENTAGE', 'AMOUNT'], required: false },
+            rebateAmount: { type: Number, required: false },
+            rebateClaimedAmount: { type: Number, required: false },
+            rebateClaimedStatus: { type: String, enum: ['PENDING', 'CLAIMED', 'NOT_CLAIMED'], required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
