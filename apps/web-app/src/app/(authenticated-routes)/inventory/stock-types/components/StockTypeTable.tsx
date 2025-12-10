@@ -32,7 +32,7 @@ export default function StockTypeTable({
   return (
     <>
       {/* Table */}
-      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg overflow-hidden">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">
             Loading stock types...
@@ -61,6 +61,20 @@ export default function StockTypeTable({
                         {stockType.stockTypeName || '-'}
                       </td>
                       <td className="px-6 py-5">{stockType.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {stockType.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${stockType.latestActivity.style.bgColor} ${stockType.latestActivity.style.textColor}`}
+                            title={stockType.latestActivity.text}
+                          >
+                            {stockType.latestActivity.text.length > 50 
+                              ? `${stockType.latestActivity.text.substring(0, 50)}...` 
+                              : stockType.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -95,6 +109,20 @@ export default function StockTypeTable({
                   </div>
                   <div>{stockType.status}</div>
                 </div>
+                {stockType.latestActivity && (
+                  <div className="mt-2">
+                    <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                    <dd>
+                      <span 
+                        className={`px-2 py-1 rounded text-xs ${stockType.latestActivity.style.bgColor} ${stockType.latestActivity.style.textColor}`}
+                      >
+                        {stockType.latestActivity.text.length > 60 
+                          ? `${stockType.latestActivity.text.substring(0, 60)}...` 
+                          : stockType.latestActivity.text}
+                      </span>
+                    </dd>
+                  </div>
+                )}
               </button>
             ))
           ) : (

@@ -1,6 +1,7 @@
 'use client';
 
 import { StatusEnum, StockTypeApi, StockTypeDto, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { StockTypeHeader, StockTypeTable } from './components';
 
@@ -115,7 +116,8 @@ export default function StockTypePage() {
 
   const headers = [
     { key: 'stockTypeName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   const getStatusText = (status: StatusEnum): string => {
@@ -178,9 +180,22 @@ export default function StockTypePage() {
 
   // Transform data for table display
   const tableData = stockTypes?.map(stockType => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (stockType.activityLogs && stockType.activityLogs.length > 0) {
+      const lastLog = stockType.activityLogs[stockType.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...stockType,
-      status: getStatusBadge(stockType.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(stockType.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

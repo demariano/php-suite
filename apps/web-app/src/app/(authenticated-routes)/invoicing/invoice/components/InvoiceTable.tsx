@@ -32,7 +32,7 @@ export default function InvoiceTable({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">
             Loading invoices...
@@ -68,6 +68,20 @@ export default function InvoiceTable({
                       </td>
                       <td className="px-6 py-5">{invoice.status}</td>
                       <td className="px-6 py-5">{invoice.paymentStatus}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {invoice.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${invoice.latestActivity.style.bgColor} ${invoice.latestActivity.style.textColor}`}
+                            title={invoice.latestActivity.text}
+                          >
+                            {invoice.latestActivity.text.length > 50 
+                              ? `${invoice.latestActivity.text.substring(0, 50)}...` 
+                              : invoice.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -112,6 +126,20 @@ export default function InvoiceTable({
                     <dt className="font-medium text-gray-500">Payment Status</dt>
                     <dd className="text-right">{invoice.paymentStatus}</dd>
                   </div>
+                  {invoice.latestActivity && (
+                    <div className="mt-2">
+                      <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                      <dd>
+                        <span 
+                          className={`px-2 py-1 rounded text-xs ${invoice.latestActivity.style.bgColor} ${invoice.latestActivity.style.textColor}`}
+                        >
+                          {invoice.latestActivity.text.length > 60 
+                            ? `${invoice.latestActivity.text.substring(0, 60)}...` 
+                            : invoice.latestActivity.text}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </button>
             ))

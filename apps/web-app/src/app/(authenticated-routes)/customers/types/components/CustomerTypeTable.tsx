@@ -32,7 +32,7 @@ export default function CustomerTypeTable({
   return (
     <>
       {/* Table */}
-      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">
             Loading customer types...

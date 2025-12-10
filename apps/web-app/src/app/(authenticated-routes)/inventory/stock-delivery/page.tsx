@@ -1,6 +1,7 @@
 'use client';
 
 import { StatusEnum, StockDeliveryApi, StockDeliveryDto, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { StockDeliveryHeader, StockDeliveryTable } from './components';
 
@@ -118,7 +119,8 @@ export default function StockDeliveryPage() {
     { key: 'docno', label: 'DOC NO' },
     { key: 'dateReceived', label: 'DATE RECEIVED' },
     { key: 'supplierName', label: 'SUPPLIER NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   const getStatusText = (status: StatusEnum): string => {
@@ -180,9 +182,22 @@ export default function StockDeliveryPage() {
 
   // Transform data for table display
   const tableData = stockDeliveries?.map(stockDelivery => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (stockDelivery.activityLogs && stockDelivery.activityLogs.length > 0) {
+      const lastLog = stockDelivery.activityLogs[stockDelivery.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...stockDelivery,
-      status: getStatusBadge(stockDelivery.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(stockDelivery.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

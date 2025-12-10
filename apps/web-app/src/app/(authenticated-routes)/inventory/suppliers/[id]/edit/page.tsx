@@ -1,10 +1,12 @@
 'use client';
 
-import { StatusEnum, SupplierApi, SupplierDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { StatusEnum, SupplierApi, SupplierDto, extractErrorMessage, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import SupplierForm from '../../components/SupplierForm';
 
 interface EditSupplierPageProps {
@@ -23,6 +25,7 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
 
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
@@ -165,33 +168,50 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
     }
   };
 
-  const handleDenyRecord = async () => {
-    if (!selectedSupplier) return;
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
 
+  const handleDenyConfirm = async (approverMessage: string) => {
+    if (!selectedSupplier) return;
+    
     try {
       setIsLoading(true);
-      setError(null);
-
+      setShowDenyDialog(false);
+      
+      // SECURITY: Only get user role if BYPASS_AUTH is enabled
+      // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      await SupplierApi.denySupplier(selectedSupplier.supplierId!, userRole);
-
+      
+      // Call the API to deny the record with approverMessage
+      const deniedSupplier = await SupplierApi.denySupplier(selectedSupplier.supplierId!, approverMessage, userRole);
+      setSelectedSupplier(deniedSupplier);
       setFlashNotification({
         title: 'Success!',
-        message: 'Supplier denied successfully!',
+        message: 'Supplier changes denied successfully!',
         alertType: 'success'
       });
-      router.replace('/inventory/suppliers');
-    } catch (err: any) {
-      console.error('Failed to deny supplier:', err);
-      setError(err.message || 'Failed to deny supplier. Please try again.');
+      
+      // Navigate back to supplier list after a short delay
+      setTimeout(() => {
+        router.push('/inventory/suppliers');
+      }, 1500);
+      
+    } catch (err) {
+      console.error('Error denying supplier:', err);
+      const errorMessage = extractErrorMessage(err, 'Failed to deny supplier. Please try again.');
       setFlashNotification({
-        title: 'Error!',
-        message: err.message || 'Failed to deny supplier. Please try again.',
+        title: 'Error',
+        message: errorMessage,
         alertType: 'error'
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -263,7 +283,7 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
               <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                 <button
                   type="button"
-                  onClick={handleDenyRecord}
+                  onClick={handleDeny}
                   disabled={isLoading}
                   className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                 >
@@ -307,40 +327,11 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
 
     const approvalData = selectedSupplier.forApprovalVersion;
 
-    const normalizeValue = (val: unknown): string => {
-      if (val === null || val === undefined) return '';
-      if (val === '') return '';
-      if (typeof val === 'string') {
-        const trimmed = val.trim();
-        return trimmed === '' ? '' : trimmed;
-      }
-      if (typeof val === 'number') return String(val);
-      if (typeof val === 'boolean') return String(val);
-      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-        return JSON.stringify(val);
-      }
-      return String(val).trim();
-    };
-
-    const isFieldChanged = (fieldName: string): boolean => {
-      if (!selectedSupplier?.forApprovalVersion) return false;
-
-      const originalValue = (selectedSupplier as unknown as Record<string, unknown>)[fieldName];
-      const newValue = (selectedSupplier.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
-
-      if (!(fieldName in selectedSupplier.forApprovalVersion)) return false;
-
-      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-      }
-
-      const normalizedOriginal = normalizeValue(originalValue);
-      const normalizedNew = normalizeValue(newValue);
-
-      const hasChanged = normalizedOriginal !== normalizedNew;
-
-      return hasChanged;
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+      selectedSupplier as Record<string, unknown>,
+      selectedSupplier.forApprovalVersion as Record<string, unknown> | undefined
+    );
 
     const formatValue = (value: unknown): string => {
       if (value === null || value === undefined) return '-';
@@ -417,7 +408,7 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <button
                 type="button"
-                onClick={handleDenyRecord}
+                onClick={handleDeny}
                 disabled={isLoading}
                 className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
@@ -518,6 +509,12 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
         supplier={selectedSupplier}
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+      />
+      <DenyReasonDialog
+        show={showDenyDialog}
+        supplier={selectedSupplier}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
       />
       <div>
         <nav className="flex items-center gap-2">

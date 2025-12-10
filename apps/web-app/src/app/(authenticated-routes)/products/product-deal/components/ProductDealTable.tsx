@@ -32,7 +32,7 @@ export default function ProductDealTable({
   return (
     <>
       {/* Table */}
-      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">
             Loading product deals...
@@ -67,6 +67,20 @@ export default function ProductDealTable({
                         {productDeal.additionalQty}
                       </td>
                       <td className="px-6 py-5">{productDeal.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {productDeal.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${productDeal.latestActivity.style.bgColor} ${productDeal.latestActivity.style.textColor}`}
+                            title={productDeal.latestActivity.text}
+                          >
+                            {productDeal.latestActivity.text.length > 50 
+                              ? `${productDeal.latestActivity.text.substring(0, 50)}...` 
+                              : productDeal.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -102,6 +116,18 @@ export default function ProductDealTable({
                       <div>Min Qty: {productDeal.minQty}</div>
                       <div>Additional Qty: {productDeal.additionalQty}</div>
                     </div>
+                    {productDeal.latestActivity && (
+                      <p className="mt-2 text-xs">
+                        <span className="font-medium text-gray-700">Latest Activity: </span>
+                        <span 
+                          className={`px-2 py-1 rounded ${productDeal.latestActivity.style.bgColor} ${productDeal.latestActivity.style.textColor}`}
+                        >
+                          {productDeal.latestActivity.text.length > 60 
+                            ? `${productDeal.latestActivity.text.substring(0, 60)}...` 
+                            : productDeal.latestActivity.text}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div>{productDeal.status}</div>
                 </div>

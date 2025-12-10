@@ -1,9 +1,10 @@
 'use client';
 
 import { AccountsDto, StatusEnum } from '@data-access/index';
-import { useState } from 'react';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import { useState } from 'react';
 import { ChangeReasonReadOnly } from '../../../../../components';
+import { isFieldChanged as checkFieldChanged } from '../../../../../utils/fieldChangeDetection';
 import { AccountForm, DeleteConfirmationModal } from '../../../components';
 
 interface AccountFormWrapperProps {
@@ -114,9 +115,12 @@ export default function AccountFormWrapper({
 
   const isFieldChanged = (field: keyof AccountsDto) => {
     if (!pendingVersion || pendingVersion[field] === undefined) return false;
-    const currentValue = normalizeValue(selectedAccount?.[field]);
-    const pendingValue = normalizeValue(pendingVersion[field]);
-    return currentValue !== pendingValue;
+    return checkFieldChanged(
+      String(field),
+      selectedAccount?.[field],
+      pendingVersion[field],
+      pendingVersion as Record<string, unknown>
+    );
   };
 
   const renderReadOnlyField = (label: string, field: keyof AccountsDto) => {

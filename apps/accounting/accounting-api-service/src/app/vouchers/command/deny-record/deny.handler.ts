@@ -94,11 +94,13 @@ export class DenyVoucherHandler implements ICommandHandler<DenyVoucherCommand> {
         );
 
         //add a new activity log for the using the approver message
-        existingRecord.activityLogs.push(
-            `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Voucher denied by ${user.username}, approver message: ${existingRecord.approverMessage}`
-        );
+        if (existingRecord.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Voucher denied by ${user.username}, approver message: ${existingRecord.approverMessage}`
+            );
+        }
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);

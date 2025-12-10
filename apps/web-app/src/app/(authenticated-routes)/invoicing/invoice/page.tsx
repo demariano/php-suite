@@ -1,6 +1,7 @@
 'use client';
 
 import { InvoiceApi, InvoiceDto, PaymentStatusEnum, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { InvoiceHeader, InvoiceTable } from './components';
 
@@ -109,7 +110,8 @@ export default function InvoicePage() {
     { key: 'invoiceDate', label: 'INVOICE DATE' },
     { key: 'customerName', label: 'CUSTOMER NAME' },
     { key: 'status', label: 'STATUS' },
-    { key: 'paymentStatus', label: 'PAID STATUS' }
+    { key: 'paymentStatus', label: 'PAID STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -194,10 +196,23 @@ export default function InvoicePage() {
 
   // Transform data for table display
   const tableData = invoices?.map(invoice => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (invoice.activityLogs && invoice.activityLogs.length > 0) {
+      const lastLog = invoice.activityLogs[invoice.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...invoice,
       status: getStatusBadge(invoice.status || StatusEnum.ACTIVE),
-      paymentStatus: getPaymentStatusBadge(invoice.paymentStatus || PaymentStatusEnum.PENDING)
+      paymentStatus: getPaymentStatusBadge(invoice.paymentStatus || PaymentStatusEnum.PENDING),
+      latestActivity
     };
   }) || [];
 

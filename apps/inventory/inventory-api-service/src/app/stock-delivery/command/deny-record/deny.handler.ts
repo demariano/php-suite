@@ -30,7 +30,7 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            return await this.processDenial(existingRecord, command.user);
+            return await this.processDenial(existingRecord, command.user, command.approverMessage);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -70,11 +70,12 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
      */
     private async processDenial(
         existingRecord: StockDeliveryDto,
-        user: UserCognito
+        user: UserCognito,
+        approverMessage?: string
     ): Promise<ResponseDto<StockDeliveryDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denyStockDelivery(existingRecord, user);
+                return await this.denyStockDelivery(existingRecord, user, approverMessage);
             case StatusEnum.FOR_DELETION:
                 return await this.denyDeletion(existingRecord);
             case StatusEnum.NEW_RECORD:
@@ -89,7 +90,8 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
      */
     private async denyStockDelivery(
         existingRecord: StockDeliveryDto,
-        user: UserCognito
+        user: UserCognito,
+        approverMessage?: string
     ): Promise<ResponseDto<StockDeliveryDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
@@ -100,12 +102,14 @@ export class DenyStockDeliveryHandler implements ICommandHandler<DenyStockDelive
             })}, Stock delivery denied by ${user.username}, status set to ${StatusEnum.ACTIVE}`
         );
 
-        //add a new activity log for the using the approver message
-        existingRecord.activityLogs.push(
-            `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Stock delivery denied by ${user.username}, approver message: ${existingRecord.approverMessage}`
-        );
+        // Add activity log with approver message if provided
+        if (approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Stock delivery denied by ${user.username}, approver message: ${approverMessage}`
+            );
+        }
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);

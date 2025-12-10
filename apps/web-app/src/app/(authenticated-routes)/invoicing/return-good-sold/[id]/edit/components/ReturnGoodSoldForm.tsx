@@ -1,8 +1,9 @@
 'use client';
 
 import { ReturnGoodSoldDto, StatusEnum, useSessionStore } from '@data-access/index';
-import { useEffect, useState } from 'react';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import { useEffect, useState } from 'react';
+import { createFieldChangeDetector } from '../../../../../utils/fieldChangeDetection';
 import InvoiceDetailsTab from './InvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
 
@@ -154,40 +155,11 @@ export default function ReturnGoodSoldForm({
     onSave(formData);
   };
 
-  // Helper function to normalize values for comparison
-  const normalizeValue = (val: any): string => {
-    if (val === null || val === undefined) return '';
-    if (val === '') return '';
-    if (typeof val === 'string') {
-      const trimmed = val.trim();
-      return trimmed === '' ? '' : trimmed;
-    }
-    if (typeof val === 'number') return String(val);
-    if (typeof val === 'boolean') return String(val);
-    if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-      return JSON.stringify(val);
-    }
-    return String(val).trim();
-  };
-
-  // Helper function to check if a field has changed
-  const isFieldChanged = (fieldName: string): boolean => {
-    if (!selectedRecord?.forApprovalVersion) return false;
-    
-    const originalValue = (selectedRecord as any)[fieldName];
-    const newValue = (selectedRecord.forApprovalVersion as any)[fieldName];
-    
-    if (!(fieldName in selectedRecord.forApprovalVersion)) return false;
-    
-    if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-      return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-    }
-    
-    const normalizedOriginal = normalizeValue(originalValue);
-    const normalizedNew = normalizeValue(newValue);
-    
-    return normalizedOriginal !== normalizedNew;
-  };
+  // Use shared field change detection utility
+  const isFieldChanged = createFieldChangeDetector(
+    selectedRecord as Record<string, unknown>,
+    selectedRecord.forApprovalVersion as Record<string, unknown> | undefined
+  );
 
   // Helper function to format display value
   const formatValue = (value: any): string => {

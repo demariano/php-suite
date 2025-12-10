@@ -1,6 +1,7 @@
 'use client';
 
 import { ProductApi, ProductDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ProductHeader, ProductTable } from './components';
@@ -129,16 +130,32 @@ export default function ProductsMainPage() {
             { key: 'productClassName', label: 'CLASS' },
             { key: 'criticalLevel', label: 'CRITICAL LEVEL' },
             { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
         ],
         []
     );
 
     const tableData = useMemo(
         () =>
-            products.map((product) => ({
-                ...product,
-                status: getStatusBadge(product.status),
-            })),
+            products.map((product) => {
+                // Get the latest activity log entry
+                let latestActivity = null;
+                if (product.activityLogs && product.activityLogs.length > 0) {
+                    const lastLog = product.activityLogs[product.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle
+                    };
+                }
+
+                return {
+                    ...product,
+                    status: getStatusBadge(product.status),
+                    latestActivity
+                };
+            }),
         [products]
     );
 

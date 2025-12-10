@@ -1,6 +1,7 @@
 'use client';
 
-import { extractErrorMessage, PaymentApi, PaymentDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { PaymentApi, PaymentDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { PaymentHeader, PaymentTable } from './components';
 
@@ -117,7 +118,8 @@ export default function PaymentPage() {
     { key: 'paymentDate', label: 'PAYMENT DATE' },
     { key: 'customerName', label: 'CUSTOMER NAME' },
     { key: 'paymentAmount', label: 'PAYMENT AMOUNT' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -181,10 +183,23 @@ export default function PaymentPage() {
 
   // Transform data for table display
   const tableData = payments?.map(payment => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (payment.activityLogs && payment.activityLogs.length > 0) {
+      const lastLog = payment.activityLogs[payment.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...payment,
       status: getStatusBadge(payment.status || StatusEnum.ACTIVE),
-      paymentAmount: payment.paymentAmount ? `$${payment.paymentAmount.toFixed(2)}` : '$0.00'
+      paymentAmount: payment.paymentAmount ? `$${payment.paymentAmount.toFixed(2)}` : '$0.00',
+      latestActivity
     };
   }) || [];
 

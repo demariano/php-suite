@@ -1,9 +1,10 @@
 'use client';
 
 import { AccountTypeEnum, StatusEnum, VoucherDto, useSessionStore } from '@data-access/index';
-import { useEffect, useState } from 'react';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import { useEffect, useState } from 'react';
 import { ChangeReasonReadOnly } from '../../../../../components';
+import { createFieldChangeDetector } from '../../../../../utils/fieldChangeDetection';
 import PaymentDetailsTab from './PaymentDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
 import VoucherDetailsTab from './VoucherDetailsTab';
@@ -316,40 +317,11 @@ export default function VoucherForm({
             ...selectedVoucher.forApprovalVersion
           };
           
-          // Helper function to normalize values for comparison
-          const normalizeValue = (val: any): string => {
-            if (val === null || val === undefined) return '';
-            if (val === '') return '';
-            if (typeof val === 'string') {
-              const trimmed = val.trim();
-              return trimmed === '' ? '' : trimmed;
-            }
-            if (typeof val === 'number') return String(val);
-            if (typeof val === 'boolean') return String(val);
-            if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-              return JSON.stringify(val);
-            }
-            return String(val).trim();
-          };
-          
-          // Helper function to check if a field has changed
-          const isFieldChanged = (fieldName: string): boolean => {
-            if (!selectedVoucher?.forApprovalVersion) return false;
-            
-            const originalValue = (selectedVoucher as any)[fieldName];
-            const newValue = (selectedVoucher.forApprovalVersion as any)[fieldName];
-            
-            if (!(fieldName in selectedVoucher.forApprovalVersion)) return false;
-            
-            if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-              return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-            }
-            
-            const normalizedOriginal = normalizeValue(originalValue);
-            const normalizedNew = normalizeValue(newValue);
-            
-            return normalizedOriginal !== normalizedNew;
-          };
+          // Use shared field change detection utility
+          const isFieldChanged = createFieldChangeDetector(
+            selectedVoucher as Record<string, unknown>,
+            selectedVoucher.forApprovalVersion as Record<string, unknown> | undefined
+          );
           
           // Helper function to check if arrays have changes
           const hasArrayChanges = (fieldName: string): boolean => {

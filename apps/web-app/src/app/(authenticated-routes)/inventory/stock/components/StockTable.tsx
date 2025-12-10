@@ -78,6 +78,20 @@ export default function StockTable({
                       <td className="px-6 py-5">
                         {stock.status}
                       </td>
+                      <td className="px-6 py-5 text-sm">
+                        {stock.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${stock.latestActivity.style.bgColor} ${stock.latestActivity.style.textColor}`}
+                            title={stock.latestActivity.text}
+                          >
+                            {stock.latestActivity.text.length > 50 
+                              ? `${stock.latestActivity.text.substring(0, 50)}...` 
+                              : stock.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -130,6 +144,20 @@ export default function StockTable({
                     <dt className="font-medium text-gray-500">Type</dt>
                     <dd className="text-gray-900">{stock.stockTypeName || '-'}</dd>
                   </div>
+                  {stock.latestActivity && (
+                    <div className="mt-2">
+                      <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                      <dd>
+                        <span 
+                          className={`px-2 py-1 rounded text-xs ${stock.latestActivity.style.bgColor} ${stock.latestActivity.style.textColor}`}
+                        >
+                          {stock.latestActivity.text.length > 60 
+                            ? `${stock.latestActivity.text.substring(0, 60)}...` 
+                            : stock.latestActivity.text}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </button>
             ))

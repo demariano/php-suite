@@ -1,6 +1,7 @@
 'use client';
 
 import { StatusEnum, SupplierApi, SupplierDto, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { SupplierHeader, SupplierTable } from './components';
 
@@ -115,7 +116,8 @@ export default function SupplierPage() {
 
   const headers = [
     { key: 'supplierName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   const getStatusText = (status: StatusEnum): string => {
@@ -178,9 +180,22 @@ export default function SupplierPage() {
 
   // Transform data for table display
   const tableData = suppliers?.map(supplier => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (supplier.activityLogs && supplier.activityLogs.length > 0) {
+      const lastLog = supplier.activityLogs[supplier.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...supplier,
-      status: getStatusBadge(supplier.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(supplier.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

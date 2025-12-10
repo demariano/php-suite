@@ -1,6 +1,7 @@
 'use client';
 
 import { AccountApi, AccountsDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { AccountHeader, AccountTable } from './components';
 
@@ -116,6 +117,7 @@ export default function AccountsPage() {
     { key: 'accountName', label: 'ACCOUNT NAME' },
     { key: 'accountType', label: 'ACCOUNT TYPE' },
     { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' },
   ];
 
   const handleRowClick = (account: AccountsDto) => {
@@ -137,10 +139,25 @@ export default function AccountsPage() {
   };
 
   const tableData =
-    accounts?.map((account) => ({
-      ...account,
-      status: getStatusBadge(account.status || StatusEnum.ACTIVE),
-    })) ?? [];
+    accounts?.map((account) => {
+      // Get the latest activity log entry
+      let latestActivity = null;
+      if (account.activityLogs && account.activityLogs.length > 0) {
+        const lastLog = account.activityLogs[account.activityLogs.length - 1];
+        const parsed = parseActivityLog(lastLog);
+        const activityStyle = getActivityStyle(parsed.activity);
+        latestActivity = {
+          text: parsed.activity,
+          style: activityStyle
+        };
+      }
+
+      return {
+        ...account,
+        status: getStatusBadge(account.status || StatusEnum.ACTIVE),
+        latestActivity
+      };
+    }) ?? [];
 
   return (
     <div className="p-4 sm:p-6 space-y-6">

@@ -3,6 +3,7 @@
 import { StatusEnum, TerritoryManagerApi, TerritoryManagerDto, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { TerritoryManagerHeader, TerritoryManagerTable } from './components';
+import { parseActivityLog, getActivityStyle } from '@web-app/utils/activityLogUtils';
 
 export default function TerritoryManagerPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -115,7 +116,8 @@ export default function TerritoryManagerPage() {
 
   const headers = [
     { key: 'territoryManagerName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -180,9 +182,22 @@ export default function TerritoryManagerPage() {
 
   // Transform data for table display
   const tableData = territoryManagers?.map(territoryManager => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (territoryManager.activityLogs && territoryManager.activityLogs.length > 0) {
+      const lastLog = territoryManager.activityLogs[territoryManager.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...territoryManager,
-      status: getStatusBadge(territoryManager.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(territoryManager.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

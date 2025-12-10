@@ -1,6 +1,7 @@
 'use client';
 
 import { SalesTypeApi, SalesTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { SalesTypeHeader, SalesTypeTable } from './components';
 
@@ -115,7 +116,8 @@ export default function SalesTypePage() {
 
   const headers = [
     { key: 'salesTypeName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -179,9 +181,22 @@ export default function SalesTypePage() {
 
   // Transform data for table display
   const tableData = salesTypes?.map(salesType => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (salesType.activityLogs && salesType.activityLogs.length > 0) {
+      const lastLog = salesType.activityLogs[salesType.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...salesType,
-      status: getStatusBadge(salesType.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(salesType.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

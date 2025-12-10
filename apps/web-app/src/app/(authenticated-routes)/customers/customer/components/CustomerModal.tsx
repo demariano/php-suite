@@ -3,6 +3,7 @@
 import { CustomerDto, StatusEnum } from '@data-access/index';
 import { useEffect } from 'react';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import CustomerForm from './CustomerForm';
 
 interface CustomerModalProps {
@@ -230,115 +231,11 @@ export default function CustomerModal({
           
           {/* Approval Version Tab */}
           {activeTab === 'approval' && !isCreateMode && selectedCustomer && (() => {
-            // DEBUG: Log the full customer data structure
-            console.log('=== APPROVAL TAB DEBUG ===');
-            console.log('selectedCustomer:', selectedCustomer);
-            console.log('selectedCustomer.forApprovalVersion:', selectedCustomer.forApprovalVersion);
-            console.log('selectedCustomer keys:', Object.keys(selectedCustomer));
-            if (selectedCustomer.forApprovalVersion) {
-              console.log('forApprovalVersion keys:', Object.keys(selectedCustomer.forApprovalVersion));
-            }
-            
-            // DEBUG: Log specific fields we're checking
-            console.log('=== FIELD VALUES DEBUG ===');
-            console.log('contactNo - original:', selectedCustomer.contactNo, 'type:', typeof selectedCustomer.contactNo);
-            console.log('contactNo - new:', selectedCustomer.forApprovalVersion?.contactNo, 'type:', typeof selectedCustomer.forApprovalVersion?.contactNo);
-            console.log('tinNumber - original:', selectedCustomer.tinNumber, 'type:', typeof selectedCustomer.tinNumber);
-            console.log('tinNumber - new:', selectedCustomer.forApprovalVersion?.tinNumber, 'type:', typeof selectedCustomer.forApprovalVersion?.tinNumber);
-            console.log('customerName - original:', selectedCustomer.customerName, 'type:', typeof selectedCustomer.customerName);
-            console.log('customerName - new:', selectedCustomer.forApprovalVersion?.customerName, 'type:', typeof selectedCustomer.forApprovalVersion?.customerName);
-            
-            // Helper function to normalize values for comparison
-            const normalizeValue = (val: any): string => {
-              // Handle null and undefined
-              if (val === null || val === undefined) return '';
-              
-              // Handle empty string
-              if (val === '') return '';
-              
-              // Handle strings - trim whitespace
-              if (typeof val === 'string') {
-                const trimmed = val.trim();
-                return trimmed === '' ? '' : trimmed;
-              }
-              
-              // Handle numbers - convert to string
-              if (typeof val === 'number') {
-                return String(val);
-              }
-              
-              // Handle booleans
-              if (typeof val === 'boolean') {
-                return String(val);
-              }
-              
-              // Handle arrays and objects - stringify for comparison
-              if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-                return JSON.stringify(val);
-              }
-              
-              // Fallback: convert to string and trim
-              return String(val).trim();
-            };
-
-            // Helper function to check if a field has changed
-            const isFieldChanged = (fieldName: string): boolean => {
-              if (!selectedCustomer?.forApprovalVersion) return false;
-              
-              // Get original value from the main customer object
-              const originalValue = (selectedCustomer as any)[fieldName];
-              // Get new value from forApprovalVersion
-              const newValue = (selectedCustomer.forApprovalVersion as any)[fieldName];
-              
-              // Debug logging (can be removed after testing)
-              if (process.env.NODE_ENV === 'development') {
-                console.log(`[isFieldChanged] ${fieldName}:`, {
-                  original: originalValue,
-                  new: newValue,
-                  originalType: typeof originalValue,
-                  newType: typeof newValue,
-                  originalInObject: fieldName in selectedCustomer,
-                  newInForApproval: fieldName in selectedCustomer.forApprovalVersion
-                });
-              }
-              
-              // If newValue doesn't exist in forApprovalVersion, field hasn't changed
-              if (!(fieldName in selectedCustomer.forApprovalVersion)) return false;
-              
-              // Handle array comparison
-              if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-                const changed = JSON.stringify(originalValue) !== JSON.stringify(newValue);
-                if (process.env.NODE_ENV === 'development' && changed) {
-                  console.log(`[isFieldChanged] ${fieldName} ARRAY CHANGED`);
-                }
-                return changed;
-              }
-              
-              // Normalize and compare
-              const normalizedOriginal = normalizeValue(originalValue);
-              const normalizedNew = normalizeValue(newValue);
-              
-              const hasChanged = normalizedOriginal !== normalizedNew;
-              
-              // Debug logging for comparison result
-              if (process.env.NODE_ENV === 'development') {
-                if (hasChanged) {
-                  console.log(`[isFieldChanged] ${fieldName} CHANGED:`, {
-                    normalizedOriginal: `"${normalizedOriginal}"`,
-                    normalizedNew: `"${normalizedNew}"`,
-                    originalRaw: originalValue,
-                    newRaw: newValue
-                  });
-                } else {
-                  console.log(`[isFieldChanged] ${fieldName} NOT CHANGED:`, {
-                    normalizedOriginal: `"${normalizedOriginal}"`,
-                    normalizedNew: `"${normalizedNew}"`
-                  });
-                }
-              }
-              
-              return hasChanged;
-            };
+            // Use shared field change detection utility
+            const isFieldChanged = createFieldChangeDetector(
+              selectedCustomer as Record<string, unknown>,
+              selectedCustomer.forApprovalVersion as Record<string, unknown> | undefined
+            );
 
             // Helper function to check if arrays have changes
             const hasArrayChanges = (fieldName: string): boolean => {

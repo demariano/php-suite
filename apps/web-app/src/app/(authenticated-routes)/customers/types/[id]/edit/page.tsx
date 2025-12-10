@@ -4,6 +4,7 @@ import { CustomerTypeApi, CustomerTypeDto, extractErrorMessage, StatusEnum, useE
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import CustomerTypeForm from '../../components/CustomerTypeForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import DenyReasonDialog from '../../components/DenyReasonDialog';
@@ -343,40 +344,11 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
 
     const approvalData = selectedCustomerType.forApprovalVersion;
 
-    const normalizeValue = (val: unknown): string => {
-      if (val === null || val === undefined) return '';
-      if (val === '') return '';
-      if (typeof val === 'string') {
-        const trimmed = val.trim();
-        return trimmed === '' ? '' : trimmed;
-      }
-      if (typeof val === 'number') return String(val);
-      if (typeof val === 'boolean') return String(val);
-      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-        return JSON.stringify(val);
-      }
-      return String(val).trim();
-    };
-
-    const isFieldChanged = (fieldName: string): boolean => {
-      if (!selectedCustomerType?.forApprovalVersion) return false;
-
-      const originalValue = (selectedCustomerType as unknown as Record<string, unknown>)[fieldName];
-      const newValue = (selectedCustomerType.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
-
-      if (!(fieldName in selectedCustomerType.forApprovalVersion)) return false;
-
-      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-      }
-
-      const normalizedOriginal = normalizeValue(originalValue);
-      const normalizedNew = normalizeValue(newValue);
-
-      const hasChanged = normalizedOriginal !== normalizedNew;
-
-      return hasChanged;
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+      selectedCustomerType as Record<string, unknown>,
+      selectedCustomerType.forApprovalVersion as Record<string, unknown> | undefined
+    );
 
     const formatValue = (value: unknown): string => {
       if (value === null || value === undefined) return '-';

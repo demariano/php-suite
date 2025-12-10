@@ -32,7 +32,7 @@ export default function ContractTable({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">
             Loading contracts...
@@ -73,6 +73,20 @@ export default function ContractTable({
                         {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-5">{contract.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {contract.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${contract.latestActivity.style.bgColor} ${contract.latestActivity.style.textColor}`}
+                            title={contract.latestActivity.text}
+                          >
+                            {contract.latestActivity.text.length > 50 
+                              ? `${contract.latestActivity.text.substring(0, 50)}...` 
+                              : contract.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -121,6 +135,20 @@ export default function ContractTable({
                     <dt className="font-medium text-gray-500">End Date</dt>
                     <dd className="text-right text-gray-900">{contract.endDate ? new Date(contract.endDate).toLocaleDateString() : '-'}</dd>
                   </div>
+                  {contract.latestActivity && (
+                    <div className="mt-2">
+                      <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                      <dd>
+                        <span 
+                          className={`px-2 py-1 rounded text-xs ${contract.latestActivity.style.bgColor} ${contract.latestActivity.style.textColor}`}
+                        >
+                          {contract.latestActivity.text.length > 60 
+                            ? `${contract.latestActivity.text.substring(0, 60)}...` 
+                            : contract.latestActivity.text}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </button>
             ))

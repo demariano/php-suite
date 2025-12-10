@@ -70,6 +70,20 @@ export function ReturnGoodSoldTable({
                         {record.invoiceDocno || '-'}
                       </td>
                       <td className="px-6 py-5">{record.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {record.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${record.latestActivity.style.bgColor} ${record.latestActivity.style.textColor}`}
+                            title={record.latestActivity.text}
+                          >
+                            {record.latestActivity.text.length > 50 
+                              ? `${record.latestActivity.text.substring(0, 50)}...` 
+                              : record.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -114,6 +128,20 @@ export function ReturnGoodSoldTable({
                     <dt className="font-medium text-gray-500">Invoice Doc No</dt>
                     <dd className="text-right text-gray-900">{record.invoiceDocno || '-'}</dd>
                   </div>
+                  {record.latestActivity && (
+                    <div className="mt-2">
+                      <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                      <dd>
+                        <span 
+                          className={`px-2 py-1 rounded text-xs ${record.latestActivity.style.bgColor} ${record.latestActivity.style.textColor}`}
+                        >
+                          {record.latestActivity.text.length > 60 
+                            ? `${record.latestActivity.text.substring(0, 60)}...` 
+                            : record.latestActivity.text}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </button>
             ))

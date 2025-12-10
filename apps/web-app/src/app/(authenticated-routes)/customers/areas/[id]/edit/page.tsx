@@ -4,6 +4,7 @@ import { AreaApi, AreaDto, extractErrorMessage, StatusEnum, useEnv, useLocalStor
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import AreaForm from '../../components/AreaForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import DenyReasonDialog from '../../components/DenyReasonDialog';
@@ -374,42 +375,11 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
     
     const approvalData = selectedArea.forApprovalVersion;
     
-    // Helper function to normalize values for comparison
-    const normalizeValue = (val: unknown): string => {
-      if (val === null || val === undefined) return '';
-      if (val === '') return '';
-      if (typeof val === 'string') {
-        const trimmed = val.trim();
-        return trimmed === '' ? '' : trimmed;
-      }
-      if (typeof val === 'number') return String(val);
-      if (typeof val === 'boolean') return String(val);
-      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-        return JSON.stringify(val);
-      }
-      return String(val).trim();
-    };
-    
-    // Helper function to check if a field has changed
-    const isFieldChanged = (fieldName: string): boolean => {
-      if (!selectedArea?.forApprovalVersion) return false;
-      
-      const originalValue = (selectedArea as unknown as Record<string, unknown>)[fieldName];
-      const newValue = (selectedArea.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
-      
-      if (!(fieldName in selectedArea.forApprovalVersion)) return false;
-      
-      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-      }
-      
-      const normalizedOriginal = normalizeValue(originalValue);
-      const normalizedNew = normalizeValue(newValue);
-      
-      const hasChanged = normalizedOriginal !== normalizedNew;
-      
-      return hasChanged;
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+      selectedArea as Record<string, unknown>,
+      selectedArea.forApprovalVersion as Record<string, unknown> | undefined
+    );
     
     // Helper function to format display value
     const formatValue = (value: unknown): string => {

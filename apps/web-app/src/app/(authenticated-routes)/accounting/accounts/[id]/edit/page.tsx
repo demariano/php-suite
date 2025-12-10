@@ -3,6 +3,7 @@
 import {
   AccountApi,
   AccountsDto,
+  extractErrorMessage,
   StatusEnum,
   useEnv,
   useLocalStore,
@@ -11,6 +12,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AccountFormWrapper from './components/AccountFormWrapper';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 
 interface EditAccountPageProps {
   params: {
@@ -27,6 +29,7 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<AccountsDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
 
   const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
   const userRoleParam = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
@@ -135,27 +138,50 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
     }
   };
 
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedAccount) return;
+    
     try {
       setIsLoading(true);
-      await AccountApi.denyAccount(selectedAccount.accountingId, userRoleParam);
+      setShowDenyDialog(false);
+      
+      // SECURITY: Only get user role if BYPASS_AUTH is enabled
+      // This prevents role parameter leakage when bypass auth is disabled
+      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+      
+      // Call the API to deny the record with approverMessage
+      const deniedAccount = await AccountApi.denyAccount(selectedAccount.accountingId, approverMessage, userRole);
+      setSelectedAccount(deniedAccount);
       setFlashNotification({
-        title: 'Changes denied',
-        message: 'Pending changes were denied successfully.',
+        title: 'Success!',
+        message: 'Account changes denied successfully!',
         alertType: 'success',
       });
-      router.push('/accounting/accounts');
-    } catch (error) {
-      console.error('Error denying account', error);
+      
+      // Navigate back to accounts list after a short delay
+      setTimeout(() => {
+        router.push('/accounting/accounts');
+      }, 1500);
+      
+    } catch (err) {
+      console.error('Error denying account:', err);
+      const errorMessage = extractErrorMessage(err, 'Failed to deny account. Please try again.');
       setFlashNotification({
-        title: 'Unable to deny changes',
-        message: 'Please try again later.',
+        title: 'Error',
+        message: errorMessage,
         alertType: 'error',
       });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => router.push('/accounting/accounts');
@@ -206,6 +232,13 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
           onCancel={handleCancel}
         />
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        account={selectedAccount}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
     </div>
   );
 }

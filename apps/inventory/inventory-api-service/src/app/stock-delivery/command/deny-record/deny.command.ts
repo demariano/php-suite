@@ -1,5 +1,13 @@
 import { UserCognito } from '@auth-guard-lib';
 
 export class DenyStockDeliveryCommand {
-    constructor(public readonly recordId: string, public readonly user: UserCognito) {}
+    recordId: string;
+    user: UserCognito;
+    approverMessage?: string;
+
+    constructor(recordId: string, user: UserCognito, approverMessage?: string) {
+        this.recordId = recordId;
+        this.user = user;
+        this.approverMessage = approverMessage;
+    }
 }

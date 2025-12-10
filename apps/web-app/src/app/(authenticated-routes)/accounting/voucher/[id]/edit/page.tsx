@@ -3,6 +3,7 @@
 import { extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore, VoucherApi, VoucherDto } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import VoucherForm from './components/VoucherForm';
 
 interface EditVoucherPageProps {
@@ -15,6 +16,7 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedVoucher, setSelectedVoucher] = useState<VoucherDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -197,18 +199,23 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedVoucher) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
-      const deniedVoucher = await VoucherApi.denyVoucher(selectedVoucher.voucherId, userRole);
+      // Call the API to deny the record with approverMessage
+      const deniedVoucher = await VoucherApi.denyVoucher(selectedVoucher.voucherId, approverMessage, userRole);
       setSelectedVoucher(deniedVoucher);
       setFlashNotification({
         title: 'Success!',
@@ -232,6 +239,10 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -293,6 +304,13 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
           onCancel={handleCancel}
         />
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        voucher={selectedVoucher}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
     </div>
   );
 }

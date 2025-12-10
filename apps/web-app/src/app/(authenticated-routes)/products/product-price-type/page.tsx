@@ -1,6 +1,7 @@
 'use client';
 
 import { ProductPriceTypeApi, ProductPriceTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { ProductPriceTypeHeader, ProductPriceTypeTable } from './components';
 
@@ -115,7 +116,8 @@ export default function ProductPriceTypePage() {
 
   const headers = [
     { key: 'productPriceTypeName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   const getStatusText = (status: StatusEnum): string => {
@@ -178,9 +180,22 @@ export default function ProductPriceTypePage() {
 
   // Transform data for table display
   const tableData = productPriceTypes?.map(productPriceType => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (productPriceType.activityLogs && productPriceType.activityLogs.length > 0) {
+      const lastLog = productPriceType.activityLogs[productPriceType.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...productPriceType,
-      status: getStatusBadge(productPriceType.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(productPriceType.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

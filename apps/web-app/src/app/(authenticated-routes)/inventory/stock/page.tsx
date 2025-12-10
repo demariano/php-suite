@@ -1,6 +1,7 @@
 'use client';
 
 import { StatusEnum, StockApi, StockDto, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { StockHeader, StockTable } from './components';
 
@@ -97,7 +98,7 @@ export default function StockMainPage() {
     hasFetchedRef.current = true;
     
     fetchStocks();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
   // Debounce search term changes
@@ -120,7 +121,8 @@ export default function StockMainPage() {
     { key: 'availableQuantity', label: 'AVAILABLE QTY' },
     { key: 'productUnitName', label: 'UNIT' },
     { key: 'stockTypeName', label: 'STOCK TYPE' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -184,9 +186,22 @@ export default function StockMainPage() {
 
   // Transform data for table display
   const tableData = stocks?.map(stock => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (stock.activityLogs && stock.activityLogs.length > 0) {
+      const lastLog = stock.activityLogs[stock.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...stock,
-      status: getStatusBadge(stock.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(stock.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

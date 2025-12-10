@@ -1,6 +1,7 @@
 'use client';
 
 import { ProductUnitApi, ProductUnitDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { ProductUnitHeader, ProductUnitTable } from './components';
 
@@ -100,7 +101,8 @@ export default function ProductUnitPage() {
 
   const headers = [
     { key: 'productUnitName', label: 'NAME' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   const getStatusText = (status: StatusEnum): string => {
@@ -158,9 +160,22 @@ export default function ProductUnitPage() {
   };
 
   const tableData = productUnits?.map(productUnit => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (productUnit.activityLogs && productUnit.activityLogs.length > 0) {
+      const lastLog = productUnit.activityLogs[productUnit.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...productUnit,
-      status: getStatusBadge(productUnit.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(productUnit.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

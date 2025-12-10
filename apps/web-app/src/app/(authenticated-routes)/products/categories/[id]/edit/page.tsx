@@ -4,6 +4,7 @@ import { extractErrorMessage, ProductApi, ProductCategoryDto, StatusEnum, useEnv
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import CategoryForm from '../../components/CategoryForm';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import DenyReasonDialog from '../../components/DenyReasonDialog';
@@ -370,42 +371,11 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     
     const approvalData = selectedCategory.forApprovalVersion;
     
-    // Helper function to normalize values for comparison
-    const normalizeValue = (val: unknown): string => {
-      if (val === null || val === undefined) return '';
-      if (val === '') return '';
-      if (typeof val === 'string') {
-        const trimmed = val.trim();
-        return trimmed === '' ? '' : trimmed;
-      }
-      if (typeof val === 'number') return String(val);
-      if (typeof val === 'boolean') return String(val);
-      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-        return JSON.stringify(val);
-      }
-      return String(val).trim();
-    };
-    
-    // Helper function to check if a field has changed
-    const isFieldChanged = (fieldName: string): boolean => {
-      if (!selectedCategory?.forApprovalVersion) return false;
-      
-      const originalValue = (selectedCategory as unknown as Record<string, unknown>)[fieldName];
-      const newValue = (selectedCategory.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
-      
-      if (!(fieldName in selectedCategory.forApprovalVersion)) return false;
-      
-      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-      }
-      
-      const normalizedOriginal = normalizeValue(originalValue);
-      const normalizedNew = normalizeValue(newValue);
-      
-      const hasChanged = normalizedOriginal !== normalizedNew;
-      
-      return hasChanged;
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+      selectedCategory as Record<string, unknown>,
+      selectedCategory.forApprovalVersion as Record<string, unknown> | undefined
+    );
     
     // Helper function to format display value
     const formatValue = (value: unknown): string => {

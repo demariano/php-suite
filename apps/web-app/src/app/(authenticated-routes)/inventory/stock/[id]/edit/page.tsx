@@ -1,11 +1,12 @@
 'use client';
 
 import { extractErrorMessage, StatusEnum, StockApi, StockDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
-import DenyReasonDialog from '../../components/DenyReasonDialog';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import StockForm from '../../components/StockForm';
 
 interface EditStockPageProps {
@@ -374,40 +375,11 @@ export default function EditStockPage({ params }: EditStockPageProps) {
     
     const approvalData = selectedStock.forApprovalVersion;
     
-    // Helper function to normalize values for comparison
-    const normalizeValue = (val: any): string => {
-      if (val === null || val === undefined) return '';
-      if (val === '') return '';
-      if (typeof val === 'string') {
-        const trimmed = val.trim();
-        return trimmed === '' ? '' : trimmed;
-      }
-      if (typeof val === 'number') return String(val);
-      if (typeof val === 'boolean') return String(val);
-      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-        return JSON.stringify(val);
-      }
-      return String(val).trim();
-    };
-    
-    // Helper function to check if a field has changed
-    const isFieldChanged = (fieldName: string): boolean => {
-      if (!selectedStock?.forApprovalVersion) return false;
-      
-      const originalValue = (selectedStock as any)[fieldName];
-      const newValue = (selectedStock.forApprovalVersion as any)[fieldName];
-      
-      if (!(fieldName in selectedStock.forApprovalVersion)) return false;
-      
-      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-      }
-      
-      const normalizedOriginal = normalizeValue(originalValue);
-      const normalizedNew = normalizeValue(newValue);
-      
-      return normalizedOriginal !== normalizedNew;
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+      selectedStock as Record<string, unknown>,
+      selectedStock.forApprovalVersion as Record<string, unknown> | undefined
+    );
     
     // Helper function to format display value
     const formatValue = (value: any): string => {

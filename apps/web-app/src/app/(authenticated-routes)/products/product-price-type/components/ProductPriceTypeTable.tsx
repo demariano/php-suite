@@ -32,7 +32,7 @@ export default function ProductPriceTypeTable({
   return (
     <>
       {/* Table */}
-      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">
             Loading product price types...
@@ -61,6 +61,20 @@ export default function ProductPriceTypeTable({
                         {productPriceType.productPriceTypeName || '-'}
                       </td>
                       <td className="px-6 py-5">{productPriceType.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {productPriceType.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${productPriceType.latestActivity.style.bgColor} ${productPriceType.latestActivity.style.textColor}`}
+                            title={productPriceType.latestActivity.text}
+                          >
+                            {productPriceType.latestActivity.text.length > 50 
+                              ? `${productPriceType.latestActivity.text.substring(0, 50)}...` 
+                              : productPriceType.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -88,10 +102,22 @@ export default function ProductPriceTypeTable({
                 className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-base font-semibold text-gray-900">
                       {productPriceType.productPriceTypeName || '-'}
                     </h3>
+                    {productPriceType.latestActivity && (
+                      <p className="mt-2 text-xs">
+                        <span className="font-medium text-gray-700">Latest Activity: </span>
+                        <span 
+                          className={`px-2 py-1 rounded ${productPriceType.latestActivity.style.bgColor} ${productPriceType.latestActivity.style.textColor}`}
+                        >
+                          {productPriceType.latestActivity.text.length > 60 
+                            ? `${productPriceType.latestActivity.text.substring(0, 60)}...` 
+                            : productPriceType.latestActivity.text}
+                        </span>
+                      </p>
+                    )}
                   </div>
                   <div>{productPriceType.status}</div>
                 </div>

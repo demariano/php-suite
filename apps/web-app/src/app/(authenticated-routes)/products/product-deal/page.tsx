@@ -1,6 +1,7 @@
 'use client';
 
 import { ProductDealApi, ProductDealDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { ProductDealHeader, ProductDealTable } from './components';
 
@@ -117,7 +118,8 @@ export default function ProductDealPage() {
     { key: 'productDealName', label: 'NAME' },
     { key: 'minQty', label: 'MIN QTY' },
     { key: 'additionalQty', label: 'ADDITIONAL QTY' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   const getStatusText = (status: StatusEnum): string => {
@@ -180,11 +182,24 @@ export default function ProductDealPage() {
 
   // Transform data for table display
   const tableData = productDeals?.map(productDeal => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (productDeal.activityLogs && productDeal.activityLogs.length > 0) {
+      const lastLog = productDeal.activityLogs[productDeal.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...productDeal,
       minQty: productDeal.minQty ?? '-',
       additionalQty: productDeal.additionalQty ?? '-',
-      status: getStatusBadge(productDeal.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(productDeal.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

@@ -4,6 +4,7 @@ import { extractErrorMessage, ProductDealApi, ProductDealDto, StatusEnum, useEnv
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import DenyReasonDialog from '../../components/DenyReasonDialog';
 import ProductDealForm from '../../components/ProductDealForm';
@@ -345,40 +346,11 @@ export default function EditProductDealPage({ params }: EditProductDealPageProps
 
     const approvalData = selectedProductDeal.forApprovalVersion;
 
-    const normalizeValue = (val: unknown): string => {
-      if (val === null || val === undefined) return '';
-      if (val === '') return '';
-      if (typeof val === 'string') {
-        const trimmed = val.trim();
-        return trimmed === '' ? '' : trimmed;
-      }
-      if (typeof val === 'number') return String(val);
-      if (typeof val === 'boolean') return String(val);
-      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-        return JSON.stringify(val);
-      }
-      return String(val).trim();
-    };
-
-    const isFieldChanged = (fieldName: string): boolean => {
-      if (!selectedProductDeal?.forApprovalVersion) return false;
-
-      const originalValue = (selectedProductDeal as unknown as Record<string, unknown>)[fieldName];
-      const newValue = (selectedProductDeal.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
-
-      if (!(fieldName in selectedProductDeal.forApprovalVersion)) return false;
-
-      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-      }
-
-      const normalizedOriginal = normalizeValue(originalValue);
-      const normalizedNew = normalizeValue(newValue);
-
-      const hasChanged = normalizedOriginal !== normalizedNew;
-
-      return hasChanged;
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+      selectedProductDeal as Record<string, unknown>,
+      selectedProductDeal.forApprovalVersion as Record<string, unknown> | undefined
+    );
 
     const formatValue = (value: unknown): string => {
       if (value === null || value === undefined) return '-';

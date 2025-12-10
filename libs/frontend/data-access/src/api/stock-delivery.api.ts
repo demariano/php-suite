@@ -205,7 +205,11 @@ class StockDeliveryApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyStockDelivery = async (id: string, userRole?: string): Promise<StockDeliveryDto> => {
+    public denyStockDelivery = async (
+        id: string,
+        approverMessage: string,
+        userRole?: string
+    ): Promise<StockDeliveryDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -215,7 +219,7 @@ class StockDeliveryApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/stock-delivery/${id}/deny?${queryString}` : `/stock-delivery/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

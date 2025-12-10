@@ -1,9 +1,11 @@
 'use client';
 
 import { extractErrorMessage, StatusEnum, StockDeliveryApi, StockDeliveryDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
+import DenyReasonDialog from './components/DenyReasonDialog';
 import StockDeliveryForm from './components/StockDeliveryForm';
 
 interface EditStockDeliveryPageProps {
@@ -16,6 +18,7 @@ export default function EditStockDeliveryPage({ params }: EditStockDeliveryPageP
   const [isLoading, setIsLoading] = useState(false);
   const [selectedStockDelivery, setSelectedStockDelivery] = useState<StockDeliveryDto | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+  const [showDenyDialog, setShowDenyDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -186,18 +189,23 @@ export default function EditStockDeliveryPage({ params }: EditStockDeliveryPageP
     }
   };
   
-  const handleDeny = async () => {
+  const handleDeny = () => {
+    setShowDenyDialog(true);
+  };
+
+  const handleDenyConfirm = async (approverMessage: string) => {
     if (!selectedStockDelivery) return;
     
     try {
       setIsLoading(true);
+      setShowDenyDialog(false);
       
       // SECURITY: Only get user role if BYPASS_AUTH is enabled
       // This prevents role parameter leakage when bypass auth is disabled
       const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
       
-      // Call the API to deny the record
-      const deniedStockDelivery = await StockDeliveryApi.denyStockDelivery(selectedStockDelivery.stockDeliveryId!, userRole);
+      // Call the API to deny the record with approverMessage
+      const deniedStockDelivery = await StockDeliveryApi.denyStockDelivery(selectedStockDelivery.stockDeliveryId!, approverMessage, userRole);
       setSelectedStockDelivery(deniedStockDelivery);
       setFlashNotification({
         title: 'Success!',
@@ -221,6 +229,10 @@ export default function EditStockDeliveryPage({ params }: EditStockDeliveryPageP
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDenyCancel = () => {
+    setShowDenyDialog(false);
   };
 
   const handleCancel = () => {
@@ -336,20 +348,11 @@ export default function EditStockDeliveryPage({ params }: EditStockDeliveryPageP
 
     const approvalData = selectedStockDelivery.forApprovalVersion;
 
-    const normalizeValue = (val: unknown): string => {
-      if (val === null || val === undefined) return '';
-      if (val === '') return '';
-      if (typeof val === 'string') {
-        const trimmed = val.trim();
-        return trimmed === '' ? '' : trimmed;
-      }
-      if (typeof val === 'number') return String(val);
-      if (typeof val === 'boolean') return String(val);
-      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-        return JSON.stringify(val);
-      }
-      return String(val).trim();
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+      selectedStockDelivery as Record<string, unknown>,
+      selectedStockDelivery.forApprovalVersion as Record<string, unknown> | undefined
+    );
 
     const hasArrayChanges = (fieldName: string): boolean => {
       if (!selectedStockDelivery?.forApprovalVersion) return false;
@@ -385,26 +388,6 @@ export default function EditStockDeliveryPage({ params }: EditStockDeliveryPageP
       }
       
       return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-    };
-
-    const isFieldChanged = (fieldName: string): boolean => {
-      if (!selectedStockDelivery?.forApprovalVersion) return false;
-
-      const originalValue = (selectedStockDelivery as unknown as Record<string, unknown>)[fieldName];
-      const newValue = (selectedStockDelivery.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
-
-      if (!(fieldName in selectedStockDelivery.forApprovalVersion)) return false;
-
-      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-      }
-
-      const normalizedOriginal = normalizeValue(originalValue);
-      const normalizedNew = normalizeValue(newValue);
-
-      const hasChanged = normalizedOriginal !== normalizedNew;
-
-      return hasChanged;
     };
 
     const formatValue = (value: unknown): string => {
@@ -784,6 +767,13 @@ export default function EditStockDeliveryPage({ params }: EditStockDeliveryPageP
           </div>
         </div>
       )}
+
+      <DenyReasonDialog
+        show={showDenyDialog}
+        stockDelivery={selectedStockDelivery}
+        onConfirm={handleDenyConfirm}
+        onCancel={handleDenyCancel}
+      />
     </div>
   );
 }

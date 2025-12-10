@@ -7,6 +7,7 @@ import { ApproveSupplierCommand } from './command/approve-record/approve.command
 import { CreateSupplierCommand } from './command/create/create.command';
 import { DeleteSupplierCommand } from './command/delete/delete.command';
 import { DenySupplierCommand } from './command/deny-record/deny.command';
+import { DenySupplierDto } from './command/deny-record/deny.dto';
 import { UpdateSupplierCommand } from './command/update/update.command';
 import { GetSupplierByIdQuery } from './queries/get.by.id/get.supplier.by.id.query';
 import { GetSupplierByNameQuery } from './queries/get.by.name/get.supplier.by.name.query';
@@ -268,13 +269,13 @@ export class SupplierController {
             },
         },
     })
-    deny(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    deny(@Param('id') id: string, @Body() denyDto: DenySupplierDto, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenySupplierCommand(id, user));
+        return this.commandBus.execute(new DenySupplierCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('name/:name')

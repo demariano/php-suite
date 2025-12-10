@@ -196,7 +196,7 @@ class AccountsApi extends AxiosConfig {
         return this.axiosInstance.post(url);
     };
 
-    public denyAccount = async (id: string, userRole?: string): Promise<AccountsDto> => {
+    public denyAccount = async (id: string, approverMessage: string, userRole?: string): Promise<AccountsDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -206,7 +206,7 @@ class AccountsApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/accounts/${id}/deny?${queryString}` : `/accounts/${id}/deny`;
 
-        return this.axiosInstance.post(url);
+        return this.axiosInstance.post(url, { approverMessage });
     };
 }
 

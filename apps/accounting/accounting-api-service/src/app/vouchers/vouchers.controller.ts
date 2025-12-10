@@ -7,6 +7,7 @@ import { ApproveVoucherCommand } from './command/approve-record/approve.command'
 import { CreateVoucherCommand } from './command/create/create.command';
 import { DeleteVoucherCommand } from './command/delete/delete.command';
 import { DenyVoucherCommand } from './command/deny-record/deny.command';
+import { DenyVoucherDto } from './command/deny-record/deny.dto';
 import { UpdateVoucherCommand } from './command/update/update.command';
 import { GetVoucherByIdQuery } from './queries/get.by.id/get.voucher.by.id.query';
 import { GetVoucherByVoucherNoQuery } from './queries/get.by.voucher.no/get.voucher.by.voucher.no.query';
@@ -326,13 +327,18 @@ export class VouchersController {
             },
         },
     })
-    denyVoucher(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    denyVoucher(
+        @Param('id') id: string,
+        @Body() denyDto: DenyVoucherDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        return this.commandBus.execute(new DenyVoucherCommand(id, user));
+        return this.commandBus.execute(new DenyVoucherCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('voucher-no/:voucherNo')
@@ -723,8 +729,7 @@ export class VouchersController {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
         return this.queryBus.execute(
-            new GetVouchersByVoucherDatePaginationQuery(limit, startDate, endDate
-                , direction, cursorPointer)
+            new GetVouchersByVoucherDatePaginationQuery(limit, startDate, endDate, direction, cursorPointer)
         );
     }
 

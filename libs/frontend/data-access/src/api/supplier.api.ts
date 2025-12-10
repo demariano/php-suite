@@ -229,7 +229,7 @@ class SupplierApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denySupplier = async (id: string, userRole?: string): Promise<SupplierDto> => {
+    public denySupplier = async (id: string, approverMessage: string, userRole?: string): Promise<SupplierDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {
@@ -239,7 +239,7 @@ class SupplierApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/supplier/${id}/deny?${queryString}` : `/supplier/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 }
 

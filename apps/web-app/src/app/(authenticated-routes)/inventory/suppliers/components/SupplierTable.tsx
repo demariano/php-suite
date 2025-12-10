@@ -32,7 +32,7 @@ export default function SupplierTable({
   return (
     <>
       {/* Table (Desktop) */}
-      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">
             Loading suppliers...
@@ -61,6 +61,20 @@ export default function SupplierTable({
                         {supplier.supplierName || '-'}
                       </td>
                       <td className="px-6 py-5">{supplier.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {supplier.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${supplier.latestActivity.style.bgColor} ${supplier.latestActivity.style.textColor}`}
+                            title={supplier.latestActivity.text}
+                          >
+                            {supplier.latestActivity.text.length > 50 
+                              ? `${supplier.latestActivity.text.substring(0, 50)}...` 
+                              : supplier.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -95,6 +109,20 @@ export default function SupplierTable({
                   </div>
                   <div>{supplier.status}</div>
                 </div>
+                {supplier.latestActivity && (
+                  <div className="mt-2">
+                    <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                    <dd>
+                      <span 
+                        className={`px-2 py-1 rounded text-xs ${supplier.latestActivity.style.bgColor} ${supplier.latestActivity.style.textColor}`}
+                      >
+                        {supplier.latestActivity.text.length > 60 
+                          ? `${supplier.latestActivity.text.substring(0, 60)}...` 
+                          : supplier.latestActivity.text}
+                      </span>
+                    </dd>
+                  </div>
+                )}
               </button>
             ))
           ) : (

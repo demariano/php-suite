@@ -2,6 +2,7 @@
 
 import { ContractDto, CustomerDto, DeliveryStatusEnum, PaymentStatusEnum, ProductDealDto, StatusEnum } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../components';
 import DatePicker from '../../../components/DatePicker';
 import SelectionField from '../../../customers/customer/components/SelectionField';
 import CustomerSearchableSelectionModal from '../../../search-modals/CustomerSearchableSelectionModal';
@@ -326,6 +327,15 @@ export default function ContractForm({
             ))}
           </ul>
         </div>
+      )}
+      
+      {/* Change Reason Field - First component when displayed */}
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+          disabled={selectedContract?.status !== StatusEnum.ACTIVE}
+        />
       )}
       
       {/* Pending approval or deletion warning - hide on approval tab since changeReason is already shown */}

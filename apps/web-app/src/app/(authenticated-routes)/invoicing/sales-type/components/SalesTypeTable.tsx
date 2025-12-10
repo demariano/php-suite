@@ -32,7 +32,7 @@ export default function SalesTypeTable({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden sm:block rounded-xl border border-gray-200 bg-white shadow-lg">
+      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">
             Loading sales types...
@@ -61,6 +61,20 @@ export default function SalesTypeTable({
                         {salesType.salesTypeName || '-'}
                       </td>
                       <td className="px-6 py-5">{salesType.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {salesType.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${salesType.latestActivity.style.bgColor} ${salesType.latestActivity.style.textColor}`}
+                            title={salesType.latestActivity.text}
+                          >
+                            {salesType.latestActivity.text.length > 50 
+                              ? `${salesType.latestActivity.text.substring(0, 50)}...` 
+                              : salesType.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -95,6 +109,20 @@ export default function SalesTypeTable({
                   </div>
                   <div>{salesType.status}</div>
                 </div>
+                {salesType.latestActivity && (
+                  <div className="mt-2">
+                    <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                    <dd>
+                      <span 
+                        className={`px-2 py-1 rounded text-xs ${salesType.latestActivity.style.bgColor} ${salesType.latestActivity.style.textColor}`}
+                      >
+                        {salesType.latestActivity.text.length > 60 
+                          ? `${salesType.latestActivity.text.substring(0, 60)}...` 
+                          : salesType.latestActivity.text}
+                      </span>
+                    </dd>
+                  </div>
+                )}
               </button>
             ))
           ) : (

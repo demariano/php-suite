@@ -70,6 +70,20 @@ export default function PaymentTable({
                         {payment.paymentAmount || '-'}
                       </td>
                       <td className="px-6 py-5">{payment.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {payment.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${payment.latestActivity.style.bgColor} ${payment.latestActivity.style.textColor}`}
+                            title={payment.latestActivity.text}
+                          >
+                            {payment.latestActivity.text.length > 50 
+                              ? `${payment.latestActivity.text.substring(0, 50)}...` 
+                              : payment.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -114,6 +128,20 @@ export default function PaymentTable({
                     <dt className="font-medium text-gray-500">Amount</dt>
                     <dd className="text-right text-gray-900">{payment.paymentAmount || '-'}</dd>
                   </div>
+                  {payment.latestActivity && (
+                    <div className="mt-2">
+                      <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                      <dd>
+                        <span 
+                          className={`px-2 py-1 rounded text-xs ${payment.latestActivity.style.bgColor} ${payment.latestActivity.style.textColor}`}
+                        >
+                          {payment.latestActivity.text.length > 60 
+                            ? `${payment.latestActivity.text.substring(0, 60)}...` 
+                            : payment.latestActivity.text}
+                        </span>
+                      </dd>
+                    </div>
+                  )}
                 </dl>
               </button>
             ))

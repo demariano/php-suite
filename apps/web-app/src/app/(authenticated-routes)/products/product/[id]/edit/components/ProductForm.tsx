@@ -9,6 +9,7 @@ import ProductCategorySearchableSelectionModal from '../../../../../search-modal
 import ProductClassSearchableSelectionModal from '../../../../../search-modals/ProductClassSearchableSelectionModal';
 import ProductDealSearchableSelectionModal from '../../../../../search-modals/ProductDealSearchableSelectionModal';
 import ProductUnitPriceSelectionModal from '../../../../../search-modals/ProductUnitPriceSelectionModal';
+import { createFieldChangeDetector } from '../../../../../utils/fieldChangeDetection';
 import SelectionField from './SelectionField';
 
 type ProductDealDetails = {
@@ -371,26 +372,11 @@ export default function ProductForm({
         return JSON.stringify(originalValue) !== JSON.stringify(newValue);
     };
     
-    // Helper function to check if a field has changed
-    const isFieldChanged = (fieldName: string): boolean => {
-        if (!selectedProduct?.forApprovalVersion) return false;
-        
-        const originalValue = (selectedProduct as any)[fieldName];
-        const newValue = (selectedProduct.forApprovalVersion as any)[fieldName];
-        
-        if (!(fieldName in selectedProduct.forApprovalVersion)) return false;
-        
-        if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-            return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-        }
-        
-        const normalizedOriginal = normalizeValue(originalValue);
-        const normalizedNew = normalizeValue(newValue);
-        
-        const hasChanged = normalizedOriginal !== normalizedNew;
-        
-        return hasChanged;
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+        selectedProduct as Record<string, unknown>,
+        selectedProduct.forApprovalVersion as Record<string, unknown> | undefined
+    );
     
     // Helper function to render read-only field with highlighting
     const renderReadOnlyField = (label: string, value: any, colorClass: string, fieldName?: string) => {
@@ -640,25 +626,6 @@ export default function ProductForm({
                     </div>
                 )}
             </div>
-
-            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
-                <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-2">
-                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
-                        Change Reason
-                    </label>
-                    <textarea
-                        value={formData.changeReason}
-                        onChange={(event) => setFormData((prev) => ({ ...prev, changeReason: event.target.value }))}
-                        rows={3}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-sm font-medium shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-                        placeholder="Describe the changes you made to this product..."
-                    />
-                    <p className="text-xs text-gray-500">
-                        This field is required when submitting updates for approval.
-                    </p>
-                </div>
-            )}
         </div>
     );
 

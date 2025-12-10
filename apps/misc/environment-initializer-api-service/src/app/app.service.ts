@@ -576,7 +576,6 @@ export class AppService {
         await this.customerClassificationDatabaseService.deleteAllRecords();
         await this.customerTypeDatabaseService.deleteAllRecords();
         await this.areaDatabaseService.deleteAllRecords();
-        await this.townDatabaseService.deleteAllRecords();
         await this.termsDatabaseService.deleteAllRecords();
         await this.stockTypeDatabaseService.deleteAllRecords();
         await this.stockDatabaseService.deleteAllRecords();

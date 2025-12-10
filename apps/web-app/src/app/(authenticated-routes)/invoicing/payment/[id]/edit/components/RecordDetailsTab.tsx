@@ -3,6 +3,7 @@
 import { ContractDto, CustomerDto, PaymentDto, useSessionStore } from '@data-access/index';
 import { useState } from 'react';
 import DatePicker from '../../../../../components/DatePicker';
+import { ChangeReasonField } from '../../../../../components/ChangeReasonField';
 import ContractSearchableSelectionModal from '../../../../../search-modals/ContractSearchableSelectionModal';
 import CustomerSearchableSelectionModal from '../../../../../search-modals/CustomerSearchableSelectionModal';
 
@@ -60,6 +61,14 @@ export default function RecordDetailsTab({
 
   return (
     <div className="space-y-6">
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason || ''}
+          onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
+          disabled={isReadOnly}
+        />
+      )}
+
       {/* Payment Details Section */}
       <div className="space-y-4">
         <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
@@ -238,15 +247,6 @@ export default function RecordDetailsTab({
         </div>
       </div>
       </div>
-
-      {!isCreateMode && !isAdminUser && (
-        <ChangeReasonField
-          value={formData.changeReason || ''}
-          onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
-          disabled={isReadOnly}
-        />
-      )}
-      />
 
       {/* Customer Selection Modal */}
       <CustomerSearchableSelectionModal

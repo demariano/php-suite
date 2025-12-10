@@ -1,6 +1,7 @@
 'use client';
 
 import { StatusEnum, VoucherApi, VoucherDto, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { VoucherHeader, VoucherTable } from './components';
 
@@ -104,7 +105,8 @@ export default function VoucherPage() {
     { key: 'voucherDate', label: 'VOUCHER DATE' },
     { key: 'accountName', label: 'ACCOUNT NAME' },
     { key: 'status', label: 'STATUS' },
-    { key: 'totalAmount', label: 'TOTAL AMOUNT' }
+    { key: 'totalAmount', label: 'TOTAL AMOUNT' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   const getStatusBadge = (status: StatusEnum) => {
@@ -151,9 +153,22 @@ export default function VoucherPage() {
 
   // Transform data for table display
   const tableData = vouchers?.map(voucher => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (voucher.activityLogs && voucher.activityLogs.length > 0) {
+      const lastLog = voucher.activityLogs[voucher.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...voucher,
-      status: getStatusBadge(voucher.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(voucher.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

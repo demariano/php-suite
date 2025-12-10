@@ -1,11 +1,12 @@
 'use client';
 
 import { SalesTypeApi, SalesTypeDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
-import DenyReasonDialog from '../../components/DenyReasonDialog';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+import DenyReasonDialog from '../../components/DenyReasonDialog';
 import SalesTypeForm from '../../components/SalesTypeForm';
 
 interface EditSalesTypePageProps {
@@ -328,40 +329,11 @@ export default function EditSalesTypePage({ params }: EditSalesTypePageProps) {
 
     const approvalData = selectedSalesType.forApprovalVersion;
 
-    const normalizeValue = (val: unknown): string => {
-      if (val === null || val === undefined) return '';
-      if (val === '') return '';
-      if (typeof val === 'string') {
-        const trimmed = val.trim();
-        return trimmed === '' ? '' : trimmed;
-      }
-      if (typeof val === 'number') return String(val);
-      if (typeof val === 'boolean') return String(val);
-      if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
-        return JSON.stringify(val);
-      }
-      return String(val).trim();
-    };
-
-    const isFieldChanged = (fieldName: string): boolean => {
-      if (!selectedSalesType?.forApprovalVersion) return false;
-
-      const originalValue = (selectedSalesType as unknown as Record<string, unknown>)[fieldName];
-      const newValue = (selectedSalesType.forApprovalVersion as unknown as Record<string, unknown>)[fieldName];
-
-      if (!(fieldName in selectedSalesType.forApprovalVersion)) return false;
-
-      if (Array.isArray(originalValue) && Array.isArray(newValue)) {
-        return JSON.stringify(originalValue) !== JSON.stringify(newValue);
-      }
-
-      const normalizedOriginal = normalizeValue(originalValue);
-      const normalizedNew = normalizeValue(newValue);
-
-      const hasChanged = normalizedOriginal !== normalizedNew;
-
-      return hasChanged;
-    };
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+      selectedSalesType as Record<string, unknown>,
+      selectedSalesType.forApprovalVersion as Record<string, unknown> | undefined
+    );
 
     const formatValue = (value: unknown): string => {
       if (value === null || value === undefined) return '-';

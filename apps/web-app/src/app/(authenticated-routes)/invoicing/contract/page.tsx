@@ -1,6 +1,7 @@
 'use client';
 
 import { ContractApi, ContractDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { ContractHeader, ContractTable } from './components';
 
@@ -116,7 +117,8 @@ export default function ContractsPage() {
     { key: 'customerName', label: 'CUSTOMER' },
     { key: 'startDate', label: 'START DATE' },
     { key: 'endDate', label: 'END DATE' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -186,9 +188,22 @@ export default function ContractsPage() {
 
   // Transform data for table display
   const tableData = contracts?.map(contract => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (contract.activityLogs && contract.activityLogs.length > 0) {
+      const lastLog = contract.activityLogs[contract.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...contract,
-      status: getStatusBadge(contract.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(contract.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

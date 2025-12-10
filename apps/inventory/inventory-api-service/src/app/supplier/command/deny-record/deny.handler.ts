@@ -30,7 +30,7 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
             this.validateUserAuthorization(command.user.roles);
 
             // Process denial based on current status
-            const result = await this.processDenial(existingRecord, command.user);
+            const result = await this.processDenial(existingRecord, command);
 
             this.logger.log(`Supplier denied successfully: ${command.recordId}`);
             return result;
@@ -71,10 +71,15 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
     /**
      * Processes denial based on the current status of the record
      */
-    private async processDenial(existingRecord: SupplierDto, user: UserCognito): Promise<ResponseDto<SupplierDto>> {
+    private async processDenial(existingRecord: SupplierDto, command: DenySupplierCommand): Promise<ResponseDto<SupplierDto>> {
+        // Set approverMessage from command before processing
+        if (command.approverMessage) {
+            existingRecord.approverMessage = command.approverMessage;
+        }
+        
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
-                return await this.denySupplier(existingRecord, user);
+                return await this.denySupplier(existingRecord, command.user);
             case StatusEnum.FOR_DELETION:
                 return await this.denyDeletion(existingRecord);
             case StatusEnum.NEW_RECORD:
@@ -103,11 +108,13 @@ export class DenySupplierHandler implements ICommandHandler<DenySupplierCommand>
         existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
 
         //add a new activity log for the using the approver message
-        existingRecord.activityLogs.push(
-            `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Supplier denied by ${user.username}, approver message: ${existingRecord.approverMessage}`
-        );
+        if (existingRecord.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Supplier denied by ${user.username}, approver message: ${existingRecord.approverMessage}`
+            );
+        }
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);

@@ -2,6 +2,7 @@
 
 import { SalesTypeDto, StatusEnum } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../components';
 import NumberInput from '../../../components/NumberInput';
 
 interface SalesTypeFormProps {
@@ -127,6 +128,15 @@ export default function SalesTypeForm({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* Change Reason Field - First component when displayed */}
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+          disabled={selectedSalesType?.status !== StatusEnum.ACTIVE}
+        />
       )}
 
       {!isCreateMode && selectedSalesType &&

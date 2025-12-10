@@ -76,7 +76,7 @@ class VoucherApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyVoucher = async (id: string, userRole?: string): Promise<VoucherDto> => {
+    public denyVoucher = async (id: string, approverMessage: string, userRole?: string): Promise<VoucherDto> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -88,7 +88,7 @@ class VoucherApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/vouchers/${id}/deny?${queryString}` : `/vouchers/${id}/deny`;
 
-        return await this.axiosInstance.post(url);
+        return await this.axiosInstance.post(url, { approverMessage });
     };
 
     public getVoucherByVoucherNo = async (voucherNo: string, userRole?: string): Promise<VoucherDto> => {

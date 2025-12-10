@@ -3,6 +3,7 @@
 import { ReturnGoodSoldApi, ReturnGoodSoldDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { useEffect, useRef, useState } from 'react';
 import { ReturnGoodSoldHeader, ReturnGoodSoldTable } from './components';
+import { parseActivityLog, getActivityStyle } from '@web-app/utils/activityLogUtils';
 
 export default function ReturnGoodSoldPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -104,7 +105,8 @@ export default function ReturnGoodSoldPage() {
     { key: 'dateReturned', label: 'DATE RETURNED' },
     { key: 'customerName', label: 'CUSTOMER NAME' },
     { key: 'invoiceDocno', label: 'INVOICE DOC NO' },
-    { key: 'status', label: 'STATUS' }
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
   ];
 
   // Helper function to get status text
@@ -167,9 +169,22 @@ export default function ReturnGoodSoldPage() {
 
   // Transform data for table display
   const tableData = records?.map(record => {
+    // Get the latest activity log entry
+    let latestActivity = null;
+    if (record.activityLogs && record.activityLogs.length > 0) {
+      const lastLog = record.activityLogs[record.activityLogs.length - 1];
+      const parsed = parseActivityLog(lastLog);
+      const activityStyle = getActivityStyle(parsed.activity);
+      latestActivity = {
+        text: parsed.activity,
+        style: activityStyle
+      };
+    }
+
     return {
       ...record,
-      status: getStatusBadge(record.status || StatusEnum.ACTIVE)
+      status: getStatusBadge(record.status || StatusEnum.ACTIVE),
+      latestActivity
     };
   }) || [];
 

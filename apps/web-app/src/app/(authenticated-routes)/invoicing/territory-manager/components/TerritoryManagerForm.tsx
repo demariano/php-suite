@@ -2,6 +2,7 @@
 
 import { StatusEnum, TerritoryManagerDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../components';
 
 interface TerritoryManagerFormProps {
   isCreateMode: boolean;
@@ -158,6 +159,15 @@ export default function TerritoryManagerForm({
             ))}
           </ul>
         </div>
+      )}
+
+      {/* Change Reason Field - First component when displayed */}
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+          disabled={selectedTerritoryManager?.status !== StatusEnum.ACTIVE}
+        />
       )}
 
       {!isCreateMode && selectedTerritoryManager &&

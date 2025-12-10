@@ -2,6 +2,7 @@
 
 import { DeliveryDetailsDto, ProductDto, ProductUnitDto, StatusEnum, StockDeliveryDto, StockTypeDto, SupplierDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../../../components';
 import DatePicker from '../../../../../components/DatePicker';
 import ProductSearchableSelectionModal from '../../../../../search-modals/ProductSearchableSelectionModal';
 import ProductUnitSearchableSelectionModal from '../../../../../search-modals/ProductUnitSearchableSelectionModal';
@@ -249,6 +250,15 @@ export default function StockDeliveryForm({
             </span>
           </div>
         )}
+
+      {/* Change Reason Field - First component when displayed */}
+      {!isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => setFormData(prev => ({ ...prev, changeReason: e.target.value }))}
+          disabled={selectedStockDelivery?.status !== StatusEnum.ACTIVE}
+        />
+      )}
 
       <div className="space-y-6">
         {/* Stock Delivery Information Section */}

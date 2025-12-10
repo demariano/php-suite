@@ -34,7 +34,7 @@ export default function AccountTable({
     : 'No accounts found';
 
   return (
-    <div className="space-y-6">
+    <>
       <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg sm:block">
         {isLoading ? (
           <div className="p-10 text-center text-base text-gray-500">Loading accounts...</div>
@@ -66,6 +66,20 @@ export default function AccountTable({
                       </td>
                       <td className="px-6 py-5 text-sm text-gray-600">{account.accountType || '-'}</td>
                       <td className="px-6 py-5">{account.status}</td>
+                      <td className="px-6 py-5 text-sm">
+                        {account.latestActivity ? (
+                          <span 
+                            className={`px-2 py-1 rounded ${account.latestActivity.style.bgColor} ${account.latestActivity.style.textColor}`}
+                            title={account.latestActivity.text}
+                          >
+                            {account.latestActivity.text.length > 50 
+                              ? `${account.latestActivity.text.substring(0, 50)}...` 
+                              : account.latestActivity.text}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 ) : (
@@ -98,6 +112,20 @@ export default function AccountTable({
                   </div>
                   <div>{account.status}</div>
                 </div>
+                {account.latestActivity && (
+                  <div className="mt-2">
+                    <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                    <dd>
+                      <span 
+                        className={`px-2 py-1 rounded text-xs ${account.latestActivity.style.bgColor} ${account.latestActivity.style.textColor}`}
+                      >
+                        {account.latestActivity.text.length > 60 
+                          ? `${account.latestActivity.text.substring(0, 60)}...` 
+                          : account.latestActivity.text}
+                      </span>
+                    </dd>
+                  </div>
+                )}
               </button>
             ))
           ) : (
@@ -114,7 +142,8 @@ export default function AccountTable({
         </div>
       )}
 
-      <div className="flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      {/* Pagination */}
+      <div className="mt-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
           <span className="text-sm font-medium text-gray-600">Rows per page:</span>
           <select
@@ -155,7 +184,7 @@ export default function AccountTable({
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
