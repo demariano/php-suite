@@ -1,7 +1,12 @@
 import { AuthGuardLibModule } from '@auth-guard-lib';
 import { ConfigurationLibModule } from '@configuration-lib';
+import { CustomerDatabaseService, CustomerDatabaseServiceModule } from '@customer-database-service';
 import { DynamoDbLibModule } from '@dynamo-db-lib';
-import { InvoicingDatabaseServiceModule, PaymentDatabaseService } from '@invoicing-database-service';
+import {
+    CollectionReceiptRangeDatabaseService,
+    InvoicingDatabaseServiceModule,
+    PaymentDatabaseService,
+} from '@invoicing-database-service';
 import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue-lib';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
@@ -27,6 +32,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         AuthGuardLibModule,
         MessageQueueLibModule,
         InvoicingDatabaseServiceModule,
+        CustomerDatabaseServiceModule,
     ],
     controllers: [PaymentController],
     providers: [
@@ -37,6 +43,14 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         {
             provide: 'PaymentDatabaseService',
             useClass: PaymentDatabaseService,
+        },
+        {
+            provide: 'CollectionReceiptRangeDatabaseService',
+            useClass: CollectionReceiptRangeDatabaseService,
+        },
+        {
+            provide: 'CustomerDatabaseService',
+            useClass: CustomerDatabaseService,
         },
         CreatePaymentHandler,
         GetPaymentByIdHandler,

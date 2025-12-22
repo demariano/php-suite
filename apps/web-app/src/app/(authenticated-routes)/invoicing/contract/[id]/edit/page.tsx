@@ -440,35 +440,128 @@ export default function EditContractPage({ params }: EditContractPageProps) {
               {renderReadOnlyField('Start Date', formatDate(approvalData.startDate), 'bg-blue-500', 'startDate')}
               {renderReadOnlyField('End Date', formatDate(approvalData.endDate), 'bg-blue-500', 'endDate')}
             </div>
+            {/* Contract Type - Full width row */}
+            <div className="grid grid-cols-1 gap-6 mt-6">
+              {renderReadOnlyField('Contract Type', approvalData.contractType || '-', 'bg-blue-500', 'contractType')}
+            </div>
           </div>
         </div>
 
-        {/* Product Deal Information Section */}
-        <div className="space-y-4">
-          <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-blue-600 rounded-lg shadow-md">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
-              </div>
-              <h3 className="text-base font-bold text-blue-600">
-                Product Deal Information
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {renderReadOnlyField('Product Deal', approvalData.productDealName, 'bg-blue-500', 'productDealName')}
-              <div></div>
-            </div>
-            {/* Product Deal Quantity Fields - Only show when productDealQty is available */}
-            {approvalData.productDealQty && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                {renderReadOnlyField('Minimum Quantity', approvalData.productDealQty.minQty?.toString() || '0', 'bg-blue-500')}
-                {renderReadOnlyField('Additional Quantity', approvalData.productDealQty.additionalQty?.toString() || '0', 'bg-blue-500')}
-              </div>
-            )}
-          </div>
-        </div>
+            {/* Product Deals */}
+            {(() => {
+              const hasArrayChanges = (fieldName: string): boolean => {
+                const original = (selectedContract as any)[fieldName];
+                const updated = (approvalData as any)[fieldName];
+                
+                if (!original && !updated) return false;
+                if (!original && updated) return true;
+                if (original && !updated) return true;
+                
+                if (!Array.isArray(original) || !Array.isArray(updated)) return false;
+                if (original.length !== updated.length) return true;
+                
+                const originalStr = JSON.stringify(original.map((item: any) => ({ productId: item.productId, productDealId: item.productDealId })).sort());
+                const updatedStr = JSON.stringify(updated.map((item: any) => ({ productId: item.productId, productDealId: item.productDealId })).sort());
+                
+                return originalStr !== updatedStr;
+              };
+              
+              const dealsChanged = hasArrayChanges('contractProductDeals');
+              const originalDeals = (selectedContract as any).contractProductDeals;
+              const newDeals = (approvalData as any).contractProductDeals;
+              const originalHasItems = originalDeals && Array.isArray(originalDeals) && originalDeals.length > 0;
+              const newHasItems = newDeals && Array.isArray(newDeals) && newDeals.length > 0;
+              const allRemoved = originalHasItems && !newHasItems;
+              
+              // Render if there are changes OR if new array has items
+              if (!dealsChanged && !newHasItems) return null;
+              
+              return (
+                <div className="mt-6">
+                  <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <h4 className={`text-base font-bold ${dealsChanged ? 'px-3 py-1 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700' : 'text-gray-700'}`}>
+                        Product Deals
+                      </h4>
+                    </div>
+                    {allRemoved ? (
+                      <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-600 rounded-lg">
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold text-amber-800">
+                              All Product Deals records have been removed
+                            </p>
+                            <p className="text-xs text-amber-700 mt-1">
+                              {originalDeals.length} record{originalDeals.length !== 1 ? 's' : ''} will be deleted upon approval
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                        {!newHasItems ? (
+                          <div className="p-10 text-center text-gray-500 text-base">
+                            No contract deals in pending changes.
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                              <thead className="bg-white border-b border-gray-200">
+                                <tr>
+                                  <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                    Product Name
+                                  </th>
+                                  <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                    Product Deal Name
+                                  </th>
+                                  <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                    Minimum Quantity
+                                  </th>
+                                  <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                    Additional Quantity
+                                  </th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {(newDeals as any[]).map((deal: any, index: number) => (
+                                  <tr 
+                                    key={index}
+                                    className="transition-all duration-200 bg-white hover:bg-gray-50"
+                                  >
+                                    <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                      {deal.productName || '-'}
+                                    </td>
+                                    <td className="px-6 py-5 text-sm text-gray-600">
+                                      {deal.productDealName || '-'}
+                                    </td>
+                                    <td className="px-6 py-5 text-sm text-gray-600">
+                                      {deal.minQty || 0}
+                                    </td>
+                                    <td className="px-6 py-5 text-sm text-gray-600">
+                                      {deal.additionalQty || 0}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
         {/* Status Information Section */}
         <div className="space-y-4">
@@ -492,6 +585,31 @@ export default function EditContractPage({ params }: EditContractPageProps) {
             </div>
           </div>
         </div>
+
+        {/* Rebate Information Section */}
+        {(approvalData.rebateType || approvalData.rebatePercentage || approvalData.rebateAmount || approvalData.rebateClaimedAmount || approvalData.rebateClaimedStatus) && (
+          <div className="space-y-4">
+            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-600 rounded-lg shadow-md">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-bold text-blue-600">
+                  Rebate Information
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {renderReadOnlyField('Rebate Type', approvalData.rebateType, 'bg-blue-500', 'rebateType')}
+                {approvalData.rebateType === 'PERCENTAGE' && renderReadOnlyField('Rebate Percentage', approvalData.rebatePercentage ? formatNumberWithCommas(approvalData.rebatePercentage) : '-', 'bg-blue-500', 'rebatePercentage')}
+                {approvalData.rebateType === 'AMOUNT' && renderReadOnlyField('Rebate Amount', approvalData.rebateAmount ? formatNumberWithCommas(approvalData.rebateAmount) : '-', 'bg-blue-500', 'rebateAmount')}
+                {renderReadOnlyField('Rebate Claimed Amount', formatNumberWithCommas(approvalData.rebateClaimedAmount), 'bg-blue-500', 'rebateClaimedAmount')}
+                {renderReadOnlyField('Rebate Claimed Status', approvalData.rebateClaimedStatus || '-', 'bg-blue-500', 'rebateClaimedStatus')}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Action Buttons */}
         <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">

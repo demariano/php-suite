@@ -77,8 +77,10 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
         existingRecord.invoiceId = updateDto.invoiceId;
         existingRecord.customerId = updateDto.customerId;
         existingRecord.customerName = updateDto.customerName;
+        existingRecord.areaId = updateDto.areaId;
+        existingRecord.areaName = updateDto.areaName;
         existingRecord.invoiceDocno = updateDto.invoiceDocno;
-        existingRecord.rgsDocno = updateDto.rgsDocno;
+        // rgsDocno is immutable - do not update it
         existingRecord.dateReturned = updateDto.dateReturned;
         existingRecord.originalInvoiceDetails = updateDto.originalInvoiceDetails;
         existingRecord.modifiedInvoiceDetails = updateDto.modifiedInvoiceDetails;
@@ -116,12 +118,14 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
         user: UserCognito
     ): Promise<ResponseDto<ReturnGoodSoldDto>> {
         // Store changes in forApprovalVersion
+        // Note: rgsDocno is immutable and should NOT be included in forApprovalVersion
         existingRecord.forApprovalVersion = {
             invoiceId: updateDto.invoiceId,
             customerId: updateDto.customerId,
             customerName: updateDto.customerName,
+            areaId: updateDto.areaId,
+            areaName: updateDto.areaName,
             invoiceDocno: updateDto.invoiceDocno,
-            rgsDocno: updateDto.rgsDocno,
             dateReturned: updateDto.dateReturned,
             originalInvoiceDetails: updateDto.originalInvoiceDetails,
             modifiedInvoiceDetails: updateDto.modifiedInvoiceDetails,

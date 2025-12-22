@@ -1,6 +1,6 @@
 'use client';
 
-import { AreaApi, ContractApi, ContractDto, CustomerApi, CustomerDto, CustomerProductDealDto, InvoiceDto, PaymentStatusEnum, PrintStatusEnum, ProductDealQtyDto, ProductPriceTypeDto, SalesTypeApi, SalesTypeDto, StatusEnum, StockApi, TermsDto, useSessionStore } from '@data-access/index';
+import { AreaApi, ContractApi, ContractDto, ContractProductDealDto, CustomerApi, CustomerDto, CustomerProductDealDto, InvoiceDto, PaymentStatusEnum, PrintStatusEnum, ProductPriceTypeDto, SalesTypeApi, SalesTypeDto, StatusEnum, StockApi, TermsDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../../../components';
 import DatePicker from '../../../../../components/DatePicker';
@@ -18,7 +18,7 @@ interface RecordDetailsTabProps {
   isCreateMode: boolean;
   isAdminUser: boolean;
   onCustomerDealsChange?: (deals: CustomerProductDealDto[]) => void;
-  onContractProductDealQtyChange?: (productDealQty: ProductDealQtyDto | null) => void;
+  onContractProductDealsChange?: (productDeals: ContractProductDealDto[] | null) => void;
   isReadOnly?: boolean;
 }
 
@@ -28,7 +28,7 @@ export default function RecordDetailsTab({
   isCreateMode,
   isAdminUser,
   onCustomerDealsChange,
-  onContractProductDealQtyChange,
+  onContractProductDealsChange,
   isReadOnly = false
 }: RecordDetailsTabProps) {
   // State management for customer selection and modals
@@ -92,7 +92,7 @@ export default function RecordDetailsTab({
                 contractId: '',
                 contractName: ''
               });
-              onContractProductDealQtyChange?.(null);
+              onContractProductDealsChange?.(null);
               return;
             }
           }
@@ -259,7 +259,7 @@ export default function RecordDetailsTab({
   // Process contract selection (original logic)
   const processContractSelection = async (contract: ContractDto) => {
     try {
-      // Fetch full contract details to get productDealQty
+      // Fetch full contract details to get contractProductDeals
       const fullContract = await ContractApi.getContractById(contract.contractId);
       
       // Update form data with contract info
@@ -268,11 +268,11 @@ export default function RecordDetailsTab({
         contractName: contract.contractName
       });
       
-      // Pass contract's productDealQty to parent
-      if (fullContract.productDealQty) {
-        onContractProductDealQtyChange?.(fullContract.productDealQty);
+      // Pass contract's productDeals array to parent
+      if (fullContract.contractProductDeals && fullContract.contractProductDeals.length > 0) {
+        onContractProductDealsChange?.(fullContract.contractProductDeals);
       } else {
-        onContractProductDealQtyChange?.(null);
+        onContractProductDealsChange?.(null);
       }
     } catch (error) {
       console.error('Error processing contract selection:', error);
@@ -298,7 +298,7 @@ export default function RecordDetailsTab({
   // Process clear contract (original logic)
   const processClearContract = () => {
     onFormDataChange({ contractId: '', contractName: '' });
-    onContractProductDealQtyChange?.(null);
+    onContractProductDealsChange?.(null);
   };
   
   // Handle customer change confirmation
@@ -436,7 +436,7 @@ export default function RecordDetailsTab({
           contractName: '',
           contractSales: false
         });
-        onContractProductDealQtyChange?.(null);
+        onContractProductDealsChange?.(null);
       }
       
       // Close confirmation modal and reset pending action
@@ -546,24 +546,21 @@ export default function RecordDetailsTab({
           </h3>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="group">
-            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-              <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-              Document Number *
-            </label>
-            <input
-              type="text"
-              value={formData.docno || ''}
-              onChange={(e) => onFormDataChange({ docno: e.target.value })}
-              readOnly={!isCreateMode || isReadOnly}
-              className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                !isCreateMode || isReadOnly
-                  ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-              }`}
-              placeholder="Enter document number"
-            />
-          </div>
+          {!isCreateMode && (
+            <div className="group">
+              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                Document Number
+              </label>
+              <input
+                type="text"
+                value={formData.docno || ''}
+                readOnly
+                className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500"
+                placeholder="Document number (auto-generated)"
+              />
+            </div>
+          )}
 
           <div className="group">
             <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">

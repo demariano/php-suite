@@ -1,12 +1,4 @@
-import {
-    ContractDto,
-    CreateContractDto,
-    DeliveryStatusEnum,
-    PageDto,
-    PaymentStatusEnum,
-    ProductDealQtyDto,
-    StatusEnum,
-} from '@dto';
+import { ContractDto, ContractTypeEnum, CreateContractDto, DeliveryStatusEnum, PageDto, PaymentStatusEnum, StatusEnum } from '@dto';
 import {
     ContractDataType,
     createDynamoDbOptionWithPKSKIndex,
@@ -44,19 +36,20 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             contractName: contractDto.contractName,
             customerId: contractDto.customerId,
             customerName: contractDto.customerName,
+            areaId: contractDto.areaId,
+            areaName: contractDto.areaName,
             startDate: contractDto.startDate,
             endDate: contractDto.endDate,
+            contractType: contractDto.contractType,
             contractAmount: contractDto.contractAmount,
             amountPaid: contractDto.amountPaid,
-            productDealId: contractDto.productDealId,
-            productDealName: contractDto.productDealName,
+            contractProductDeals: contractDto.contractProductDeals,
             deliveryStatus: contractDto.deliveryStatus,
             paymentStatus: contractDto.paymentStatus,
             deliveredAmount: contractDto.deliveredAmount,
             changeReason: contractDto.changeReason,
             activityLogs: contractDto.activityLogs,
             forApprovalVersion: contractDto.forApprovalVersion,
-            productDealQty: contractDto.productDealQty,
             rebatePercentage: contractDto.rebatePercentage,
             rebateType: contractDto.rebateType,
             rebateAmount: contractDto.rebateAmount,
@@ -72,6 +65,8 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             GSI4SK: contractDto.contractNo,
             GSI5PK: `CONTRACT#${contractDto.customerId}#${contractDto.paymentStatus}`,
             GSI5SK: contractDto.contractNo,
+            GSI6PK: `CONTRACT#${contractDto.areaId}`,
+            GSI6SK: contractDto.contractNo,
         };
 
         const contractRecord: ContractDataType = await this.contractTable.create(contractData);
@@ -151,6 +146,74 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             pageRecordCursorPointers.nextCursorPointer,
             pageRecordCursorPointers.prevCursorPointer
         );
+    }
+
+    async findRecordByAreaId(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ContractDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.contractTable.find(
+            {
+                GSI6PK: `CONTRACT#${areaId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async getContractCountByAreaId(areaId: string): Promise<number> {
+        let totalCount = 0;
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000; // Large limit to minimize pagination calls
+
+        do {
+            // For first call, don't pass direction/cursor. For subsequent calls, use 'next' direction
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI6',
+                  };
+
+            // Only fetch contractId field to minimize data transfer - we only need to count records
+            const records = await this.contractTable.find(
+                {
+                    GSI6PK: `CONTRACT#${areaId}`,
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: ['contractId'], // Only return minimal field needed for counting
+                }
+            );
+
+            totalCount += records.length;
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return totalCount;
     }
 
     async findRecordByContractNo(contractNo: string): Promise<ContractDto | null> {
@@ -331,12 +394,14 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         dto.contractName = record.contractName ? record.contractName : '';
         dto.customerId = record.customerId ? record.customerId : '';
         dto.customerName = record.customerName ? record.customerName : '';
+        dto.areaId = record.areaId ? record.areaId : undefined;
+        dto.areaName = record.areaName ? record.areaName : undefined;
         dto.startDate = record.startDate ? record.startDate : '';
         dto.endDate = record.endDate ? record.endDate : '';
+        dto.contractType = record.contractType ? (record.contractType as ContractTypeEnum) : undefined;
         dto.contractAmount = record.contractAmount ? record.contractAmount : 0;
         dto.amountPaid = record.amountPaid ? record.amountPaid : 0;
-        dto.productDealId = record.productDealId ? record.productDealId : '';
-        dto.productDealName = record.productDealName ? record.productDealName : '';
+        dto.contractProductDeals = record.contractProductDeals ? record.contractProductDeals : [];
         dto.deliveryStatus = record.deliveryStatus as DeliveryStatusEnum;
         dto.paymentStatus = record.paymentStatus as PaymentStatusEnum;
         dto.deliveredAmount = record.deliveredAmount ? record.deliveredAmount : 0;
@@ -345,7 +410,6 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         dto.invoicedAmount = record.invoicedAmount ? record.invoicedAmount : 0;
         dto.status = record.status as StatusEnum;
         dto.changeReason = (record as ContractDataType & { changeReason?: string }).changeReason || undefined;
-        dto.productDealQty = record.productDealQty as ProductDealQtyDto;
         dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         dto.rebatePercentage = record.rebatePercentage ? record.rebatePercentage : undefined;
         dto.rebateType = record.rebateType ? (record.rebateType as any) : undefined;
@@ -374,12 +438,14 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             contractName: dto.contractName,
             customerId: dto.customerId,
             customerName: dto.customerName,
+            areaId: dto.areaId,
+            areaName: dto.areaName,
             startDate: dto.startDate,
             endDate: dto.endDate,
+            contractType: dto.contractType,
             contractAmount: dto.contractAmount,
             amountPaid: dto.amountPaid,
-            productDealId: dto.productDealId,
-            productDealName: dto.productDealName,
+            contractProductDeals: dto.contractProductDeals,
             deliveryStatus: dto.deliveryStatus,
             paymentStatus: dto.paymentStatus,
             deliveredAmount: dto.deliveredAmount,
@@ -388,7 +454,6 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             invoicedAmount: dto.invoicedAmount,
             changeReason: dto.changeReason,
             status: dto.status as StatusEnum,
-            productDealQty: dto.productDealQty,
             GSI1PK: `CONTRACT`,
             GSI1SK: dto.contractNo,
             GSI2PK: `CONTRACT#${dto.status}`,
@@ -399,6 +464,8 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             GSI4SK: dto.contractNo,
             GSI5PK: `CONTRACT#${dto.customerId}#${dto.paymentStatus}`,
             GSI5SK: dto.contractNo,
+            GSI6PK: `CONTRACT#${dto.areaId}`,
+            GSI6SK: dto.contractNo,
             approverMessage: dto.approverMessage,
             rebatePercentage: dto.rebatePercentage,
             rebateType: dto.rebateType,

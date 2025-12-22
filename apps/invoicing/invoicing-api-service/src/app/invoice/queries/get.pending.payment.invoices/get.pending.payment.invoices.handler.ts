@@ -24,7 +24,9 @@ export class GetPendingPaymentInvoicesHandler implements IQueryHandler<GetPendin
         try {
             const invoices = await this.invoiceDatabaseService.findPendingPaymentInvoices(
                 query.customerId,
-                query.status
+                query.status,
+                query.contractId,
+                query.nonContractOnly
             );
 
             if (!invoices || invoices.length === 0) {

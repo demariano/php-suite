@@ -1,3 +1,5 @@
+export * from './lib/collection-receipt-range-database-service';
+export * from './lib/collection-receipt-range-database-service-abstract-class';
 export * from './lib/contract-database-service';
 export * from './lib/contract-database-service-abstract-class';
 export * from './lib/invoice-database-service';

@@ -15,6 +15,15 @@ export class ReturnGoodSoldDto {
     customerName!: string;
 
     @ApiProperty()
+    areaId?: string;
+
+    @ApiProperty()
+    areaName?: string;
+
+    @ApiProperty()
+    areaPrefixId?: string;
+
+    @ApiProperty()
     invoiceDocno!: string;
 
     @ApiProperty()

@@ -24,7 +24,6 @@ import {
     ProductClassDto,
     ProductDealDetailsDto,
     ProductDealDto,
-    ProductDealQtyDto,
     ProductDto,
     ProductPriceTypeDto,
     ProductUnitDto,
@@ -154,6 +153,17 @@ export class AppService {
         configurationData4.configurationValue = invoiceAmountNeededForApproval.toString();
         try {
             await this.configurationDatabaseService.createRecord(configurationData4);
+        } catch (error) {
+            console.error('Failed to create configuration record:', error);
+        }
+
+        //create the starting invoice number
+        const startingInvoiceNumber = 1;
+        const configurationData5: ConfigurationDto = new ConfigurationDto();
+        configurationData5.configurationName = 'STARTING_INVOICE_NUMBER';
+        configurationData5.configurationValue = startingInvoiceNumber.toString();
+        try {
+            await this.configurationDatabaseService.createRecord(configurationData5);
         } catch (error) {
             console.error('Failed to create configuration record:', error);
         }
@@ -335,13 +345,15 @@ export class AppService {
 
         //create 2 sales types
         const salesTypeData = new SalesTypeDto();
-        salesTypeData.salesTypeName = 'Sales Type 1';
+        salesTypeData.salesTypeName = 'Contract Sales';
         salesTypeData.status = StatusEnum.ACTIVE;
+        salesTypeData.contractSales = true;
         const salesTypeRecord1 = await this.salesTypeDatabaseService.createRecord(salesTypeData);
 
         const salesTypeData2 = new SalesTypeDto();
-        salesTypeData2.salesTypeName = 'Sales Type 2';
+        salesTypeData2.salesTypeName = 'Non-Contract Sales Type';
         salesTypeData2.status = StatusEnum.ACTIVE;
+        salesTypeData2.contractSales = false;
         const salesTypeRecord2 = await this.salesTypeDatabaseService.createRecord(salesTypeData2);
 
         //create 2 territory managers
@@ -495,11 +507,6 @@ export class AppService {
         contractData1.endDate = '2025-12-31';
         contractData1.contractAmount = 10000;
         contractData1.amountPaid = 0;
-        contractData1.productDealId = productDealRecord1.productDealId;
-        contractData1.productDealName = productDealRecord1.productDealName;
-        contractData1.productDealQty = new ProductDealQtyDto();
-        contractData1.productDealQty.additionalQty = productDealRecord1.additionalQty;
-        contractData1.productDealQty.minQty = productDealRecord1.minQty;
 
         contractData1.deliveryStatus = DeliveryStatusEnum.PENDING;
         contractData1.paymentStatus = PaymentStatusEnum.PENDING;
@@ -507,6 +514,24 @@ export class AppService {
         contractData1.activityLogs = [];
         contractData1.forApprovalVersion = {};
         contractData1.changeReason = '';
+        contractData1.contractProductDeals = [
+            {
+                productId: productRecord1.productId,
+                productName: productRecord1.productName,
+                productDealId: productDealRecord1.productDealId,
+                productDealName: productDealRecord1.productDealName,
+                additionalQty: productDealRecord1.additionalQty,
+                minQty: productDealRecord1.minQty,
+            },
+            {
+                productId: productRecord2.productId,
+                productName: productRecord2.productName,
+                productDealId: productDealRecord2.productDealId,
+                productDealName: productDealRecord2.productDealName,
+                additionalQty: productDealRecord2.additionalQty,
+                minQty: productDealRecord2.minQty,
+            },
+        ];
         await this.contractDatabaseService.createRecord(contractData1);
 
         const contractData2 = new ContractDto();
@@ -519,11 +544,24 @@ export class AppService {
         contractData2.endDate = '2025-12-31';
         contractData2.contractAmount = 10000;
         contractData2.amountPaid = 0;
-        contractData2.productDealId = productDealRecord2.productDealId;
-        contractData2.productDealName = productDealRecord2.productDealName;
-        contractData2.productDealQty = new ProductDealQtyDto();
-        contractData2.productDealQty.additionalQty = productDealRecord2.additionalQty;
-        contractData2.productDealQty.minQty = productDealRecord2.minQty;
+        contractData2.contractProductDeals = [
+            {
+                productId: productRecord1.productId,
+                productName: productRecord1.productName,
+                productDealId: productDealRecord1.productDealId,
+                productDealName: productDealRecord1.productDealName,
+                additionalQty: productDealRecord1.additionalQty,
+                minQty: productDealRecord1.minQty,
+            },
+            {
+                productId: productRecord2.productId,
+                productName: productRecord2.productName,
+                productDealId: productDealRecord2.productDealId,
+                productDealName: productDealRecord2.productDealName,
+                additionalQty: productDealRecord2.additionalQty,
+                minQty: productDealRecord2.minQty,
+            },
+        ];
         contractData2.deliveryStatus = DeliveryStatusEnum.PENDING;
         contractData2.paymentStatus = PaymentStatusEnum.PENDING;
         contractData2.deliveredAmount = 0;

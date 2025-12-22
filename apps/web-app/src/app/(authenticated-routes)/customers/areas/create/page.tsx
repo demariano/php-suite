@@ -28,7 +28,8 @@ export default function CreateAreaPage() {
         territoryManagerId: area.territoryManagerId,
         territoryManagerName: area.territoryManagerName,
         status: area.status,
-        towns: area.towns
+        towns: area.towns,
+        idPrefix: area.idPrefix
       }, userRole);
       
       setFlashNotification({

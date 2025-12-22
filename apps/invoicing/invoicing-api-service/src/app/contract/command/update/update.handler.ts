@@ -97,16 +97,22 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
             existingRecord.contractName = command.contractDto.contractName;
             existingRecord.customerId = command.contractDto.customerId;
             existingRecord.customerName = command.contractDto.customerName;
+            existingRecord.areaId = command.contractDto.areaId;
+            existingRecord.areaName = command.contractDto.areaName;
             existingRecord.startDate = command.contractDto.startDate;
             existingRecord.endDate = command.contractDto.endDate;
+            existingRecord.contractType = command.contractDto.contractType;
             existingRecord.contractAmount = command.contractDto.contractAmount;
             existingRecord.amountPaid = command.contractDto.amountPaid;
-            existingRecord.productDealId = command.contractDto.productDealId;
-            existingRecord.productDealName = command.contractDto.productDealName;
+            existingRecord.contractProductDeals = command.contractDto.contractProductDeals;
             existingRecord.deliveryStatus = command.contractDto.deliveryStatus;
             existingRecord.paymentStatus = command.contractDto.paymentStatus;
             existingRecord.deliveredAmount = command.contractDto.deliveredAmount;
-            existingRecord.productDealQty = command.contractDto.productDealQty;
+            existingRecord.rebatePercentage = command.contractDto.rebatePercentage;
+            existingRecord.rebateType = command.contractDto.rebateType;
+            existingRecord.rebateAmount = command.contractDto.rebateAmount;
+            existingRecord.rebateClaimedAmount = command.contractDto.rebateClaimedAmount;
+            existingRecord.rebateClaimedStatus = command.contractDto.rebateClaimedStatus;
             // Clear changeReason for admin users since changes are applied directly
             existingRecord.changeReason = undefined;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
@@ -162,17 +168,23 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
                 contractName: command.contractDto.contractName,
                 customerId: command.contractDto.customerId,
                 customerName: command.contractDto.customerName,
+                areaId: command.contractDto.areaId,
+                areaName: command.contractDto.areaName,
                 startDate: command.contractDto.startDate,
                 endDate: command.contractDto.endDate,
+                contractType: command.contractDto.contractType,
                 contractAmount: command.contractDto.contractAmount,
                 amountPaid: command.contractDto.amountPaid,
-                productDealId: command.contractDto.productDealId,
-                productDealName: command.contractDto.productDealName,
+                contractProductDeals: command.contractDto.contractProductDeals,
                 deliveryStatus: command.contractDto.deliveryStatus,
                 paymentStatus: command.contractDto.paymentStatus,
                 deliveredAmount: command.contractDto.deliveredAmount,
                 invoicedAmount: command.contractDto.invoicedAmount,
-                productDealQty: command.contractDto.productDealQty,
+                rebatePercentage: command.contractDto.rebatePercentage,
+                rebateType: command.contractDto.rebateType,
+                rebateAmount: command.contractDto.rebateAmount,
+                rebateClaimedAmount: command.contractDto.rebateClaimedAmount,
+                rebateClaimedStatus: command.contractDto.rebateClaimedStatus,
             };
         }
     }

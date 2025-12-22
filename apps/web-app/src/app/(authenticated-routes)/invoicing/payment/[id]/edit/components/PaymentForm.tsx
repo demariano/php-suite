@@ -1,8 +1,8 @@
 'use client';
 
-import { PaymentDto, StatusEnum, useSessionStore } from '@data-access/index';
-import { useEffect, useState } from 'react';
+import { ContractApi, ContractTypeEnum, PaymentDto, StatusEnum, useSessionStore } from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import { useEffect, useState } from 'react';
 import PaymentDetailsTab from './PaymentDetailsTab';
 import PaymentInvoiceDetailsTab from './PaymentInvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
@@ -59,6 +59,31 @@ export default function PaymentForm({
   // Toast notification hook
   const { setFlashNotification } = useSessionStore();
 
+  // State for receipt number error
+  const [receiptNumberError, setReceiptNumberError] = useState<string | null>(null);
+  
+  // State for contract type (for validation)
+  const [contractType, setContractType] = useState<ContractTypeEnum | null>(null);
+
+  // Fetch contract type when contractId is available
+  useEffect(() => {
+    const fetchContractType = async () => {
+      if (formData.contractPayment && formData.contractId) {
+        try {
+          const contract = await ContractApi.getContractById(formData.contractId);
+          setContractType(contract.contractType || null);
+        } catch (error) {
+          console.error('Error fetching contract details:', error);
+          setContractType(null);
+        }
+      } else {
+        setContractType(null);
+      }
+    };
+
+    fetchContractType();
+  }, [formData.contractPayment, formData.contractId]);
+
   // Initialize form data when selectedPayment changes
   useEffect(() => {
     if (selectedPayment) {
@@ -95,7 +120,15 @@ export default function PaymentForm({
   const validatePayment = (payment: PaymentDto): string | null => {
     // Rule 1: Receipt number is required
     if (!payment.receiptNo || payment.receiptNo.trim() === '') {
+      if (receiptNumberError) {
+        return receiptNumberError;
+      }
       return 'Receipt number is required and cannot be empty.';
+    }
+
+    // Rule 1a: If there's a receipt number error, prevent saving
+    if (receiptNumberError) {
+      return receiptNumberError;
     }
 
     // Rule 2: Customer must be selected
@@ -119,12 +152,34 @@ export default function PaymentForm({
       return 'Payment amount must equal the sum of all payment details amounts.';
     }
 
-    // Rule 6: Payment amount must equal sum of applied invoice amounts (only for non-contract payments)
-    if (!payment.contractPayment) {
-      const appliedAmountSum = payment.paymentInvoiceDetails?.reduce((sum, detail) => sum + (detail.amountApplied || 0), 0) || 0;
-      if (Math.abs(payment.paymentAmount - appliedAmountSum) > 0.01) {
-        return 'Payment amount must equal the sum of all applied invoice amounts.';
+    // Rule 6: Payment amount must equal sum of applied invoice amounts
+    // Validate for all payments with invoice details, EXCEPT REGULAR contract payments
+    // For REGULAR contract payments: skip validation (no invoices allowed)
+    // If contractType is null/unknown, still validate to be safe
+    const isRegularContract = payment.contractPayment && contractType === ContractTypeEnum.REGULAR;
+    const shouldValidateInvoices = !isRegularContract;
+    
+    // Always validate if there are invoice details (unless it's a confirmed REGULAR contract)
+    if (payment.paymentInvoiceDetails && payment.paymentInvoiceDetails.length > 0) {
+      if (shouldValidateInvoices) {
+        const appliedAmountSum = payment.paymentInvoiceDetails.reduce((sum, detail) => {
+          const amount = detail.amountApplied || 0;
+          return sum + amount;
+        }, 0);
+        
+        const paymentAmount = payment.paymentAmount || 0;
+        
+        // First check if applied amount exceeds payment amount
+        if (appliedAmountSum > paymentAmount) {
+          return `Total applied amount ($${appliedAmountSum.toFixed(2)}) cannot exceed payment amount ($${paymentAmount.toFixed(2)}).`;
+        }
+        
+        // Then check if amounts match (within tolerance)
+        if (Math.abs(paymentAmount - appliedAmountSum) > 0.01) {
+          return `Payment amount ($${paymentAmount.toFixed(2)}) must equal the sum of all applied invoice amounts ($${appliedAmountSum.toFixed(2)}).`;
+        }
       }
+      // For REGULAR contract payments, skip validation (but invoices shouldn't be there anyway)
     }
 
     // Rule 7: Change reason required for non-admin users editing existing payments
@@ -141,16 +196,75 @@ export default function PaymentForm({
   };
 
   const handleSave = () => {
-    const validationError = validatePayment(formData);
+    // Force blur on all active input elements to commit their values
+    const activeElement = document.activeElement as HTMLElement;
+    if (activeElement && activeElement.tagName === 'INPUT') {
+      activeElement.blur();
+    }
+    
+    // Read current values directly from DOM inputs to get the latest values
+    // This ensures we validate with what the user actually sees, not stale formData
+    const currentFormData = { ...formData };
+    if (currentFormData.paymentInvoiceDetails && currentFormData.paymentInvoiceDetails.length > 0) {
+      // Find all applied amount input fields and read their current values
+      const appliedAmountInputs = document.querySelectorAll<HTMLInputElement>(
+        'input[placeholder="0.00"]'
+      );
+      
+      appliedAmountInputs.forEach((input, idx) => {
+        if (idx < currentFormData.paymentInvoiceDetails.length) {
+          const rawValue = input.value.replace(/,/g, '');
+          const numValue = parseFloat(rawValue) || 0;
+          currentFormData.paymentInvoiceDetails[idx].amountApplied = numValue;
+        }
+      });
+    }
+    
+    // Validate with the current (potentially updated) formData
+    const validationError = validatePayment(currentFormData);
     if (validationError) {
       setFlashNotification({
         title: 'Validation Error',
         message: validationError,
         alertType: 'error',
       });
-      return;
+      return; // Prevent save if validation fails
     }
-    onSave(formData);
+    
+    // Double-check: Calculate applied amount sum directly
+    const appliedAmountSum = currentFormData.paymentInvoiceDetails?.reduce((sum, detail) => {
+      return sum + (detail.amountApplied || 0);
+    }, 0) || 0;
+    
+    const paymentAmount = currentFormData.paymentAmount || 0;
+    const isRegularContract = currentFormData.contractPayment && contractType === ContractTypeEnum.REGULAR;
+    
+    // Additional safety check for applied amounts
+    if (!isRegularContract && currentFormData.paymentInvoiceDetails && currentFormData.paymentInvoiceDetails.length > 0) {
+      if (appliedAmountSum > paymentAmount) {
+        setFlashNotification({
+          title: 'Validation Error',
+          message: `Cannot save: Total applied amount ($${appliedAmountSum.toFixed(2)}) exceeds payment amount ($${paymentAmount.toFixed(2)}). Please adjust the applied amounts.`,
+          alertType: 'error',
+        });
+        return;
+      }
+      
+      if (Math.abs(paymentAmount - appliedAmountSum) > 0.01) {
+        setFlashNotification({
+          title: 'Validation Error',
+          message: `Cannot save: Payment amount ($${paymentAmount.toFixed(2)}) must equal the sum of all applied invoice amounts ($${appliedAmountSum.toFixed(2)}).`,
+          alertType: 'error',
+        });
+        return;
+      }
+    }
+    
+    // Update formData with the current values before saving
+    setFormData(currentFormData);
+    
+    // Only call onSave if all validations pass
+    onSave(currentFormData);
   };
 
   const handleFormDataChange = (updatedData: Partial<PaymentDto>) => {
@@ -282,6 +396,30 @@ export default function PaymentForm({
                 </p>
               </div>
             )}
+
+            {/* Show receipt number error banner */}
+            {isCreateMode && receiptNumberError && (
+              <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-red-800 m-0 mb-1">
+                      Cannot Create Payment
+                    </h4>
+                    <p className="text-sm text-red-700 m-0 leading-relaxed">
+                      {receiptNumberError}
+                    </p>
+                    <p className="text-xs text-red-600 mt-2 m-0">
+                      Please contact an administrator to set up receipt number ranges for this customer&apos;s area.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
             
             <RecordDetailsTab
               formData={formData}
@@ -326,8 +464,9 @@ export default function PaymentForm({
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={isLoading || (!isCreateMode && selectedPayment?.status !== StatusEnum.ACTIVE)}
+                    disabled={isLoading || (!isCreateMode && selectedPayment?.status !== StatusEnum.ACTIVE) || (isCreateMode && receiptNumberError !== null)}
                     className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    title={isCreateMode && receiptNumberError ? receiptNumberError : undefined}
                   >
                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

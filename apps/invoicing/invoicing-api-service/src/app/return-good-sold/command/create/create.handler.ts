@@ -8,6 +8,7 @@ import { CreateReturnGoodSoldCommand } from './create.command';
 // Constants
 const ACTIVITY_LOGS_LIMIT = 10;
 const HTTP_STATUS_CREATED = 201;
+const RGS_DOC_NUMBER_PREFIX = 'RGS'; // RGS prefix for auto-generated document numbers
 
 @CommandHandler(CreateReturnGoodSoldCommand)
 export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturnGoodSoldCommand> {
@@ -21,9 +22,28 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
     async execute(
         command: CreateReturnGoodSoldCommand
     ): Promise<ResponseDto<CreateReturnGoodSoldDto | ErrorResponseDto>> {
-        this.logger.log(`Processing create request for return good sold: ${command.returnGoodSoldDto.rgsDocno}`);
+        this.logger.log(`Processing create request for return good sold`);
 
         try {
+            // Generate RGS document number based on area RGS count
+            if (!command.returnGoodSoldDto.areaId) {
+                throw new BadRequestException('Area ID is required to generate RGS document number');
+            }
+
+            if (!command.returnGoodSoldDto.areaPrefixId) {
+                throw new BadRequestException('Area prefix ID is required to generate RGS document number');
+            }
+
+            const rgsCount = await this.returnGoodSoldDatabaseService.getReturnGoodSoldCountByAreaId(
+                command.returnGoodSoldDto.areaId
+            );
+            const nextRgsNumber = rgsCount + 1;
+            command.returnGoodSoldDto.rgsDocno = `${command.returnGoodSoldDto.areaPrefixId}-${RGS_DOC_NUMBER_PREFIX}-${nextRgsNumber}`;
+
+            this.logger.log(
+                `Generated RGS document number: ${command.returnGoodSoldDto.rgsDocno} for area: ${command.returnGoodSoldDto.areaId} (count: ${rgsCount}, prefix: ${command.returnGoodSoldDto.areaPrefixId})`
+            );
+
             // Validate that rgsDocno doesn't already exist
             await this.validateRgsDocnoUnique(command.returnGoodSoldDto.rgsDocno);
 
@@ -36,7 +56,7 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
             this.logger.log(`Return Good Sold created successfully: ${createdRecord.returnGoodSoldId}`);
             return new ResponseDto<CreateReturnGoodSoldDto>(createdRecord, HTTP_STATUS_CREATED);
         } catch (error) {
-            return this.handleError(error, command.returnGoodSoldDto.rgsDocno);
+            return this.handleError(error, command.returnGoodSoldDto.rgsDocno || 'unknown');
         }
     }
 
@@ -79,7 +99,10 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
                 })}, Return Good Sold created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
             );
             // Limit activity logs to last 10 entries
-            command.returnGoodSoldDto.activityLogs = reduceArrayContents(command.returnGoodSoldDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+            command.returnGoodSoldDto.activityLogs = reduceArrayContents(
+                command.returnGoodSoldDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
+            );
         } else {
             // User needs approval - set to NEW_RECORD
             command.returnGoodSoldDto.status = StatusEnum.NEW_RECORD;
@@ -90,11 +113,17 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
                 })}, Return Good Sold created by ${command.user.username} for approval`
             );
             // Limit activity logs to last 10 entries
-            command.returnGoodSoldDto.activityLogs = reduceArrayContents(command.returnGoodSoldDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+            command.returnGoodSoldDto.activityLogs = reduceArrayContents(
+                command.returnGoodSoldDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
+            );
             command.returnGoodSoldDto.forApprovalVersion = {};
             command.returnGoodSoldDto.forApprovalVersion.invoiceId = command.returnGoodSoldDto.invoiceId;
             command.returnGoodSoldDto.forApprovalVersion.customerId = command.returnGoodSoldDto.customerId;
             command.returnGoodSoldDto.forApprovalVersion.customerName = command.returnGoodSoldDto.customerName;
+            command.returnGoodSoldDto.forApprovalVersion.areaId = command.returnGoodSoldDto.areaId;
+            command.returnGoodSoldDto.forApprovalVersion.areaName = command.returnGoodSoldDto.areaName;
+            command.returnGoodSoldDto.forApprovalVersion.areaPrefixId = command.returnGoodSoldDto.areaPrefixId;
             command.returnGoodSoldDto.forApprovalVersion.invoiceDocno = command.returnGoodSoldDto.invoiceDocno;
             command.returnGoodSoldDto.forApprovalVersion.rgsDocno = command.returnGoodSoldDto.rgsDocno;
             command.returnGoodSoldDto.forApprovalVersion.dateReturned = command.returnGoodSoldDto.dateReturned;

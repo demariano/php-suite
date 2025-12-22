@@ -71,6 +71,12 @@ export class AxiosConfig {
             function (response) {
                 if ([200, 201].includes(response.status)) {
                     // Handle different response structures
+                    // Ensure response.data exists
+                    if (!response || !response.data) {
+                        console.error('Axios interceptor: response.data is undefined', response);
+                        return response;
+                    }
+
                     let data;
                     let nextCursorPointer;
                     let prevCursorPointer;
@@ -88,7 +94,7 @@ export class AxiosConfig {
                         typeof response.data.body === 'object' &&
                         !Array.isArray(response.data.body)
                     ) {
-                        // Single object response (like getCustomerById): return the object directly
+                        // Single object response (like getCustomerById, getNextReceipt): return the object directly
                         return response.data.body;
                     } else {
                         // Fallback to original structure

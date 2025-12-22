@@ -4,9 +4,12 @@ import { extractErrorMessage, InvoiceApi, InvoiceDto, useEnv, useLocalStore, use
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import InvoiceForm from '../[id]/edit/components/InvoiceForm';
+import InvoiceCreatedDialog from '../components/InvoiceCreatedDialog';
 
 export default function CreateInvoicePage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [createdInvoice, setCreatedInvoice] = useState<InvoiceDto | null>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   const { setFlashNotification } = useSessionStore();
@@ -54,16 +57,15 @@ export default function CreateInvoicePage() {
         changeReason: invoice.changeReason
       }, userRole);
       
+      // Store the created invoice and show dialog instead of redirecting immediately
+      setCreatedInvoice(newInvoice);
+      setShowSuccessDialog(true);
+      
       setFlashNotification({
         title: 'Success!',
         message: 'Invoice created successfully!',
         alertType: 'success'
       });
-      
-      // Navigate back to invoice list after a short delay
-      setTimeout(() => {
-        router.push('/invoicing/invoice');
-      }, 1500);
       
     } catch (error) {
       console.error('Error creating invoice:', error);
@@ -76,6 +78,11 @@ export default function CreateInvoicePage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAcknowledge = () => {
+    setShowSuccessDialog(false);
+    router.replace('/invoicing/invoice');
   };
 
   const handleCancel = () => {
@@ -130,6 +137,13 @@ export default function CreateInvoicePage() {
           onCancel={handleCancel}
         />
       </div>
+
+      {/* Success Dialog */}
+      <InvoiceCreatedDialog
+        show={showSuccessDialog}
+        invoice={createdInvoice}
+        onAcknowledge={handleAcknowledge}
+      />
     </div>
   );
 }

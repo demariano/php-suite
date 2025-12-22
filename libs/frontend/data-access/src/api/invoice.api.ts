@@ -148,8 +148,22 @@ class InvoiceApi extends AxiosConfig {
         return await this.axiosInstance.post(url, { approverMessage });
     };
 
-    public getPendingPaymentInvoices = async (customerId: string, status: string): Promise<InvoiceDto[]> => {
-        return await this.axiosInstance.get(`/invoices/customer/${customerId}/pending-payment?status=${status}`);
+    public getPendingPaymentInvoices = async (
+        customerId: string,
+        status: string,
+        contractId?: string,
+        nonContractOnly?: boolean
+    ): Promise<InvoiceDto[]> => {
+        const params = new URLSearchParams({
+            status: status,
+        });
+        if (contractId) {
+            params.append('contractId', contractId);
+        }
+        if (nonContractOnly) {
+            params.append('nonContractOnly', 'true');
+        }
+        return await this.axiosInstance.get(`/invoices/customer/${customerId}/pending-payment?${params.toString()}`);
     };
 }
 

@@ -203,6 +203,12 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
               route: "/invoicing/territory-manager", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Collection Receipt Range", 
+              route: "/invoicing/collection-receipt-range", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             }
           ],
           isExpanded: false

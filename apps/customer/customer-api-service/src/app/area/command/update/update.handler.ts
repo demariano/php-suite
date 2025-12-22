@@ -29,6 +29,11 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
             // Validate that area name doesn't already exist (if changed)
             await this.validateAreaNameUnique(command.areaDto.areaName, command.recordId);
 
+            // Validate that prefix ID is unique (if provided and changed)
+            if (command.areaDto.idPrefix) {
+                await this.validatePrefixIdUnique(command.areaDto.idPrefix, command.recordId);
+            }
+
             // Validate territory manager fields
             this.validateTerritoryManagerFields(command.areaDto);
 
@@ -75,6 +80,18 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
     }
 
     /**
+     * Validates that the prefix ID is unique (excluding current record)
+     */
+    private async validatePrefixIdUnique(idPrefix: string, currentRecordId: string): Promise<void> {
+        const existingRecord = await this.areaDatabaseService.findRecordByIdPrefix(idPrefix);
+
+        if (existingRecord && existingRecord.areaId !== currentRecordId) {
+            this.logger.warn(`Prefix ID already exists: ${idPrefix}`);
+            throw new BadRequestException('Prefix ID already exists');
+        }
+    }
+
+    /**
      * Validates that territory manager fields are provided
      */
     private validateTerritoryManagerFields(areaDto: AreaDto): void {
@@ -110,6 +127,7 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
             existingRecord.towns = command.areaDto.towns;
             existingRecord.territoryManagerId = command.areaDto.territoryManagerId;
             existingRecord.territoryManagerName = command.areaDto.territoryManagerName;
+            existingRecord.idPrefix = command.areaDto.idPrefix;
             // Clear changeReason for admin users
             existingRecord.changeReason = undefined;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
@@ -148,6 +166,7 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
                 towns: command.areaDto.towns,
                 territoryManagerId: command.areaDto.territoryManagerId,
                 territoryManagerName: command.areaDto.territoryManagerName,
+                idPrefix: command.areaDto.idPrefix,
             };
         }
     }

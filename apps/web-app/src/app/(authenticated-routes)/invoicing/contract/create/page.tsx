@@ -3,6 +3,7 @@
 import { ContractApi, ContractDto, extractErrorMessage, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import ContractCreatedDialog from '../components/ContractCreatedDialog';
 import ContractForm from '../components/ContractForm';
 
 export default function CreateContractPage() {
@@ -12,6 +13,8 @@ export default function CreateContractPage() {
   const { setFlashNotification } = useSessionStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdContract, setCreatedContract] = useState<ContractDto | null>(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
 
   const handleSave = async (contract: ContractDto) => {
     try {
@@ -22,30 +25,41 @@ export default function CreateContractPage() {
         ? authedUser?.userRole
         : undefined;
 
-      await ContractApi.createContract({
+      const createdContractData = await ContractApi.createContract({
         contractNo: contract.contractNo,
         contractName: contract.contractName,
         customerId: contract.customerId,
         customerName: contract.customerName,
+        areaId: contract.areaId,
+        areaName: contract.areaName,
+        areaPrefixId: (contract as any).areaPrefixId,
         startDate: contract.startDate,
         endDate: contract.endDate,
+        contractType: contract.contractType,
         contractAmount: contract.contractAmount,
-        productDealId: contract.productDealId,
-        productDealName: contract.productDealName,
-        productDealQty: contract.productDealQty,
+        contractProductDeals: contract.contractProductDeals,
         deliveryStatus: contract.deliveryStatus,
         paymentStatus: contract.paymentStatus,
         deliveredAmount: contract.deliveredAmount,
         amountPaid: contract.amountPaid,
+        invoicedAmount: contract.invoicedAmount,
+        rebateType: contract.rebateType,
+        rebatePercentage: contract.rebatePercentage,
+        rebateAmount: contract.rebateAmount,
+        rebateClaimedAmount: contract.rebateClaimedAmount,
+        rebateClaimedStatus: contract.rebateClaimedStatus,
         status: contract.status
-      }, userRole);
+      } as any, userRole);
 
+      // Store the created contract and show dialog instead of redirecting immediately
+      setCreatedContract(createdContractData);
+      setShowSuccessDialog(true);
+      
       setFlashNotification({
         title: 'Success!',
         message: 'Contract created successfully!',
         alertType: 'success'
       });
-      router.replace('/invoicing/contract');
     } catch (err: any) {
       console.error('Failed to create contract:', err);
       const errorMessage = extractErrorMessage(err, 'Failed to create contract. Please try again.');
@@ -58,6 +72,11 @@ export default function CreateContractPage() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleAcknowledge = () => {
+    setShowSuccessDialog(false);
+    router.replace('/invoicing/contract');
   };
 
   const handleCancel = () => {
@@ -117,6 +136,13 @@ export default function CreateContractPage() {
           </div>
         </div>
       </div>
+
+      {/* Success Dialog */}
+      <ContractCreatedDialog
+        show={showSuccessDialog}
+        contract={createdContract}
+        onAcknowledge={handleAcknowledge}
+      />
     </div>
   );
 }

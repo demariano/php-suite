@@ -35,6 +35,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             territoryManagerId: areaDto.territoryManagerId,
             territoryManagerName: areaDto.territoryManagerName,
             towns: areaDto.towns,
+            idPrefix: areaDto.idPrefix,
             GSI1PK: `AREA`,
             GSI1SK: areaDto.areaName,
             GSI2PK: `AREA#${areaDto.status}`,
@@ -65,6 +66,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         areaRecord.changeReason = record.changeReason;
         areaRecord.approverMessage = record.approverMessage;
         areaRecord.towns = record.towns || [];
+        areaRecord.idPrefix = record.idPrefix;
 
         const updatedAreaRecord: AreaDataType = await this.areaTable.update(areaRecord);
 
@@ -256,6 +258,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         dto.changeReason = (record as AreaDataType & { changeReason?: string }).changeReason || undefined;
         dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         dto.towns = record.towns ? record.towns : [];
+        dto.idPrefix = record.idPrefix ? record.idPrefix : undefined;
         return dto;
     }
 
@@ -289,6 +292,7 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
             territoryManagerName: dto.territoryManagerName,
             changeReason: dto.changeReason,
             approverMessage: dto.approverMessage,
+            idPrefix: dto.idPrefix,
         };
         return areaData;
     }
@@ -303,5 +307,29 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         );
 
         return await this.convertToDtoList(records);
+    }
+
+    async findRecordByIdPrefix(idPrefix: string): Promise<AreaDto | null> {
+        if (!idPrefix || idPrefix.trim() === '') {
+            return null;
+        }
+
+        // Since there's no index on idPrefix, we need to scan all areas
+        // Using GSI1 to get all areas and filter by idPrefix
+        const records = await this.areaTable.find(
+            {
+                GSI1PK: 'AREA',
+            },
+            { index: 'GSI1' }
+        );
+
+        // Filter records to find one with matching idPrefix
+        for (const record of records) {
+            if (record.idPrefix && record.idPrefix.trim().toLowerCase() === idPrefix.trim().toLowerCase()) {
+                return await this.convertToDto(record);
+            }
+        }
+
+        return null;
     }
 }

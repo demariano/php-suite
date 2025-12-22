@@ -1,6 +1,7 @@
 import { CreatePaymentDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import { CollectionReceiptRangeDatabaseServiceAbstract, PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreatePaymentCommand } from './create.command';
@@ -15,7 +16,11 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
 
     constructor(
         @Inject('PaymentDatabaseService')
-        private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass
+        private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass,
+        @Inject('CollectionReceiptRangeDatabaseService')
+        private readonly collectionReceiptRangeDatabaseService: CollectionReceiptRangeDatabaseServiceAbstract,
+        @Inject('CustomerDatabaseService')
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
     ) {}
 
     async execute(command: CreatePaymentCommand): Promise<ResponseDto<CreatePaymentDto | ErrorResponseDto>> {
@@ -35,6 +40,38 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             const createdRecord = await this.paymentDatabaseService.createRecord(command.paymentDto);
 
             this.logger.log(`Payment created successfully: ${createdRecord.paymentId}`);
+
+            // Mark receipt number as used if receipt number is provided
+            if (createdRecord.receiptNo && createdRecord.customerId) {
+                try {
+                    // Fetch customer to get areaId
+                    const customer = await this.customerDatabaseService.findRecordById(createdRecord.customerId);
+                    
+                    if (customer && customer.areaId) {
+                        const receiptNumber = parseInt(createdRecord.receiptNo, 10);
+                        if (!isNaN(receiptNumber)) {
+                            await this.collectionReceiptRangeDatabaseService.markReceiptNumberAsUsed(
+                                customer.areaId,
+                                receiptNumber
+                            );
+                            this.logger.log(
+                                `Receipt number ${receiptNumber} marked as used for area ${customer.areaId}`
+                            );
+                        }
+                    } else {
+                        this.logger.warn(
+                            `Customer ${createdRecord.customerId} does not have an areaId, skipping receipt number update`
+                        );
+                    }
+                } catch (error) {
+                    // Log error but don't fail payment creation since payment is already saved
+                    this.logger.error(
+                        `Failed to mark receipt number as used for payment ${createdRecord.paymentId}:`,
+                        error
+                    );
+                }
+            }
+
             return new ResponseDto<CreatePaymentDto>(createdRecord, HTTP_STATUS_CREATED);
         } catch (error) {
             return this.handleError(error, command.paymentDto.receiptNo);

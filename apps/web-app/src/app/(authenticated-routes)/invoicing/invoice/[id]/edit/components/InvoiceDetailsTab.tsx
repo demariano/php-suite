@@ -1,6 +1,6 @@
 'use client';
 
-import { InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, ProductDealQtyDto, StockApi, StockDto, useSessionStore } from '@data-access/index';
+import { ContractProductDealDto, InvoiceDetailTypeEnum, InvoiceDetailsDto, InvoiceDto, ProductApi, StockApi, StockDto, useSessionStore } from '@data-access/index';
 import { CustomerProductDealDto } from '@data-access/types/customer-product-deal.types';
 import { useState } from 'react';
 import StockSearchableSelectionModal from '../../../../../search-modals/StockSearchableSelectionModal';
@@ -10,7 +10,7 @@ interface InvoiceDetailsTabProps {
   onFormDataChange: (updatedData: Partial<InvoiceDto>) => void;
   isCreateMode: boolean;
   customerDeals?: CustomerProductDealDto[];
-  contractProductDealQty?: ProductDealQtyDto | null;
+  contractProductDeals?: ContractProductDealDto[] | null;
   contractSales?: boolean;
   isReadOnly?: boolean;
 }
@@ -27,7 +27,7 @@ export default function InvoiceDetailsTab({
   onFormDataChange,
   isCreateMode,
   customerDeals = [],
-  contractProductDealQty,
+  contractProductDeals,
   contractSales = false,
   isReadOnly = false
 }: InvoiceDetailsTabProps) {
@@ -148,15 +148,9 @@ export default function InvoiceDetailsTab({
       let totalQuantityNeeded = stockSelection.quantity;
       let freeItemQuantity = 0;
       
-      if (contractSales && contractProductDealQty) {
-        // Use contract's productDealQty for all products
-        if (stockSelection.quantity >= (contractProductDealQty.minQty || 0)) {
-          freeItemQuantity = contractProductDealQty.additionalQty || 0;
-          totalQuantityNeeded += freeItemQuantity;
-        }
-      } else if (stockSelection.selectedProductDeal && 
+      if (stockSelection.selectedProductDeal && 
           stockSelection.quantity >= (stockSelection.selectedProductDeal.minQty || 0)) {
-        // Use customer product deal
+        // Use selected product deal (works for both contract and customer deals)
         freeItemQuantity = stockSelection.selectedProductDeal.additionalQty || 0;
         totalQuantityNeeded += freeItemQuantity;
       }
@@ -229,8 +223,8 @@ export default function InvoiceDetailsTab({
           lotNo: foundStock.lotNo || '',
           stockId: foundStock.stockId,
           qty: freeItemQuantity,
-          productDealId: contractSales ? formData.contractId : stockSelection.selectedProductDeal?.productDealId,
-          productDealName: contractSales ? formData.contractName : stockSelection.selectedProductDeal?.productDealName,
+          productDealId: stockSelection.selectedProductDeal?.productDealId,
+          productDealName: stockSelection.selectedProductDeal?.productDealName,
           price: 0,
           cost: 0,
           amount: 0,
@@ -430,15 +424,45 @@ export default function InvoiceDetailsTab({
                 Product Deal
               </label>
               {contractSales ? (
-                <input
-                  type="text"
-                  value={contractProductDealQty ? 
-                    `Contract Deal (Min: ${contractProductDealQty.minQty || 0}, Free: ${contractProductDealQty.additionalQty || 0})` : 
-                    'No contract deal available'
-                  }
-                  readOnly
-                  className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
-                />
+                <select
+                  value={stockSelection.selectedProductDeal?.productDealId || ''}
+                  onChange={(e) => {
+                    const dealId = e.target.value;
+                    const filteredDeals = stockSelection.selectedStock && contractProductDeals
+                      ? contractProductDeals.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                      : [];
+                    const selectedDeal = filteredDeals.find(deal => deal.productDealId === dealId);
+                    setStockSelection(prev => ({
+                      ...prev,
+                      selectedProductDeal: selectedDeal ? {
+                        productId: selectedDeal.productId,
+                        productDealId: selectedDeal.productDealId,
+                        productDealName: selectedDeal.productDealName,
+                        minQty: selectedDeal.minQty,
+                        additionalQty: selectedDeal.additionalQty
+                      } : null
+                    }));
+                  }}
+                  disabled={!stockSelection.selectedStock || !contractProductDeals}
+                  className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !stockSelection.selectedStock || !contractProductDeals
+                      ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                      : 'border-gray-300 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                  }`}
+                >
+                  <option value="">
+                    {!stockSelection.selectedStock ? 'Select stock item first' : 
+                     !contractProductDeals || contractProductDeals.length === 0 ? 'No contract deals available' :
+                     'Select contract product deal (optional)'}
+                  </option>
+                  {stockSelection.selectedStock && contractProductDeals
+                    ?.filter(deal => deal.productId === stockSelection.selectedStock?.productId)
+                    .map((deal) => (
+                      <option key={deal.productDealId} value={deal.productDealId}>
+                        {deal.productDealName} (Min: {deal.minQty || 0}, Free: {deal.additionalQty || 0})
+                      </option>
+                    ))}
+                </select>
               ) : (
                 <select
                   value={stockSelection.selectedProductDeal?.productDealId || ''}

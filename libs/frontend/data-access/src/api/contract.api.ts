@@ -186,6 +186,19 @@ class ContractApi extends AxiosConfig {
 
         return await this.axiosInstance.post(url, { approverMessage });
     };
+
+    public computeRebate = async (id: string, userRole?: string): Promise<ContractDto> => {
+        const params = new URLSearchParams();
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/contracts/${id}/rebate/compute?${queryString}` : `/contracts/${id}/rebate/compute`;
+
+        return await this.axiosInstance.post(url);
+    };
 }
 
 export default new ContractApi();

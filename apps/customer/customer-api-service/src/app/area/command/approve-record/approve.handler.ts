@@ -100,6 +100,7 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
         existingRecord.towns = forApprovalVersion.towns as string[];
         existingRecord.territoryManagerId = forApprovalVersion.territoryManagerId as string;
         existingRecord.territoryManagerName = forApprovalVersion.territoryManagerName as string;
+        existingRecord.idPrefix = forApprovalVersion.idPrefix as string;
         existingRecord.forApprovalVersion = {};
 
         // Reset changeReason after applying changes

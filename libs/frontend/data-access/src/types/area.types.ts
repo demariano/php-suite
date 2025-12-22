@@ -14,6 +14,7 @@ export interface AreaDto {
     territoryManagerName?: string;
     changeReason?: string;
     approverMessage?: string;
+    idPrefix?: string;
 }
 
 export interface CreateAreaDto {
@@ -23,4 +24,5 @@ export interface CreateAreaDto {
     forApprovalVersion?: Record<string, unknown>;
     territoryManagerId?: string;
     territoryManagerName?: string;
+    idPrefix?: string;
 }

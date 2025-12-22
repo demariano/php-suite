@@ -214,29 +214,29 @@ export default function PaymentDetailsTab({
         {formData.paymentDetails && formData.paymentDetails.length > 0 ? (
           <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
+              <table className="w-full border-collapse min-w-[1000px]">
                 <thead className="bg-white border-b border-gray-200">
                   <tr>
-                    <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                    <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[100px]">
                       Type
                     </th>
-                    <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
-                      Cheque No
-                    </th>
-                    <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
-                      Cheque Date
-                    </th>
-                    <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
-                      Bank Name
-                    </th>
-                    <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
-                      Credit Date
-                    </th>
-                    <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                    <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[120px]">
                       Amount
                     </th>
+                    <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[120px]">
+                      Cheque No
+                    </th>
+                    <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[130px]">
+                      Cheque Date
+                    </th>
+                    <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[150px]">
+                      Bank Name
+                    </th>
+                    <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[140px] min-w-[140px]">
+                      Credit Date
+                    </th>
                     {!isReadOnly && (
-                      <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                      <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[120px]">
                         Actions
                       </th>
                     )}
@@ -248,26 +248,26 @@ export default function PaymentDetailsTab({
                       key={index}
                       className="transition-all duration-200 bg-white hover:bg-gray-50"
                     >
-                      <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                      <td className="px-4 py-5 text-sm font-medium text-gray-900">
                         {getPaymentTypeLabel(detail.paymentType)}
                       </td>
-                      <td className="px-6 py-5 text-sm text-gray-600">
-                        {detail.paymentType === PaymentTypeEnum.CHEQUE ? detail.chequeNo : '-'}
-                      </td>
-                      <td className="px-6 py-5 text-sm text-gray-600">
-                        {detail.paymentType === PaymentTypeEnum.CHEQUE ? detail.chequeDate : '-'}
-                      </td>
-                      <td className="px-6 py-5 text-sm text-gray-600">
-                        {(detail.paymentType === PaymentTypeEnum.CHEQUE || detail.paymentType === PaymentTypeEnum.BANK_TRANSFER) ? detail.bankName : '-'}
-                      </td>
-                      <td className="px-6 py-5 text-sm text-gray-600">
-                        {detail.paymentCreditDate}
-                      </td>
-                      <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                      <td className="px-4 py-5 text-sm font-medium text-gray-900">
                         ${detail.amount.toFixed(2)}
                       </td>
+                      <td className="px-4 py-5 text-sm text-gray-600">
+                        {detail.paymentType === PaymentTypeEnum.CHEQUE ? detail.chequeNo : '-'}
+                      </td>
+                      <td className="px-4 py-5 text-sm text-gray-600">
+                        {detail.paymentType === PaymentTypeEnum.CHEQUE ? detail.chequeDate : '-'}
+                      </td>
+                      <td className="px-4 py-5 text-sm text-gray-600">
+                        {(detail.paymentType === PaymentTypeEnum.CHEQUE || detail.paymentType === PaymentTypeEnum.BANK_TRANSFER) ? detail.bankName : '-'}
+                      </td>
+                      <td className="px-4 py-5 text-sm text-gray-600 whitespace-nowrap">
+                        {detail.paymentCreditDate}
+                      </td>
                       {!isReadOnly && (
-                        <td className="px-6 py-5">
+                        <td className="px-4 py-5">
                           <div className="flex gap-2">
                             <button
                               type="button"

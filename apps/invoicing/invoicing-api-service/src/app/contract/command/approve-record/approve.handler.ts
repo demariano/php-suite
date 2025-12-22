@@ -1,10 +1,12 @@
 import { UserCognito } from '@auth-guard-lib';
 import {
     ContractDto,
+    ContractProductDealDto,
     DeliveryStatusEnum,
     ErrorResponseDto,
     PaymentStatusEnum,
-    ProductDealQtyDto,
+    RebateClaimedStatusEnum,
+    RebateTypeEnum,
     ResponseDto,
     StatusEnum,
     UserRole,
@@ -110,16 +112,24 @@ export class ApproveContractHandler implements ICommandHandler<ApproveContractCo
         existingRecord.contractName = forApprovalVersion.contractName as string;
         existingRecord.customerId = forApprovalVersion.customerId as string;
         existingRecord.customerName = forApprovalVersion.customerName as string;
+        existingRecord.areaId = forApprovalVersion.areaId as string | undefined;
+        existingRecord.areaName = forApprovalVersion.areaName as string | undefined;
         existingRecord.startDate = forApprovalVersion.startDate as string;
         existingRecord.endDate = forApprovalVersion.endDate as string;
         existingRecord.contractAmount = forApprovalVersion.contractAmount as number;
         existingRecord.amountPaid = forApprovalVersion.amountPaid as number;
-        existingRecord.productDealId = forApprovalVersion.productDealId as string;
-        existingRecord.productDealName = forApprovalVersion.productDealName as string;
+        existingRecord.contractProductDeals = forApprovalVersion.contractProductDeals as ContractProductDealDto[];
         existingRecord.deliveryStatus = forApprovalVersion.deliveryStatus as DeliveryStatusEnum;
         existingRecord.paymentStatus = forApprovalVersion.paymentStatus as PaymentStatusEnum;
         existingRecord.deliveredAmount = forApprovalVersion.deliveredAmount as number;
-        existingRecord.productDealQty = forApprovalVersion.productDealQty as ProductDealQtyDto;
+        existingRecord.invoicedAmount = forApprovalVersion.invoicedAmount as number | undefined;
+        existingRecord.rebatePercentage = forApprovalVersion.rebatePercentage as number | undefined;
+        existingRecord.rebateType = forApprovalVersion.rebateType as RebateTypeEnum | undefined;
+        existingRecord.rebateAmount = forApprovalVersion.rebateAmount as number | undefined;
+        existingRecord.rebateClaimedAmount = forApprovalVersion.rebateClaimedAmount as number | undefined;
+        existingRecord.rebateClaimedStatus = forApprovalVersion.rebateClaimedStatus as
+            | RebateClaimedStatusEnum
+            | undefined;
         existingRecord.forApprovalVersion = {};
         // Reset changeReason to null AFTER applying forApprovalVersion
         existingRecord.changeReason = null;

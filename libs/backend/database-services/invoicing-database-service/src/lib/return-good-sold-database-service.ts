@@ -34,6 +34,8 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             invoiceId: returnGoodSoldDto.invoiceId,
             customerId: returnGoodSoldDto.customerId,
             customerName: returnGoodSoldDto.customerName,
+            areaId: returnGoodSoldDto.areaId,
+            areaName: returnGoodSoldDto.areaName,
             invoiceDocno: returnGoodSoldDto.invoiceDocno,
             rgsDocno: returnGoodSoldDto.rgsDocno,
             activityLogs: returnGoodSoldDto.activityLogs,
@@ -53,6 +55,8 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             GSI4SK: `${returnGoodSoldDto.dateReturned}`,
             GSI5PK: `RETURN_GOOD_SOLD#${returnGoodSoldDto.customerId}`,
             GSI5SK: `${returnGoodSoldDto.dateReturned}`,
+            GSI6PK: returnGoodSoldDto.areaId ? `RETURN_GOOD_SOLD#${returnGoodSoldDto.areaId}` : undefined,
+            GSI6SK: `${returnGoodSoldDto.dateReturned}`,
         };
 
         const returnGoodSoldRecord: ReturnGoodSoldDataType = await this.returnGoodSoldTable.create(returnGoodSoldData);
@@ -377,6 +381,8 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
         dto.invoiceId = record.invoiceId ? record.invoiceId : '';
         dto.customerId = record.customerId ? record.customerId : '';
         dto.customerName = record.customerName ? record.customerName : '';
+        dto.areaId = record.areaId ? record.areaId : undefined;
+        dto.areaName = record.areaName ? record.areaName : undefined;
         dto.invoiceDocno = record.invoiceDocno ? record.invoiceDocno : '';
         dto.rgsDocno = record.rgsDocno ? record.rgsDocno : '';
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
@@ -408,6 +414,8 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             invoiceId: dto.invoiceId,
             customerId: dto.customerId,
             customerName: dto.customerName,
+            areaId: dto.areaId,
+            areaName: dto.areaName,
             invoiceDocno: dto.invoiceDocno,
             rgsDocno: dto.rgsDocno,
             activityLogs: dto.activityLogs,
@@ -428,7 +436,42 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             GSI4SK: dto.dateReturned,
             GSI5PK: `RETURN_GOOD_SOLD#${dto.customerId}`,
             GSI5SK: dto.dateReturned,
+            GSI6PK: dto.areaId ? `RETURN_GOOD_SOLD#${dto.areaId}` : undefined,
+            GSI6SK: dto.dateReturned,
         };
         return returnGoodSoldData;
+    }
+
+    async getReturnGoodSoldCountByAreaId(areaId: string): Promise<number> {
+        let totalCount = 0;
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000; // Large limit to minimize pagination calls
+
+        do {
+            // For first call, don't pass direction/cursor. For subsequent calls, use 'next' direction
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI6',
+                  };
+
+            // Only fetch returnGoodSoldId field to minimize data transfer - we only need to count records
+            const records = await this.returnGoodSoldTable.find(
+                {
+                    GSI6PK: `RETURN_GOOD_SOLD#${areaId}`,
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: ['returnGoodSoldId'], // Only return minimal field needed for counting
+                }
+            );
+
+            totalCount += records.length;
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return totalCount;
     }
 }

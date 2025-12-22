@@ -13,6 +13,15 @@ export abstract class ContractDatabaseServiceAbstract {
         cursorPointer: string
     ): Promise<PageDto<ContractDto>>;
 
+    abstract findRecordByAreaId(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ContractDto>>;
+
+    abstract getContractCountByAreaId(areaId: string): Promise<number>;
+
     abstract findRecordByContractNo(contractNo: string): Promise<ContractDto | null>;
 
     abstract findPendingPaymentContracts(customerId: string): Promise<ContractDto[] | null>;

@@ -1,10 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { ContractTypeEnum } from '../../enums/contract.type.enum';
 import { DeliveryStatusEnum } from '../../enums/delivery.status.enum';
 import { PaymentStatusEnum } from '../../enums/payment.status.enum';
 import { RebateClaimedStatusEnum } from '../../enums/rebate.claimed.status.enum';
 import { RebateTypeEnum } from '../../enums/rebate.type.enum';
 import { StatusEnum } from '../../enums/status.enum';
-import { ProductDealQtyDto } from '../../product/product.deal/product.deal.qty.dto';
+import { ContractProductDealDto } from './contract.product.deal.dto';
 
 export class ContractDto {
     @ApiProperty()
@@ -23,22 +24,25 @@ export class ContractDto {
     customerName?: string;
 
     @ApiProperty()
+    areaId?: string;
+
+    @ApiProperty()
+    areaName?: string;
+
+    @ApiProperty()
     startDate?: string;
 
     @ApiProperty()
     endDate?: string;
+
+    @ApiProperty({ enum: ContractTypeEnum })
+    contractType?: ContractTypeEnum;
 
     @ApiProperty()
     contractAmount?: number;
 
     @ApiProperty()
     amountPaid?: number;
-
-    @ApiProperty()
-    productDealId?: string;
-
-    @ApiProperty()
-    productDealName?: string;
 
     @ApiProperty({
         enum: DeliveryStatusEnum,
@@ -69,7 +73,7 @@ export class ContractDto {
     invoicedAmount?: number;
 
     @ApiProperty()
-    productDealQty?: ProductDealQtyDto;
+    contractProductDeals?: ContractProductDealDto[];
 
     @ApiProperty()
     approverMessage?: string;

@@ -33,13 +33,15 @@ export default function AreaForm({
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [towns, setTowns] = useState<string[]>([]);
   const [newTownInput, setNewTownInput] = useState('');
+  const [idPrefixManuallyEdited, setIdPrefixManuallyEdited] = useState(false);
   const { env } = useEnv();
   const { authedUser } = useLocalStore();
   
   // Form state for controlled inputs
   const [formData, setFormData] = useState({
     areaName: '',
-    changeReason: ''
+    changeReason: '',
+    idPrefix: ''
   });
 
   // Handle adding a new town
@@ -66,6 +68,29 @@ export default function AreaForm({
     }
   };
 
+  // Generate prefix ID from area name (minimum 3 letters)
+  const generatePrefixId = (areaName: string): string => {
+    if (!areaName || areaName.trim() === '') {
+      return '';
+    }
+
+    // Extract only letters (remove spaces, numbers, special characters)
+    const lettersOnly = areaName.replace(/[^a-zA-Z]/g, '').toUpperCase();
+    
+    if (lettersOnly.length === 0) {
+      // If no letters found, use 'XXX' as default
+      return 'XXX';
+    }
+    
+    if (lettersOnly.length >= 3) {
+      // Take first 3+ letters
+      return lettersOnly.substring(0, Math.max(3, lettersOnly.length));
+    } else {
+      // If less than 3 letters, pad with 'X' to make it 3 letters minimum
+      return lettersOnly.padEnd(3, 'X');
+    }
+  };
+
   // Set initial values when editing (only when user hasn't made selections)
   useEffect(() => {
     if (!isCreateMode && selectedArea && !userHasMadeSelections) {
@@ -76,16 +101,34 @@ export default function AreaForm({
         });
       }
       // Initialize form data
+      const existingIdPrefix = selectedArea.idPrefix || '';
       setFormData({
         areaName: selectedArea.areaName || '',
-        changeReason: selectedArea.changeReason || ''
+        changeReason: selectedArea.changeReason || '',
+        idPrefix: existingIdPrefix
       });
       // Initialize towns from selectedArea
       if (selectedArea.towns && Array.isArray(selectedArea.towns)) {
         setTowns(selectedArea.towns);
       }
+      // If existing area has idPrefix, mark as manually edited to prevent auto-generation
+      // If empty, allow auto-generation
+      setIdPrefixManuallyEdited(!!existingIdPrefix);
     }
   }, [isCreateMode, selectedArea, userHasMadeSelections]);
+
+  // Auto-generate idPrefix when area name changes (only if not manually edited and in create mode or idPrefix is empty)
+  useEffect(() => {
+    if (!idPrefixManuallyEdited && formData.areaName) {
+      const generatedPrefix = generatePrefixId(formData.areaName);
+      if (generatedPrefix) {
+        setFormData(prev => ({ ...prev, idPrefix: generatedPrefix }));
+      }
+    } else if (!formData.areaName && !idPrefixManuallyEdited) {
+      // Clear idPrefix if area name is cleared and it wasn't manually edited
+      setFormData(prev => ({ ...prev, idPrefix: '' }));
+    }
+  }, [formData.areaName, idPrefixManuallyEdited]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -100,6 +143,11 @@ export default function AreaForm({
     
     if (!selectedTerritoryManager) {
       errors.push('Please select a territory manager.');
+    }
+    
+    // Validate idPrefix - must be at least 3 characters if provided
+    if (formData.idPrefix && formData.idPrefix.trim().length > 0 && formData.idPrefix.trim().length < 3) {
+      errors.push('ID Prefix must be at least 3 letters.');
     }
     
     // Validate change reason for non-create mode (only required for non-admin users)
@@ -123,7 +171,8 @@ export default function AreaForm({
         territoryManagerName: selectedTerritoryManager?.name || '',
         status,
         changeReason: '',
-        towns: towns.filter(town => town.trim() !== '')
+        towns: towns.filter(town => town.trim() !== ''),
+        idPrefix: formData.idPrefix.trim() || undefined
       };
       onSave(newArea as AreaDto);
     } else {
@@ -135,7 +184,8 @@ export default function AreaForm({
         territoryManagerName: selectedTerritoryManager?.name || '',
         status: selectedArea?.status ?? StatusEnum.ACTIVE,
         changeReason: trimmedReason,
-        towns: towns.filter(town => town.trim() !== '')
+        towns: towns.filter(town => town.trim() !== ''),
+        idPrefix: formData.idPrefix.trim() || undefined
       };
       onSave(updatedArea as AreaDto);
     }
@@ -295,6 +345,38 @@ export default function AreaForm({
                 />
               </div>
 
+              {/* ID Prefix */}
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                  ID Prefix
+                </label>
+                <input
+                  type="text"
+                  name="idPrefix"
+                  value={formData.idPrefix}
+                  onChange={(e) => {
+                    const value = e.target.value.toUpperCase().replace(/[^A-Z]/g, '');
+                    setFormData(prev => ({ ...prev, idPrefix: value }));
+                    setIdPrefixManuallyEdited(true);
+                    setUserHasMadeSelections(true);
+                  }}
+                  placeholder="Auto-generated from area name"
+                  disabled={!isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE}
+                  maxLength={20}
+                  className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                    !isCreateMode && selectedArea?.status !== StatusEnum.ACTIVE
+                      ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                  }`}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Minimum 3 letters. Auto-generated from area name, but can be edited manually.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
               {/* Territory Manager */}
               <div className="group">
                 <SelectionField

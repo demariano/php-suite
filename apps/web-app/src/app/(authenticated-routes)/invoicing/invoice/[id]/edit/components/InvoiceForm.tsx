@@ -1,8 +1,8 @@
 'use client';
 
-import { CustomerProductDealDto, InvoiceDetailTypeEnum, InvoiceDto, PrintStatusEnum, ProductDealQtyDto, StatusEnum, useSessionStore } from '@data-access/index';
-import { useEffect, useState } from 'react';
+import { ContractProductDealDto, CustomerProductDealDto, InvoiceDetailTypeEnum, InvoiceDto, PrintStatusEnum, StatusEnum, useSessionStore } from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
+import { useEffect, useState } from 'react';
 import InvoiceDetailsTab from './InvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
 
@@ -68,8 +68,8 @@ export default function InvoiceForm({
   // State for customer deals
   const [customerDeals, setCustomerDeals] = useState<CustomerProductDealDto[]>([]);
   
-  // State for contract product deal quantity
-  const [contractProductDealQty, setContractProductDealQty] = useState<ProductDealQtyDto | null>(null);
+  // State for contract product deals
+  const [contractProductDeals, setContractProductDeals] = useState<ContractProductDealDto[] | null>(null);
   
   // Toast notification hook
   const { setFlashNotification } = useSessionStore();
@@ -116,22 +116,17 @@ export default function InvoiceForm({
 
   // Validation function for invoice data
   const validateInvoice = (invoice: InvoiceDto): string | null => {
-    // Rule 1: Document number is required
-    if (!invoice.docno || invoice.docno.trim() === '') {
-      return 'Document number is required and cannot be empty.';
-    }
-
-    // Rule 2: Customer must be selected
+    // Rule 1: Customer must be selected
     if (!invoice.customerId || invoice.customerId.trim() === '') {
       return 'Please select a customer before saving the invoice.';
     }
 
-    // Rule 3: Invoice details must not be empty
+    // Rule 2: Invoice details must not be empty
     if (!invoice.invoiceDetails || invoice.invoiceDetails.length === 0) {
       return 'Please add at least one item to the invoice.';
     }
 
-    // Rule 4: Invoice details cannot contain all free items
+    // Rule 3: Invoice details cannot contain all free items
     const hasRegularItem = invoice.invoiceDetails.some(
       detail => detail.invoiceDetailType === InvoiceDetailTypeEnum.REGULAR_ITEM
     );
@@ -139,17 +134,17 @@ export default function InvoiceForm({
       return 'Invoice must contain at least one regular item (not all free items).';
     }
 
-    // Rule 5: Invoice amount cannot be zero
+    // Rule 4: Invoice amount cannot be zero
     if (!invoice.invoiceAmount || invoice.invoiceAmount <= 0) {
       return 'Invoice amount must be greater than zero.';
     }
 
-    // Rule 6: Final amount cannot be zero
+    // Rule 5: Final amount cannot be zero
     if (!invoice.finalAmount || invoice.finalAmount <= 0) {
       return 'Final amount must be greater than zero.';
     }
 
-    // Rule 7: Change reason required for non-admin users editing existing invoices
+    // Rule 6: Change reason required for non-admin users editing existing invoices
     if (!isCreateMode && !isAdminUser) {
       if (!invoice.changeReason || invoice.changeReason.trim() === '') {
         return 'Change reason is required when modifying an invoice.';
@@ -186,8 +181,8 @@ export default function InvoiceForm({
     setCustomerDeals(deals);
   };
 
-  const handleContractProductDealQtyChange = (productDealQty: ProductDealQtyDto | null) => {
-    setContractProductDealQty(productDealQty);
+  const handleContractProductDealsChange = (productDeals: ContractProductDealDto[] | null) => {
+    setContractProductDeals(productDeals);
   };
 
   // Helper function to get status text
@@ -312,7 +307,7 @@ export default function InvoiceForm({
               isCreateMode={isCreateMode}
               isAdminUser={isAdminUser}
               onCustomerDealsChange={handleCustomerDealsChange}
-              onContractProductDealQtyChange={handleContractProductDealQtyChange}
+              onContractProductDealsChange={handleContractProductDealsChange}
               isReadOnly={!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE}
             />
             <InvoiceDetailsTab
@@ -320,7 +315,7 @@ export default function InvoiceForm({
               onFormDataChange={handleFormDataChange}
               isCreateMode={isCreateMode}
               customerDeals={customerDeals}
-              contractProductDealQty={contractProductDealQty}
+              contractProductDeals={contractProductDeals}
               contractSales={formData.contractSales}
               isReadOnly={!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE}
             />

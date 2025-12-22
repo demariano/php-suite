@@ -10,6 +10,7 @@ import { ApproveContractHandler } from './command/approve-record/approve.handler
 import { CreateContractHandler } from './command/create/create.handler';
 import { DeleteContractHandler } from './command/delete/delete.handler';
 import { DenyContractHandler } from './command/deny-record/deny.handler';
+import { RebateComputeContractHandler } from './command/rebate-compute/rebate.compute.handler';
 import { UpdateContractHandler } from './command/update/update.handler';
 import { ContractController } from './contract.controller';
 import { GetContractByContractNoHandler } from './queries/get.by.contractNo/get.contract.by.contractNo.handler';
@@ -51,7 +52,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         DeleteContractHandler,
         ApproveContractHandler,
         DenyContractHandler,
-        
+        RebateComputeContractHandler,
     ],
 })
 export class ContractModule {}

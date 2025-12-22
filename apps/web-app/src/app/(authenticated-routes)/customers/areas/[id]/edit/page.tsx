@@ -86,7 +86,8 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
         territoryManagerName: area.territoryManagerName,
         status: area.status,
         changeReason: area.changeReason,
-        towns: area.towns
+        towns: area.towns,
+        idPrefix: area.idPrefix
       }, userRole);
       
       setSelectedArea(updatedArea);

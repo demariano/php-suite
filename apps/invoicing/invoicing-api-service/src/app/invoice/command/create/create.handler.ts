@@ -1,5 +1,5 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
-import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum } from '@dto';
+import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
@@ -22,58 +22,75 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
     ) {}
 
     async execute(command: CreateInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
-        this.logger.log(`Processing create request for invoice: ${command.invoiceDto.docno}`);
-
         try {
-            const invoiceAmountNeededForApproval = await this.configurationDatabaseService.findRecordByName(
-                'INVOICE_AMOUNT_NEEDED_FOR_APPROVAL'
+            // Get STARTING_INVOICE_NUMBER from configuration
+            const startingInvoiceNumberConfig = await this.configurationDatabaseService.findRecordByName(
+                'STARTING_INVOICE_NUMBER'
             );
+            const startingInvoiceNumber = startingInvoiceNumberConfig
+                ? parseInt(startingInvoiceNumberConfig.configurationValue, 10)
+                : 1; // Default to 1 if not found
 
-            if (!invoiceAmountNeededForApproval) {
-                throw new BadRequestException('Invoice amount needed for approval not found');
+            // Get total invoice count
+            const invoiceCount = await this.invoiceDatabaseService.getInvoiceCount();
+
+            // Calculate new docno: STARTING_INVOICE_NUMBER + invoiceCount
+            const newDocno = (startingInvoiceNumber + invoiceCount).toString();
+            command.invoiceDto.docno = newDocno;
+
+            this.logger.log(`Processing create request for invoice with auto-generated docno: ${newDocno}`);
+
+            // Check if user is admin or super admin
+            const isAdminOrSuperAdmin =
+                command.user.roles?.includes(UserRole.SUPER_ADMIN) || command.user.roles?.includes(UserRole.ADMIN);
+
+            // If admin/super admin, bypass approval check and set to ACTIVE
+            if (isAdminOrSuperAdmin) {
+                this.updateInvoiceStatusForAdmin(command);
+            } else {
+                // For non-admin users, check invoice amount for approval
+                const invoiceAmountNeededForApproval = await this.configurationDatabaseService.findRecordByName(
+                    'INVOICE_AMOUNT_NEEDED_FOR_APPROVAL'
+                );
+
+                if (!invoiceAmountNeededForApproval) {
+                    throw new BadRequestException('Invoice amount needed for approval not found');
+                }
+
+                const invoiceAmountNeededForApprovalValue = parseFloat(
+                    invoiceAmountNeededForApproval.configurationValue
+                );
+
+                // Update status and activity logs based on permissions
+                this.updateInvoiceStatus(command, invoiceAmountNeededForApprovalValue);
             }
-
-            const invoiceAmountNeededForApprovalValue = parseFloat(invoiceAmountNeededForApproval.configurationValue);
-
-            // Validate that docno is not empty, null, undefined, or whitespace-only
-            this.validateDocnoNotEmpty(command.invoiceDto.docno);
-
-            // Validate that invoice docno doesn't already exist
-            await this.validateInvoiceDocnoUnique(command.invoiceDto.docno);
-
-            // Update status and activity logs based on permissions
-            this.updateInvoiceStatus(command, invoiceAmountNeededForApprovalValue);
 
             // Create record in database
             const createdRecord = await this.invoiceDatabaseService.createRecord(command.invoiceDto);
 
-            this.logger.log(`Invoice created successfully: ${createdRecord.invoiceId}`);
+            this.logger.log(
+                `Invoice created successfully: ${createdRecord.invoiceId} with docno: ${createdRecord.docno}`
+            );
             return new ResponseDto<InvoiceDto>(createdRecord, HTTP_STATUS_CREATED);
         } catch (error) {
-            return this.handleError(error, command.invoiceDto.docno);
+            return this.handleError(error, command.invoiceDto.docno || 'unknown');
         }
     }
 
     /**
-     * Validates that the docno is not empty, null, undefined, or whitespace-only
+     * Updates invoice status for admin/super admin users - always set to ACTIVE
      */
-    private validateDocnoNotEmpty(docno: string): void {
-        if (!docno || docno.trim() === '') {
-            this.logger.warn(`Invoice docno is empty or invalid: ${docno}`);
-            throw new BadRequestException('Document number is required and cannot be empty');
-        }
-    }
-
-    /**
-     * Validates that the invoice docno is unique
-     */
-    private async validateInvoiceDocnoUnique(docno: string): Promise<void> {
-        const existingRecord = await this.invoiceDatabaseService.findRecordByDocno(docno);
-
-        if (existingRecord) {
-            this.logger.warn(`Invoice docno already exists: ${docno}`);
-            throw new BadRequestException('Invoice document number already exists');
-        }
+    private updateInvoiceStatusForAdmin(command: CreateInvoiceCommand): void {
+        command.invoiceDto.status = StatusEnum.ACTIVE;
+        command.invoiceDto.totalAmountPaid = 0;
+        command.invoiceDto.activityLogs = [];
+        command.invoiceDto.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Invoice created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+        );
+        // Limit activity logs to last 10 entries
+        command.invoiceDto.activityLogs = reduceArrayContents(command.invoiceDto.activityLogs, ACTIVITY_LOGS_LIMIT);
     }
 
     /**

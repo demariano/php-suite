@@ -132,6 +132,7 @@ export const CustomerSchema = {
             territoryManagerName: { type: String, required: false },
             changeReason: { type: String, required: false },
             approverMessage: { type: String, required: false },
+            idPrefix: { type: String, required: false },
             GSI1PK: { type: String, value: 'AREA', hidden: false },
             GSI1SK: { type: String, value: '${areaName}', hidden: false },
             GSI2PK: { type: String, value: 'AREA#${status}', hidden: false },

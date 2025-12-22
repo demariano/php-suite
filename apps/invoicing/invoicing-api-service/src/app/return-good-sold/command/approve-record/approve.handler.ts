@@ -106,8 +106,10 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
         existingRecord.invoiceId = forApprovalVersion.invoiceId as string;
         existingRecord.customerId = forApprovalVersion.customerId as string;
         existingRecord.customerName = forApprovalVersion.customerName as string;
+        existingRecord.areaId = forApprovalVersion.areaId as string | undefined;
+        existingRecord.areaName = forApprovalVersion.areaName as string | undefined;
         existingRecord.invoiceDocno = forApprovalVersion.invoiceDocno as string;
-        existingRecord.rgsDocno = forApprovalVersion.rgsDocno as string;
+        // rgsDocno is immutable - do not update it from forApprovalVersion
         existingRecord.dateReturned = forApprovalVersion.dateReturned as string;
         existingRecord.originalInvoiceDetails = forApprovalVersion.originalInvoiceDetails as Array<any>;
         existingRecord.modifiedInvoiceDetails = forApprovalVersion.modifiedInvoiceDetails as Array<any>;

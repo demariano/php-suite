@@ -8,6 +8,9 @@ export interface ReturnGoodSoldDto {
     invoiceId: string;
     customerId: string;
     customerName: string;
+    areaId?: string;
+    areaName?: string;
+    areaPrefixId?: string;
     invoiceDocno: string;
     rgsDocno: string;
     dateReturned: string;
@@ -26,6 +29,9 @@ export interface CreateReturnGoodSoldDto {
     invoiceId: string;
     customerId: string;
     customerName: string;
+    areaId?: string;
+    areaName?: string;
+    areaPrefixId?: string;
     invoiceDocno: string;
     rgsDocno: string;
     dateReturned: string;

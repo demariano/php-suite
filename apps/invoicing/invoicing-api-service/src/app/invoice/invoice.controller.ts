@@ -512,6 +512,20 @@ export class InvoiceController {
         enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
         example: 'ACTIVE',
     })
+    @ApiQuery({
+        name: 'contractId',
+        type: String,
+        required: false,
+        description: 'Optional contract ID to filter invoices by contract',
+        example: 'contract-123',
+    })
+    @ApiQuery({
+        name: 'nonContractOnly',
+        type: Boolean,
+        required: false,
+        description: 'If true, only return invoices that are not on a contract',
+        example: true,
+    })
     @ApiResponse({
         status: 200,
         description: 'Pending payment invoices retrieved successfully',
@@ -551,10 +565,21 @@ export class InvoiceController {
             },
         },
     })
-    getPendingPaymentInvoices(@Param('customerId') customerId: string, @Query('status') status: string) {
+    getPendingPaymentInvoices(
+        @Param('customerId') customerId: string,
+        @Query('status') status: string,
+        @Query('contractId') contractId?: string,
+        @Query('nonContractOnly') nonContractOnly?: string | boolean
+    ) {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
-        return this.queryBus.execute(new GetPendingPaymentInvoicesQuery(customerId, status));
+        // Parse nonContractOnly - query params come as strings, so handle both string and boolean
+        const nonContractOnlyBool =
+            nonContractOnly === true ||
+            (typeof nonContractOnly === 'string' && (nonContractOnly === 'true' || nonContractOnly === '1'));
+        return this.queryBus.execute(
+            new GetPendingPaymentInvoicesQuery(customerId, status, contractId, nonContractOnlyBool)
+        );
     }
 
     @Get(':id')

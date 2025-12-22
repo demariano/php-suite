@@ -6,8 +6,6 @@ export function createDynamoDbOptionWithPKSKIndex(
     direction: string,
     cursorPointer: string
 ) {
-
-
     if (!limit || limit == 0) {
         limit = 0;
     }
@@ -18,23 +16,19 @@ export function createDynamoDbOptionWithPKSKIndex(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dbOptions: { [key: string]: any } = {};
 
-
     dbOptions['limit'] = limitNumber + 1;
     dbOptions['follow'] = true;
 
-    if (cursorPointer != null) {
-        const sanitizedCursorPointer = decodeURIComponent(cursorPointer)
+    if (cursorPointer != null && cursorPointer.trim() !== '') {
+        const sanitizedCursorPointer = decodeURIComponent(cursorPointer);
         dbOptions[cursorPointer] = JSON.parse(sanitizedCursorPointer);
     }
-
 
     if (direction != null) {
         dbOptions[direction] = {};
 
-        if (cursorPointer == null) {
-            throw new BadRequestException(
-                'Cursor Pointer Can\'t be null if direction is not null'
-            );
+        if (cursorPointer == null || cursorPointer.trim() === '') {
+            throw new BadRequestException("Cursor Pointer Can't be null or empty if direction is not null");
         }
 
         dbOptions[direction] = JSON.parse(cursorPointer);
@@ -43,9 +37,6 @@ export function createDynamoDbOptionWithPKSKIndex(
     if (indexName != null) {
         dbOptions['index'] = indexName;
     }
-
-
-
 
     return dbOptions;
 }

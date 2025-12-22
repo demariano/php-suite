@@ -1,6 +1,6 @@
 'use client';
 
-import { CustomerDto, InvoiceDto, ReturnGoodSoldDto, useSessionStore } from '@data-access/index';
+import { AreaApi, CustomerDto, InvoiceDto, ReturnGoodSoldDto, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { useState } from 'react';
 import { ChangeReasonField } from '../../../../../components';
 import DatePicker from '../../../../../components/DatePicker';
@@ -29,6 +29,8 @@ export default function RecordDetailsTab({
   
   // Toast notification hook
   const { setFlashNotification } = useSessionStore();
+  const { env } = useEnv();
+  const { authedUser } = useLocalStore();
 
   // Handle customer selection
   const handleCustomerSelect = async (customer: CustomerDto) => {
@@ -64,12 +66,30 @@ export default function RecordDetailsTab({
   // Handle invoice selection
   const handleInvoiceSelect = async (invoice: InvoiceDto) => {
     try {
+        // Fetch area prefix ID if areaId is available
+        let areaPrefixId: string | undefined = undefined;
+        if (invoice.areaId) {
+          try {
+            const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development')
+              ? authedUser?.userRole
+              : undefined;
+            const area = await AreaApi.getAreaById(invoice.areaId, userRole);
+            areaPrefixId = area.idPrefix;
+          } catch (error) {
+            console.error('Failed to fetch area prefix:', error);
+            // Continue without areaPrefixId - backend will handle validation
+          }
+        }
+
         // Update form data with invoice info and populate customer and original invoice details
         onFormDataChange({
           invoiceId: invoice.invoiceId,
           invoiceDocno: invoice.docno, // Populate invoice document number
           customerId: invoice.customerId, // Auto-populate customer ID
           customerName: invoice.customerName, // Auto-populate customer name
+          areaId: invoice.areaId, // Auto-populate area ID
+          areaName: invoice.areaName, // Auto-populate area name
+          areaPrefixId: areaPrefixId, // Auto-populate area prefix ID
           productPriceTypeId: invoice.productPriceTypeId, // Extract product price type ID
           productPriceTypeName: invoice.productPriceTypeName, // Extract product price type name
           originalInvoiceDetails: invoice.invoiceDetails || [],
@@ -200,26 +220,24 @@ export default function RecordDetailsTab({
               />
             </div>
 
-            {/* RGS Document Number */}
-            <div className="group">
-              <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-                RGS Doc No
-              </label>
-              <input
-                type="text"
-                value={formData.rgsDocno || ''}
-                onChange={(e) => onFormDataChange({ rgsDocno: e.target.value })}
-                disabled={!isCreateMode || isReadOnly}
-                readOnly={!isCreateMode}
-                className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
-                  !isCreateMode || isReadOnly
-                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 opacity-60'
-                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                }`}
-                placeholder="Enter RGS document number"
-              />
-            </div>
+            {/* RGS Document Number - Only shown in update mode, read-only */}
+            {!isCreateMode && (
+              <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                  RGS Doc No
+                </label>
+                <input
+                  type="text"
+                  value={formData.rgsDocno || ''}
+                  readOnly
+                  className="w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  RGS document number is auto-generated and cannot be modified.
+                </p>
+              </div>
+            )}
 
             {/* Date Returned */}
             <div className="group">

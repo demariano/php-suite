@@ -8,6 +8,7 @@ import { CreateContractCommand } from './command/create/create.command';
 import { DeleteContractCommand } from './command/delete/delete.command';
 import { DenyContractCommand } from './command/deny-record/deny.command';
 import { DenyContractDto } from './command/deny-record/deny.dto';
+import { RebateComputeContractCommand } from './command/rebate-compute/rebate.compute.command';
 import { UpdateContractCommand } from './command/update/update.command';
 import { GetContractByContractNoQuery } from './queries/get.by.contractNo/get.contract.by.contractNo.query';
 import { GetContractsByCustomerIdQuery } from './queries/get.by.customerId/get.contracts.by.customerId.query';
@@ -700,5 +701,64 @@ export class ContractController {
     })
     getPendingPaymentContracts(@Param('customerId') customerId: string) {
         return this.queryBus.execute(new GetPendingPaymentContractsQuery(customerId));
+    }
+
+    @Post(':id/rebate/compute')
+    @ApiOperation({
+        summary: 'Compute rebate for contract',
+        description: 'Triggers rebate computation for a contract',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Contract ID',
+        example: 'contract-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Rebate compute request processed successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        contractId: { type: 'string', example: 'contract-123' },
+                        contractNo: { type: 'string', example: 'CT-2024-001' },
+                        contractName: { type: 'string', example: 'Software License Agreement' },
+                        rebateAmount: { type: 'number', example: 1000 },
+                        rebateClaimedAmount: { type: 'number', example: 0 },
+                        rebateClaimedStatus: { type: 'string', example: 'PENDING' },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Contract not found',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 404 },
+                message: { type: 'string', example: 'Contract record not found for id contract-123' },
+            },
+        },
+    })
+    computeRebate(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        return this.commandBus.execute(new RebateComputeContractCommand(id, user));
     }
 }

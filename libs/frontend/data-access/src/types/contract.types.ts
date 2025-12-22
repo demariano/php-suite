@@ -1,9 +1,12 @@
 // Frontend-specific types for Contract
 // These mirror the backend DTOs but without NestJS decorators
 
+import { ContractProductDealDto } from './contract-product-deal.types';
+import { ContractTypeEnum } from './contract-type.enum';
 import { DeliveryStatusEnum } from './delivery-status.enum';
 import { PaymentStatusEnum } from './payment-status.enum';
-import { ProductDealQtyDto } from './product-deal.types';
+import { RebateClaimedStatusEnum } from './rebate-claimed-status.enum';
+import { RebateTypeEnum } from './rebate-type.enum';
 import { StatusEnum } from './status.enum';
 
 export interface ContractDto {
@@ -12,13 +15,14 @@ export interface ContractDto {
     contractName?: string;
     customerId?: string;
     customerName?: string;
+    areaId?: string;
+    areaName?: string;
     startDate?: string;
     endDate?: string;
+    contractType?: ContractTypeEnum;
     contractAmount?: number;
     amountPaid?: number;
-    productDealId?: string;
-    productDealName?: string;
-    productDealQty?: ProductDealQtyDto;
+    contractProductDeals?: ContractProductDealDto[];
     deliveryStatus?: DeliveryStatusEnum;
     paymentStatus?: PaymentStatusEnum;
     deliveredAmount?: number;
@@ -28,6 +32,11 @@ export interface ContractDto {
     approverMessage?: string;
     status?: StatusEnum;
     invoicedAmount?: number;
+    rebatePercentage?: number;
+    rebateType?: RebateTypeEnum;
+    rebateAmount?: number;
+    rebateClaimedAmount?: number;
+    rebateClaimedStatus?: RebateClaimedStatusEnum;
 }
 
 export interface CreateContractDto {
@@ -35,13 +44,15 @@ export interface CreateContractDto {
     contractName?: string;
     customerId?: string;
     customerName?: string;
+    areaId?: string;
+    areaName?: string;
+    areaPrefixId?: string;
     startDate?: string;
     endDate?: string;
+    contractType?: ContractTypeEnum;
     contractAmount?: number;
     amountPaid?: number;
-    productDealId?: string;
-    productDealName?: string;
-    productDealQty?: ProductDealQtyDto;
+    contractProductDeals?: ContractProductDealDto[];
     deliveryStatus?: DeliveryStatusEnum;
     paymentStatus?: PaymentStatusEnum;
     deliveredAmount?: number;
@@ -50,4 +61,9 @@ export interface CreateContractDto {
     changeReason?: string;
     status?: StatusEnum;
     invoicedAmount?: number;
+    rebatePercentage?: number;
+    rebateType?: RebateTypeEnum;
+    rebateAmount?: number;
+    rebateClaimedAmount?: number;
+    rebateClaimedStatus?: RebateClaimedStatusEnum;
 }

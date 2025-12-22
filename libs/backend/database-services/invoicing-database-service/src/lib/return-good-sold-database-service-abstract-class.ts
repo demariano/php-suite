@@ -61,4 +61,6 @@ export abstract class ReturnGoodSoldDatabaseServiceAbstractClass {
     abstract convertToDtoList(records: ReturnGoodSoldDataType[]): Promise<ReturnGoodSoldDto[]>;
 
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract getReturnGoodSoldCountByAreaId(areaId: string): Promise<number>;
 }

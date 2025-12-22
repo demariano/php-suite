@@ -99,10 +99,12 @@ export * from './lib/invoicing/territory.manager/create.territory.manager.dto';
 export * from './lib/invoicing/territory.manager/territory.manager.dto';
 
 //COntract
+export * from './lib/enums/contract.type.enum';
 export * from './lib/enums/delivery.status.enum';
-export * from './lib/enums/rebate.type.enum';
 export * from './lib/enums/rebate.claimed.status.enum';
+export * from './lib/enums/rebate.type.enum';
 export * from './lib/invoicing/contract/contract.dto';
+export * from './lib/invoicing/contract/contract.product.deal.dto';
 export * from './lib/invoicing/contract/create.contract.dto';
 
 //payment
@@ -116,6 +118,13 @@ export * from './lib/invoicing/payment/payment.invoice.details.dto';
 //return good sold
 export * from './lib/invoicing/return.good.sold/create.return.good.sold.dto';
 export * from './lib/invoicing/return.good.sold/return.good.sold.dto';
+
+//collection receipt range
+export * from './lib/enums/range.status.enum';
+export * from './lib/invoicing/collection-receipt-range/cancel.receipt.number.request.dto';
+export * from './lib/invoicing/collection-receipt-range/cancelled.receipt.number.dto';
+export * from './lib/invoicing/collection-receipt-range/collection.receipt.range.dto';
+export * from './lib/invoicing/collection-receipt-range/create.collection.receipt.range.dto';
 
 //accounting
 export * from './lib/accounting/account.dto';

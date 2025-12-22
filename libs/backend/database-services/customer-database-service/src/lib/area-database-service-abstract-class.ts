@@ -39,4 +39,6 @@ export abstract class AreaDatabaseServiceAbstract {
     abstract deleteAllRecords(): Promise<void>;
 
     abstract findRecordsByTerritoryManagerId(territoryManagerId: string): Promise<AreaDto[]>;
+
+    abstract findRecordByIdPrefix(idPrefix: string): Promise<AreaDto | null>;
 }

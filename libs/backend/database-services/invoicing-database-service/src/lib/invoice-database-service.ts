@@ -105,6 +105,39 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         }
     }
 
+    async getInvoiceCount(): Promise<number> {
+        let totalCount = 0;
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000; // Large limit to minimize pagination calls
+
+        do {
+            // For first call, don't pass direction/cursor. For subsequent calls, use 'next' direction
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI12', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI12',
+                  };
+
+            // Only fetch invoiceId field to minimize data transfer - we only need to count records
+            const records = await this.invoiceTable.find(
+                {
+                    GSI12PK: `INVOICE`,
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: ['invoiceId'], // Only return minimal field needed for counting
+                }
+            );
+
+            totalCount += records.length;
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return totalCount;
+    }
+
     async findRecordContainingDocno(
         limit: number,
         docno: string,
@@ -161,7 +194,12 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         return await this.convertToDto(record);
     }
 
-    async findPendingPaymentInvoices(customerId: string, status: string): Promise<InvoiceDto[] | null> {
+    async findPendingPaymentInvoices(
+        customerId: string,
+        status: string,
+        contractId?: string,
+        nonContractOnly?: boolean
+    ): Promise<InvoiceDto[] | null> {
         const pendingPaymentInvoices = await this.invoiceTable.find(
             {
                 GSI13PK: `INVOICE#${customerId}#${PaymentStatusEnum.PENDING}#${status}`,
@@ -180,8 +218,101 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             }
         );
 
-        const pendingPaymentsDto = await this.convertToDtoList(pendingPaymentInvoices);
-        const partialPaymentsDto = await this.convertToDtoList(partialPaymentInvoices);
+        // Filter on raw database records BEFORE DTO conversion to avoid conversion side effects
+        let filteredPendingInvoices = pendingPaymentInvoices;
+        let filteredPartialInvoices = partialPaymentInvoices;
+
+        // Log filter parameters for debugging
+        this.logger.log(
+            `Filtering invoices - contractId: ${
+                contractId || 'none'
+            }, nonContractOnly: ${nonContractOnly}, type: ${typeof nonContractOnly}`
+        );
+
+        // Filter by contractId if provided (for CONTRACT_PER_INVOICE payments)
+        // Only filter by contractId if it's a non-empty string
+        if (contractId && typeof contractId === 'string' && contractId.trim() !== '') {
+            filteredPendingInvoices = pendingPaymentInvoices.filter((invoice: InvoiceDataType) => {
+                const invoiceContractId = invoice.contractId;
+                return (
+                    invoiceContractId === contractId ||
+                    (invoiceContractId && invoiceContractId.toString().trim() === contractId.trim())
+                );
+            });
+            filteredPartialInvoices = partialPaymentInvoices.filter((invoice: InvoiceDataType) => {
+                const invoiceContractId = invoice.contractId;
+                return (
+                    invoiceContractId === contractId ||
+                    (invoiceContractId && invoiceContractId.toString().trim() === contractId.trim())
+                );
+            });
+        }
+        // Filter for non-contract invoices if nonContractOnly is true (for non-contract payments)
+        // Only include invoices that do NOT have a contractId (null, undefined, or empty string)
+        // Also check contractSales field - if true, invoice is associated with a contract
+        else if (nonContractOnly === true) {
+            this.logger.log(
+                `Filtering for non-contract invoices. Pending: ${pendingPaymentInvoices.length}, Partial: ${partialPaymentInvoices.length}`
+            );
+
+            // Helper function to check if invoice has a contract
+            const hasContract = (invoice: InvoiceDataType): boolean => {
+                // Check contractSales field - if true, invoice is definitely associated with a contract
+                if (invoice.contractSales === true) {
+                    this.logger.debug(
+                        `Invoice ${invoice.invoiceId} has contractSales=true, excluding from non-contract results`
+                    );
+                    return true;
+                }
+
+                // Check contractId field
+                const invoiceContractId = invoice.contractId;
+
+                // If contractId is null or undefined, no contract
+                if (invoiceContractId === null || invoiceContractId === undefined) {
+                    return false;
+                }
+
+                // If contractId is a string, check if it's non-empty after trimming
+                if (typeof invoiceContractId === 'string') {
+                    const trimmedContractId = invoiceContractId.trim();
+                    // If contractId is non-empty, invoice has a contract
+                    if (trimmedContractId !== '') {
+                        this.logger.debug(
+                            `Invoice ${invoice.invoiceId} has contractId="${trimmedContractId}", excluding from non-contract results`
+                        );
+                        return true;
+                    }
+                }
+
+                // If contractId exists and is not null/undefined/empty string, it has a contract
+                if (invoiceContractId) {
+                    this.logger.debug(
+                        `Invoice ${invoice.invoiceId} has contractId="${invoiceContractId}", excluding from non-contract results`
+                    );
+                    return true;
+                }
+
+                // No contract found
+                return false;
+            };
+
+            // Filter out any invoice that has a contract (keep only invoices without contracts)
+            filteredPendingInvoices = pendingPaymentInvoices.filter(
+                (invoice: InvoiceDataType) => !hasContract(invoice)
+            );
+            filteredPartialInvoices = partialPaymentInvoices.filter(
+                (invoice: InvoiceDataType) => !hasContract(invoice)
+            );
+
+            this.logger.log(
+                `After filtering: Pending: ${filteredPendingInvoices.length}, Partial: ${filteredPartialInvoices.length}`
+            );
+        }
+
+        // Convert filtered records to DTOs
+        const pendingPaymentsDto = await this.convertToDtoList(filteredPendingInvoices);
+        const partialPaymentsDto = await this.convertToDtoList(filteredPartialInvoices);
 
         const records = pendingPaymentsDto.concat(partialPaymentsDto);
 

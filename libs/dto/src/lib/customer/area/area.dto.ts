@@ -31,4 +31,7 @@ export class AreaDto {
 
     @ApiProperty()
     approverMessage?: string;
+
+    @ApiProperty()
+    idPrefix?: string;
 }

@@ -18,6 +18,9 @@ export * from './state-management';
 export * from './types/account.types';
 export * from './types/area.types';
 export * from './types/cheque-clear-status.enum';
+export * from './types/collection-receipt-range.types';
+export * from './types/contract-product-deal.types';
+export * from './types/contract-type.enum';
 export * from './types/contract.types';
 export * from './types/customer-classification.types';
 export * from './types/customer-product-deal.types';
@@ -36,6 +39,8 @@ export * from './types/product-deal.types';
 export * from './types/product-price-type.types';
 export * from './types/product-unit.types';
 export * from './types/product.types';
+export * from './types/rebate-claimed-status.enum';
+export * from './types/rebate-type.enum';
 export * from './types/responseError';
 export * from './types/return-good-sold.types';
 export * from './types/sales-type.types';
@@ -50,6 +55,7 @@ export * from './types/voucher.types';
 
 // Export API types
 export type { AreasResponse } from './api/area.api';
+export type { CollectionReceiptRangesResponse } from './api/collection-receipt-range.api';
 export type { ContractsResponse } from './api/contract.api';
 export type { CustomerClassificationsResponse } from './api/customer-classification.api';
 export type { CustomersResponse } from './api/customer-main.api';

@@ -25,6 +25,11 @@ export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
             // Validate that area name doesn't already exist
             await this.validateAreaNameUnique(command.areaDto.areaName);
 
+            // Validate that prefix ID is unique (if provided)
+            if (command.areaDto.idPrefix) {
+                await this.validatePrefixIdUnique(command.areaDto.idPrefix);
+            }
+
             // Validate territory manager fields
             this.validateTerritoryManagerFields(command.areaDto);
 
@@ -53,6 +58,18 @@ export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
         if (existingRecord) {
             this.logger.warn(`Area name already exists: ${areaName}`);
             throw new BadRequestException('Area name already exists');
+        }
+    }
+
+    /**
+     * Validates that the prefix ID is unique
+     */
+    private async validatePrefixIdUnique(idPrefix: string): Promise<void> {
+        const existingRecord = await this.areaDatabaseService.findRecordByIdPrefix(idPrefix);
+
+        if (existingRecord) {
+            this.logger.warn(`Prefix ID already exists: ${idPrefix}`);
+            throw new BadRequestException('Prefix ID already exists');
         }
     }
 
@@ -106,6 +123,7 @@ export class CreateAreaHandler implements ICommandHandler<CreateAreaCommand> {
             command.areaDto.forApprovalVersion.towns = command.areaDto.towns;
             command.areaDto.forApprovalVersion.territoryManagerId = command.areaDto.territoryManagerId;
             command.areaDto.forApprovalVersion.territoryManagerName = command.areaDto.territoryManagerName;
+            command.areaDto.forApprovalVersion.idPrefix = command.areaDto.idPrefix;
         }
     }
 

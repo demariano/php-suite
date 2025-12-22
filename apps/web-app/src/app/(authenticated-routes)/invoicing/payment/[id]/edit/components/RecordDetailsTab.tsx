@@ -1,6 +1,6 @@
 'use client';
 
-import { ContractDto, CustomerDto, PaymentDto, useSessionStore } from '@data-access/index';
+import { CollectionReceiptRangeApi, ContractApi, ContractDto, CustomerDto, PaymentDto, useSessionStore } from '@data-access/index';
 import { useState } from 'react';
 import DatePicker from '../../../../../components/DatePicker';
 import { ChangeReasonField } from '../../../../../components/ChangeReasonField';
@@ -13,6 +13,7 @@ interface RecordDetailsTabProps {
   isCreateMode: boolean;
   isAdminUser: boolean;
   isReadOnly?: boolean;
+  onReceiptNumberError?: (error: string | null) => void;
 }
 
 export default function RecordDetailsTab({
@@ -20,11 +21,16 @@ export default function RecordDetailsTab({
   onFormDataChange,
   isCreateMode,
   isAdminUser,
-  isReadOnly = false
+  isReadOnly = false,
+  onReceiptNumberError
 }: RecordDetailsTabProps) {
   // State management for modals
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
+  
+  // State for receipt number fetching
+  const [isFetchingReceiptNumber, setIsFetchingReceiptNumber] = useState(false);
+  const [receiptNumberError, setReceiptNumberError] = useState<string | null>(null);
   
   // Toast notification hook
   const { setFlashNotification } = useSessionStore();
@@ -44,18 +50,74 @@ export default function RecordDetailsTab({
         contractName: '',
         contractNo: ''
       });
+
+      // Clear previous receipt number error
+      setReceiptNumberError(null);
+      onReceiptNumberError?.(null);
+
+      // Auto-populate receipt number if customer has areaId and we're in create mode
+      if (isCreateMode && customer.areaId && !formData.receiptNo) {
+        setIsFetchingReceiptNumber(true);
+        try {
+          const nextReceiptNumber = await CollectionReceiptRangeApi.getNextAvailableReceiptNumber(customer.areaId);
+          onFormDataChange({
+            receiptNo: nextReceiptNumber.toString()
+          });
+          setReceiptNumberError(null);
+          onReceiptNumberError?.(null);
+        } catch (error: any) {
+          console.error('Error fetching next receipt number:', error);
+          const errorMessage = error?.response?.data?.message || error?.message || 'Unable to fetch receipt number. Please contact an administrator.';
+          
+          // Set error state
+          setReceiptNumberError(errorMessage);
+          onReceiptNumberError?.(errorMessage);
+          
+          // Clear receipt number
+          onFormDataChange({
+            receiptNo: ''
+          });
+
+          // Show notification
+          setFlashNotification({
+            title: 'Receipt Number Unavailable',
+            message: errorMessage,
+            alertType: 'error'
+          });
+        } finally {
+          setIsFetchingReceiptNumber(false);
+        }
+      } else if (isCreateMode && !customer.areaId) {
+        // Customer has no areaId - allow manual entry
+        setReceiptNumberError(null);
+        onReceiptNumberError?.(null);
+      }
     } catch (error) {
       console.error('Error processing customer selection:', error);
     }
   };
 
   // Handle contract selection
-  const handleContractSelect = (contract: ContractDto) => {
-    onFormDataChange({
-      contractId: contract.contractId,
-      contractName: contract.contractName,
-      contractNo: contract.contractNo
-    });
+  const handleContractSelect = async (contract: ContractDto) => {
+    // Fetch full contract details to get contractType
+    try {
+      const fullContract = await ContractApi.getContractById(contract.contractId);
+      onFormDataChange({
+        contractId: contract.contractId,
+        contractName: contract.contractName,
+        contractNo: contract.contractNo
+        // Note: contractType is not stored in PaymentDto, but will be fetched in PaymentInvoiceDetailsTab
+        // This fetch ensures we have the latest contract data
+      });
+    } catch (error) {
+      console.error('Error fetching contract details:', error);
+      // Still update with basic contract info even if fetch fails
+      onFormDataChange({
+        contractId: contract.contractId,
+        contractName: contract.contractName,
+        contractNo: contract.contractNo
+      });
+    }
   };
 
 
@@ -112,8 +174,12 @@ export default function RecordDetailsTab({
                     e.stopPropagation();
                     onFormDataChange({
                       customerId: '',
-                      customerName: ''
+                      customerName: '',
+                      receiptNo: '' // Clear receipt number when customer is cleared
                     });
+                    // Clear receipt number error
+                    setReceiptNumberError(null);
+                    onReceiptNumberError?.(null);
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none text-lg cursor-pointer text-gray-600 p-1 rounded transition-all duration-200 hover:bg-gray-100 hover:text-red-600"
                 >
@@ -143,18 +209,45 @@ export default function RecordDetailsTab({
               <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
               Receipt Number *
             </label>
-            <input
-              type="text"
-              value={formData.receiptNo || ''}
-              onChange={(e) => onFormDataChange({ receiptNo: e.target.value })}
-              placeholder="Enter receipt number"
-              disabled={isReadOnly || !isCreateMode}
-              className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                (isReadOnly || !isCreateMode)
-                  ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                  : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-              }`}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.receiptNo || ''}
+                onChange={(e) => {
+                  onFormDataChange({ receiptNo: e.target.value });
+                  // Clear error when user manually enters receipt number
+                  if (e.target.value && receiptNumberError) {
+                    setReceiptNumberError(null);
+                    onReceiptNumberError?.(null);
+                  }
+                }}
+                placeholder={isFetchingReceiptNumber ? "Fetching receipt number..." : "Enter receipt number"}
+                disabled={isReadOnly || !isCreateMode || receiptNumberError !== null}
+                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                  (isReadOnly || !isCreateMode || receiptNumberError !== null)
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                    : receiptNumberError
+                      ? 'border-red-300 bg-red-50 text-gray-700'
+                      : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                }`}
+              />
+              {isFetchingReceiptNumber && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                </div>
+              )}
+            </div>
+            {receiptNumberError && (
+              <div className="mt-2 flex items-start gap-2 rounded-lg border-2 border-red-300 bg-red-50 p-3">
+                <svg className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm text-red-700 m-0">{receiptNumberError}</p>
+              </div>
+            )}
           </div>
 
           {/* Payment Amount (Read-only) */}
