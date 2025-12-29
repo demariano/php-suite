@@ -289,6 +289,15 @@ Content-Type: application/json
 }
 ```
 
+### Command-Only Authentication Controllers (Current Implementation)
+
+The authentication API currently exposes only POST/DELETE routes that execute commands over `CommandBus` (no `QueryBus`). Each route is heavily documented with `@ApiOperation`, `@ApiBody`, and explicit example payloads (see [apps/authentication/authentication-api-service/src/app/authentication/authentication.controller.ts](apps/authentication/authentication-api-service/src/app/authentication/authentication.controller.ts#L1-L260)). When following this pattern:
+
+- Keep `CommandBus` as the sole dependency if no read endpoints exist; drop `QueryBus` from the controller constructor
+- Add `@ApiBearerAuth()` and `@UseGuards` when endpoints should require tokens (several auth flows are currently open); document which routes stay public (e.g., login, confirm code) and which should be protected (admin create/delete user)
+- Continue providing detailed Swagger examples for each Cognito flow so frontends can mirror expected payloads and responses
+- Prefer `@Post()` even for verification steps to keep payloads in the body rather than query params
+
 ---
 
 ## Command Endpoints

@@ -709,6 +709,8 @@ if (prevCursorPointer != null && direction != 'next') {
 **Why include both GSI and primary keys?**
 DynamoDB requires both to uniquely identify position in pagination, especially when GSI values are not unique.
 
+**Runtime alignment note:** The shared helper in [libs/backend/dynamo-db-lib/src/lib/utils/dynamodb.page.record.handler.ts](libs/backend/dynamo-db-lib/src/lib/utils/dynamodb.page.record.handler.ts#L1-L94) expects JSON-encoded OneTable cursors (`JSON.stringify(records.next)` / `JSON.stringify(records.prev)`) and returns objects in `nextCursorPointer` and `prevCursorPointer`. When returning these via HTTP, re-encode them (e.g., `encodeURIComponent(JSON.stringify(cursor))`) to keep client pagination stable. The helper already trims the extra record based on `direction`, so avoid double-pop/shift in service code.
+
 ### Step 13: Implement Pagination Methods
 
 #### Pattern A: Basic Pagination (All Records)

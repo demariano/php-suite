@@ -14,6 +14,11 @@ import {
 } from '@customer-database-service';
 import {
     InventoryDatabaseServiceModule,
+    RawMaterialDatabaseService,
+    RawMaterialsLocationDatabaseService,
+    RawMaterialsStockDatabaseService,
+    RawMaterialSupplierDatabaseService,
+    RawMaterialUnitDatabaseService,
     StockDatabaseService,
     StockTypeDatabaseService,
     SupplierDatabaseService,
@@ -131,6 +136,26 @@ import { AppService } from './app.service';
         {
             provide: 'SupplierDatabaseService',
             useClass: SupplierDatabaseService,
+        },
+        {
+            provide: 'RawMaterialDatabaseService',
+            useClass: RawMaterialDatabaseService,
+        },
+        {
+            provide: 'RawMaterialUnitDatabaseService',
+            useClass: RawMaterialUnitDatabaseService,
+        },
+        {
+            provide: 'RawMaterialsLocationDatabaseService',
+            useClass: RawMaterialsLocationDatabaseService,
+        },
+        {
+            provide: 'RawMaterialSupplierDatabaseService',
+            useClass: RawMaterialSupplierDatabaseService,
+        },
+        {
+            provide: 'RawMaterialsStockDatabaseService',
+            useClass: RawMaterialsStockDatabaseService,
         },
     ],
 })

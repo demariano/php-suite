@@ -40,6 +40,7 @@ export * from './lib/configuration/configuration/update.configuration.dto';
 export * from './lib/initialization/initialization.dto';
 //ProductSchema
 export * from './lib/enums/status.enum';
+export * from './lib/enums/raw.materials.purchase-order.status.enum';
 export * from './lib/product/product.category/create.product.category.dto';
 export * from './lib/product/product.category/product.category.dto';
 export * from './lib/product/product.class/create.product.class.dto';
@@ -72,6 +73,20 @@ export * from './lib/customer/terms/create.terms.dto';
 export * from './lib/customer/terms/terms.dto';
 
 //StockSchema
+export * from './lib/inventory/raw.material.location/create.raw.material.location.dto';
+export * from './lib/inventory/raw.material.location/raw.material.location.dto';
+export * from './lib/inventory/raw.material.stock/create.raw.material.stock.dto';
+export * from './lib/inventory/raw.material.stock/raw.material.stock.dto';
+export * from './lib/inventory/raw.material.supplier/create.raw.material.supplier.dto';
+export * from './lib/inventory/raw.material.supplier/raw.material.supplier.dto';
+export * from './lib/inventory/raw.material.unit/create.raw.material.unit.dto';
+export * from './lib/inventory/raw.material.unit/raw.material.unit.dto';
+export * from './lib/inventory/raw.material/create.raw.material.dto';
+export * from './lib/inventory/raw.material/raw.material.dto';
+export * from './lib/inventory/raw.materials.purchase-order/raw.materials.purchase-order.dto';
+export * from './lib/inventory/raw.materials.purchase-order/raw.materials.purchase-order.detail.dto';
+export * from './lib/inventory/raw.materials.purchase-order/delivered.raw.materials.purchase-order.detail.dto';
+export * from './lib/inventory/raw.materials.purchase-order/delivered.raw.materials.purchase-order.delivery.dto';
 export * from './lib/inventory/stock-delivery/create.stock-delivery.dto';
 export * from './lib/inventory/stock-delivery/delivery-details.dto';
 export * from './lib/inventory/stock-delivery/stock-delivery.dto';

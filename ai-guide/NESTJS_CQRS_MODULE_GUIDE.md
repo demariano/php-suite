@@ -757,6 +757,17 @@ if (hasApprovalPermission) {
 
 ---
 
+## Frontend Integration (Next.js Web App)
+
+The Next.js app consumes these APIs through a shared data-access library. When updating modules/endpoints, keep these integration points aligned:
+
+- **Runtime env loading:** Client fetches `/api/env` and caches values in sessionStorage; `getEnv()` returns cached values on subsequent calls ([libs/frontend/data-access/src/config/env.ts](libs/frontend/data-access/src/config/env.ts#L1-L120)). Add new env keys there to expose new API URLs.
+- **Axios wrapper:** `AxiosConfig` sets `baseURL` from env, injects `Authorization` and `sessionId` headers, and reshapes Nest `ResponseDto` bodies into `{ data, statusCode, nextCursorPointer, prevCursorPointer }` ([libs/frontend/data-access/src/api/axiosConfig.ts](libs/frontend/data-access/src/api/axiosConfig.ts#L1-L94)). Keep API responses consistent with this shape.
+- **Auth flows:** `AuthApi` hits `/login`, `/verify-mfa`, `/admin-create-user`, etc. without auth headers ([libs/frontend/data-access/src/api/auth.ts](libs/frontend/data-access/src/api/auth.ts#L1-L80)). Token-setting and redirects live in `useAuth` ([libs/frontend/data-access/src/hooks/useAuth.ts](libs/frontend/data-access/src/hooks/useAuth.ts#L1-L120)); adjust when auth endpoints or cookie names change.
+- **Websocket selection:** `connectSocket` picks socket.io for localstack and native WebSocket for prod, appending the access token as a `token` query param ([libs/frontend/data-access/src/websocket/socket.ts](libs/frontend/data-access/src/websocket/socket.ts#L1-L120)). If websocket auth schema changes, update this builder alongside backend expectations.
+
+---
+
 ## Summary
 
 This modular guide system provides comprehensive patterns for implementing NestJS CQRS modules with:

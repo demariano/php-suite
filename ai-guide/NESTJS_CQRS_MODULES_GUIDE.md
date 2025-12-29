@@ -442,6 +442,15 @@ export class EntityDatabaseServiceModule {
         };
     }
 }
+
+    ### Concrete Provider Variant (as observed in Authentication)
+
+    Some modules inject concrete services directly with string tokens instead of exporting abstract classes. This keeps wiring simple but bypasses the abstraction shown above. If you follow this variant (e.g., the authentication API service):
+
+    - Provide the concrete class with a string token and omit the abstract-class re-export
+    - Keep the provider list scoped to command handlers only (no QueryBus) when the feature is command-only
+    - Be explicit about third-party libs (Cognito, SES, SQS) in `imports` so handlers can resolve dependencies
+    - When adopting this shortcut, document the trade-off (tighter coupling, harder to swap implementations later)
 ```
 
 ### Injection in Handlers

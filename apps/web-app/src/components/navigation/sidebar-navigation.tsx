@@ -1,10 +1,10 @@
 'use client';
 
 import {
-  Dashboard,
-  File,
-  Groups,
-  Reporting
+    Dashboard,
+    File,
+    Groups,
+    Reporting
 } from '@components-web/icons';
 import { Menu } from '@components-web/types/menu';
 import { WithRequiredProperty } from '@components-web/types/utility';
@@ -145,6 +145,30 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
             { 
               label: "Suppliers", 
               route: "/inventory/suppliers", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Raw Material Suppliers", 
+              route: "/inventory/raw-material-suppliers", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Raw Materials", 
+              route: "/inventory/raw-materials", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Raw Material Locations", 
+              route: "/inventory/raw-materials-locations", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Raw Material Units", 
+              route: "/inventory/raw-material-units", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
             },

@@ -28,6 +28,11 @@ import {
     ProductPriceTypeDto,
     ProductUnitDto,
     ProductUnitPriceDto,
+    RawMaterialDto,
+    RawMaterialsLocationDto,
+    RawMaterialsStockDto,
+    RawMaterialSupplierDto,
+    RawMaterialUnitDto,
     SalesTypeDto,
     StatusEnum,
     StockDto,
@@ -37,6 +42,11 @@ import {
     TerritoryManagerDto,
 } from '@dto';
 import {
+    RawMaterialDatabaseServiceAbstract,
+    RawMaterialsLocationDatabaseServiceAbstract,
+    RawMaterialsStockDatabaseServiceAbstract,
+    RawMaterialSupplierDatabaseServiceAbstract,
+    RawMaterialUnitDatabaseServiceAbstract,
     StockDatabaseServiceAbstract,
     StockTypeDatabaseServiceAbstract,
     SupplierDatabaseServiceAbstract,
@@ -114,7 +124,22 @@ export class AppService {
         private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract,
 
         @Inject('SupplierDatabaseService')
-        private readonly supplierDatabaseService: SupplierDatabaseServiceAbstract
+        private readonly supplierDatabaseService: SupplierDatabaseServiceAbstract,
+
+        @Inject('RawMaterialDatabaseService')
+        private readonly rawMaterialDatabaseService: RawMaterialDatabaseServiceAbstract,
+
+        @Inject('RawMaterialUnitDatabaseService')
+        private readonly rawMaterialUnitDatabaseService: RawMaterialUnitDatabaseServiceAbstract,
+
+        @Inject('RawMaterialsLocationDatabaseService')
+        private readonly rawMaterialsLocationDatabaseService: RawMaterialsLocationDatabaseServiceAbstract,
+
+        @Inject('RawMaterialSupplierDatabaseService')
+        private readonly rawMaterialSupplierDatabaseService: RawMaterialSupplierDatabaseServiceAbstract,
+
+        @Inject('RawMaterialsStockDatabaseService')
+        private readonly rawMaterialsStockDatabaseService: RawMaterialsStockDatabaseServiceAbstract
     ) {}
 
     healthCheck(): { status: string; version: string } {
@@ -603,6 +628,63 @@ export class AppService {
         supplierData2.supplierEmail = 'Supplier Email 2';
         supplierData2.supplierContactPerson = 'Supplier Contact Person 2';
         await this.supplierDatabaseService.createRecord(supplierData2);
+
+        //create the raw material units
+        const rawMaterialUnitData1 = new RawMaterialUnitDto();
+        rawMaterialUnitData1.rawMaterialUnitName = 'Raw Material Unit 1';
+        rawMaterialUnitData1.status = StatusEnum.ACTIVE;
+        const rawMaterialUnitRecord1 = await this.rawMaterialUnitDatabaseService.createRecord(rawMaterialUnitData1);
+
+        const rawMaterialUnitData2 = new RawMaterialUnitDto();
+        rawMaterialUnitData2.rawMaterialUnitName = 'Raw Material Unit 2';
+        rawMaterialUnitData2.status = StatusEnum.ACTIVE;
+        const rawMaterialUnitRecord2 = await this.rawMaterialUnitDatabaseService.createRecord(rawMaterialUnitData2);
+
+        // create raw material locations
+        const rawMaterialLocationData1 = new RawMaterialsLocationDto();
+        rawMaterialLocationData1.rawMaterialsLocationName = 'Raw Material Location 1';
+        rawMaterialLocationData1.status = StatusEnum.ACTIVE;
+        const rawMaterialLocationRecord1 = await this.rawMaterialsLocationDatabaseService.createRecord(
+            rawMaterialLocationData1
+        );
+
+        //create raw material suppliers
+        const rawMaterialSupplierData1 = new RawMaterialSupplierDto();
+        rawMaterialSupplierData1.rawMaterialSupplierName = 'Raw Material Supplier 1';
+        rawMaterialSupplierData1.status = StatusEnum.ACTIVE;
+        const rawMaterialSupplierRecord1 = await this.rawMaterialSupplierDatabaseService.createRecord(
+            rawMaterialSupplierData1
+        );
+
+        //create 2 raw materials
+        const rawMaterialData1 = new RawMaterialDto();
+        rawMaterialData1.rawMaterialName = 'Raw Material 1';
+        rawMaterialData1.rawMaterialUnitId = rawMaterialUnitRecord1.rawMaterialUnitId;
+        rawMaterialData1.rawMaterialUnitName = rawMaterialUnitRecord1.rawMaterialUnitName;
+        rawMaterialData1.status = StatusEnum.ACTIVE;
+        const rawMaterialRecord1 = await this.rawMaterialDatabaseService.createRecord(rawMaterialData1);
+
+        const rawMaterialData2 = new RawMaterialDto();
+        rawMaterialData2.rawMaterialName = 'Raw Material 2';
+        rawMaterialData2.rawMaterialUnitId = rawMaterialUnitRecord2.rawMaterialUnitId;
+        rawMaterialData2.rawMaterialUnitName = rawMaterialUnitRecord2.rawMaterialUnitName;
+        rawMaterialData2.status = StatusEnum.ACTIVE;
+        const rawMaterialRecord2 = await this.rawMaterialDatabaseService.createRecord(rawMaterialData2);
+
+        //create the raw material stock records
+        const rawMaterialsStockData1 = new RawMaterialsStockDto();
+        rawMaterialsStockData1.rawMaterialName = rawMaterialRecord1.rawMaterialName;
+        rawMaterialsStockData1.lotNo = 'RM123456';
+        rawMaterialsStockData1.rawMaterialId = rawMaterialRecord1.rawMaterialId;
+        rawMaterialsStockData1.rawMaterialUnitId = rawMaterialUnitRecord1.rawMaterialUnitId;
+        rawMaterialsStockData1.rawMaterialUnitName = rawMaterialUnitRecord1.rawMaterialUnitName;
+        rawMaterialsStockData1.rawMaterialsLocationName = rawMaterialLocationRecord1.rawMaterialsLocationName;
+        rawMaterialsStockData1.rawMaterialsLocationId = rawMaterialLocationRecord1.rawMaterialsLocationId;
+        rawMaterialsStockData1.rawMaterialSupplierName = rawMaterialSupplierRecord1.rawMaterialSupplierName;
+        rawMaterialsStockData1.rawMaterialSupplierId = rawMaterialSupplierRecord1.rawMaterialSupplierId;
+        rawMaterialsStockData1.qty = 10;
+        rawMaterialsStockData1.status = StatusEnum.ACTIVE;
+        await this.rawMaterialsStockDatabaseService.createRecord(rawMaterialsStockData1);
     }
 
     async deleteAllRecords() {
@@ -625,5 +707,7 @@ export class AppService {
         await this.contractDatabaseService.deleteAllRecords();
         await this.accountsDatabaseService.deleteAllRecords();
         await this.supplierDatabaseService.deleteAllRecords();
+        await this.rawMaterialDatabaseService.deleteAllRecords();
+        await this.rawMaterialUnitDatabaseService.deleteAllRecords();
     }
 }

@@ -1,5 +1,6 @@
 // Export all API classes
 export * from './api';
+export { default as RawMaterialApi } from './api/raw-material.api';
 
 // Export all hooks
 export * from './hooks/useAuth';
@@ -39,6 +40,10 @@ export * from './types/product-deal.types';
 export * from './types/product-price-type.types';
 export * from './types/product-unit.types';
 export * from './types/product.types';
+export * from './types/raw-material.types';
+export * from './types/raw-material-location.types';
+export * from './types/raw-material-supplier.types';
+export * from './types/raw-material-unit.types';
 export * from './types/rebate-claimed-status.enum';
 export * from './types/rebate-type.enum';
 export * from './types/responseError';
@@ -64,6 +69,10 @@ export type { PaginatedResponse, ProductCategoriesResponse } from './api/product
 export type { ProductClassesResponse } from './api/product-class.api';
 export type { ProductPriceTypesResponse } from './api/product-price-type.api';
 export type { ProductUnitsResponse } from './api/product-unit.api';
+export type { RawMaterialsResponse } from './api/raw-material.api';
+export type { RawMaterialsLocationsResponse } from './api/raw-material-location.api';
+export type { RawMaterialSuppliersResponse } from './api/raw-material-supplier.api';
+export type { RawMaterialUnitsResponse } from './api/raw-material-unit.api';
 export type { ReturnGoodSoldsResponse } from './api/return-good-sold.api';
 export type { StockDeliveriesResponse } from './api/stock-delivery.api';
 export type { StockTypesResponse } from './api/stock-type.api';
