@@ -23,6 +23,9 @@ export class RawMaterialsPurchaseOrderDto {
     @ApiProperty({ required: false })
     poDate?: string;
 
+    @ApiProperty({ required: false })
+    docNo?: string;
+
     @ApiProperty({ type: [RawMaterialsPurchaseOrderDetailDto], isArray: true, required: false })
     purchaseOrderDetails?: RawMaterialsPurchaseOrderDetailDto[];
 

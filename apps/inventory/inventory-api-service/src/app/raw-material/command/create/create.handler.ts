@@ -21,6 +21,14 @@ export class CreateRawMaterialHandler implements ICommandHandler<CreateRawMateri
     async execute(command: CreateRawMaterialCommand): Promise<ResponseDto<RawMaterialDto | ErrorResponseDto>> {
         this.logger.log(`Creating raw material: ${command.rawMaterialDto.rawMaterialName}`);
 
+        // Prevent duplicate names
+        const existingByName = await this.rawMaterialDatabaseService.findRecordByName(
+            command.rawMaterialDto.rawMaterialName || ''
+        );
+        if (existingByName) {
+            throw new BadRequestException('Raw material name already exists');
+        }
+
         const hasApprovalPermission = this.hasApprovalPermission(command.user);
         this.prepareStatusAndAudit(command.rawMaterialDto, command.user, hasApprovalPermission);
 
@@ -52,8 +60,6 @@ export class CreateRawMaterialHandler implements ICommandHandler<CreateRawMateri
             dto.forApprovalVersion = {
                 rawMaterialName: dto.rawMaterialName,
                 description: dto.description,
-                rawMaterialUnitId: dto.rawMaterialUnitId,
-                rawMaterialUnitName: dto.rawMaterialUnitName,
             } as Record<string, unknown>;
         }
     }

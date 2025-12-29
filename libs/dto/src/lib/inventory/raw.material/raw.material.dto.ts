@@ -11,12 +11,6 @@ export class RawMaterialDto {
     @ApiProperty({ required: false })
     description?: string;
 
-    @ApiProperty({ required: false })
-    rawMaterialUnitId?: string;
-
-    @ApiProperty({ required: false })
-    rawMaterialUnitName?: string;
-
     @ApiProperty({ enum: StatusEnum, required: false })
     status?: StatusEnum;
 

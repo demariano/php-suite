@@ -8,11 +8,14 @@ import {
 } from '@inventory-database-service';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
+import { ApproveRawMaterialsPurchaseOrderHandler } from './command/approve-record/approve.handler';
 import { CreateRawMaterialsPurchaseOrderHandler } from './command/create/create.handler';
 import { DeleteDeliveredPurchaseOrderHandler } from './command/delete-delivered-purchase-order/delete-delivered-purchase-order.handler';
 import { DeleteRawMaterialsPurchaseOrderHandler } from './command/delete/delete.handler';
+import { DenyRawMaterialsPurchaseOrderHandler } from './command/deny-record/deny.handler';
 import { IncomingPurchaseOrderHandler } from './command/incoming-purchase-order/incoming-purchase-order.handler';
 import { SystemGeneratedToPendingHandler } from './command/system-generated-to-pending/system-generated-to-pending.handler';
+import { UpdateRawMaterialsPurchaseOrderHandler } from './command/update/update.handler';
 import { GetRawMaterialsPurchaseOrderByIdHandler } from './queries/get.by.id/get.raw.materials.purchase-order.by.id.handler';
 import { GetRawMaterialsPurchaseOrderRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRawMaterialsPurchaseOrderRecordsBySupplierPaginationHandler } from './queries/get.records.by.supplier.pagination/get.records.by.supplier.pagination.handler';
@@ -20,11 +23,14 @@ import { GetRawMaterialsPurchaseOrderRecordsPaginationHandler } from './queries/
 import { RawMaterialsPurchaseOrderController } from './raw-materials-purchase-order.controller';
 
 const handlers = [
+    ApproveRawMaterialsPurchaseOrderHandler,
     CreateRawMaterialsPurchaseOrderHandler,
     DeleteRawMaterialsPurchaseOrderHandler,
+    DenyRawMaterialsPurchaseOrderHandler,
     IncomingPurchaseOrderHandler,
     DeleteDeliveredPurchaseOrderHandler,
     SystemGeneratedToPendingHandler,
+    UpdateRawMaterialsPurchaseOrderHandler,
     GetRawMaterialsPurchaseOrderByIdHandler,
     GetRawMaterialsPurchaseOrderRecordsPaginationHandler,
     GetRawMaterialsPurchaseOrderRecordsByStatusPaginationHandler,

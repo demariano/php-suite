@@ -659,15 +659,11 @@ export class AppService {
         //create 2 raw materials
         const rawMaterialData1 = new RawMaterialDto();
         rawMaterialData1.rawMaterialName = 'Raw Material 1';
-        rawMaterialData1.rawMaterialUnitId = rawMaterialUnitRecord1.rawMaterialUnitId;
-        rawMaterialData1.rawMaterialUnitName = rawMaterialUnitRecord1.rawMaterialUnitName;
         rawMaterialData1.status = StatusEnum.ACTIVE;
         const rawMaterialRecord1 = await this.rawMaterialDatabaseService.createRecord(rawMaterialData1);
 
         const rawMaterialData2 = new RawMaterialDto();
         rawMaterialData2.rawMaterialName = 'Raw Material 2';
-        rawMaterialData2.rawMaterialUnitId = rawMaterialUnitRecord2.rawMaterialUnitId;
-        rawMaterialData2.rawMaterialUnitName = rawMaterialUnitRecord2.rawMaterialUnitName;
         rawMaterialData2.status = StatusEnum.ACTIVE;
         const rawMaterialRecord2 = await this.rawMaterialDatabaseService.createRecord(rawMaterialData2);
 

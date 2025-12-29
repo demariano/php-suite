@@ -127,13 +127,6 @@ export class RawMaterialsLocationController {
         return this.commandBus.execute(new DenyRawMaterialsLocationCommand(id, user, denyDto.approverMessage));
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get raw materials location by id' })
-    @ApiParam({ name: 'id', description: 'Raw materials location ID' })
-    findById(@Param('id') id: string) {
-        return this.queryBus.execute(new GetRawMaterialsLocationByIdQuery(id));
-    }
-
     @Get('by-name/:name')
     @ApiOperation({ summary: 'Get raw materials location by name' })
     @ApiParam({ name: 'name', description: 'Raw materials location name' })
@@ -190,5 +183,12 @@ export class RawMaterialsLocationController {
         return this.queryBus.execute(
             new GetRawMaterialsLocationRecordsByNamePaginationQuery(limit, direction, cursorPointer, name)
         );
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get raw materials location by id' })
+    @ApiParam({ name: 'id', description: 'Raw materials location ID' })
+    findById(@Param('id') id: string) {
+        return this.queryBus.execute(new GetRawMaterialsLocationByIdQuery(id));
     }
 }

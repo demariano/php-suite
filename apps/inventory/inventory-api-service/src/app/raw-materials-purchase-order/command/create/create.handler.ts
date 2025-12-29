@@ -35,6 +35,16 @@ export class CreateRawMaterialsPurchaseOrderHandler implements ICommandHandler<C
         const hasApprovalPermission = this.hasApprovalPermission(command.user);
         this.prepareStatusAndAudit(command.rawMaterialsPurchaseOrderDto, command.user, hasApprovalPermission);
 
+        // Check for duplicate docNo
+        const existingRecord = await this.rawMaterialsPurchaseOrderDatabaseService.findRecordByDocNo(
+            command.rawMaterialsPurchaseOrderDto.docNo!
+        );
+        if (existingRecord) {
+            throw new BadRequestException(
+                `Purchase order with document number '${command.rawMaterialsPurchaseOrderDto.docNo}' already exists`
+            );
+        }
+
         try {
             const created = await this.rawMaterialsPurchaseOrderDatabaseService.createRecord(
                 command.rawMaterialsPurchaseOrderDto
@@ -73,6 +83,7 @@ export class CreateRawMaterialsPurchaseOrderHandler implements ICommandHandler<C
                 rawMaterialSupplierId: dto.rawMaterialSupplierId,
                 rawMaterialSupplierName: dto.rawMaterialSupplierName,
                 poDate: dto.poDate,
+                docNo: dto.docNo,
                 purchaseOrderDetails: dto.purchaseOrderDetails,
                 deliveredPurchaseOrderDetails: dto.deliveredPurchaseOrderDetails,
             } as Record<string, unknown>;

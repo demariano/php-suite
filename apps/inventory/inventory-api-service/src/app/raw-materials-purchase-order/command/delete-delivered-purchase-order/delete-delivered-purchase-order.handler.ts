@@ -5,6 +5,7 @@ import {
     RawMaterialsPurchaseOrderStatusEnum,
     RawMaterialsStockDto,
     ResponseDto,
+    StatusEnum,
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import {
@@ -35,6 +36,13 @@ export class DeleteDeliveredPurchaseOrderHandler implements ICommandHandler<Dele
         const existing = await this.rawMaterialsPurchaseOrderDatabaseService.findRecordById(command.recordId);
         if (!existing) {
             throw new NotFoundException(`Raw materials purchase order not found for ID: ${command.recordId}`);
+        }
+
+        // Check if PO status is ACTIVE
+        if (existing.status !== StatusEnum.ACTIVE) {
+            throw new BadRequestException(
+                `Cannot delete deliveries for purchase order with status: ${existing.status}. Only ACTIVE purchase orders can have deliveries modified.`
+            );
         }
 
         const deletions = command.rawMaterialsPurchaseOrderDto.deliveredPurchaseOrderDetails || [];

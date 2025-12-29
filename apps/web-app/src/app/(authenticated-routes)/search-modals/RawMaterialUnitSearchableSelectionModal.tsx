@@ -92,7 +92,7 @@ export default function RawMaterialUnitSearchableSelectionModal({
       
       // Determine direction and cursor for pagination
       const direction = currentPage > 1 ? (isGoingBack ? 'prev' : 'next') : undefined;
-      const cursor = currentCursor ? JSON.stringify(currentCursor) : undefined;
+      const cursor = currentCursor || undefined;
       
       if (searchQuery) {
         response = await RawMaterialUnitApi.searchRawMaterialUnitsByName(

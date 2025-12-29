@@ -33,8 +33,6 @@ export class RawMaterialDatabaseService implements RawMaterialDatabaseServiceAbs
             status: rawMaterialDto.status,
             rawMaterialName: rawMaterialDto.rawMaterialName,
             description: rawMaterialDto.description,
-            rawMaterialUnitId: rawMaterialDto.rawMaterialUnitId,
-            rawMaterialUnitName: rawMaterialDto.rawMaterialUnitName,
             activityLogs: rawMaterialDto.activityLogs,
             forApprovalVersion: rawMaterialDto.forApprovalVersion,
             changeReason: rawMaterialDto.changeReason,
@@ -55,8 +53,6 @@ export class RawMaterialDatabaseService implements RawMaterialDatabaseServiceAbs
 
         rawMaterialRecord.rawMaterialName = record.rawMaterialName;
         rawMaterialRecord.description = record.description;
-        rawMaterialRecord.rawMaterialUnitId = record.rawMaterialUnitId;
-        rawMaterialRecord.rawMaterialUnitName = record.rawMaterialUnitName;
         rawMaterialRecord.status = record.status;
         rawMaterialRecord.GSI1PK = 'RAW_MATERIAL';
         rawMaterialRecord.GSI1SK = record.rawMaterialName;
@@ -253,8 +249,6 @@ export class RawMaterialDatabaseService implements RawMaterialDatabaseServiceAbs
         dto.rawMaterialId = record.rawMaterialId ? record.rawMaterialId : '';
         dto.rawMaterialName = record.rawMaterialName ? record.rawMaterialName : '';
         dto.description = record.description ? record.description : '';
-        dto.rawMaterialUnitId = record.rawMaterialUnitId ? record.rawMaterialUnitId : '';
-        dto.rawMaterialUnitName = record.rawMaterialUnitName ? record.rawMaterialUnitName : '';
         dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
@@ -280,8 +274,6 @@ export class RawMaterialDatabaseService implements RawMaterialDatabaseServiceAbs
             rawMaterialId: dto.rawMaterialId,
             rawMaterialName: dto.rawMaterialName,
             description: dto.description,
-            rawMaterialUnitId: dto.rawMaterialUnitId,
-            rawMaterialUnitName: dto.rawMaterialUnitName,
             status: dto.status,
             GSI1PK: 'RAW_MATERIAL',
             GSI1SK: dto.rawMaterialName,

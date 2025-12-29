@@ -3,8 +3,11 @@ import { CreateRawMaterialDto, RawMaterialDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApproveRawMaterialCommand } from './command/approve-record/approve.command';
 import { CreateRawMaterialCommand } from './command/create/create.command';
 import { DeleteRawMaterialCommand } from './command/delete/delete.command';
+import { DenyRawMaterialCommand } from './command/deny-record/deny.command';
+import { DenyRawMaterialDto } from './command/deny-record/deny.dto';
 import { UpdateRawMaterialCommand } from './command/update/update.command';
 import { GetRawMaterialByIdQuery } from './queries/get.by.id/get.raw.material.by.id.query';
 import { GetRawMaterialByNameQuery } from './queries/get.by.name/get.raw.material.by.name.query';
@@ -79,11 +82,45 @@ export class RawMaterialController {
         return this.commandBus.execute(new DeleteRawMaterialCommand(id, dto, user));
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get raw material by id' })
-    @ApiParam({ name: 'id', description: 'Raw material ID' })
-    findById(@Param('id') id: string) {
-        return this.queryBus.execute(new GetRawMaterialByIdQuery(id));
+    @Post(':id/approve')
+    @ApiOperation({ summary: 'Approve raw material' })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    approve(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        return this.commandBus.execute(new ApproveRawMaterialCommand(id, user));
+    }
+
+    @Post(':id/deny')
+    @ApiOperation({ summary: 'Deny raw material' })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    deny(
+        @Param('id') id: string,
+        @Body() denyDto: DenyRawMaterialDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        return this.commandBus.execute(new DenyRawMaterialCommand(id, user, denyDto.approverMessage));
     }
 
     @Get('by-name/:name')
@@ -140,5 +177,12 @@ export class RawMaterialController {
         return this.queryBus.execute(
             new GetRawMaterialRecordsByNamePaginationQuery(limit, direction, cursorPointer, name)
         );
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get raw material by id' })
+    @ApiParam({ name: 'id', description: 'Raw material ID' })
+    findById(@Param('id') id: string) {
+        return this.queryBus.execute(new GetRawMaterialByIdQuery(id));
     }
 }

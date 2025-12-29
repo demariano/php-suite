@@ -127,13 +127,6 @@ export class RawMaterialUnitController {
         return this.commandBus.execute(new DenyRawMaterialUnitCommand(id, user, denyDto.approverMessage));
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get raw material unit by id' })
-    @ApiParam({ name: 'id', description: 'Raw material unit ID' })
-    findById(@Param('id') id: string) {
-        return this.queryBus.execute(new GetRawMaterialUnitByIdQuery(id));
-    }
-
     @Get('by-name/:name')
     @ApiOperation({ summary: 'Get raw material unit by name' })
     @ApiParam({ name: 'name', description: 'Raw material unit name' })
@@ -188,5 +181,12 @@ export class RawMaterialUnitController {
         return this.queryBus.execute(
             new GetRawMaterialUnitRecordsByNamePaginationQuery(limit, direction, cursorPointer, name)
         );
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get raw material unit by id' })
+    @ApiParam({ name: 'id', description: 'Raw material unit ID' })
+    findById(@Param('id') id: string) {
+        return this.queryBus.execute(new GetRawMaterialUnitByIdQuery(id));
     }
 }

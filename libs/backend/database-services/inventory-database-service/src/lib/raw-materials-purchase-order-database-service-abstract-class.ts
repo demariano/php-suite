@@ -8,6 +8,8 @@ export abstract class RawMaterialsPurchaseOrderDatabaseServiceAbstract {
 
     abstract findRecordById(id: string): Promise<RawMaterialsPurchaseOrderDto | null>;
 
+    abstract findRecordByDocNo(docNo: string): Promise<RawMaterialsPurchaseOrderDto | null>;
+
     abstract findRecordsByStatusPagination(
         limit: number,
         poStatus: string,

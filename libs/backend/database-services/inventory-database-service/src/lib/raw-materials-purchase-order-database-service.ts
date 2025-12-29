@@ -43,6 +43,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             rawMaterialSupplierId: rawMaterialsPurchaseOrderDto.rawMaterialSupplierId,
             rawMaterialSupplierName: rawMaterialsPurchaseOrderDto.rawMaterialSupplierName,
             poDate: rawMaterialsPurchaseOrderDto.poDate,
+            docNo: rawMaterialsPurchaseOrderDto.docNo,
             purchaseOrderDetails: rawMaterialsPurchaseOrderDto.purchaseOrderDetails,
             deliveredPurchaseOrderDetails: rawMaterialsPurchaseOrderDto.deliveredPurchaseOrderDetails,
             activityLogs: rawMaterialsPurchaseOrderDto.activityLogs,
@@ -57,6 +58,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             GSI3SK: rawMaterialsPurchaseOrderDto.poDate,
             GSI4PK: `RAW_MATERIALS_PURCHASE_ORDER#SUPPLIER#${rawMaterialsPurchaseOrderDto.rawMaterialSupplierId}`,
             GSI4SK: rawMaterialsPurchaseOrderDto.poDate,
+            GSI5PK: 'RAW_MATERIALS_PURCHASE_ORDER',
+            GSI5SK: rawMaterialsPurchaseOrderDto.docNo,
         };
 
         const record: RawMaterialsPurchaseOrderDataType = await this.rawMaterialsPurchaseOrderTable.create(
@@ -73,6 +76,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         data.rawMaterialSupplierId = record.rawMaterialSupplierId;
         data.rawMaterialSupplierName = record.rawMaterialSupplierName;
         data.poDate = record.poDate;
+        data.docNo = record.docNo;
         data.purchaseOrderDetails = record.purchaseOrderDetails;
         data.deliveredPurchaseOrderDetails = record.deliveredPurchaseOrderDetails;
         data.status = record.status;
@@ -84,6 +88,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         data.GSI3SK = record.poDate;
         data.GSI4PK = `RAW_MATERIALS_PURCHASE_ORDER#SUPPLIER#${record.rawMaterialSupplierId}`;
         data.GSI4SK = record.poDate;
+        data.GSI5PK = 'RAW_MATERIALS_PURCHASE_ORDER';
+        data.GSI5SK = record.docNo;
         data.forApprovalVersion = record.forApprovalVersion;
         data.changeReason = record.changeReason;
         data.approverMessage = record.approverMessage;
@@ -103,6 +109,22 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         }
 
         return await this.convertToDto(record);
+    }
+
+    async findRecordByDocNo(docNo: string): Promise<RawMaterialsPurchaseOrderDto | null> {
+        const records = await this.rawMaterialsPurchaseOrderTable.find(
+            {
+                GSI5PK: 'RAW_MATERIALS_PURCHASE_ORDER',
+                GSI5SK: docNo,
+            },
+            { index: 'GSI5' }
+        );
+
+        if (!records || records.length === 0) {
+            return null;
+        }
+
+        return await this.convertToDto(records[0]);
     }
 
     async findRecordsByStatusPagination(
@@ -242,6 +264,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         dto.rawMaterialSupplierId = record.rawMaterialSupplierId ? record.rawMaterialSupplierId : '';
         dto.rawMaterialSupplierName = record.rawMaterialSupplierName ? record.rawMaterialSupplierName : '';
         dto.poDate = record.poDate ? record.poDate : '';
+        dto.docNo = record.docNo ? record.docNo : '';
         dto.purchaseOrderDetails = record.purchaseOrderDetails ? record.purchaseOrderDetails : [];
         dto.deliveredPurchaseOrderDetails = record.deliveredPurchaseOrderDetails
             ? record.deliveredPurchaseOrderDetails

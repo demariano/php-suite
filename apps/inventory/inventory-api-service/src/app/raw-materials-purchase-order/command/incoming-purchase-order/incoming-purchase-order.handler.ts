@@ -39,6 +39,13 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
             throw new NotFoundException(`Raw materials purchase order not found for ID: ${command.recordId}`);
         }
 
+        // Check if PO status is ACTIVE
+        if (existing.status !== StatusEnum.ACTIVE) {
+            throw new BadRequestException(
+                `Cannot record deliveries for purchase order with status: ${existing.status}. Only ACTIVE purchase orders can receive deliveries.`
+            );
+        }
+
         if (existing.poStatus === RawMaterialsPurchaseOrderStatusEnum.COMPLETED) {
             throw new BadRequestException('Purchase order is already COMPLETED and cannot accept more deliveries');
         }
@@ -47,6 +54,9 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
         if (!incomingDeliveries.length) {
             throw new BadRequestException('No deliveredPurchaseOrderDetails supplied');
         }
+
+        // Validate delivered quantities do not exceed ordered quantities
+        this.validateDeliveryQuantities(existing, incomingDeliveries);
 
         for (const delivery of incomingDeliveries) {
             const deliveryDate = delivery.deliveryDate;
@@ -65,6 +75,45 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
         } catch (error) {
             this.logger.error('Failed to apply incoming raw materials purchase order delivery', error as Error);
             throw new BadRequestException('Failed to apply incoming raw materials purchase order delivery');
+        }
+    }
+
+    private validateDeliveryQuantities(
+        existing: RawMaterialsPurchaseOrderDto,
+        incomingDeliveries: NonNullable<RawMaterialsPurchaseOrderDto['deliveredPurchaseOrderDetails']>
+    ): void {
+        // Calculate total ordered quantities
+        const orderedMap = new Map<string, number>();
+        for (const detail of existing.purchaseOrderDetails || []) {
+            const key = detail.rawMaterialId || detail.rawMaterialName || '';
+            orderedMap.set(key, (orderedMap.get(key) || 0) + (detail.qty || 0));
+        }
+
+        // Calculate already delivered quantities
+        const deliveredMap = new Map<string, number>();
+        for (const delivery of existing.deliveredPurchaseOrderDetails || []) {
+            for (const rm of delivery.rawMaterials || []) {
+                const key = rm.rawMaterialId || rm.rawMaterialName || '';
+                deliveredMap.set(key, (deliveredMap.get(key) || 0) + (rm.deliveredQty || 0));
+            }
+        }
+
+        // Calculate new delivery quantities and validate
+        for (const delivery of incomingDeliveries) {
+            for (const rm of delivery.rawMaterials || []) {
+                const key = rm.rawMaterialId || rm.rawMaterialName || '';
+                const newDeliveryQty = rm.deliveredQty || 0;
+                const alreadyDelivered = deliveredMap.get(key) || 0;
+                const ordered = orderedMap.get(key) || 0;
+                const totalAfterDelivery = alreadyDelivered + newDeliveryQty;
+
+                if (totalAfterDelivery > ordered) {
+                    throw new BadRequestException(
+                        `Delivery quantity for ${rm.rawMaterialName || key} exceeds ordered quantity. ` +
+                            `Ordered: ${ordered}, Already Delivered: ${alreadyDelivered}, New Delivery: ${newDeliveryQty}`
+                    );
+                }
+            }
         }
     }
 

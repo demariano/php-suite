@@ -1,5 +1,5 @@
-import { AxiosConfig } from './axiosConfig';
 import { CreateRawMaterialDto, RawMaterialDto } from '../types/raw-material.types';
+import { AxiosConfig } from './axiosConfig';
 
 export interface PaginatedResponse<T> {
     statusCode: number;
@@ -153,6 +153,37 @@ class RawMaterialApi extends AxiosConfig {
         const url = queryString ? `/raw-material/${id}?${queryString}` : `/raw-material/${id}`;
 
         return await this.axiosInstance.put(url, dto);
+    };
+
+    public approveRawMaterial = async (id: string, userRole?: string): Promise<RawMaterialDto> => {
+        const params = new URLSearchParams();
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/raw-material/${id}/approve?${queryString}` : `/raw-material/${id}/approve`;
+
+        return await this.axiosInstance.post(url);
+    };
+
+    public denyRawMaterial = async (
+        id: string,
+        approverMessage?: string,
+        userRole?: string
+    ): Promise<RawMaterialDto> => {
+        const params = new URLSearchParams();
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const payload = approverMessage ? { approverMessage } : undefined;
+        const queryString = params.toString();
+        const url = queryString ? `/raw-material/${id}/deny?${queryString}` : `/raw-material/${id}/deny`;
+
+        return await this.axiosInstance.post(url, payload);
     };
 
     public deleteRawMaterial = async (id: string, userRole?: string): Promise<RawMaterialDto> => {

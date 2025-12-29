@@ -4,8 +4,10 @@ import { DynamoDbLibModule } from '@dynamo-db-lib';
 import { InventoryDatabaseServiceModule, RawMaterialDatabaseService } from '@inventory-database-service';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
+import { ApproveRawMaterialHandler } from './command/approve-record/approve.handler';
 import { CreateRawMaterialHandler } from './command/create/create.handler';
 import { DeleteRawMaterialHandler } from './command/delete/delete.handler';
+import { DenyRawMaterialHandler } from './command/deny-record/deny.handler';
 import { UpdateRawMaterialHandler } from './command/update/update.handler';
 import { GetRawMaterialByIdHandler } from './queries/get.by.id/get.raw.material.by.id.handler';
 import { GetRawMaterialByNameHandler } from './queries/get.by.name/get.raw.material.by.name.handler';
@@ -15,9 +17,11 @@ import { GetRawMaterialRecordsPaginationHandler } from './queries/get.records.pa
 import { RawMaterialController } from './raw-material.controller';
 
 const handlers = [
+    ApproveRawMaterialHandler,
     CreateRawMaterialHandler,
     UpdateRawMaterialHandler,
     DeleteRawMaterialHandler,
+    DenyRawMaterialHandler,
     GetRawMaterialByIdHandler,
     GetRawMaterialByNameHandler,
     GetRawMaterialRecordsPaginationHandler,

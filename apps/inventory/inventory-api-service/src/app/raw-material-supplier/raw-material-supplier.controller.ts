@@ -127,13 +127,6 @@ export class RawMaterialSupplierController {
         return this.commandBus.execute(new DenyRawMaterialSupplierCommand(id, user, denyDto.approverMessage));
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get raw material supplier by id' })
-    @ApiParam({ name: 'id', description: 'Raw material supplier ID' })
-    findById(@Param('id') id: string) {
-        return this.queryBus.execute(new GetRawMaterialSupplierByIdQuery(id));
-    }
-
     @Get('by-name/:name')
     @ApiOperation({ summary: 'Get raw material supplier by name' })
     @ApiParam({ name: 'name', description: 'Raw material supplier name' })
@@ -188,5 +181,12 @@ export class RawMaterialSupplierController {
         return this.queryBus.execute(
             new GetRawMaterialSupplierRecordsByNamePaginationQuery(limit, direction, cursorPointer, name)
         );
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get raw material supplier by id' })
+    @ApiParam({ name: 'id', description: 'Raw material supplier ID' })
+    findById(@Param('id') id: string) {
+        return this.queryBus.execute(new GetRawMaterialSupplierByIdQuery(id));
     }
 }

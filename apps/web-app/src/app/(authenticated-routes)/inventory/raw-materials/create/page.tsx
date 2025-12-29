@@ -1,15 +1,13 @@
 'use client';
 
 import {
-  RawMaterialApi,
-  RawMaterialDto,
-  RawMaterialUnitDto,
-  StatusEnum,
-  useEnv,
-  useLocalStore,
-  useSessionStore,
+    RawMaterialApi,
+    RawMaterialDto,
+    StatusEnum,
+    useEnv,
+    useLocalStore,
+    useSessionStore,
 } from '@data-access/index';
-import RawMaterialUnitSearchableSelectionModal from '../../../search-modals/RawMaterialUnitSearchableSelectionModal';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 
@@ -24,15 +22,12 @@ export default function CreateRawMaterialPage() {
     rawMaterialId: '',
     rawMaterialName: '',
     description: '',
-    rawMaterialUnitId: '',
-    rawMaterialUnitName: '',
     changeReason: '',
     activityLogs: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [showUnitModal, setShowUnitModal] = useState(false);
 
   useEffect(() => {
     // keep parity with other create page lifecycle
@@ -43,9 +38,6 @@ export default function CreateRawMaterialPage() {
     const errors: string[] = [];
     if (!formData.rawMaterialName?.trim()) {
       errors.push('Raw Material Name is required.');
-    }
-    if (!formData.rawMaterialUnitId) {
-      errors.push('Raw Material Unit is required.');
     }
 
     if (errors.length > 0) {
@@ -66,8 +58,6 @@ export default function CreateRawMaterialPage() {
         {
           rawMaterialName: formData.rawMaterialName?.trim(),
           description: formData.description?.trim() || undefined,
-          rawMaterialUnitId: formData.rawMaterialUnitId,
-          rawMaterialUnitName: formData.rawMaterialUnitName,
           changeReason: formData.changeReason?.trim() || undefined,
           status: StatusEnum.NEW_RECORD,
         } as RawMaterialDto,
@@ -95,18 +85,6 @@ export default function CreateRawMaterialPage() {
 
   const handleCancel = () => {
     router.replace('/inventory/raw-materials');
-  };
-
-  const clearUnitSelection = () => {
-    setFormData((prev) => ({ ...prev, rawMaterialUnitId: '', rawMaterialUnitName: '' }));
-  };
-
-  const handleUnitSelect = (unit: RawMaterialUnitDto) => {
-    setFormData((prev) => ({
-      ...prev,
-      rawMaterialUnitId: unit.rawMaterialUnitId || '',
-      rawMaterialUnitName: unit.rawMaterialUnitName || '',
-    }));
   };
 
   return (
@@ -201,33 +179,6 @@ export default function CreateRawMaterialPage() {
                         className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md"
                       />
                     </div>
-
-                    <div className="group">
-                      <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                        Raw Material Unit
-                      </label>
-                      <div className="relative">
-                        <input
-                          type="text"
-                          value={formData.rawMaterialUnitName || ''}
-                          readOnly
-                          placeholder="Select a raw material unit"
-                          className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 cursor-pointer border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-md"
-                          onClick={() => setShowUnitModal(true)}
-                          required
-                        />
-                        {formData.rawMaterialUnitName && (
-                          <button
-                            type="button"
-                            onClick={clearUnitSelection}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                          >
-                            ×
-                          </button>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -261,14 +212,6 @@ export default function CreateRawMaterialPage() {
           </form>
         </div>
       </div>
-
-      <RawMaterialUnitSearchableSelectionModal
-        show={showUnitModal}
-        title="Select Raw Material Unit"
-        selectedValue={formData.rawMaterialUnitId || null}
-        onSelect={handleUnitSelect}
-        onClose={() => setShowUnitModal(false)}
-      />
     </div>
   );
 }

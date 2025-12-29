@@ -2,12 +2,12 @@
 
 import { Add, Input, Search } from '@components-web';
 import {
-  RawMaterialApi,
-  RawMaterialDto,
-  StatusEnum,
-  useEnv,
-  useLocalStore,
-  useSessionStore,
+    RawMaterialApi,
+    RawMaterialDto,
+    StatusEnum,
+    useEnv,
+    useLocalStore,
+    useSessionStore,
 } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
@@ -92,7 +92,6 @@ export default function RawMaterialsPage() {
 
   const headers = [
     { key: 'name', label: 'NAME' },
-    { key: 'unit', label: 'UNIT' },
     { key: 'status', label: 'STATUS' },
     { key: 'latestActivity', label: 'LATEST ACTIVITY' },
   ];
@@ -122,7 +121,6 @@ export default function RawMaterialsPage() {
     return {
       rawMaterialId: item.rawMaterialId,
       name: item.rawMaterialName,
-      unit: item.rawMaterialUnitName || '—',
       status: statusBadge(item.status),
       latestActivity: parsed && activityStyle ? { text: parsed.activity, style: activityStyle } : null,
     };
@@ -227,7 +225,6 @@ export default function RawMaterialsPage() {
                       className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
                     >
                       <td className="px-6 py-5 text-sm font-medium text-gray-900">{row.name || '-'}</td>
-                      <td className="px-6 py-5 text-sm text-gray-700">{row.unit}</td>
                       <td className="px-6 py-5 text-sm">{row.status}</td>
                       <td className="px-6 py-5 text-sm">
                         {row.latestActivity ? (
@@ -270,7 +267,6 @@ export default function RawMaterialsPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h3 className="text-base font-semibold text-gray-900">{row.name || '-'}</h3>
-                    <p className="text-sm text-gray-600 mt-1">Unit: {row.unit}</p>
                   </div>
                   <div>{row.status}</div>
                 </div>

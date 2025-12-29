@@ -24,6 +24,15 @@ export class UpdateRawMaterialHandler implements ICommandHandler<UpdateRawMateri
             throw new NotFoundException(`Raw material not found for ID: ${command.recordId}`);
         }
 
+        // Prevent duplicate names when changing name
+        const nextName = command.rawMaterialDto.rawMaterialName;
+        if (nextName && nextName !== existing.rawMaterialName) {
+            const conflict = await this.rawMaterialDatabaseService.findRecordByName(nextName);
+            if (conflict && conflict.rawMaterialId !== existing.rawMaterialId) {
+                throw new BadRequestException('Raw material name already exists');
+            }
+        }
+
         const approveDirect = this.hasApprovalPermission(command.user);
         this.applyUpdates(existing, command.rawMaterialDto, command.user, approveDirect);
 
@@ -54,8 +63,6 @@ export class UpdateRawMaterialHandler implements ICommandHandler<UpdateRawMateri
         if (approveDirect) {
             existing.rawMaterialName = payload.rawMaterialName ?? existing.rawMaterialName;
             existing.description = payload.description ?? existing.description;
-            existing.rawMaterialUnitId = payload.rawMaterialUnitId ?? existing.rawMaterialUnitId;
-            existing.rawMaterialUnitName = payload.rawMaterialUnitName ?? existing.rawMaterialUnitName;
             existing.status = StatusEnum.ACTIVE;
             existing.activityLogs.push(
                 `Date: ${timestamp}, Raw material updated by ${user.username}, status set to ACTIVE`
@@ -68,8 +75,6 @@ export class UpdateRawMaterialHandler implements ICommandHandler<UpdateRawMateri
             existing.forApprovalVersion = {
                 rawMaterialName: payload.rawMaterialName ?? existing.rawMaterialName,
                 description: payload.description ?? existing.description,
-                rawMaterialUnitId: payload.rawMaterialUnitId ?? existing.rawMaterialUnitId,
-                rawMaterialUnitName: payload.rawMaterialUnitName ?? existing.rawMaterialUnitName,
             } as Record<string, unknown>;
             existing.changeReason = payload.changeReason;
             existing.activityLogs.push(
