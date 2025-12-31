@@ -27,6 +27,8 @@ export interface DeliveredRawMaterialsPurchaseOrderDetailDto {
 
 export interface DeliveredRawMaterialsPurchaseOrderDeliveryDto {
     deliveryDate?: string;
+    rawMaterialsLocationId?: string;
+    rawMaterialsLocationName?: string;
     rawMaterials?: DeliveredRawMaterialsPurchaseOrderDetailDto[];
 }
 

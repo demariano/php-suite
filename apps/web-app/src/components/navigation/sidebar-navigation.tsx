@@ -71,6 +71,12 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
               route: "/products/product-deal", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Unit Raw Materials", 
+              route: "/products/product-unit-raw-material", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             }
           ],
           isExpanded: false
@@ -169,6 +175,12 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
             { 
               label: "Raw Material Units", 
               route: "/inventory/raw-material-units", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Raw Materials Stock", 
+              route: "/inventory/raw-materials-stock", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
             },

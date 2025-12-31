@@ -11,3 +11,5 @@ export * from './lib/product-price-type-database-service';
 export * from './lib/product-price-type-database-service-abstract-class';
 export * from './lib/product-unit-database-service';
 export * from './lib/product-unit-database-service-abstract-class';
+export * from './lib/product-unit-raw-material-database-service';
+export * from './lib/product-unit-raw-material-database-service-abstract-class';

@@ -9,6 +9,7 @@ interface ProductUnitSearchableSelectionModalProps {
   selectedValue: string | null;
   onSelect: (productUnit: ProductUnitDto) => void;
   onClose: () => void;
+  excludeIds?: string[];
 }
 
 interface Item {
@@ -21,7 +22,8 @@ export default function ProductUnitSearchableSelectionModal({
   title,
   selectedValue,
   onSelect,
-  onClose
+  onClose,
+  excludeIds = []
 }: ProductUnitSearchableSelectionModalProps) {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
@@ -110,10 +112,12 @@ export default function ProductUnitSearchableSelectionModal({
         );
       }
 
-      const itemsList = response.data.map((item: ProductUnitDto) => ({
-        id: item.productUnitId,
-        name: item.productUnitName
-      }));
+      const itemsList = response.data
+        .filter((item: ProductUnitDto) => !excludeIds.includes(item.productUnitId))
+        .map((item: ProductUnitDto) => ({
+          id: item.productUnitId,
+          name: item.productUnitName
+        }));
 
       setItems(itemsList);
       setHasNextPage(!!response.nextCursorPointer);

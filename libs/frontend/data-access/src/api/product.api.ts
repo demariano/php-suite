@@ -4,6 +4,7 @@ import ProductClassApi from './product-class.api';
 import ProductDealApi from './product-deal.api';
 import ProductMainApi from './product-main.api';
 import ProductPriceTypeApi from './product-price-type.api';
+import ProductUnitRawMaterialApi from './product-unit-raw-material.api';
 import ProductUnitApi from './product-unit.api';
 
 // Combine all APIs into a single ProductApi object for backward compatibility
@@ -73,12 +74,38 @@ const ProductApi = {
     deleteProduct: ProductMainApi.deleteProduct.bind(ProductMainApi),
     approveProduct: ProductMainApi.approveProduct.bind(ProductMainApi),
     denyProduct: ProductMainApi.denyProduct.bind(ProductMainApi),
+
+    // Product Unit Raw Material methods
+    getProductUnitRawMaterials: ProductUnitRawMaterialApi.getProductUnitRawMaterials.bind(ProductUnitRawMaterialApi),
+    getProductUnitRawMaterialsByStatus:
+        ProductUnitRawMaterialApi.getProductUnitRawMaterialsByStatus.bind(ProductUnitRawMaterialApi),
+    getProductUnitRawMaterialById:
+        ProductUnitRawMaterialApi.getProductUnitRawMaterialById.bind(ProductUnitRawMaterialApi),
+    getProductUnitRawMaterialByProductId:
+        ProductUnitRawMaterialApi.getProductUnitRawMaterialByProductId.bind(ProductUnitRawMaterialApi),
+    createProductUnitRawMaterial:
+        ProductUnitRawMaterialApi.createProductUnitRawMaterial.bind(ProductUnitRawMaterialApi),
+    updateProductUnitRawMaterial:
+        ProductUnitRawMaterialApi.updateProductUnitRawMaterial.bind(ProductUnitRawMaterialApi),
+    deleteProductUnitRawMaterial:
+        ProductUnitRawMaterialApi.deleteProductUnitRawMaterial.bind(ProductUnitRawMaterialApi),
+    approveProductUnitRawMaterial:
+        ProductUnitRawMaterialApi.approveProductUnitRawMaterial.bind(ProductUnitRawMaterialApi),
+    denyProductUnitRawMaterial: ProductUnitRawMaterialApi.denyProductUnitRawMaterial.bind(ProductUnitRawMaterialApi),
 };
 
 export default ProductApi;
 
 // Also export individual APIs for direct usage
-export { ProductCategoryApi, ProductClassApi, ProductDealApi, ProductMainApi, ProductPriceTypeApi, ProductUnitApi };
+export {
+    ProductCategoryApi,
+    ProductClassApi,
+    ProductDealApi,
+    ProductMainApi,
+    ProductPriceTypeApi,
+    ProductUnitApi,
+    ProductUnitRawMaterialApi,
+};
 
 // Re-export types for convenience
 export type { ProductDealsResponse } from '../types/product-deal.types';
@@ -86,4 +113,5 @@ export type { PaginatedResponse, ProductCategoriesResponse } from './product-cat
 export type { ProductClassesResponse } from './product-class.api';
 export type { ProductsResponse } from './product-main.api';
 export type { ProductPriceTypesResponse } from './product-price-type.api';
+export type { ProductUnitRawMaterialsResponse } from './product-unit-raw-material.api';
 export type { ProductUnitsResponse } from './product-unit.api';

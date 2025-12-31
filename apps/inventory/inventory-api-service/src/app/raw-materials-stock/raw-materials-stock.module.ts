@@ -4,8 +4,10 @@ import { DynamoDbLibModule } from '@dynamo-db-lib';
 import { InventoryDatabaseServiceModule, RawMaterialsStockDatabaseService } from '@inventory-database-service';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
+import { ApproveRawMaterialsStockHandler } from './command/approve-record/approve.handler';
 import { CreateRawMaterialsStockHandler } from './command/create/create.handler';
 import { DeleteRawMaterialsStockHandler } from './command/delete/delete.handler';
+import { DenyRawMaterialsStockHandler } from './command/deny-record/deny.handler';
 import { UpdateRawMaterialsStockHandler } from './command/update/update.handler';
 import { GetRawMaterialsStockByIdHandler } from './queries/get.by.id/get.raw.materials.stock.by.id.handler';
 import { GetRawMaterialsStockByNameHandler } from './queries/get.by.name/get.raw.materials.stock.by.name.handler';
@@ -18,6 +20,8 @@ const handlers = [
     CreateRawMaterialsStockHandler,
     UpdateRawMaterialsStockHandler,
     DeleteRawMaterialsStockHandler,
+    ApproveRawMaterialsStockHandler,
+    DenyRawMaterialsStockHandler,
     GetRawMaterialsStockByIdHandler,
     GetRawMaterialsStockByNameHandler,
     GetRawMaterialsStockRecordsPaginationHandler,

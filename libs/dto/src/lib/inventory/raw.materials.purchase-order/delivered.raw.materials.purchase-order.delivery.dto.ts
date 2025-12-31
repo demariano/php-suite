@@ -5,6 +5,12 @@ export class DeliveredRawMaterialsPurchaseOrderDeliveryDto {
     @ApiProperty({ required: false })
     deliveryDate?: string;
 
+    @ApiProperty({ required: false })
+    rawMaterialsLocationId?: string;
+
+    @ApiProperty({ required: false })
+    rawMaterialsLocationName?: string;
+
     @ApiProperty({ type: [DeliveredRawMaterialsPurchaseOrderDetailDto], isArray: true, required: false })
     rawMaterials?: DeliveredRawMaterialsPurchaseOrderDetailDto[];
 }

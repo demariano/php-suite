@@ -12,7 +12,7 @@ import {
     StatusEnum,
     useLocalStore
 } from '@data-access/index';
-import { RawMaterialsPurchaseOrderApi } from '@web-app/apis/raw-materials-purchase-order/raw-materials-purchase-order.api';
+import { RawMaterialsPurchaseOrderApi } from '@data-access/api/raw-materials-purchase-order.api';
 import { useEffect, useState } from 'react';
 import DatePicker from '../../../components/DatePicker';
 import RawMaterialSearchableSelectionModal from '../../../search-modals/RawMaterialSearchableSelectionModal';

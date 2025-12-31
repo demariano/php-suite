@@ -6,6 +6,7 @@ import { ProductCategoryModule } from './product-category/product-category.modul
 import { ProductClassModule } from './product-class/product-class.module';
 import { ProductDealModule } from './product-deal/product-deal.module';
 import { ProductPriceTypeModule } from './product-price-type/product-price-type.module';
+import { ProductUnitRawMaterialModule } from './product-unit-raw-material/product-unit-raw-material.module';
 import { ProductUnitModule } from './product-unit/product-unit.module';
 import { ProductModule } from './product/product.module';
 
@@ -17,6 +18,7 @@ import { ProductModule } from './product/product.module';
         ProductDealModule,
         ProductPriceTypeModule,
         ProductModule,
+        ProductUnitRawMaterialModule,
     ],
     controllers: [AppController],
     providers: [AppService],

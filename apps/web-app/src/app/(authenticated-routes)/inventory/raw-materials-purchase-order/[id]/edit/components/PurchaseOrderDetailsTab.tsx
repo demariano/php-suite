@@ -1,16 +1,19 @@
 'use client';
 
 import { Warning } from '@components-web';
-import { RawMaterialApi, RawMaterialDto, RawMaterialSupplierApi, RawMaterialSupplierDto, RawMaterialUnitDto } from '@data-access/index';
+import { RawMaterialApi, RawMaterialDto, RawMaterialSupplierApi, RawMaterialSupplierDto, RawMaterialUnitDto, useSessionStore } from '@data-access/index';
 import { useEffect, useState } from 'react';
+import { ChangeReasonField } from '../../../../../components';
 import DatePicker from '../../../../../components/DatePicker';
 import RawMaterialSearchableSelectionModal from '../../../../../search-modals/RawMaterialSearchableSelectionModal';
 import RawMaterialSupplierSearchableSelectionModal from '../../../../../search-modals/RawMaterialSupplierSearchableSelectionModal';
+import RawMaterialUnitSearchableSelectionModal from '../../../../../search-modals/RawMaterialUnitSearchableSelectionModal';
 
 interface OrderItem {
-  rawMaterialsId: string;
-  rawMaterialsName: string;
-  unit: string;
+  rawMaterialId: string;
+  rawMaterialName: string;
+  rawMaterialUnitId?: string;
+  rawMaterialUnitName: string;
   qty: number;
 }
 
@@ -48,6 +51,7 @@ export function PurchaseOrderDetailsTab({
   onTransitionToPending,
   isSubmitting,
 }: PurchaseOrderDetailsTabProps) {
+  const { setFlashNotification } = useSessionStore();
   const [formData, setFormData] = useState({
     docNo: '',
     rawMaterialSupplierId: '',
@@ -153,22 +157,34 @@ export function PurchaseOrderDetailsTab({
 
   const handleAddOrderItem = () => {
     if (!selectedRawMaterial || !selectedUnit || !qty || Number(qty) <= 0) {
-      alert('Please select a raw material, unit, and enter a valid quantity.');
+      setFlashNotification({
+        title: 'Missing Information',
+        message: 'Please select a raw material, unit, and enter a valid quantity.',
+        alertType: 'warning'
+      });
       return;
     }
 
     const qtyNum = Math.floor(Number(qty));
     if (qtyNum !== Number(qty)) {
-      alert('Quantity must be a whole number (no decimals).');
+      setFlashNotification({
+        title: 'Invalid Quantity',
+        message: 'Quantity must be a whole number (no decimals).',
+        alertType: 'warning'
+      });
       return;
     }
 
     const isDuplicate = formData.purchaseOrderDetails.some(
-      (item) => item.rawMaterialsId === selectedRawMaterial
+      (item) => item.rawMaterialId === selectedRawMaterial
     );
 
     if (isDuplicate) {
-      alert('This raw material has already been added.');
+      setFlashNotification({
+        title: 'Duplicate Item',
+        message: 'This raw material has already been added.',
+        alertType: 'warning'
+      });
       return;
     }
 
@@ -176,9 +192,10 @@ export function PurchaseOrderDetailsTab({
     if (!rawMaterial) return;
 
     const newItem: OrderItem = {
-      rawMaterialsId: selectedRawMaterial,
-      rawMaterialsName: selectedRawMaterialObj?.rawMaterialName || rawMaterial.materialName,
-      unit: selectedUnit?.rawMaterialUnitName || '',
+      rawMaterialId: selectedRawMaterial,
+      rawMaterialName: selectedRawMaterialObj?.rawMaterialName || rawMaterial.materialName,
+      rawMaterialUnitId: selectedUnit?.rawMaterialUnitId || '',
+      rawMaterialUnitName: selectedUnit?.rawMaterialUnitName || '',
       qty: qtyNum,
     };
 
@@ -202,23 +219,43 @@ export function PurchaseOrderDetailsTab({
 
   const handleSubmit = () => {
     if (!formData.docNo.trim()) {
-      alert('Document No is required.');
+      setFlashNotification({
+        title: 'Validation Error',
+        message: 'Document No is required.',
+        alertType: 'error'
+      });
       return;
     }
     if (!formData.rawMaterialSupplierId) {
-      alert('Supplier is required.');
+      setFlashNotification({
+        title: 'Validation Error',
+        message: 'Supplier is required.',
+        alertType: 'error'
+      });
       return;
     }
     if (!formData.poDate) {
-      alert('PO Date is required.');
+      setFlashNotification({
+        title: 'Validation Error',
+        message: 'PO Date is required.',
+        alertType: 'error'
+      });
       return;
     }
     if (formData.purchaseOrderDetails.length === 0) {
-      alert('At least one ordered item is required.');
+      setFlashNotification({
+        title: 'Validation Error',
+        message: 'At least one ordered item is required.',
+        alertType: 'error'
+      });
       return;
     }
     if (!isAdminUser && !formData.changeReason.trim()) {
-      alert('Change reason is required.');
+      setFlashNotification({
+        title: 'Validation Error',
+        message: 'Change reason is required.',
+        alertType: 'error'
+      });
       return;
     }
 
@@ -243,6 +280,29 @@ export function PurchaseOrderDetailsTab({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Status Warning Banner */}
+      {(status === 'FOR_APPROVAL' || status === 'NEW_RECORD' || status === 'FOR_DELETION') && (
+        <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
+            ⚠
+          </div>
+          <span className="text-sm font-semibold">
+            {status === 'FOR_DELETION'
+              ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
+              : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
+          </span>
+        </div>
+      )}
+
+      {/* Change Reason Field - First component when displayed */}
+      {!isAdminUser && (
+        <ChangeReasonField
+          value={formData.changeReason}
+          onChange={(e) => setFormData({ ...formData, changeReason: e.target.value })}
+          disabled={status !== 'ACTIVE'}
+        />
       )}
 
       {/* SYSTEM_GENERATED Transition Button */}
@@ -275,9 +335,9 @@ export function PurchaseOrderDetailsTab({
           <input
             type="text"
             value={formData.docNo}
-            onChange={(e) => setFormData({ ...formData, docNo: e.target.value })}
-            disabled={isDisabled || isSubmitting}
-            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100"
+            disabled
+            readOnly
+            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm bg-gray-100 cursor-not-allowed opacity-75"
           />
         </div>
 
@@ -324,12 +384,28 @@ export function PurchaseOrderDetailsTab({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             PO Status
           </label>
-          <input
-            type="text"
-            value={poStatus}
-            disabled
-            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm bg-gray-100 cursor-not-allowed"
-          />
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              value={poStatus}
+              disabled
+              className="flex-1 rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm bg-gray-100 cursor-not-allowed"
+            />
+            {isAdminUser && poStatus === 'SYSTEM_GENERATED' && (
+              <button
+                type="button"
+                onClick={onTransitionToPending}
+                disabled={isSubmitting}
+                className="flex items-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Move to Pending status"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
+                <span className="whitespace-nowrap">To Pending</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -456,9 +532,9 @@ export function PurchaseOrderDetailsTab({
                 {formData.purchaseOrderDetails.map((item, index) => (
                   <tr key={index} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {item.rawMaterialsName}
+                      {item.rawMaterialName}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-700">{item.unit}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700">{item.rawMaterialUnitName}</td>
                     <td className="px-6 py-4 text-sm text-gray-700">{item.qty}</td>
                     {!isDisabled && (
                       <td className="px-6 py-4">
@@ -486,23 +562,6 @@ export function PurchaseOrderDetailsTab({
           </div>
         )}
       </div>
-
-      {/* Change Reason */}
-      {!isAdminUser && status === 'ACTIVE' && !hasDeliveries && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Change Reason <span className="text-red-500">*</span>
-          </label>
-          <textarea
-            value={formData.changeReason}
-            onChange={(e) => setFormData({ ...formData, changeReason: e.target.value })}
-            disabled={isSubmitting}
-            rows={3}
-            className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-            placeholder="Enter the reason for this change..."
-          />
-        </div>
-      )}
 
       {/* Save Button */}
       {status === 'ACTIVE' && !hasDeliveries && (

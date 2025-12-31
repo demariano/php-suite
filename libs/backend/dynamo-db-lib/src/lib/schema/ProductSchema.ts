@@ -139,6 +139,27 @@ export const ProductSchema = {
             GSI2PK: { type: String, value: 'PRODUCT_DEAL#${status}', hidden: false },
             GSI2SK: { type: String, value: '${productDealName}', hidden: false },
         },
+        ProductUnitRawMaterial: {
+            PK: { type: String, value: 'PRODUCT_UNIT_RAW_MATERIAL', hidden: false },
+            SK: { type: String, value: '${productUnitRawMaterialId}', hidden: false },
+            productUnitRawMaterialId: { type: String, generate: 'ulid' },
+            productId: { type: String },
+            productName: { type: String },
+            activityLogs: { type: Array },
+            forApprovalVersion: { type: Object },
+            approverMessage: { type: String, required: false },
+            changeReason: { type: String, required: false },
+            rawMaterialsPerUnit: { type: Array },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                required: false,
+            },
+            GSI1PK: { type: String, value: 'PRODUCT_UNIT_RAW_MATERIAL#${productId}', hidden: false },
+            GSI1SK: { type: String, value: '${productUnitRawMaterialId}', hidden: false },
+            GSI2PK: { type: String, value: 'PRODUCT_UNIT_RAW_MATERIAL#${productId}#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${productUnitRawMaterialId}', hidden: false },
+        },
     } as const,
     params: {
         isoDates: true,
@@ -152,3 +173,4 @@ export type ProductClassDataType = Entity<typeof ProductSchema.models.ProductCla
 export type ProductUnitDataType = Entity<typeof ProductSchema.models.ProductUnit>;
 export type ProductPriceTypeDataType = Entity<typeof ProductSchema.models.ProductPriceType>;
 export type ProductDealDataType = Entity<typeof ProductSchema.models.ProductDeal>;
+export type ProductUnitRawMaterialDataType = Entity<typeof ProductSchema.models.ProductUnitRawMaterial>;

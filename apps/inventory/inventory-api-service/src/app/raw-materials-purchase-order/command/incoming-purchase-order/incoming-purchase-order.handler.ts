@@ -61,7 +61,7 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
         for (const delivery of incomingDeliveries) {
             const deliveryDate = delivery.deliveryDate;
             for (const line of delivery.rawMaterials || []) {
-                await this.addToStock(line, existing, command.user, deliveryDate);
+                await this.addToStock(line, existing, command.user, deliveryDate, delivery);
             }
             this.mergeDelivery(existing, delivery);
         }
@@ -121,7 +121,8 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
         line: RawMaterialsStockDto,
         po: RawMaterialsPurchaseOrderDto,
         user: UserCognito,
-        deliveryDate?: string
+        deliveryDate?: string,
+        delivery?: RawMaterialsPurchaseOrderDto['deliveredPurchaseOrderDetails'][number]
     ): Promise<void> {
         const lotNo = line.lotNo || '';
         const name = line.rawMaterialName || '';
@@ -132,11 +133,18 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
             existingStock.qty = (existingStock.qty || 0) + qtyDelta;
             existingStock.activityLogs = existingStock.activityLogs || [];
             existingStock.activityLogs.push(
-                `Date: ${deliveryDate || 'N/A'}, Added ${qtyDelta} from PO ${po.rawMaterialsPurchaseOrderId} by ${
-                    user.username
-                }`
+                `Date: ${deliveryDate || 'N/A'}, Added ${qtyDelta} from PO ${
+                    po.docNo || po.rawMaterialsPurchaseOrderId
+                } by ${user.username}`
             );
             existingStock.activityLogs = reduceArrayContents(existingStock.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Update location if provided in delivery
+            if (delivery?.rawMaterialsLocationId) {
+                existingStock.rawMaterialsLocationId = delivery.rawMaterialsLocationId;
+                existingStock.rawMaterialsLocationName = delivery.rawMaterialsLocationName;
+            }
+
             await this.rawMaterialsStockDatabaseService.updateRecord(existingStock);
         } else {
             const createDto: CreateRawMaterialsStockDto = {
@@ -147,13 +155,13 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
                 rawMaterialUnitName: line.rawMaterialUnitName,
                 rawMaterialSupplierId: po.rawMaterialSupplierId,
                 rawMaterialSupplierName: po.rawMaterialSupplierName,
-                rawMaterialsLocationId: undefined,
-                rawMaterialsLocationName: undefined,
-                rawMaterialNamePoNo: undefined,
+                rawMaterialsLocationId: delivery?.rawMaterialsLocationId,
+                rawMaterialsLocationName: delivery?.rawMaterialsLocationName,
+                rawMaterialNamePoNo: po.docNo || po.rawMaterialsPurchaseOrderId,
                 qty: qtyDelta,
                 lotNo: lotNo || undefined,
                 activityLogs: [
-                    `Date: ${deliveryDate || 'N/A'}, Created from PO ${po.rawMaterialsPurchaseOrderId} by ${
+                    `Date: ${deliveryDate || 'N/A'}, Created from PO ${po.docNo || po.rawMaterialsPurchaseOrderId} by ${
                         user.username
                     }`,
                 ],

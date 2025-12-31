@@ -160,7 +160,7 @@ export class ApproveRawMaterialsPurchaseOrderHandler
                 existingStock.activityLogs = existingStock.activityLogs || [];
                 existingStock.activityLogs.push(
                     `Date: ${delivery.deliveryDate || 'N/A'}, Deducted ${qtyDelta} from PO ${
-                        po.rawMaterialsPurchaseOrderId
+                        po.docNo || po.rawMaterialsPurchaseOrderId
                     } by ${user.username} (PO deletion approved)`
                 );
                 existingStock.activityLogs = reduceArrayContents(existingStock.activityLogs, ACTIVITY_LOGS_LIMIT);

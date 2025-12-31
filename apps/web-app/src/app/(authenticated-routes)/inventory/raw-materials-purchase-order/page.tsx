@@ -1,7 +1,7 @@
 'use client';
 
 import { RawMaterialsPurchaseOrderDto, RawMaterialsPurchaseOrderStatusEnum, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
-import { RawMaterialsPurchaseOrderApi } from '@web-app/apis/raw-materials-purchase-order/raw-materials-purchase-order.api';
+import { RawMaterialsPurchaseOrderApi } from '@data-access/api/raw-materials-purchase-order.api';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { RawMaterialsPurchaseOrderHeader, RawMaterialsPurchaseOrderTable } from './components';

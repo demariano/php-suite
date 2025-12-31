@@ -56,3 +56,39 @@ export interface PaginatedResponse<T> {
 }
 
 export type ProductsResponse = PaginatedResponse<ProductDto>;
+
+// Product Unit Raw Material Types
+export interface RawMaterialDetailDto {
+    rawMaterialId: string;
+    rawMaterialName?: string;
+    rawMaterialUnitId?: string;
+    rawMaterialUnitName?: string;
+    quantity?: number;
+}
+
+export interface RawMaterialsPerUnitDto {
+    productUnitId: string;
+    productUnitName?: string;
+    rawMaterials?: RawMaterialDetailDto[];
+}
+
+export interface ProductUnitRawMaterialDto {
+    status?: StatusEnum;
+    productUnitRawMaterialId: string;
+    productId?: string;
+    productName?: string;
+    rawMaterialsPerUnit?: RawMaterialsPerUnitDto[];
+    activityLogs?: string[];
+    forApprovalVersion?: Record<string, unknown>;
+    changeReason?: string;
+    approverMessage?: string;
+}
+
+export interface CreateProductUnitRawMaterialDto {
+    productId?: string;
+    productName?: string;
+    rawMaterialsPerUnit?: RawMaterialsPerUnitDto[];
+    changeReason?: string;
+}
+
+export type ProductUnitRawMaterialsResponse = PaginatedResponse<ProductUnitRawMaterialDto>;

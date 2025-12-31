@@ -1,26 +1,33 @@
 'use client';
 
 import { Close, Warning } from '@components-web';
+import { RawMaterialsLocationDto, useSessionStore } from '@data-access/index';
 import { Disclosure } from '@headlessui/react';
 import { useState } from 'react';
+import DatePicker from '../../../../../components/DatePicker';
+import { RawMaterialsLocationSearchableSelectionModal } from '../../../../../search-modals';
 
 interface OrderItem {
-  rawMaterialsId: string;
-  rawMaterialsName: string;
-  unit: string;
+  rawMaterialId: string;
+  rawMaterialName: string;
+  rawMaterialUnitId: string;
+  rawMaterialUnitName: string;
   qty: number;
 }
 
 interface DeliveredItem {
-  rawMaterialsId: string;
-  rawMaterialsName: string;
-  unit: string;
+  rawMaterialId: string;
+  rawMaterialName: string;
+  rawMaterialUnitId: string;
+  rawMaterialUnitName: string;
   deliveredQty: number;
   lotNo: string;
 }
 
 interface DeliveryGroup {
   deliveryDate: string;
+  rawMaterialsLocationId?: string;
+  rawMaterialsLocationName?: string;
   rawMaterials: DeliveredItem[];
 }
 
@@ -28,7 +35,7 @@ interface DeliveriesTabProps {
   purchaseOrderData: any;
   status: string;
   onAddDelivery: (deliveryData: any) => void;
-  onDeleteDelivery: (deliveryDate: string) => void;
+  onDeleteDelivery: (delivery: DeliveryGroup) => void;
   isSubmitting: boolean;
 }
 
@@ -40,8 +47,13 @@ export function DeliveriesTab({
   isSubmitting,
 }: DeliveriesTabProps) {
   const [deliveryDate, setDeliveryDate] = useState('');
+  const [selectedLocation, setSelectedLocation] = useState<{ id: string; name: string } | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
   const [deliveryItems, setDeliveryItems] = useState<Record<string, { qty: string; lotNo: string }>>({});
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+  const [deliveryToDelete, setDeliveryToDelete] = useState<DeliveryGroup | null>(null);
+  const { setFlashNotification } = useSessionStore();
 
   const purchaseOrderDetails: OrderItem[] = purchaseOrderData?.purchaseOrderDetails || [];
   const deliveredPurchaseOrderDetails: DeliveryGroup[] = purchaseOrderData?.deliveredPurchaseOrderDetails || [];
@@ -52,17 +64,19 @@ export function DeliveriesTab({
   );
 
   // Calculate delivery statistics for each raw material
-  const getDeliveryStats = (rawMaterialsId: string) => {
-    const orderedItem = purchaseOrderDetails.find((item) => item.rawMaterialsId === rawMaterialsId);
+  const getDeliveryStats = (rawMaterialId: string) => {
+    const orderedItem = purchaseOrderDetails.find((item) => item.rawMaterialId === rawMaterialId);
     if (!orderedItem) return null;
 
     const alreadyDelivered = deliveredPurchaseOrderDetails.reduce((total, delivery) => {
-      const deliveredItem = delivery.rawMaterials.find((rm) => rm.rawMaterialsId === rawMaterialsId);
-      return total + (deliveredItem?.deliveredQty || 0);
+      // Sum all matching raw materials in this delivery (there could be multiple with different lot numbers)
+      const matchingItems = delivery.rawMaterials.filter((rm) => rm.rawMaterialId === rawMaterialId);
+      const deliveryTotal = matchingItems.reduce((sum, item) => sum + (item.deliveredQty || 0), 0);
+      return total + deliveryTotal;
     }, 0);
 
     const remaining = orderedItem.qty - alreadyDelivered;
-    const deliverNow = Number(deliveryItems[rawMaterialsId]?.qty || 0);
+    const deliverNow = Number(deliveryItems[rawMaterialId]?.qty || 0);
 
     return {
       orderedQty: orderedItem.qty,
@@ -80,20 +94,20 @@ export function DeliveriesTab({
   }, 0);
   const completionPercentage = totalOrdered > 0 ? (totalDelivered / totalOrdered) * 100 : 0;
 
-  const handleDeliveryItemChange = (rawMaterialsId: string, field: 'qty' | 'lotNo', value: string) => {
+  const handleDeliveryItemChange = (rawMaterialId: string, field: 'qty' | 'lotNo', value: string) => {
     setDeliveryItems((prev) => ({
       ...prev,
-      [rawMaterialsId]: {
-        ...prev[rawMaterialsId],
-        qty: field === 'qty' ? value : prev[rawMaterialsId]?.qty || '',
-        lotNo: field === 'lotNo' ? value : prev[rawMaterialsId]?.lotNo || '',
+      [rawMaterialId]: {
+        ...prev[rawMaterialId],
+        qty: field === 'qty' ? value : prev[rawMaterialId]?.qty || '',
+        lotNo: field === 'lotNo' ? value : prev[rawMaterialId]?.lotNo || '',
       },
     }));
 
     // Clear validation error for this item
     setValidationErrors((prev) => {
       const newErrors = { ...prev };
-      delete newErrors[rawMaterialsId];
+      delete newErrors[rawMaterialId];
       return newErrors;
     });
   };
@@ -103,7 +117,7 @@ export function DeliveriesTab({
     let hasAnyDelivery = false;
 
     purchaseOrderDetails.forEach((item) => {
-      const stats = getDeliveryStats(item.rawMaterialsId);
+      const stats = getDeliveryStats(item.rawMaterialId);
       if (!stats) return;
 
       if (stats.deliverNow > 0) {
@@ -112,20 +126,14 @@ export function DeliveriesTab({
         // Check for decimals
         const qtyNum = Math.floor(stats.deliverNow);
         if (qtyNum !== stats.deliverNow) {
-          errors[item.rawMaterialsId] = 'Quantity must be a whole number (no decimals)';
+          errors[item.rawMaterialId] = 'Quantity must be a whole number (no decimals)';
           return;
         }
 
         // Check if exceeds ordered quantity
         if (stats.willExceed) {
-          errors[item.rawMaterialsId] = `Cannot deliver more than ordered (${stats.orderedQty} ${item.unit})`;
+          errors[item.rawMaterialId] = `Cannot deliver more than ordered (${stats.orderedQty} ${item.rawMaterialUnitName})`;
           return;
-        }
-
-        // Check for lot number
-        const lotNo = deliveryItems[item.rawMaterialsId]?.lotNo;
-        if (!lotNo || !lotNo.trim()) {
-          errors[item.rawMaterialsId] = 'Lot number is required';
         }
       }
     });
@@ -133,7 +141,11 @@ export function DeliveriesTab({
     setValidationErrors(errors);
 
     if (!hasAnyDelivery) {
-      alert('Please enter at least one delivery quantity.');
+      setFlashNotification({
+        title: 'Validation Error',
+        message: 'Please enter at least one delivery quantity.',
+        alertType: 'warning'
+      });
       return false;
     }
 
@@ -142,12 +154,29 @@ export function DeliveriesTab({
 
   const handleSaveDelivery = () => {
     if (status !== 'ACTIVE') {
-      alert('Deliveries can only be recorded for ACTIVE purchase orders.');
+      setFlashNotification({
+        title: 'Not Allowed',
+        message: 'Deliveries can only be recorded for ACTIVE purchase orders.',
+        alertType: 'warning'
+      });
       return;
     }
 
     if (!deliveryDate) {
-      alert('Delivery date is required.');
+      setFlashNotification({
+        title: 'Validation Error',
+        message: 'Delivery date is required.',
+        alertType: 'warning'
+      });
+      return;
+    }
+
+    if (!selectedLocation) {
+      setFlashNotification({
+        title: 'Validation Error',
+        message: 'Raw materials location is required.',
+        alertType: 'warning'
+      });
       return;
     }
 
@@ -157,75 +186,79 @@ export function DeliveriesTab({
 
     const rawMaterials: DeliveredItem[] = [];
     purchaseOrderDetails.forEach((item) => {
-      const deliverNow = Number(deliveryItems[item.rawMaterialsId]?.qty || 0);
+      const deliverNow = Number(deliveryItems[item.rawMaterialId]?.qty || 0);
       if (deliverNow > 0) {
         rawMaterials.push({
-          rawMaterialsId: item.rawMaterialsId,
-          rawMaterialsName: item.rawMaterialsName,
-          unit: item.unit,
+          rawMaterialId: item.rawMaterialId,
+          rawMaterialName: item.rawMaterialName,
+          rawMaterialUnitId: item.rawMaterialUnitId,
+          rawMaterialUnitName: item.rawMaterialUnitName,
           deliveredQty: Math.floor(deliverNow),
-          lotNo: deliveryItems[item.rawMaterialsId]?.lotNo || '',
+          lotNo: deliveryItems[item.rawMaterialId]?.lotNo || '',
         });
       }
     });
 
     onAddDelivery({
       deliveryDate,
+      rawMaterialsLocationId: selectedLocation?.id,
+      rawMaterialsLocationName: selectedLocation?.name,
       rawMaterials,
     });
 
     // Reset form
     setDeliveryDate('');
+    setSelectedLocation(null);
     setDeliveryItems({});
     setValidationErrors({});
   };
 
+  const handleLocationSelect = (location: RawMaterialsLocationDto) => {
+    setSelectedLocation({ id: location.rawMaterialsLocationId || '', name: location.rawMaterialsLocationName || '' });
+    setShowLocationModal(false);
+  };
+
+  const handleClearLocation = () => {
+    setSelectedLocation(null);
+  };
+
   const handleDeleteDelivery = (deliveryDate: string) => {
     if (status !== 'ACTIVE') {
-      alert('Deliveries can only be deleted from ACTIVE purchase orders.');
+      setFlashNotification({
+        title: 'Not Allowed',
+        message: 'Deliveries can only be deleted from ACTIVE purchase orders.',
+        alertType: 'warning'
+      });
       return;
     }
 
-    if (confirm(`Are you sure you want to delete the delivery on ${new Date(deliveryDate).toLocaleDateString()}?`)) {
-      onDeleteDelivery(deliveryDate);
+    // Find the complete delivery object
+    const delivery = deliveredPurchaseOrderDetails.find((d) => d.deliveryDate === deliveryDate);
+    if (!delivery) {
+      setFlashNotification({
+        title: 'Error',
+        message: 'Delivery not found.',
+        alertType: 'error'
+      });
+      return;
     }
+
+    setDeliveryToDelete(delivery);
+    setShowDeleteConfirmation(true);
+  };
+
+  const confirmDeleteDelivery = () => {
+    if (deliveryToDelete) {
+      onDeleteDelivery(deliveryToDelete);
+    }
+    setShowDeleteConfirmation(false);
+    setDeliveryToDelete(null);
   };
 
   const isDisabled = status !== 'ACTIVE';
 
   return (
     <div className="space-y-6">
-      {/* Completion Status Card */}
-      <div className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Purchase Order Completion Status</h3>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-gray-700">Total Ordered:</span>
-            <span className="font-semibold text-gray-900">{totalOrdered} units</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-gray-700">Total Delivered:</span>
-            <span className="font-semibold text-gray-900">{totalDelivered} units</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="font-medium text-gray-700">Remaining:</span>
-            <span className="font-semibold text-gray-900">{totalOrdered - totalDelivered} units</span>
-          </div>
-          <div>
-            <div className="flex items-center justify-between text-sm mb-2">
-              <span className="font-medium text-gray-700">Completion:</span>
-              <span className="font-semibold text-gray-900">{completionPercentage.toFixed(1)}%</span>
-            </div>
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                style={{ width: `${completionPercentage}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Record New Delivery Section */}
       <Disclosure defaultOpen={true}>
         {({ open }) => (
@@ -261,53 +294,87 @@ export function DeliveriesTab({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Delivery Date <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   value={deliveryDate}
-                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  onChange={(date) => setDeliveryDate(date)}
                   disabled={isDisabled || isSubmitting}
-                  className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100"
+                  placeholder="Select delivery date"
+                  required
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Raw Materials Location <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={selectedLocation?.name || ''}
+                    readOnly
+                    onClick={() => !isDisabled && !isSubmitting && setShowLocationModal(true)}
+                    placeholder="Select location"
+                    disabled={isDisabled || isSubmitting}
+                    className="w-full cursor-pointer rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-50"
+                  />
+                  {selectedLocation && !isDisabled && !isSubmitting && (
+                    <button
+                      type="button"
+                      onClick={handleClearLocation}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <Close size={18} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <RawMaterialsLocationSearchableSelectionModal
+                show={showLocationModal}
+                title="Select Raw Materials Location"
+                selectedValue={selectedLocation?.id || null}
+                onSelect={handleLocationSelect}
+                onClose={() => setShowLocationModal(false)}
+              />
+
               <div className="overflow-x-auto rounded-xl border-2 border-gray-200">
-                <table className="min-w-full divide-y divide-gray-200">
+                <table className="w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-1/4">
                         Raw Material
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[12%]">
                         Unit
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[12%]">
                         Ordered Qty
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[12%]">
                         Already Delivered
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[12%]">
                         Remaining
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[12%]">
                         Deliver Now
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider w-[15%]">
                         Lot No
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {purchaseOrderDetails.map((item) => {
-                      const stats = getDeliveryStats(item.rawMaterialsId);
-                      const hasError = validationErrors[item.rawMaterialsId];
+                      const stats = getDeliveryStats(item.rawMaterialId);
+                      const hasError = validationErrors[item.rawMaterialId];
 
                       return (
-                        <tr key={item.rawMaterialsId} className={hasError ? 'bg-red-50' : 'hover:bg-gray-50'}>
+                        <tr key={item.rawMaterialId} className={hasError ? 'bg-red-50' : 'hover:bg-gray-50'}>
                           <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            {item.rawMaterialsName}
+                            {item.rawMaterialName}
                           </td>
-                          <td className="px-6 py-4 text-sm text-gray-700">{item.unit}</td>
+                          <td className="px-6 py-4 text-sm text-gray-700">{item.rawMaterialUnitName}</td>
                           <td className="px-6 py-4 text-sm text-gray-700">{stats?.orderedQty || 0}</td>
                           <td className="px-6 py-4 text-sm text-gray-700">{stats?.alreadyDelivered || 0}</td>
                           <td className={`px-6 py-4 text-sm font-semibold ${stats && stats.remaining > 0 ? 'text-blue-600' : 'text-green-600'}`}>
@@ -317,8 +384,8 @@ export function DeliveriesTab({
                             <div className="space-y-1">
                               <input
                                 type="number"
-                                value={deliveryItems[item.rawMaterialsId]?.qty || ''}
-                                onChange={(e) => handleDeliveryItemChange(item.rawMaterialsId, 'qty', e.target.value)}
+                                value={deliveryItems[item.rawMaterialId]?.qty || ''}
+                                onChange={(e) => handleDeliveryItemChange(item.rawMaterialId, 'qty', e.target.value)}
                                 disabled={isDisabled || isSubmitting}
                                 step="1"
                                 min="0"
@@ -332,8 +399,8 @@ export function DeliveriesTab({
                           <td className="px-6 py-4">
                             <input
                               type="text"
-                              value={deliveryItems[item.rawMaterialsId]?.lotNo || ''}
-                              onChange={(e) => handleDeliveryItemChange(item.rawMaterialsId, 'lotNo', e.target.value)}
+                              value={deliveryItems[item.rawMaterialId]?.lotNo || ''}
+                              onChange={(e) => handleDeliveryItemChange(item.rawMaterialId, 'lotNo', e.target.value)}
                               disabled={isDisabled || isSubmitting}
                               className={`w-32 rounded-xl border-2 ${hasError && hasError.includes('Lot') ? 'border-red-500' : 'border-gray-200'} px-3 py-2 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100`}
                             />
@@ -380,6 +447,9 @@ export function DeliveriesTab({
                           </h4>
                           <p className="text-xs text-gray-500 mt-1">
                             {delivery.rawMaterials.length} item(s) - {delivery.rawMaterials.reduce((sum, rm) => sum + rm.deliveredQty, 0)} total units
+                            {delivery.rawMaterialsLocationName && (
+                              <> • Location: <span className="font-medium text-gray-700">{delivery.rawMaterialsLocationName}</span></>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -428,9 +498,9 @@ export function DeliveriesTab({
                             {delivery.rawMaterials.map((rm, rmIndex) => (
                               <tr key={rmIndex} className="hover:bg-gray-50 transition-colors">
                                 <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                                  {rm.rawMaterialsName}
+                                  {rm.rawMaterialName}
                                 </td>
-                                <td className="px-6 py-4 text-sm text-gray-700">{rm.unit}</td>
+                                <td className="px-6 py-4 text-sm text-gray-700">{rm.rawMaterialUnitName}</td>
                                 <td className="px-6 py-4 text-sm font-semibold text-blue-600">
                                   {rm.deliveredQty}
                                 </td>
@@ -448,6 +518,59 @@ export function DeliveriesTab({
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirmation && deliveryToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1000]">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-lg">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center text-red-600 text-xl">
+                ⚠️
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800 m-0">
+                Delete Delivery
+              </h3>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+              Are you sure you want to delete the delivery on{' '}
+              <strong>
+                {new Date(deliveryToDelete.deliveryDate).toLocaleDateString('en-US', { 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric' 
+                })}
+              </strong>?
+              {deliveryToDelete.rawMaterialsLocationName && (
+                <>
+                  {' '}(Location: <strong>{deliveryToDelete.rawMaterialsLocationName}</strong>)
+                </>
+              )}
+              <br /><br />
+              This will remove <strong>{deliveryToDelete.rawMaterials.length} item(s)</strong> from the delivery records and adjust stock quantities accordingly. This action cannot be undone.
+            </p>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirmation(false);
+                  setDeliveryToDelete(null);
+                }}
+                className="px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center gap-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDeleteDelivery}
+                disabled={isSubmitting}
+                className="px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

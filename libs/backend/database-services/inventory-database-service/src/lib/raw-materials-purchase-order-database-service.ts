@@ -37,13 +37,16 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
     async createRecord(
         rawMaterialsPurchaseOrderDto: CreateRawMaterialsPurchaseOrderDto
     ): Promise<RawMaterialsPurchaseOrderDto> {
+        // Ensure docNo is set, use poDate as fallback if not provided
+        const docNo = rawMaterialsPurchaseOrderDto.docNo || rawMaterialsPurchaseOrderDto.poDate || '';
+
         const rawMaterialsPurchaseOrderData: RawMaterialsPurchaseOrderDataType = {
             status: rawMaterialsPurchaseOrderDto.status,
             poStatus: rawMaterialsPurchaseOrderDto.poStatus,
             rawMaterialSupplierId: rawMaterialsPurchaseOrderDto.rawMaterialSupplierId,
             rawMaterialSupplierName: rawMaterialsPurchaseOrderDto.rawMaterialSupplierName,
             poDate: rawMaterialsPurchaseOrderDto.poDate,
-            docNo: rawMaterialsPurchaseOrderDto.docNo,
+            docNo: docNo,
             purchaseOrderDetails: rawMaterialsPurchaseOrderDto.purchaseOrderDetails,
             deliveredPurchaseOrderDetails: rawMaterialsPurchaseOrderDto.deliveredPurchaseOrderDetails,
             activityLogs: rawMaterialsPurchaseOrderDto.activityLogs,
@@ -59,7 +62,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             GSI4PK: `RAW_MATERIALS_PURCHASE_ORDER#SUPPLIER#${rawMaterialsPurchaseOrderDto.rawMaterialSupplierId}`,
             GSI4SK: rawMaterialsPurchaseOrderDto.poDate,
             GSI5PK: 'RAW_MATERIALS_PURCHASE_ORDER',
-            GSI5SK: rawMaterialsPurchaseOrderDto.docNo,
+            GSI5SK: docNo,
         };
 
         const record: RawMaterialsPurchaseOrderDataType = await this.rawMaterialsPurchaseOrderTable.create(
@@ -72,11 +75,14 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
     async updateRecord(record: RawMaterialsPurchaseOrderDto): Promise<RawMaterialsPurchaseOrderDto> {
         const data: RawMaterialsPurchaseOrderDataType = await this.convertToDataType(record);
 
+        // Ensure docNo is not undefined/null
+        const docNo = record.docNo || record.poDate || '';
+
         data.poStatus = record.poStatus;
         data.rawMaterialSupplierId = record.rawMaterialSupplierId;
         data.rawMaterialSupplierName = record.rawMaterialSupplierName;
         data.poDate = record.poDate;
-        data.docNo = record.docNo;
+        data.docNo = docNo;
         data.purchaseOrderDetails = record.purchaseOrderDetails;
         data.deliveredPurchaseOrderDetails = record.deliveredPurchaseOrderDetails;
         data.status = record.status;
@@ -89,7 +95,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         data.GSI4PK = `RAW_MATERIALS_PURCHASE_ORDER#SUPPLIER#${record.rawMaterialSupplierId}`;
         data.GSI4SK = record.poDate;
         data.GSI5PK = 'RAW_MATERIALS_PURCHASE_ORDER';
-        data.GSI5SK = record.docNo;
+        data.GSI5SK = docNo;
         data.forApprovalVersion = record.forApprovalVersion;
         data.changeReason = record.changeReason;
         data.approverMessage = record.approverMessage;
@@ -294,6 +300,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             rawMaterialSupplierId: dto.rawMaterialSupplierId,
             rawMaterialSupplierName: dto.rawMaterialSupplierName,
             poDate: dto.poDate,
+            docNo: dto.docNo,
             purchaseOrderDetails: dto.purchaseOrderDetails,
             deliveredPurchaseOrderDetails: dto.deliveredPurchaseOrderDetails,
             status: dto.status,
@@ -305,6 +312,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             GSI3SK: dto.poDate,
             GSI4PK: `RAW_MATERIALS_PURCHASE_ORDER#SUPPLIER#${dto.rawMaterialSupplierId}`,
             GSI4SK: dto.poDate,
+            GSI5PK: 'RAW_MATERIALS_PURCHASE_ORDER',
+            GSI5SK: dto.docNo,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

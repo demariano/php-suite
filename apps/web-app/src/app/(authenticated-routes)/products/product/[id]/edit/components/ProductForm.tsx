@@ -375,7 +375,7 @@ export default function ProductForm({
     // Use shared field change detection utility
     const isFieldChanged = createFieldChangeDetector(
         selectedProduct as Record<string, unknown>,
-        selectedProduct.forApprovalVersion as Record<string, unknown> | undefined
+        (selectedProduct?.forApprovalVersion as Record<string, unknown>) ?? undefined
     );
     
     // Helper function to render read-only field with highlighting

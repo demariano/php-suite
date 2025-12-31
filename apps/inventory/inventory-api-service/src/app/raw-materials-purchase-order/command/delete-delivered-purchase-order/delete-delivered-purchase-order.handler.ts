@@ -129,17 +129,21 @@ export class DeleteDeliveredPurchaseOrderHandler implements ICommandHandler<Dele
         const existingStock = await this.rawMaterialsStockDatabaseService.findRecordByNameAndLotNo(name, lotNo);
 
         if (!existingStock) {
-            throw new BadRequestException(
-                `Cannot deduct stock for ${name} lot ${lotNo || 'N/A'} because no matching stock record was found`
+            // If no stock record exists, just skip the deduction (delivery will still be deleted)
+            this.logger.warn(
+                `No stock record found for ${name} lot ${
+                    lotNo || 'N/A'
+                } when deleting delivery. Skipping stock deduction.`
             );
+            return;
         }
 
         existingStock.qty = Math.max(0, (existingStock.qty || 0) - qtyDelta);
         existingStock.activityLogs = existingStock.activityLogs || [];
         existingStock.activityLogs.push(
-            `Date: ${deliveryDate || 'N/A'}, Deducted ${qtyDelta} from PO ${po.rawMaterialsPurchaseOrderId} by ${
-                user.username
-            }`
+            `Date: ${deliveryDate || 'N/A'}, Deducted ${qtyDelta} from PO ${
+                po.docNo || po.rawMaterialsPurchaseOrderId
+            } by ${user.username}`
         );
         existingStock.activityLogs = reduceArrayContents(existingStock.activityLogs, ACTIVITY_LOGS_LIMIT);
         await this.rawMaterialsStockDatabaseService.updateRecord(existingStock);
