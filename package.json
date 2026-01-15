@@ -3,6 +3,8 @@
     "version": "0.0.0",
     "license": "MIT",
     "scripts": {
+    "build-customer-event-handler-service": "nx build customer-event-handler-service --skip-nx-cache --configuration=production",
+    "post-build-customer-event-handler-service": "nx build-serverless-files customer-event-handler-service",
     "build-report-api-service": "nx build report-api-service --skip-nx-cache --configuration=production",
     "post-build-report-api-service": "nx build-serverless-files report-api-service",
         "build-local-test-service": "nx build local-test-service --skip-nx-cache --configuration=production",

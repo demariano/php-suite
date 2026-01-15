@@ -132,7 +132,8 @@
         "Accounting Api Service",
         "Inventory Api Service",
         "Local Test Service",
-        "Report Api Service"
+        "Report Api Service",
+        "Customer Event Handler Service"
       ],
       "group": {
         "kind": "build",
@@ -234,6 +235,16 @@
       "label": "Report Api Service",
       "type": "shell",
       "command": "npx nx serve report-api-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Customer Event Handler Service",
+      "type": "shell",
+      "command": "npx nx serve customer-event-handler-service",
       "presentation": {
         "reveal": "always",
         "panel": "new"
