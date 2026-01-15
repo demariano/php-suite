@@ -195,6 +195,12 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
               route: "/inventory/raw-materials-purchase-order", 
               icon: File,
               onClick: (route: string) => onNavigate?.(route)
+            },
+            { 
+              label: "Stock Purchase Order", 
+              route: "/inventory/stock-purchase-order", 
+              icon: File,
+              onClick: (route: string) => onNavigate?.(route)
             }
           ],
           isExpanded: false

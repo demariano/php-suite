@@ -14,7 +14,9 @@ export * from './hooks/useWebSocketLifecycle';
 
 // Export state management
 export * from './local-state-management';
+export { useLocalStore as useAuthStore } from './local-state-management';
 export * from './state-management';
+export { useSessionStore as useFlashNotificationStore } from './state-management';
 
 // Export types
 export * from './types/account.types';
@@ -54,6 +56,7 @@ export * from './types/return-good-sold.types';
 export * from './types/sales-type.types';
 export * from './types/status.enum';
 export * from './types/stock-delivery.types';
+export * from './types/stock-purchase-order.types';
 export * from './types/stock-type.types';
 export * from './types/stock.types';
 export * from './types/supplier.types';

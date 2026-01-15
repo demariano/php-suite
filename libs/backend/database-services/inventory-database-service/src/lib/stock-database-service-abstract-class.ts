@@ -25,6 +25,8 @@ export abstract class StockDatabaseServiceAbstract {
 
     abstract findStockRecordsByStatusAndProductId(status: string, productId: string): Promise<StockDto[]>;
 
+    abstract findAllRecordsByProductAndLot(productId: string, lotNo: string): Promise<StockDto[]>;
+
     abstract findStockRecordsByFilterPagination(
         filter: StockFilterDto,
         limit: number,

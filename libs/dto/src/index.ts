@@ -41,6 +41,7 @@ export * from './lib/initialization/initialization.dto';
 //ProductSchema
 export * from './lib/enums/raw.materials.purchase-order.status.enum';
 export * from './lib/enums/status.enum';
+export * from './lib/enums/stock.purchase-order.status.enum';
 export * from './lib/product/product.category/create.product.category.dto';
 export * from './lib/product/product.category/product.category.dto';
 export * from './lib/product/product.class/create.product.class.dto';
@@ -93,6 +94,10 @@ export * from './lib/inventory/stock-delivery/create.stock-delivery.dto';
 export * from './lib/inventory/stock-delivery/delivery-details.dto';
 export * from './lib/inventory/stock-delivery/stock-delivery.dto';
 export * from './lib/inventory/stock-delivery/stock-delivery.filter.dto';
+export * from './lib/inventory/stock.purchase-order/delivered.stock.purchase-order.delivery.dto';
+export * from './lib/inventory/stock.purchase-order/delivered.stock.purchase-order.detail.dto';
+export * from './lib/inventory/stock.purchase-order/stock.purchase-order.detail.dto';
+export * from './lib/inventory/stock.purchase-order/stock.purchase-order.dto';
 export * from './lib/inventory/stock.type/create.stock.type.dto';
 export * from './lib/inventory/stock.type/stock.type.dto';
 export * from './lib/inventory/stock/create.stock.dto';

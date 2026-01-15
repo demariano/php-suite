@@ -260,6 +260,45 @@ export const InventorySchema = {
             GSI4PK: { type: String, value: 'STOCK_DELIVERY', hidden: false },
             GSI4SK: { type: String, value: '${dateReceived}', hidden: false },
         },
+        StockPurchaseOrder: {
+            PK: { type: String, value: 'STOCK_PURCHASE_ORDER', hidden: false },
+            SK: { type: String, value: '${stockPurchaseOrderId}', hidden: false },
+            status: {
+                type: String,
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                required: false,
+            },
+            poStatus: {
+                type: String,
+                enum: ['SYSTEM_GENERATED', 'PENDING', 'PARTIAL', 'COMPLETED'],
+                required: false,
+            },
+            stockPurchaseOrderId: { type: String, generate: 'ulid' },
+            supplierId: { type: String, required: false },
+            supplierName: { type: String, required: false },
+            poDate: { type: String, required: false },
+            docNo: { type: String, required: false },
+            purchaseOrderDetails: { type: Array, required: false },
+            deliveredPurchaseOrderDetails: { type: Array, required: false },
+            activityLogs: { type: Array },
+            forApprovalVersion: { type: Object },
+            changeReason: { type: String, required: false },
+            approverMessage: { type: String, required: false },
+            GSI1PK: { type: String, value: 'STOCK_PURCHASE_ORDER', hidden: false },
+            GSI1SK: { type: String, value: '${poDate}', hidden: false },
+            GSI2PK: { type: String, value: 'STOCK_PURCHASE_ORDER#${status}', hidden: false },
+            GSI2SK: { type: String, value: '${poDate}', hidden: false },
+            GSI3PK: { type: String, value: 'STOCK_PURCHASE_ORDER#PO_STATUS#${poStatus}', hidden: false },
+            GSI3SK: { type: String, value: '${poDate}', hidden: false },
+            GSI4PK: {
+                type: String,
+                value: 'STOCK_PURCHASE_ORDER#SUPPLIER#${supplierId}',
+                hidden: false,
+            },
+            GSI4SK: { type: String, value: '${poDate}', hidden: false },
+            GSI5PK: { type: String, value: 'STOCK_PURCHASE_ORDER', hidden: false },
+            GSI5SK: { type: String, value: '${docNo}', hidden: false },
+        },
     } as const,
     params: {
         isoDates: true,
@@ -277,3 +316,4 @@ export type RawMaterialsDataType = Entity<typeof InventorySchema.models.RawMater
 export type RawMaterialUnitsDataType = Entity<typeof InventorySchema.models.RawMaterialUnits>;
 export type SupplierDataType = Entity<typeof InventorySchema.models.Supplier>;
 export type StockDeliveryDataType = Entity<typeof InventorySchema.models.StockDelivery>;
+export type StockPurchaseOrderDataType = Entity<typeof InventorySchema.models.StockPurchaseOrder>;

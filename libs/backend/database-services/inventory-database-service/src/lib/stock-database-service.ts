@@ -64,27 +64,30 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
     async updateRecord(record: StockDto): Promise<StockDto> {
         const stockRecord: StockDataType = await this.convertToDataType(record);
 
-        stockRecord.lotNo = record.lotNo;
-        stockRecord.productId = record.productId;
-        stockRecord.productName = record.productName;
+        // Sanitize empty strings to undefined for fields used in GSI keys
+        const sanitize = (value: string | undefined) => (value === '' ? undefined : value);
+
+        stockRecord.lotNo = sanitize(record.lotNo);
+        stockRecord.productId = sanitize(record.productId);
+        stockRecord.productName = sanitize(record.productName);
         stockRecord.quantityOnHand = record.quantityOnHand;
         stockRecord.availableQuantity = record.availableQuantity;
-        stockRecord.productUnitId = record.productUnitId;
-        stockRecord.productUnitName = record.productUnitName;
-        stockRecord.expirationDate = record.expirationDate;
+        stockRecord.productUnitId = sanitize(record.productUnitId);
+        stockRecord.productUnitName = sanitize(record.productUnitName);
+        stockRecord.expirationDate = sanitize(record.expirationDate);
         stockRecord.status = record.status;
-        stockRecord.stockTypeId = record.stockTypeId;
-        stockRecord.stockTypeName = record.stockTypeName;
+        stockRecord.stockTypeId = sanitize(record.stockTypeId);
+        stockRecord.stockTypeName = sanitize(record.stockTypeName);
         stockRecord.GSI1PK = `STOCK`;
-        stockRecord.GSI1SK = record.productName;
+        stockRecord.GSI1SK = stockRecord.productName;
         stockRecord.GSI2PK = `STOCK#${record.status}`;
-        stockRecord.GSI2SK = record.productName;
+        stockRecord.GSI2SK = stockRecord.productName;
         stockRecord.GSI3PK = `STOCK#${record.status}`;
-        stockRecord.GSI3SK = record.productId;
-        stockRecord.GSI4PK = `STOCK#${record.status}#${record.productId}`;
-        stockRecord.GSI4SK = record.lotNo;
-        stockRecord.GSI5PK = `STOCK#${record.status}#${record.productId}`;
-        stockRecord.GSI5SK = record.expirationDate;
+        stockRecord.GSI3SK = stockRecord.productId;
+        stockRecord.GSI4PK = `STOCK#${record.status}#${stockRecord.productUnitId}#${stockRecord.productId}`;
+        stockRecord.GSI4SK = stockRecord.lotNo;
+        stockRecord.GSI5PK = `STOCK#${record.status}#${stockRecord.productUnitId}#${stockRecord.productId}`;
+        stockRecord.GSI5SK = stockRecord.expirationDate;
         stockRecord.forApprovalVersion = record.forApprovalVersion;
         stockRecord.changeReason = record.changeReason;
         stockRecord.approverMessage = record.approverMessage;
@@ -230,6 +233,25 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         return await this.convertToDtoList(stockRecords);
     }
 
+    async findAllRecordsByProductAndLot(productId: string, lotNo: string): Promise<StockDto[]> {
+        // Query all ACTIVE stock records for the given product
+        // Then filter by lotNo since we can't directly query by productId and lotNo without status
+        const stockRecords = await this.stockTable.find(
+            {
+                GSI3PK: `STOCK#${StatusEnum.ACTIVE}`,
+                GSI3SK: productId,
+            },
+            {
+                index: 'GSI3',
+            }
+        );
+
+        // Filter by lotNo
+        const filteredRecords = stockRecords.filter((record) => (record.lotNo || '') === lotNo);
+
+        return await this.convertToDtoList(filteredRecords);
+    }
+
     async deleteRecord(dto: StockDto): Promise<StockDto> {
         const stockRecord: StockDataType = await this.convertToDataType(dto);
 
@@ -365,29 +387,38 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
     }
 
     async convertToDataType(dto: StockDto): Promise<StockDataType> {
+        // Sanitize empty strings to undefined for fields used in GSI keys
+        const sanitize = (value: string | undefined) => (value === '' ? undefined : value);
+
+        const lotNo = sanitize(dto.lotNo);
+        const productId = sanitize(dto.productId);
+        const productName = sanitize(dto.productName);
+        const productUnitId = sanitize(dto.productUnitId);
+        const expirationDate = sanitize(dto.expirationDate);
+
         const stockData: StockDataType = {
             stockId: dto.stockId,
             status: dto.status,
-            lotNo: dto.lotNo,
-            productId: dto.productId,
-            productName: dto.productName,
+            lotNo: lotNo,
+            productId: productId,
+            productName: productName,
             quantityOnHand: dto.quantityOnHand,
             availableQuantity: dto.availableQuantity,
-            productUnitId: dto.productUnitId,
-            productUnitName: dto.productUnitName,
-            expirationDate: dto.expirationDate,
-            stockTypeId: dto.stockTypeId,
-            stockTypeName: dto.stockTypeName,
+            productUnitId: productUnitId,
+            productUnitName: sanitize(dto.productUnitName),
+            expirationDate: expirationDate,
+            stockTypeId: sanitize(dto.stockTypeId),
+            stockTypeName: sanitize(dto.stockTypeName),
             GSI1PK: `STOCK`,
-            GSI1SK: dto.productName,
+            GSI1SK: productName,
             GSI2PK: `STOCK#${dto.status}`,
-            GSI2SK: dto.productName,
+            GSI2SK: productName,
             GSI3PK: `STOCK#${dto.status}`,
-            GSI3SK: dto.productId,
-            GSI4PK: `STOCK#${dto.status}#${dto.productId}`,
-            GSI4SK: dto.lotNo,
-            GSI5PK: `STOCK#${dto.status}#${dto.productId}`,
-            GSI5SK: dto.expirationDate,
+            GSI3SK: productId,
+            GSI4PK: `STOCK#${dto.status}#${productUnitId}#${productId}`,
+            GSI4SK: lotNo,
+            GSI5PK: `STOCK#${dto.status}#${productUnitId}#${productId}`,
+            GSI5SK: expirationDate,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

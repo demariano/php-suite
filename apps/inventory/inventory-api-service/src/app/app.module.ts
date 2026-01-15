@@ -9,6 +9,7 @@ import { RawMaterialsLocationModule } from './raw-materials-location/raw-materia
 import { RawMaterialsPurchaseOrderModule } from './raw-materials-purchase-order/raw-materials-purchase-order.module';
 import { RawMaterialsStockModule } from './raw-materials-stock/raw-materials-stock.module';
 import { StockDeliveryModule } from './stock-delivery/stock-delivery.module';
+import { StockPurchaseOrderModule } from './stock-purchase-order/stock-purchase-order.module';
 import { StockTypeModule } from './stock-type/stock-type.module';
 import { StockModule } from './stock/stock.module';
 import { SupplierModule } from './supplier/supplier.module';
@@ -23,6 +24,7 @@ import { SupplierModule } from './supplier/supplier.module';
         RawMaterialsLocationModule,
         RawMaterialsStockModule,
         RawMaterialsPurchaseOrderModule,
+        StockPurchaseOrderModule,
         StockModule,
         StockTypeModule,
     ],
