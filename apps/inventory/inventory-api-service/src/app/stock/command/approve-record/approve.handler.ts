@@ -93,8 +93,7 @@ export class ApproveStockHandler implements ICommandHandler<ApproveStockCommand>
             existingRecord.productName = forApprovalVersion.productName as string;
             existingRecord.lotNo = forApprovalVersion.lotNo as string;
             existingRecord.productId = forApprovalVersion.productId as string;
-            existingRecord.quantityOnHand = forApprovalVersion.quantityOnHand as number;
-            existingRecord.availableQuantity = forApprovalVersion.availableQuantity as number;
+            existingRecord.totalQuantity = forApprovalVersion.totalQuantity as number;
             existingRecord.productUnitId = forApprovalVersion.productUnitId as string;
             existingRecord.productUnitName = forApprovalVersion.productUnitName as string;
             existingRecord.expirationDate = forApprovalVersion.expirationDate as string;

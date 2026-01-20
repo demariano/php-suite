@@ -128,8 +128,7 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
 
         if (stockRecords && stockRecords.length > 0) {
             for (const stockRecord of stockRecords) {
-                stockRecord.quantityOnHand = (stockRecord.quantityOnHand || 0) + qtyDelta;
-                stockRecord.availableQuantity = (stockRecord.availableQuantity || 0) + qtyDelta;
+                stockRecord.totalQuantity = (stockRecord.totalQuantity || 0) + qtyDelta;
                 stockRecord.activityLogs = stockRecord.activityLogs || [];
                 stockRecord.activityLogs.push(
                     `Date: ${deliveryDate || 'N/A'}, Added ${qtyDelta} from PO ${
@@ -153,8 +152,7 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
                 status: StatusEnum.ACTIVE,
                 productId: line.productId,
                 productName: line.productName,
-                quantityOnHand: qtyDelta,
-                availableQuantity: qtyDelta,
+                totalQuantity: qtyDelta,
                 productUnitId: line.productUnitId,
                 productUnitName: line.productUnitName,
                 stockTypeId: line.stockTypeId,

@@ -1,0 +1,38 @@
+{
+    "name": "inventory-event-handler-service",
+    "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+    "sourceRoot": "apps/inventory/inventory-event-handler-service/src",
+    "projectType": "application",
+    "tags": [],
+    "targets": {
+    "build-serverless-files": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "dist/apps/inventory/inventory-event-handler-service",
+        "commands": [
+          {
+            "command": "yarn add tslib"
+          }
+        ],
+        "parallel": false
+      }
+    },
+        "serve": {
+            "executor": "@nx/js:node",
+            "defaultConfiguration": "development",
+            "dependsOn": ["build"],
+            "options": {
+                "buildTarget": "inventory-event-handler-service:build",
+                "runBuildTargetDependencies": false
+            },
+            "configurations": {
+                "development": {
+                    "buildTarget": "inventory-event-handler-service:build:development"
+                },
+                "production": {
+                    "buildTarget": "inventory-event-handler-service:build:production"
+                }
+            }
+        }
+    }
+}

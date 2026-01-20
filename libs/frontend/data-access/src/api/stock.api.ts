@@ -231,25 +231,6 @@ class StockApi extends AxiosConfig {
 
         return await this.axiosInstance.post(url, { approverMessage });
     };
-
-    public updateAvailableQuantity = async (
-        id: string,
-        updateAvailableQtyDto: UpdateAvailableQtyDto,
-        userRole?: string
-    ): Promise<StockDto> => {
-        const params = new URLSearchParams();
-
-        if (userRole) {
-            params.append('userRole', userRole);
-        }
-
-        const queryString = params.toString();
-        const url = queryString
-            ? `/stock/${id}/update-available-quantity?${queryString}`
-            : `/stock/${id}/update-available-quantity`;
-
-        return await this.axiosInstance.post(url, updateAvailableQtyDto);
-    };
 }
 
 export default new StockApi();

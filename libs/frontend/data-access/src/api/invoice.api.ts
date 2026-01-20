@@ -1,4 +1,4 @@
-import { CreateInvoiceDto, InvoiceDto } from '../types/invoice.types';
+import { CreateInvoiceDto, InvoiceDetailDto, InvoiceDto } from '../types/invoice.types';
 import { AxiosConfig } from './axiosConfig';
 
 export interface PaginatedResponse<T> {
@@ -9,6 +9,17 @@ export interface PaginatedResponse<T> {
 }
 
 export type InvoicesResponse = PaginatedResponse<InvoiceDto>;
+
+export interface StockValidationResult {
+    valid: boolean;
+    invalidItems: Array<{
+        stockId: string;
+        stockName: string;
+        productName: string;
+        requested: number;
+        available: number;
+    }>;
+}
 
 class InvoiceApi extends AxiosConfig {
     constructor() {
@@ -164,6 +175,23 @@ class InvoiceApi extends AxiosConfig {
             params.append('nonContractOnly', 'true');
         }
         return await this.axiosInstance.get(`/invoices/customer/${customerId}/pending-payment?${params.toString()}`);
+    };
+
+    public submitDraft = async (id: string, userRole?: string): Promise<InvoiceDto> => {
+        const params = new URLSearchParams();
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/invoices/${id}/submit-draft?${queryString}` : `/invoices/${id}/submit-draft`;
+
+        return await this.axiosInstance.post(url);
+    };
+
+    public validateStock = async (invoiceDetails: InvoiceDetailDto[]): Promise<StockValidationResult> => {
+        return await this.axiosInstance.post('/invoices/validate-stock', { invoiceDetails });
     };
 }
 

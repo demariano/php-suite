@@ -34,8 +34,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             lotNo: stockDto.lotNo,
             productId: stockDto.productId,
             productName: stockDto.productName,
-            quantityOnHand: stockDto.quantityOnHand,
-            availableQuantity: stockDto.availableQuantity,
+            totalQuantity: stockDto.totalQuantity,
             productUnitId: stockDto.productUnitId,
             productUnitName: stockDto.productUnitName,
             expirationDate: stockDto.expirationDate,
@@ -70,8 +69,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         stockRecord.lotNo = sanitize(record.lotNo);
         stockRecord.productId = sanitize(record.productId);
         stockRecord.productName = sanitize(record.productName);
-        stockRecord.quantityOnHand = record.quantityOnHand;
-        stockRecord.availableQuantity = record.availableQuantity;
+        stockRecord.totalQuantity = record.totalQuantity;
         stockRecord.productUnitId = sanitize(record.productUnitId);
         stockRecord.productUnitName = sanitize(record.productUnitName);
         stockRecord.expirationDate = sanitize(record.expirationDate);
@@ -359,8 +357,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         dto.lotNo = record.lotNo ? record.lotNo : '';
         dto.productId = record.productId ? record.productId : '';
         dto.productName = record.productName ? record.productName : '';
-        dto.quantityOnHand = record.quantityOnHand ? record.quantityOnHand : 0;
-        dto.availableQuantity = record.availableQuantity ? record.availableQuantity : 0;
+        dto.totalQuantity = record.totalQuantity ? record.totalQuantity : 0;
         dto.productUnitId = record.productUnitId ? record.productUnitId : '';
         dto.productUnitName = record.productUnitName ? record.productUnitName : '';
         dto.expirationDate = record.expirationDate ? record.expirationDate : '';
@@ -402,8 +399,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             lotNo: lotNo,
             productId: productId,
             productName: productName,
-            quantityOnHand: dto.quantityOnHand,
-            availableQuantity: dto.availableQuantity,
+            totalQuantity: dto.totalQuantity,
             productUnitId: productUnitId,
             productUnitName: sanitize(dto.productUnitName),
             expirationDate: expirationDate,

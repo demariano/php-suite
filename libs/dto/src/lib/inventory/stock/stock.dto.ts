@@ -15,10 +15,7 @@ export class StockDto {
     productName?: string;
 
     @ApiProperty()
-    quantityOnHand?: number;
-
-    @ApiProperty()
-    availableQuantity?: number;
+    totalQuantity?: number;
 
     @ApiProperty()
     productUnitId?: string;

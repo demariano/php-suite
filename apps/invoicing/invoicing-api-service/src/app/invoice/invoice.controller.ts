@@ -1,5 +1,5 @@
 import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
-import { CreateInvoiceDto, InvoiceDto } from '@dto';
+import { CreateInvoiceDto, InvoiceDetailsDto, InvoiceDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -8,7 +8,9 @@ import { CreateInvoiceCommand } from './command/create/create.command';
 import { DeleteInvoiceCommand } from './command/delete/delete.command';
 import { DenyInvoiceCommand } from './command/deny-record/deny.command';
 import { DenyInvoiceDto } from './command/deny-record/deny.dto';
+import { SubmitDraftCommand } from './command/submit-draft/submit-draft.command';
 import { UpdateInvoiceCommand } from './command/update/update.command';
+import { ValidateStockCommand } from './command/validate-stock/validate-stock.command';
 import { GetInvoiceByDocnoQuery } from './queries/get.by.docno/get.invoice.by.docno.query';
 import { GetInvoiceByIdQuery } from './queries/get.by.id/get.invoice.by.id.query';
 import { GetPendingPaymentInvoicesQuery } from './queries/get.pending.payment.invoices/get.pending.payment.invoices.query';
@@ -239,6 +241,119 @@ export class InvoiceController {
         }
 
         return this.commandBus.execute(new ApproveInvoiceCommand(id, user));
+    }
+
+    @Post(':id/submit-draft')
+    @ApiOperation({
+        summary: 'Submit draft invoice',
+        description: 'Submits a draft invoice for approval or activation based on user role and amount',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Invoice ID',
+        example: 'invoice-123',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Draft invoice submitted successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        invoiceId: { type: 'string', example: 'invoice-123' },
+                        docno: { type: 'string', example: 'INV-001' },
+                        status: { type: 'string', example: 'ACTIVE' },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Invoice is not a draft or validation failed',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Invoice not found',
+    })
+    submitDraft(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        return this.commandBus.execute(new SubmitDraftCommand(id, user));
+    }
+
+    @Post('validate-stock')
+    @ApiOperation({
+        summary: 'Validate stock availability',
+        description: 'Validates if sufficient stock is available for invoice details',
+    })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                invoiceDetails: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            stockId: { type: 'string' },
+                            qty: { type: 'number' },
+                            freeQty: { type: 'number' },
+                        },
+                    },
+                },
+                invoiceId: {
+                    type: 'string',
+                    description: 'Optional invoice ID to exclude its own reserved stock from validation',
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Stock validation result',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        valid: { type: 'boolean', example: true },
+                        invalidItems: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                properties: {
+                                    stockId: { type: 'string' },
+                                    stockName: { type: 'string' },
+                                    productName: { type: 'string' },
+                                    requested: { type: 'number' },
+                                    available: { type: 'number' },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    validateStock(@Body() body: { invoiceDetails: InvoiceDetailsDto[] }) {
+        return this.commandBus.execute(new ValidateStockCommand(body.invoiceDetails));
     }
 
     @Post(':id/deny')

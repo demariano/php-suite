@@ -126,14 +126,15 @@
         "Disconnect Service",
         "Product Api Service",
         "Customer Api Service",
-        "Stock Api Service",
         "Invoicing Api Service",
         "Accounts Api Service",
         "Accounting Api Service",
         "Inventory Api Service",
         "Local Test Service",
         "Report Api Service",
-        "Customer Event Handler Service"
+        "Customer Event Handler Service",
+        "Inventory Event Handler Service",
+        "Inventory Event Handler Service"
       ],
       "group": {
         "kind": "build",
@@ -165,16 +166,6 @@
       "label": "Customer Api Service",
       "type": "shell",
       "command": "npx nx serve customer-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Stock Api Service",
-      "type": "shell",
-      "command": "npx nx serve stock-api-service",
       "presentation": {
         "reveal": "always",
         "panel": "new"
@@ -245,6 +236,26 @@
       "label": "Customer Event Handler Service",
       "type": "shell",
       "command": "npx nx serve customer-event-handler-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Inventory Event Handler Service",
+      "type": "shell",
+      "command": "npx nx serve inventory-event-handler-service",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Inventory Event Handler Service",
+      "type": "shell",
+      "command": "npx nx serve inventory-event-handler-service",
       "presentation": {
         "reveal": "always",
         "panel": "new"

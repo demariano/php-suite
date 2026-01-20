@@ -1,7 +1,17 @@
-import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    InventoryEventDto,
+    InventoryEventEnum,
+    InvoiceDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { DenyInvoiceCommand } from './deny.command';
 
@@ -15,7 +25,10 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
 
     constructor(
         @Inject('InvoiceDatabaseService')
-        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: DenyInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -155,11 +168,54 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
 
     /**
      * Deletes an invoice when it is a new record and it was denied
+     * NEW_RECORD invoices don't reserve stock, so no restoration needed
      */
     private async deleteRecord(existingRecord: InvoiceDto): Promise<ResponseDto<InvoiceDto>> {
         this.logger.log(`Invoice deleted: ${existingRecord.invoiceId}`);
         await this.invoiceDatabaseService.deleteRecord(existingRecord);
+
+        // NEW_RECORD invoices don't reserve/deduct stock (Option 1 architecture)
+        // No stock restoration needed
+
         return new ResponseDto<InvoiceDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Restores stock quantities by publishing inventory event
+     */
+    private async restoreStockQuantities(invoice: InvoiceDto): Promise<void> {
+        if (!invoice.invoiceDetails || invoice.invoiceDetails.length === 0) {
+            this.logger.log('No invoice details to restore stock for');
+            return;
+        }
+
+        const stockItems = invoice.invoiceDetails
+            .filter((detail) => detail.stockId && detail.qty)
+            .map((detail) => ({
+                stockId: detail.stockId as string,
+                qty: detail.qty as number,
+            }));
+
+        if (stockItems.length === 0) {
+            this.logger.log('No stock items found in invoice details');
+            return;
+        }
+
+        const inventoryEvent: InventoryEventDto = {
+            inventoryEvent: InventoryEventEnum.INVOICE_DELETED,
+            stockItems: stockItems,
+        };
+
+        await this.sendInventoryEventMessage(inventoryEvent);
+        this.logger.log(`Published inventory event to restore ${stockItems.length} stock items`);
+    }
+
+    /**
+     * Sends inventory event to SQS queue
+     */
+    private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
+        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
     }
 
     /**

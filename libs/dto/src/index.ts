@@ -76,6 +76,7 @@ export * from './lib/customer/terms/create.terms.dto';
 export * from './lib/customer/terms/terms.dto';
 
 //StockSchema
+export * from './lib/enums/inventory.event.enum';
 export * from './lib/inventory/raw.material.location/create.raw.material.location.dto';
 export * from './lib/inventory/raw.material.location/raw.material.location.dto';
 export * from './lib/inventory/raw.material.stock/create.raw.material.stock.dto';
@@ -101,6 +102,7 @@ export * from './lib/inventory/stock.purchase-order/stock.purchase-order.dto';
 export * from './lib/inventory/stock.type/create.stock.type.dto';
 export * from './lib/inventory/stock.type/stock.type.dto';
 export * from './lib/inventory/stock/create.stock.dto';
+export * from './lib/inventory/stock/inventory.event.dto';
 export * from './lib/inventory/stock/stock.dto';
 export * from './lib/inventory/stock/stock.filter.dto';
 export * from './lib/inventory/stock/update.available.qty.dto';

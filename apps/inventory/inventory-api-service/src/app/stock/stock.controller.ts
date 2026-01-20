@@ -1,5 +1,5 @@
 import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
-import { CreateStockDto, StockDto, StockFilterDto, UpdateAvailableQtyDto } from '@dto';
+import { CreateStockDto, StockDto, StockFilterDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, ValidationPipe } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -7,7 +7,6 @@ import { ApproveStockCommand } from './command/approve-record/approve.command';
 import { CreateStockCommand } from './command/create/create.command';
 import { DeleteStockCommand } from './command/delete/delete.command';
 import { DenyStockCommand } from './command/deny-record/deny.command';
-import { UpdateAvailableQtyCommand } from './command/update.available.qty/update.available.qty.command';
 import { UpdateStockCommand } from './command/update/update.command';
 import { GetStockByIdQuery } from './queries/get.by.id/get.stock.by.id.query';
 import { GetStockByNameQuery } from './queries/get.by.name/get.stock.by.name.query';
@@ -336,50 +335,6 @@ export class StockController {
         }
 
         const command = new DenyStockCommand(id, user);
-        return this.commandBus.execute(command);
-    }
-
-    @Post(':id/update-available-quantity')
-    @ApiOperation({
-        summary: 'Update available quantity',
-        description: 'Updates the available quantity of a stock item by reducing it by the specified amount.',
-    })
-    @ApiParam({
-        name: 'id',
-        description: 'Unique stock identifier',
-        example: 'stock_123456789',
-    })
-    @ApiResponse({
-        status: 200,
-        description: 'Available quantity successfully updated',
-        type: StockDto,
-    })
-    @ApiResponse({
-        status: 404,
-        description: 'Stock item not found',
-        schema: {
-            type: 'object',
-            properties: {
-                statusCode: { type: 'number', example: 404 },
-                body: {
-                    type: 'object',
-                    properties: {
-                        errorMessage: { type: 'string', example: 'Stock not found for ID: stock_123456789' },
-                    },
-                },
-            },
-        },
-    })
-    @ApiBody({
-        type: UpdateAvailableQtyDto,
-        description: 'Quantity to reduce from available quantity',
-    })
-    updateAvailableQuantity(
-        @Param('id') id: string,
-        @Body() updateAvailableQtyDto: UpdateAvailableQtyDto,
-        @CurrentUser() user: UserCognito
-    ) {
-        const command = new UpdateAvailableQtyCommand(id, updateAvailableQtyDto.qty, user);
         return this.commandBus.execute(command);
     }
 

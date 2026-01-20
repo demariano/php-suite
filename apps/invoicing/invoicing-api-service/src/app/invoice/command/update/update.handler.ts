@@ -1,8 +1,18 @@
-import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    InventoryEventDto,
+    InventoryEventEnum,
+    InvoiceDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateInvoiceCommand } from './update.command';
 
@@ -16,7 +26,10 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
 
     constructor(
         @Inject('InvoiceDatabaseService')
-        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -35,14 +48,40 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
             // Update status and activity logs based on permissions
             this.updateInvoiceStatus(command, existingRecord, hasApprovalPermission);
 
+            // Store original invoice details before update for delta calculation
+            const originalInvoiceDetails = await this.getOriginalInvoiceDetails(command.id);
+            const originalStatus = originalInvoiceDetails?.status;
+
             // Update record in database
             const updatedRecord = await this.invoiceDatabaseService.updateRecord(existingRecord);
+
+            // Handle stock adjustments for admin updates
+            if (hasApprovalPermission && updatedRecord.status === StatusEnum.ACTIVE) {
+                if (originalStatus === StatusEnum.DRAFT) {
+                    // DRAFT → ACTIVE: First time stock deduction, deduct all
+                    await this.sendInventoryApprovedEvent(updatedRecord);
+                } else if (originalStatus === StatusEnum.ACTIVE) {
+                    // ACTIVE → ACTIVE: Calculate and apply stock deltas
+                    await this.applyStockDeltas(
+                        originalInvoiceDetails.invoiceDetails || [],
+                        updatedRecord.invoiceDetails || [],
+                        updatedRecord.invoiceId
+                    );
+                }
+            }
 
             this.logger.log(`Invoice updated successfully: ${updatedRecord.invoiceId}`);
             return new ResponseDto<InvoiceDto>(updatedRecord, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, command.id);
         }
+    }
+
+    /**
+     * Gets the original invoice details before any modifications
+     */
+    private async getOriginalInvoiceDetails(recordId: string): Promise<InvoiceDto> {
+        return await this.invoiceDatabaseService.findRecordById(recordId);
     }
 
     /**
@@ -90,6 +129,39 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
         existingRecord: InvoiceDto,
         hasApprovalPermission: boolean
     ): void {
+        // Handle DRAFT invoice updates - allow direct updates without approval
+        if (existingRecord.status === StatusEnum.DRAFT) {
+            existingRecord.docno = command.invoiceDto.docno;
+            existingRecord.invoiceDate = command.invoiceDto.invoiceDate;
+            existingRecord.customerId = command.invoiceDto.customerId;
+            existingRecord.customerName = command.invoiceDto.customerName;
+            existingRecord.areaId = command.invoiceDto.areaId;
+            existingRecord.areaName = command.invoiceDto.areaName;
+            existingRecord.territoryManagerId = command.invoiceDto.territoryManagerId;
+            existingRecord.territoryManagerName = command.invoiceDto.territoryManagerName;
+            existingRecord.salesTypeId = command.invoiceDto.salesTypeId;
+            existingRecord.salesTypeName = command.invoiceDto.salesTypeName;
+            existingRecord.contractId = command.invoiceDto.contractId;
+            existingRecord.contractName = command.invoiceDto.contractName;
+            existingRecord.termsId = command.invoiceDto.termsId;
+            existingRecord.termsName = command.invoiceDto.termsName;
+            existingRecord.productPriceTypeId = command.invoiceDto.productPriceTypeId;
+            existingRecord.productPriceTypeName = command.invoiceDto.productPriceTypeName;
+            existingRecord.finalAmount = command.invoiceDto.finalAmount;
+            existingRecord.invoiceAmount = command.invoiceDto.invoiceAmount;
+            existingRecord.taxAmount = command.invoiceDto.taxAmount;
+            existingRecord.totalAmountPaid = command.invoiceDto.totalAmountPaid;
+            existingRecord.invoiceDetails = command.invoiceDto.invoiceDetails;
+            existingRecord.contractSales = command.invoiceDto.contractSales;
+
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Draft invoice updated by ${command.user.username}`;
+            existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+            return;
+        }
+
         if (hasApprovalPermission) {
             // User can approve directly - update the existing record
             existingRecord.status = StatusEnum.ACTIVE;
@@ -121,7 +193,7 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
                 timeZone: 'Asia/Manila',
             })}, Invoice updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
             existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-            
+
             // Limit activity logs to last 10 entries
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
@@ -164,6 +236,8 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
 
             existingRecord.forApprovalVersion = {
                 ...existingRecord.forApprovalVersion,
+                originalStatus: existingRecord.status, // Store original status for approval delta calculation
+                originalInvoiceDetails: existingRecord.invoiceDetails, // Store original invoice details for stock delta
                 docno: command.invoiceDto.docno,
                 invoiceDate: command.invoiceDto.invoiceDate,
                 customerId: command.invoiceDto.customerId,
@@ -187,7 +261,7 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
                 invoiceDetails: command.invoiceDto.invoiceDetails,
                 contractSales: command.invoiceDto.contractSales,
             };
-            
+
             // Limit activity logs to last 10 entries
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         }
@@ -223,5 +297,111 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Applies stock deltas by comparing old and new invoice details
+     */
+    private async applyStockDeltas(oldDetails: any[], newDetails: any[], invoiceId: string): Promise<void> {
+        // Build maps of stock quantities grouped by stockId
+        const oldStockMap = this.buildStockMap(oldDetails);
+        const newStockMap = this.buildStockMap(newDetails);
+
+        const itemsToDeduct: { stockId: string; qty: number }[] = [];
+        const itemsToRestore: { stockId: string; qty: number }[] = [];
+
+        // Check all stock items in new details
+        for (const [stockId, newQty] of newStockMap.entries()) {
+            const oldQty = oldStockMap.get(stockId) || 0;
+            const delta = newQty - oldQty;
+
+            if (delta > 0) {
+                // Quantity increased - deduct more
+                itemsToDeduct.push({ stockId, qty: delta });
+            } else if (delta < 0) {
+                // Quantity decreased - restore some
+                itemsToRestore.push({ stockId, qty: Math.abs(delta) });
+            }
+            // If delta === 0, no change needed
+        }
+
+        // Check for items that were completely removed
+        for (const [stockId, oldQty] of oldStockMap.entries()) {
+            if (!newStockMap.has(stockId)) {
+                // Item removed - restore all
+                itemsToRestore.push({ stockId, qty: oldQty });
+            }
+        }
+
+        // Send deduction events
+        if (itemsToDeduct.length > 0) {
+            const deductEvent: InventoryEventDto = {
+                inventoryEvent: InventoryEventEnum.INVOICE_APPROVED,
+                stockItems: itemsToDeduct,
+            };
+            await this.sendInventoryEventMessage(deductEvent);
+            this.logger.log(`Deducting stock for ${itemsToDeduct.length} items in invoice: ${invoiceId}`);
+        }
+
+        // Send restoration events
+        if (itemsToRestore.length > 0) {
+            const restoreEvent: InventoryEventDto = {
+                inventoryEvent: InventoryEventEnum.INVOICE_DELETED,
+                stockItems: itemsToRestore,
+            };
+            await this.sendInventoryEventMessage(restoreEvent);
+            this.logger.log(`Restoring stock for ${itemsToRestore.length} items in invoice: ${invoiceId}`);
+        }
+
+        if (itemsToDeduct.length === 0 && itemsToRestore.length === 0) {
+            this.logger.log(`No stock adjustments needed for invoice: ${invoiceId}`);
+        }
+    }
+
+    /**
+     * Builds a map of stockId to total quantity from invoice details
+     * Handles cases where same stockId appears multiple times
+     */
+    private buildStockMap(details: any[]): Map<string, number> {
+        const stockMap = new Map<string, number>();
+
+        for (const detail of details) {
+            if (detail.stockId && detail.qty !== undefined) {
+                const currentQty = stockMap.get(detail.stockId) || 0;
+                stockMap.set(detail.stockId, currentQty + detail.qty);
+            }
+        }
+
+        return stockMap;
+    }
+
+    /**
+     * Sends inventory event to SQS queue
+     */
+    private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
+        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
+    }
+
+    /**
+     * Sends INVOICE_APPROVED event to adjust stock quantities
+     */
+    private async sendInventoryApprovedEvent(invoice: InvoiceDto): Promise<void> {
+        if (!invoice.invoiceDetails || invoice.invoiceDetails.length === 0) {
+            return;
+        }
+
+        const stockItems = invoice.invoiceDetails.map((detail) => ({
+            stockId: detail.stockId as string,
+            qty: detail.qty as number,
+        }));
+
+        const inventoryEvent: InventoryEventDto = {
+            inventoryEvent: InventoryEventEnum.INVOICE_APPROVED,
+            stockItems: stockItems,
+        };
+
+        await this.sendInventoryEventMessage(inventoryEvent);
+        this.logger.log(`INVOICE_APPROVED event sent for invoice: ${invoice.invoiceId}`);
     }
 }

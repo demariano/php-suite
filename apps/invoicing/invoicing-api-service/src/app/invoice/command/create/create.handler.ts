@@ -1,9 +1,20 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
-import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    InventoryEventDto,
+    InventoryEventEnum,
+    InvoiceDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { ulid } from 'ulid';
 import { CreateInvoiceCommand } from './create.command';
 
 // Constants
@@ -18,11 +29,39 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
         @Inject('InvoiceDatabaseService')
         private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
         @Inject('ConfigurationDatabaseService')
-        private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract
+        private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: CreateInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
         try {
+            // Check if creating a DRAFT invoice
+            if (command.invoiceDto.status === StatusEnum.DRAFT) {
+                // Generate DRAFT docno with ulid
+                command.invoiceDto.docno = `DRAFT-${ulid()}`;
+                this.logger.log(`Processing create request for DRAFT invoice with docno: ${command.invoiceDto.docno}`);
+
+                // Set initial values for DRAFT
+                command.invoiceDto.totalAmountPaid = 0;
+                command.invoiceDto.activityLogs = [];
+                command.invoiceDto.activityLogs.push(
+                    `Date: ${new Date().toLocaleString('en-US', {
+                        timeZone: 'Asia/Manila',
+                    })}, Draft invoice created by ${command.user.username}`
+                );
+                command.invoiceDto.activityLogs = reduceArrayContents(
+                    command.invoiceDto.activityLogs,
+                    ACTIVITY_LOGS_LIMIT
+                );
+
+                // Create DRAFT record in database
+                const createdRecord = await this.invoiceDatabaseService.createRecord(command.invoiceDto);
+                this.logger.log(`Draft invoice created successfully: ${createdRecord.invoiceId}`);
+                return new ResponseDto<InvoiceDto>(createdRecord, HTTP_STATUS_CREATED);
+            }
+
             // Get STARTING_INVOICE_NUMBER from configuration
             const startingInvoiceNumberConfig = await this.configurationDatabaseService.findRecordByName(
                 'STARTING_INVOICE_NUMBER'
@@ -67,6 +106,11 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
 
             // Create record in database
             const createdRecord = await this.invoiceDatabaseService.createRecord(command.invoiceDto);
+
+            // Send inventory event to deduct stock if invoice is ACTIVE
+            if (createdRecord.status === StatusEnum.ACTIVE) {
+                await this.sendInventoryApprovedEvent(createdRecord);
+            }
 
             this.logger.log(
                 `Invoice created successfully: ${createdRecord.invoiceId} with docno: ${createdRecord.docno}`
@@ -178,5 +222,28 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Sends INVOICE_APPROVED event to deduct stock quantities
+     */
+    private async sendInventoryApprovedEvent(invoice: InvoiceDto): Promise<void> {
+        if (!invoice.invoiceDetails || invoice.invoiceDetails.length === 0) {
+            return;
+        }
+
+        const stockItems = invoice.invoiceDetails.map((detail) => ({
+            stockId: detail.stockId as string,
+            qty: detail.qty as number,
+        }));
+
+        const inventoryEvent: InventoryEventDto = {
+            inventoryEvent: InventoryEventEnum.INVOICE_APPROVED,
+            stockItems: stockItems,
+        };
+
+        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
+        this.logger.log(`INVOICE_APPROVED event sent for invoice: ${invoice.invoiceId}`);
     }
 }

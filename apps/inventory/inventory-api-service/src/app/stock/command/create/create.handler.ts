@@ -80,8 +80,7 @@ export class CreateStockHandler implements ICommandHandler<CreateStockCommand> {
             command.stockDto.forApprovalVersion = {};
             command.stockDto.forApprovalVersion.productName = command.stockDto.productName;
             command.stockDto.forApprovalVersion.lotNo = command.stockDto.lotNo;
-            command.stockDto.forApprovalVersion.quantityOnHand = command.stockDto.quantityOnHand;
-            command.stockDto.forApprovalVersion.availableQuantity = command.stockDto.availableQuantity;
+            command.stockDto.forApprovalVersion.totalQuantity = command.stockDto.totalQuantity;
             command.stockDto.forApprovalVersion.productUnitId = command.stockDto.productUnitId;
             command.stockDto.forApprovalVersion.productUnitName = command.stockDto.productUnitName;
             command.stockDto.forApprovalVersion.expirationDate = command.stockDto.expirationDate;

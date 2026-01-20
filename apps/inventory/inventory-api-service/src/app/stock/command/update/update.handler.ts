@@ -81,8 +81,7 @@ export class UpdateStockHandler implements ICommandHandler<UpdateStockCommand> {
             existingRecord.productName = command.stockDto.productName;
             existingRecord.lotNo = command.stockDto.lotNo;
             existingRecord.productId = command.stockDto.productId;
-            existingRecord.quantityOnHand = command.stockDto.quantityOnHand;
-            existingRecord.availableQuantity = command.stockDto.availableQuantity;
+            existingRecord.totalQuantity = command.stockDto.totalQuantity;
             existingRecord.productUnitId = command.stockDto.productUnitId;
             existingRecord.productUnitName = command.stockDto.productUnitName;
             existingRecord.expirationDate = command.stockDto.expirationDate;
@@ -144,8 +143,7 @@ export class UpdateStockHandler implements ICommandHandler<UpdateStockCommand> {
                 productName: command.stockDto.productName,
                 lotNo: command.stockDto.lotNo,
                 productId: command.stockDto.productId,
-                quantityOnHand: command.stockDto.quantityOnHand,
-                availableQuantity: command.stockDto.availableQuantity,
+                totalQuantity: command.stockDto.totalQuantity,
                 productUnitId: command.stockDto.productUnitId,
                 productUnitName: command.stockDto.productUnitName,
                 expirationDate: command.stockDto.expirationDate,

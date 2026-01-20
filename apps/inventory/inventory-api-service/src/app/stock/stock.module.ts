@@ -9,7 +9,6 @@ import { ApproveStockHandler } from './command/approve-record/approve.handler';
 import { CreateStockHandler } from './command/create/create.handler';
 import { DeleteStockHandler } from './command/delete/delete.handler';
 import { DenyStockHandler } from './command/deny-record/deny.handler';
-import { UpdateAvailableQtyHandler } from './command/update.available.qty/update.available.qty.handler';
 import { UpdateStockHandler } from './command/update/update.handler';
 import { GetStockByIdHandler } from './queries/get.by.id/get.stock.by.id.handler';
 import { GetStockByNameHandler } from './queries/get.by.name/get.stock.by.name.handler';
@@ -45,7 +44,6 @@ import { StockController } from './stock.controller';
         DeleteStockHandler,
         ApproveStockHandler,
         DenyStockHandler,
-        UpdateAvailableQtyHandler,
     ],
 })
 export class StockModule {}

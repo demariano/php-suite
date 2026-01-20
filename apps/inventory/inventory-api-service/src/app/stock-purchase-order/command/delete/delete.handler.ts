@@ -80,8 +80,7 @@ export class DeleteStockPurchaseOrderHandler implements ICommandHandler<DeleteSt
                 }
 
                 for (const stockRecord of stockRecords) {
-                    stockRecord.quantityOnHand = Math.max(0, (stockRecord.quantityOnHand || 0) - qtyDelta);
-                    stockRecord.availableQuantity = Math.max(0, (stockRecord.availableQuantity || 0) - qtyDelta);
+                    stockRecord.totalQuantity = Math.max(0, (stockRecord.totalQuantity || 0) - qtyDelta);
                     stockRecord.activityLogs = stockRecord.activityLogs || [];
                     stockRecord.activityLogs.push(
                         `Date: ${delivery.deliveryDate || 'N/A'}, Deducted ${qtyDelta} from PO ${
