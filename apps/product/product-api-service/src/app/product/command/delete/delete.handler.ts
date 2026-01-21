@@ -88,7 +88,7 @@ export class DeleteProductHandler implements ICommandHandler<DeleteProductComman
         changeReason?: string
     ): Promise<ResponseDto<ProductDto>> {
         // Update status and add activity log
-        existingRecord.status = StatusEnum.FOR_DELETION;
+        existingRecord.status = StatusEnum.FOR_DEACTIVATION;
         existingRecord.activityLogs = existingRecord.activityLogs ?? [];
         existingRecord.changeReason = changeReason ?? existingRecord.changeReason;
         existingRecord.activityLogs.push(

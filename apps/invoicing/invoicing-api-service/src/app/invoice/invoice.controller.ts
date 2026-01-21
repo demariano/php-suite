@@ -1,5 +1,5 @@
 import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
-import { CreateInvoiceDto, InvoiceDetailsDto, InvoiceDto } from '@dto';
+import { CreateInvoiceDto, InvoiceDetailsDto, InvoiceDto, ValidateInvoiceRequestDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -10,7 +10,9 @@ import { DenyInvoiceCommand } from './command/deny-record/deny.command';
 import { DenyInvoiceDto } from './command/deny-record/deny.dto';
 import { SubmitDraftCommand } from './command/submit-draft/submit-draft.command';
 import { UpdateInvoiceCommand } from './command/update/update.command';
+import { ValidateInvoiceCommand } from './command/validate-invoice/validate-invoice.command';
 import { ValidateStockCommand } from './command/validate-stock/validate-stock.command';
+import { GetInvoicesByContractIdQuery } from './queries/get.by.contract.id/get.invoices.by.contract.id.query';
 import { GetInvoiceByDocnoQuery } from './queries/get.by.docno/get.invoice.by.docno.query';
 import { GetInvoiceByIdQuery } from './queries/get.by.id/get.invoice.by.id.query';
 import { GetPendingPaymentInvoicesQuery } from './queries/get.pending.payment.invoices/get.pending.payment.invoices.query';
@@ -294,6 +296,73 @@ export class InvoiceController {
         }
 
         return this.commandBus.execute(new SubmitDraftCommand(id, user));
+    }
+
+    @Post('validate')
+    @ApiOperation({
+        summary: 'Validate invoice',
+        description: 'Validates invoice data before creating, updating, or submitting draft',
+    })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                invoice: {
+                    type: 'object',
+                    description: 'Invoice data to validate',
+                },
+                validationType: {
+                    type: 'string',
+                    enum: ['create', 'update', 'submitDraft'],
+                    description: 'Type of validation to perform',
+                },
+                existingInvoiceId: {
+                    type: 'string',
+                    description: 'Optional - existing invoice ID for update scenarios',
+                },
+            },
+            required: ['invoice', 'validationType'],
+        },
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Validation result',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'object',
+                    properties: {
+                        valid: { type: 'boolean', example: true },
+                        errors: {
+                            type: 'object',
+                            properties: {
+                                contractAmountExceeded: {
+                                    type: 'object',
+                                    properties: {
+                                        contractAmount: { type: 'number' },
+                                        alreadyInvoiced: { type: 'number' },
+                                        newAmount: { type: 'number' },
+                                        remaining: { type: 'number' },
+                                        message: { type: 'string' },
+                                    },
+                                },
+                                missingFields: {
+                                    type: 'array',
+                                    items: { type: 'string' },
+                                },
+                                configurationError: { type: 'string' },
+                                general: { type: 'string' },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    validateInvoice(@Body() request: ValidateInvoiceRequestDto) {
+        return this.commandBus.execute(new ValidateInvoiceCommand(request));
     }
 
     @Post('validate-stock')
@@ -744,5 +813,56 @@ export class InvoiceController {
         // Note: Query endpoints don't have @CurrentUser() so role override is not applicable
         // This is kept for consistency in Swagger documentation
         return this.queryBus.execute(new GetInvoiceByIdQuery(id));
+    }
+
+    @Get('contract/:contractId')
+    @ApiOperation({
+        summary: 'Get invoices by contract ID',
+        description: 'Retrieves all invoice records associated with a specific contract',
+    })
+    @ApiParam({
+        name: 'contractId',
+        description: 'Contract ID',
+        example: 'contract-123',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Invoices retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        properties: {
+                            invoiceId: { type: 'string', example: 'invoice-123' },
+                            docno: { type: 'string', example: 'INV-001' },
+                            invoiceDate: { type: 'string', example: '2024-01-01' },
+                            customerName: { type: 'string', example: 'John Doe' },
+                            finalAmount: { type: 'number', example: 1000.0 },
+                            contractId: { type: 'string', example: 'contract-123' },
+                            contractName: { type: 'string', example: 'Annual Contract' },
+                            status: { type: 'string', example: 'ACTIVE' },
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'No invoices found for contract (returns empty array)',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                data: { type: 'array', example: [] },
+            },
+        },
+    })
+    getByContractId(@Param('contractId') contractId: string) {
+        return this.queryBus.execute(new GetInvoicesByContractIdQuery(contractId));
     }
 }

@@ -1,8 +1,10 @@
 import { UserCognito } from '@auth-guard-lib';
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
-import { AreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { AreaDto, AreaEventDto, AreaEventEnum, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveAreaCommand } from './approve.command';
 
@@ -16,7 +18,10 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
 
     constructor(
         @Inject('AreaDatabaseService')
-        private readonly areaDatabaseService: AreaDatabaseServiceAbstract
+        private readonly areaDatabaseService: AreaDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveAreaCommand): Promise<ResponseDto<AreaDto | ErrorResponseDto>> {
@@ -75,6 +80,8 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
                 return await this.approveArea(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve area with status: ${existingRecord.status}`);
         }
@@ -96,7 +103,10 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
-        existingRecord.areaName = forApprovalVersion.areaName as string;
+        const oldAreaName = existingRecord.areaName;
+        const newAreaName = forApprovalVersion.areaName as string;
+
+        existingRecord.areaName = newAreaName;
         existingRecord.towns = forApprovalVersion.towns as string[];
         existingRecord.territoryManagerId = forApprovalVersion.territoryManagerId as string;
         existingRecord.territoryManagerName = forApprovalVersion.territoryManagerName as string;
@@ -108,6 +118,11 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
 
         // Update record in database
         const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);
+
+        // If area name changed, publish event
+        if (oldAreaName !== newAreaName) {
+            await this.publishAreaNameChangeEvent(existingRecord.areaId, newAreaName);
+        }
 
         this.logger.log(`Area approved successfully: ${existingRecord.areaId}`);
         return new ResponseDto<AreaDto>(updatedRecord, HTTP_STATUS_OK);
@@ -123,6 +138,25 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
 
         this.logger.log(`Area deletion approved: ${existingRecord.areaId}`);
         return new ResponseDto<AreaDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of an area (soft delete)
+     */
+    private async approveDeactivation(existingRecord: AreaDto): Promise<ResponseDto<AreaDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Area deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Area deactivation approved: ${existingRecord.areaId}`);
+        return new ResponseDto<AreaDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
@@ -155,5 +189,29 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes area name change event to SQS
+     */
+    private async publishAreaNameChangeEvent(areaId: string, newAreaName: string): Promise<void> {
+        try {
+            this.logger.log(`Publishing area name change event for areaId: ${areaId}`);
+
+            const event: AreaEventDto = {
+                eventType: AreaEventEnum.AREA_UPDATED,
+                areaId: areaId,
+                newAreaName: newAreaName,
+                timestamp: new Date().toISOString(),
+            };
+
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+
+            this.logger.log(`Area name change event published for areaId: ${areaId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish area name change event for areaId: ${areaId}`, error);
+            // Don't throw - this is a non-critical operation
+        }
     }
 }

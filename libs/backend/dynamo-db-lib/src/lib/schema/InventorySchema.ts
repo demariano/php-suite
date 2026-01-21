@@ -50,7 +50,7 @@ export const InventorySchema = {
             SK: { type: String, value: '${stockTypeId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             stockTypeId: { type: String, generate: 'ulid' },
@@ -69,7 +69,7 @@ export const InventorySchema = {
             SK: { type: String, value: '${rawMaterialId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             rawMaterialId: { type: String, generate: 'ulid' },
@@ -89,7 +89,7 @@ export const InventorySchema = {
             SK: { type: String, value: '${rawMaterialSupplierId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             rawMaterialSupplierId: { type: String, generate: 'ulid' },
@@ -108,7 +108,7 @@ export const InventorySchema = {
             SK: { type: String, value: '${rawMaterialsLocationId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             rawMaterialsLocationId: { type: String, generate: 'ulid' },
@@ -127,7 +127,7 @@ export const InventorySchema = {
             SK: { type: String, value: '${rawMaterialsStockId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             rawMaterialsStockId: { type: String, generate: 'ulid' },
@@ -195,7 +195,7 @@ export const InventorySchema = {
             SK: { type: String, value: '${rawMaterialUnitId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             rawMaterialUnitId: { type: String, generate: 'ulid' },
@@ -214,7 +214,7 @@ export const InventorySchema = {
             SK: { type: String, value: '${supplierId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             supplierId: { type: String, generate: 'ulid' },

@@ -76,15 +76,15 @@ export class DeleteAreaHandler implements ICommandHandler<DeleteAreaCommand> {
         command.areaDto.areaId = command.recordId;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.areaDto.status = StatusEnum.FOR_DELETION;
+            // User can delete directly - set to FOR_DEACTIVATION for hard delete
+            command.areaDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Area deleted by ${command.user.username}`;
             command.areaDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         } else {
-            // User needs approval - set to FOR_DELETION for soft delete
-            command.areaDto.status = StatusEnum.FOR_DELETION;
+            // User needs approval - set to FOR_DEACTIVATION for soft delete
+            command.areaDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Area marked for deletion by ${command.user.username}`;

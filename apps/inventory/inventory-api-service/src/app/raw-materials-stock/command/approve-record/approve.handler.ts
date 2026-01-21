@@ -83,6 +83,8 @@ export class ApproveRawMaterialsStockHandler implements ICommandHandler<ApproveR
                 return await this.approveRawMaterialsStock(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(
                     `Cannot approve raw materials stock with status: ${existingRecord.status}`
@@ -137,6 +139,24 @@ export class ApproveRawMaterialsStockHandler implements ICommandHandler<ApproveR
         this.logger.log(`Raw materials stock deletion approved: ${existingRecord.rawMaterialsStockId}`);
         await this.rawMaterialsStockDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<RawMaterialsStockDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a raw materials stock record (soft delete)
+     */
+    private async approveDeactivation(
+        existingRecord: RawMaterialsStockDto
+    ): Promise<ResponseDto<RawMaterialsStockDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Raw materials stock deactivation approved, status set to ${StatusEnum.INACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.rawMaterialsStockDatabaseService.updateRecord(existingRecord);
+        this.logger.log(`Raw materials stock deactivation approved: ${existingRecord.rawMaterialsStockId}`);
+        return new ResponseDto<RawMaterialsStockDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

@@ -692,7 +692,7 @@ export class ContractController {
                             customerName: { type: 'string', example: 'Acme Corp' },
                             paymentStatus: { type: 'string', example: 'PENDING' },
                             contractAmount: { type: 'number', example: 10000 },
-                            amountPaid: { type: 'number', example: 0 },
+                            totalAmountPaid: { type: 'number', example: 0 },
                         },
                     },
                 },

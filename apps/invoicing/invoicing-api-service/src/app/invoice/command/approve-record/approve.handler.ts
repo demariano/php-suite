@@ -1,5 +1,6 @@
 import { UserCognito } from '@auth-guard-lib';
 import {
+    ContractInvoiceEventEnum,
     ErrorResponseDto,
     InventoryEventDto,
     InventoryEventEnum,
@@ -11,7 +12,7 @@ import {
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { StockDatabaseServiceAbstract } from '@inventory-database-service';
-import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
+import { ContractDatabaseServiceAbstract, InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -29,6 +30,8 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
     constructor(
         @Inject('InvoiceDatabaseService')
         private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        @Inject('ContractDatabaseService')
+        private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
         @Inject('StockDatabaseService')
@@ -104,6 +107,17 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         // Validate stock availability before approving
         await this.validateStockAvailability(existingRecord);
 
+        // Validate contract amount limit if invoice has contract in forApprovalVersion
+        if (existingRecord.forApprovalVersion?.contractId) {
+            const contractId = existingRecord.forApprovalVersion.contractId as string;
+            const newAmount = existingRecord.forApprovalVersion.finalAmount as number;
+            // Check if this is an update (FOR_APPROVAL) or new record (NEW_RECORD)
+            const isUpdate = existingRecord.status === StatusEnum.FOR_APPROVAL;
+            const existingAmount = isUpdate ? existingRecord.finalAmount : null;
+
+            await this.validateContractAmountLimit(contractId, newAmount, existingAmount);
+        }
+
         // Store original invoice details and status before applying forApprovalVersion
         const originalInvoiceDetails = existingRecord.invoiceDetails || [];
         const originalStatus = existingRecord.forApprovalVersion?.originalStatus as StatusEnum | undefined;
@@ -173,6 +187,15 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         }
 
         this.logger.log(`Invoice approved successfully: ${existingRecord.invoiceId}`);
+
+        // If invoice has a contractId, trigger recalculation of contract invoiced amount
+        if (updatedRecord.contractId) {
+            await this.sendContractInvoiceEvent(
+                ContractInvoiceEventEnum.RECALCULATE_INVOICED_AMOUNT,
+                updatedRecord.contractId
+            );
+        }
+
         return new ResponseDto<InvoiceDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -180,6 +203,7 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
      * Approves deletion of an invoice
      */
     private async approveDeletion(existingRecord: InvoiceDto): Promise<ResponseDto<InvoiceDto>> {
+        const contractId = existingRecord.contractId; // Store before deletion
         await this.invoiceDatabaseService.deleteRecord(existingRecord);
 
         // Check original status from forApprovalVersion (stored by delete handler)
@@ -204,17 +228,19 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         }
 
         this.logger.log(`Invoice deletion approved: ${existingRecord.invoiceId}`);
+
+        // If deleted invoice had contractId, trigger recalculation after deletion
+        if (contractId) {
+            await this.sendContractInvoiceEvent(ContractInvoiceEventEnum.RECALCULATE_INVOICED_AMOUNT, contractId);
+        }
+
         return new ResponseDto<InvoiceDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**
      * Applies stock deltas by comparing old and new invoice details
      */
-    private async applyStockDeltas(
-        oldDetails: any[],
-        newDetails: any[],
-        invoiceId: string
-    ): Promise<void> {
+    private async applyStockDeltas(oldDetails: any[], newDetails: any[], invoiceId: string): Promise<void> {
         // Build maps of stock quantities grouped by stockId
         const oldStockMap = this.buildStockMap(oldDetails);
         const newStockMap = this.buildStockMap(newDetails);
@@ -363,5 +389,67 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
     private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
         const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
         await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
+    }
+
+    /**
+     * Validates contract amount limit
+     */
+    private async validateContractAmountLimit(
+        contractId: string,
+        newInvoiceAmount: number,
+        existingInvoiceAmount: number | null
+    ): Promise<void> {
+        const contract = await this.contractDatabaseService.findRecordById(contractId);
+
+        if (!contract) {
+            throw new BadRequestException(`Contract not found: ${contractId}`);
+        }
+
+        // Calculate current invoiced amount
+        let currentInvoicedAmount = contract.invoicedAmount || 0;
+
+        // If this is an update, subtract the old invoice amount first
+        if (existingInvoiceAmount !== null) {
+            currentInvoicedAmount -= existingInvoiceAmount;
+        }
+
+        // Calculate projected amount
+        const projectedInvoicedAmount = currentInvoicedAmount + newInvoiceAmount;
+
+        // Check if it exceeds
+        if (projectedInvoicedAmount > contract.contractAmount) {
+            const remaining = contract.contractAmount - currentInvoicedAmount;
+            throw new BadRequestException(
+                `Invoice amount (${newInvoiceAmount.toFixed(2)}) exceeds remaining contract balance. ` +
+                    `Contract: ${contract.contractAmount.toFixed(2)}, ` +
+                    `Already invoiced: ${currentInvoicedAmount.toFixed(2)}, ` +
+                    `Remaining: ${remaining.toFixed(2)}`
+            );
+        }
+
+        this.logger.log(
+            `Contract validation passed - Contract: ${contract.contractAmount}, ` +
+                `Current: ${currentInvoicedAmount}, New invoice: ${newInvoiceAmount}, ` +
+                `Projected: ${projectedInvoicedAmount}`
+        );
+    }
+
+    /**
+     * Sends contract invoice event to recalculate invoiced amount
+     */
+    private async sendContractInvoiceEvent(event: ContractInvoiceEventEnum, contractId: string): Promise<void> {
+        try {
+            this.logger.log(`Sending contract invoice event ${event} for contract ${contractId}`);
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(
+                invoiceEventSQSUrl,
+                JSON.stringify({
+                    event,
+                    data: contractId,
+                })
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send contract invoice event ${event} for contract ${contractId}:`, error);
+        }
     }
 }

@@ -78,8 +78,8 @@ export class DeleteSupplierHandler implements ICommandHandler<DeleteSupplierComm
         command.supplierDto.supplierId = command.recordId;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.supplierDto.status = StatusEnum.FOR_DELETION;
+            // User can delete directly - set to FOR_DEACTIVATION for hard delete
+            command.supplierDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Supplier deleted by ${command.user.username}`;
@@ -91,8 +91,8 @@ export class DeleteSupplierHandler implements ICommandHandler<DeleteSupplierComm
                 ACTIVITY_LOGS_LIMIT
             );
         } else {
-            // User needs approval - set to FOR_DELETION for soft delete
-            command.supplierDto.status = StatusEnum.FOR_DELETION;
+            // User needs approval - set to FOR_DEACTIVATION for soft delete
+            command.supplierDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Supplier marked for deletion by ${command.user.username}`;
@@ -154,4 +154,3 @@ export class DeleteSupplierHandler implements ICommandHandler<DeleteSupplierComm
         return 'An unexpected error occurred';
     }
 }
-

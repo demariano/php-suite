@@ -1,9 +1,11 @@
-import { CreateInvoiceDto, InvoiceDto, PageDto } from '@dto';
+import { CreateInvoiceDto, InvoiceDto, InvoicePaymentDto, PageDto } from '@dto';
 
 export abstract class InvoiceDatabaseServiceAbstract {
     abstract createRecord(invoiceDto: CreateInvoiceDto): Promise<InvoiceDto>;
 
     abstract findRecordById(id: string): Promise<InvoiceDto | null>;
+
+    abstract findRecordsByContractId(contractId: string): Promise<InvoiceDto[] | null>;
 
     abstract findRecordContainingDocno(
         limit: number,
@@ -46,4 +48,37 @@ export abstract class InvoiceDatabaseServiceAbstract {
     abstract deleteAllRecords(): Promise<void>;
 
     abstract getInvoiceCount(): Promise<number>;
+
+    abstract addPaymentToInvoice(invoiceId: string, payment: InvoicePaymentDto): Promise<InvoiceDto>;
+
+    abstract removePaymentFromInvoice(invoiceId: string, paymentId: string): Promise<InvoiceDto>;
+
+    abstract updatePaymentInInvoice(
+        invoiceId: string,
+        paymentId: string,
+        updatedPayment: InvoicePaymentDto
+    ): Promise<InvoiceDto>;
+
+    abstract findRecordsByContractIdPagination(
+        limit: number,
+        contractId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>>;
+
+    abstract findRecordsByTermsIdPagination(
+        limit: number,
+        termsId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>>;
+
+    abstract findRecordsByProductPriceTypeIdPagination(
+        limit: number,
+        productPriceTypeId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>>;
+
+    abstract batchUpdateRecords(invoices: InvoiceDto[]): Promise<void>;
 }

@@ -82,6 +82,8 @@ export class ApproveCustomerClassificationHandler implements ICommandHandler<App
                 return await this.approveCustomerClassification(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(
                     `Cannot approve customer classification with status: ${existingRecord.status}`
@@ -128,6 +130,27 @@ export class ApproveCustomerClassificationHandler implements ICommandHandler<App
 
         this.logger.log(`Customer classification deletion approved: ${existingRecord.customerClassificationId}`);
         return new ResponseDto<CustomerClassificationDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a customer classification (soft delete)
+     */
+    private async approveDeactivation(
+        existingRecord: CustomerClassificationDto
+    ): Promise<ResponseDto<CustomerClassificationDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Customer classification deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.customerClassificationDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Customer classification deactivation approved: ${existingRecord.customerClassificationId}`);
+        return new ResponseDto<CustomerClassificationDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

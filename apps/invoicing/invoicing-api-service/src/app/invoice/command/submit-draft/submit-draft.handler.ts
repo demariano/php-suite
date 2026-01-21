@@ -1,8 +1,19 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
-import { ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ContractInvoiceEventEnum,
+    ErrorResponseDto,
+    InventoryEventDto,
+    InventoryEventEnum,
+    InvoiceDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
+import { ContractDatabaseServiceAbstract, InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { SubmitDraftCommand } from './submit-draft.command';
 
@@ -18,7 +29,12 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
         @Inject('InvoiceDatabaseService')
         private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
         @Inject('ConfigurationDatabaseService')
-        private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract
+        private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract,
+        @Inject('ContractDatabaseService')
+        private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: SubmitDraftCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -47,6 +63,11 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
             const finalStatus = await this.determineFinalStatus(command, draftInvoice);
             draftInvoice.status = finalStatus;
 
+            // Validate contract amount limit if invoice has contract and will be ACTIVE
+            if (draftInvoice.contractId && finalStatus === StatusEnum.ACTIVE) {
+                await this.validateContractAmountLimit(draftInvoice.contractId, draftInvoice.finalAmount);
+            }
+
             // Update activity logs
             if (!draftInvoice.activityLogs) {
                 draftInvoice.activityLogs = [];
@@ -65,6 +86,33 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
 
             // Update the invoice in database
             const updatedInvoice = await this.invoiceDatabaseService.updateRecord(draftInvoice);
+
+            // Send events if status is ACTIVE (GAP #2 fix)
+            if (updatedInvoice.status === StatusEnum.ACTIVE) {
+                // Send inventory event to deduct stock
+                const stockItems = updatedInvoice.invoiceDetails?.map((detail) => ({
+                    stockId: detail.stockId as string,
+                    qty: detail.qty as number,
+                }));
+
+                const inventoryEvent: InventoryEventDto = {
+                    inventoryEvent: InventoryEventEnum.INVOICE_APPROVED,
+                    stockItems: stockItems,
+                };
+                await this.sendInventoryEventMessage(inventoryEvent);
+                this.logger.log(`Inventory event sent for submitted draft invoice: ${updatedInvoice.invoiceId}`);
+
+                // Send contract event if invoice has contract
+                if (updatedInvoice.contractId) {
+                    await this.sendContractInvoiceEvent(
+                        ContractInvoiceEventEnum.RECALCULATE_INVOICED_AMOUNT,
+                        updatedInvoice.contractId
+                    );
+                    this.logger.log(
+                        `Contract event sent for submitted draft invoice: ${updatedInvoice.invoiceId}, contract: ${updatedInvoice.contractId}`
+                    );
+                }
+            }
 
             this.logger.log(
                 `Draft invoice submitted successfully: ${updatedInvoice.invoiceId} with docno: ${finalDocno}`
@@ -166,6 +214,67 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
             invoiceDetails: invoice.invoiceDetails,
             contractSales: invoice.contractSales,
         };
+    }
+
+    /**
+     * Validates contract amount limit
+     */
+    private async validateContractAmountLimit(contractId: string, newInvoiceAmount: number): Promise<void> {
+        const contract = await this.contractDatabaseService.findRecordById(contractId);
+
+        if (!contract) {
+            throw new BadRequestException(`Contract not found: ${contractId}`);
+        }
+
+        // Calculate current invoiced amount
+        const currentInvoicedAmount = contract.invoicedAmount || 0;
+
+        // Calculate projected amount
+        const projectedInvoicedAmount = currentInvoicedAmount + newInvoiceAmount;
+
+        // Check if it exceeds
+        if (projectedInvoicedAmount > contract.contractAmount) {
+            const remaining = contract.contractAmount - currentInvoicedAmount;
+            throw new BadRequestException(
+                `Invoice amount (${newInvoiceAmount.toFixed(2)}) exceeds remaining contract balance. ` +
+                    `Contract: ${contract.contractAmount.toFixed(2)}, ` +
+                    `Already invoiced: ${currentInvoicedAmount.toFixed(2)}, ` +
+                    `Remaining: ${remaining.toFixed(2)}`
+            );
+        }
+
+        this.logger.log(
+            `Contract validation passed - Contract: ${contract.contractAmount}, ` +
+                `Current: ${currentInvoicedAmount}, New invoice: ${newInvoiceAmount}, ` +
+                `Projected: ${projectedInvoicedAmount}`
+        );
+    }
+
+    /**
+     * Sends inventory event to SQS queue
+     */
+    private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
+        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
+    }
+
+    /**
+     * Sends contract invoice event to recalculate invoiced amount
+     */
+    private async sendContractInvoiceEvent(event: ContractInvoiceEventEnum, contractId: string): Promise<void> {
+        try {
+            this.logger.log(`Sending contract invoice event ${event} for contract ${contractId}`);
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(
+                invoiceEventSQSUrl,
+                JSON.stringify({
+                    event,
+                    data: contractId,
+                })
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send contract invoice event ${event} for contract ${contractId}:`, error);
+        }
     }
 
     /**

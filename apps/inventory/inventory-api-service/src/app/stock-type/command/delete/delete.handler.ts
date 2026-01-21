@@ -78,8 +78,8 @@ export class DeleteStockTypeHandler implements ICommandHandler<DeleteStockTypeCo
         command.stockTypeDto.stockTypeId = command.recordId;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.stockTypeDto.status = StatusEnum.FOR_DELETION;
+            // User can delete directly - set to FOR_DEACTIVATION for hard delete
+            command.stockTypeDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Stock type deleted by ${command.user.username}`;
@@ -91,8 +91,8 @@ export class DeleteStockTypeHandler implements ICommandHandler<DeleteStockTypeCo
                 ACTIVITY_LOGS_LIMIT
             );
         } else {
-            // User needs approval - set to FOR_DELETION for soft delete
-            command.stockTypeDto.status = StatusEnum.FOR_DELETION;
+            // User needs approval - set to FOR_DEACTIVATION for soft delete
+            command.stockTypeDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Stock type marked for deletion by ${command.user.username}`;

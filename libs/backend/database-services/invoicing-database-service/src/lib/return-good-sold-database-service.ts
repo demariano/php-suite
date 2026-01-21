@@ -474,4 +474,118 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
 
         return totalCount;
     }
+
+    /**
+     * Find all return good sold records by customerId with pagination
+     * Used for syncing customer name changes across all return good sold records
+     */
+    async findRecordsByCustomerIdPagination(
+        limit: number,
+        customerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ReturnGoodSoldDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', direction, cursorPointer);
+
+        const records = await this.returnGoodSoldTable.find(
+            {
+                GSI5PK: `RETURN_GOOD_SOLD#${customerId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI5PK',
+            'GSI5SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Find return good sold records by areaId with pagination
+     * Used for syncing area name changes across all return good sold records
+     */
+    async findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ReturnGoodSoldDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.returnGoodSoldTable.find(
+            {
+                GSI6PK: `RETURN_GOOD_SOLD#${areaId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Batch update return good sold records (used by sync handlers)
+     * Updates 25 records at a time (DynamoDB BatchWrite limit)
+     */
+    async batchUpdateRecords(returnGoodSolds: ReturnGoodSoldDto[]): Promise<void> {
+        const BATCH_SIZE = 25; // DynamoDB BatchWriteItem limit
+
+        for (let i = 0; i < returnGoodSolds.length; i += BATCH_SIZE) {
+            const batch = returnGoodSolds.slice(i, i + BATCH_SIZE);
+
+            try {
+                // Convert DTOs to DataTypes
+                const batchData = await Promise.all(batch.map((rgs) => this.convertToDataType(rgs)));
+
+                // Use Promise.all to update all records in parallel (25 at a time)
+                await Promise.all(batchData.map((rgs) => this.returnGoodSoldTable.update(rgs)));
+
+                this.logger.log(
+                    `Batch updated ${batch.length} return good sold records (indices ${i} to ${i + batch.length - 1})`
+                );
+            } catch (error) {
+                this.logger.error(`Failed to batch update return good sold records at index ${i}:`, error);
+
+                // Fallback: Update one by one
+                for (const rgs of batch) {
+                    try {
+                        await this.updateRecord(rgs);
+                    } catch (itemError) {
+                        this.logger.error(`Failed to update return good sold ${rgs.returnGoodSoldId}:`, itemError);
+                        // Continue with other records
+                    }
+                }
+            }
+        }
+    }
 }

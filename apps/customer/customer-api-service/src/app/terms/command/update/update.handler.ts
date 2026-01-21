@@ -1,8 +1,10 @@
 import { TermsDatabaseServiceAbstract } from '@customer-database-service';
-import { ErrorResponseDto, ResponseDto, StatusEnum, TermsDto, UserRole } from '@dto';
+import { ErrorResponseDto, ResponseDto, StatusEnum, TermsDto, TermsEventDto, TermsEventEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateTermsCommand } from './update.command';
 
@@ -16,7 +18,10 @@ export class UpdateTermsHandler implements ICommandHandler<UpdateTermsCommand> {
 
     constructor(
         @Inject('TermsDatabaseService')
-        private readonly termsDatabaseService: TermsDatabaseServiceAbstract
+        private readonly termsDatabaseService: TermsDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateTermsCommand): Promise<ResponseDto<TermsDto | ErrorResponseDto>> {
@@ -33,7 +38,7 @@ export class UpdateTermsHandler implements ICommandHandler<UpdateTermsCommand> {
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
-            this.updateTermsStatus(command, existingRecord, hasApprovalPermission);
+            await this.updateTermsStatus(command, existingRecord, hasApprovalPermission);
 
             // Update record in database
             const updatedRecord = await this.termsDatabaseService.updateRecord(existingRecord);
@@ -85,12 +90,15 @@ export class UpdateTermsHandler implements ICommandHandler<UpdateTermsCommand> {
     /**
      * Updates terms status and activity logs based on user permissions
      */
-    private updateTermsStatus(
+    private async updateTermsStatus(
         command: UpdateTermsCommand,
         existingRecord: TermsDto,
         hasApprovalPermission: boolean
-    ): void {
+    ): Promise<void> {
         if (hasApprovalPermission) {
+            // Capture old terms name BEFORE updating
+            const oldTermsName = existingRecord.termsName;
+
             // User can approve directly - update the existing record
             existingRecord.status = StatusEnum.ACTIVE;
             existingRecord.termsName = command.termsDto.termsName;
@@ -105,6 +113,11 @@ export class UpdateTermsHandler implements ICommandHandler<UpdateTermsCommand> {
 
             // Clear changeReason for admin users since changes are applied directly
             existingRecord.changeReason = undefined;
+
+            // Publish event if terms name changed
+            if (oldTermsName !== command.termsDto.termsName) {
+                await this.publishTermsUpdatedEvent(existingRecord.termsId, command.termsDto.termsName);
+            }
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
@@ -152,6 +165,32 @@ export class UpdateTermsHandler implements ICommandHandler<UpdateTermsCommand> {
                 termsName: command.termsDto.termsName,
                 days: command.termsDto.days,
             };
+        }
+    }
+
+    /**
+     * Publishes a terms updated event to the message queue
+     */
+    private async publishTermsUpdatedEvent(termsId: string, newTermsName: string): Promise<void> {
+        try {
+            const eventDto: TermsEventDto = {
+                termsId,
+                newTermsName,
+                eventType: TermsEventEnum.TERMS_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('INVOICE_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published TERMS_UPDATED event for termsId: ${termsId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish TERMS_UPDATED event for termsId: ${termsId}`, error);
+            // Don't throw - event publishing failure shouldn't break the update
         }
     }
 

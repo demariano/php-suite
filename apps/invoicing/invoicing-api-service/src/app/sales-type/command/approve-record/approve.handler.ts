@@ -1,7 +1,17 @@
-import { ErrorResponseDto, ResponseDto, SalesTypeDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ResponseDto,
+    SalesTypeDto,
+    SalesTypeEventDto,
+    SalesTypeEventEnum,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { SalesTypeDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveSalesTypeCommand } from './approve.command';
 
@@ -15,7 +25,10 @@ export class ApproveSalesTypeHandler implements ICommandHandler<ApproveSalesType
 
     constructor(
         @Inject('SalesTypeDatabaseService')
-        private readonly salesTypeDatabaseService: SalesTypeDatabaseServiceAbstract
+        private readonly salesTypeDatabaseService: SalesTypeDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveSalesTypeCommand): Promise<ResponseDto<SalesTypeDto | ErrorResponseDto>> {
@@ -74,6 +87,8 @@ export class ApproveSalesTypeHandler implements ICommandHandler<ApproveSalesType
                 return await this.approveSalesType(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve sales type with status: ${existingRecord.status}`);
         }
@@ -83,6 +98,9 @@ export class ApproveSalesTypeHandler implements ICommandHandler<ApproveSalesType
      * Approves a sales type for approval
      */
     private async approveSalesType(existingRecord: SalesTypeDto, user: any): Promise<ResponseDto<SalesTypeDto>> {
+        // Capture old sales type name BEFORE updating
+        const oldSalesTypeName = existingRecord.salesTypeName;
+
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs = existingRecord.activityLogs || [];
@@ -110,8 +128,39 @@ export class ApproveSalesTypeHandler implements ICommandHandler<ApproveSalesType
         // Update record in database
         const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);
 
+        // Publish event if sales type name changed
+        if (oldSalesTypeName !== updatedRecord.salesTypeName) {
+            await this.publishSalesTypeUpdatedEvent(updatedRecord.salesTypeId, updatedRecord.salesTypeName);
+        }
+
         this.logger.log(`Sales type approved successfully: ${existingRecord.salesTypeId}`);
         return new ResponseDto<SalesTypeDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publishes a sales type updated event to the message queue
+     */
+    private async publishSalesTypeUpdatedEvent(salesTypeId: string, newSalesTypeName: string): Promise<void> {
+        try {
+            const eventDto: SalesTypeEventDto = {
+                salesTypeId,
+                newSalesTypeName,
+                eventType: SalesTypeEventEnum.SALES_TYPE_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('INVOICE_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published SALES_TYPE_UPDATED event for salesTypeId: ${salesTypeId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish SALES_TYPE_UPDATED event for salesTypeId: ${salesTypeId}`, error);
+            // Don't throw - event publishing failure shouldn't break the approval
+        }
     }
 
     /**
@@ -122,6 +171,25 @@ export class ApproveSalesTypeHandler implements ICommandHandler<ApproveSalesType
 
         this.logger.log(`Sales type deletion approved: ${existingRecord.salesTypeId}`);
         return new ResponseDto<SalesTypeDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a sales type (soft delete)
+     */
+    private async approveDeactivation(existingRecord: SalesTypeDto): Promise<ResponseDto<SalesTypeDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Sales type deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Sales type deactivation approved: ${existingRecord.salesTypeId}`);
+        return new ResponseDto<SalesTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

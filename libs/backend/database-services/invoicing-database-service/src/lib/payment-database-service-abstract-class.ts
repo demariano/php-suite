@@ -53,4 +53,13 @@ export abstract class PaymentDatabaseServiceAbstractClass {
     abstract convertToDtoList(records: PaymentDataType[]): Promise<PaymentDto[]>;
 
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract findRecordsByContractIdPagination(
+        limit: number,
+        contractId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<PaymentDto>>;
+
+    abstract batchUpdateRecords(payments: PaymentDto[]): Promise<void>;
 }

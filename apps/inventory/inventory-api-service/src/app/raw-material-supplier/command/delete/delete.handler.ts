@@ -35,7 +35,7 @@ export class DeleteRawMaterialSupplierHandler implements ICommandHandler<DeleteR
                 : `Date: ${timestamp}, Raw material supplier marked for deletion by ${command.user.username}`
         );
         existing.activityLogs = reduceArrayContents(existing.activityLogs, ACTIVITY_LOGS_LIMIT);
-        existing.status = StatusEnum.FOR_DELETION;
+        existing.status = StatusEnum.FOR_DEACTIVATION;
 
         try {
             const result = approveDirect

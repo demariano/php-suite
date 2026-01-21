@@ -78,6 +78,8 @@ export class ApproveStockTypeHandler implements ICommandHandler<ApproveStockType
                 return await this.approveStockType(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve stock type with status: ${existingRecord.status}`);
         }
@@ -120,10 +122,26 @@ export class ApproveStockTypeHandler implements ICommandHandler<ApproveStockType
     private async approveDeletion(existingRecord: StockTypeDto): Promise<ResponseDto<StockTypeDto>> {
         // Reset changeReason to null before deleting
         existingRecord.changeReason = null;
-        
+
         this.logger.log(`Stock type deletion approved: ${existingRecord.stockTypeId}`);
         await this.stockTypeDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<StockTypeDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a stock type record (soft delete)
+     */
+    private async approveDeactivation(existingRecord: StockTypeDto): Promise<ResponseDto<StockTypeDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Stock type deactivation approved, status set to ${StatusEnum.INACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.stockTypeDatabaseService.updateRecord(existingRecord);
+        this.logger.log(`Stock type deactivation approved: ${existingRecord.stockTypeId}`);
+        return new ResponseDto<StockTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

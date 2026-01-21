@@ -127,7 +127,7 @@ export class CreateContractHandler implements ICommandHandler<CreateContractComm
             command.contractDto.forApprovalVersion.endDate = command.contractDto.endDate;
             command.contractDto.forApprovalVersion.contractType = command.contractDto.contractType;
             command.contractDto.forApprovalVersion.contractAmount = command.contractDto.contractAmount;
-            command.contractDto.forApprovalVersion.amountPaid = command.contractDto.amountPaid;
+            command.contractDto.forApprovalVersion.totalAmountPaid = command.contractDto.totalAmountPaid;
             command.contractDto.forApprovalVersion.contractProductDeals = command.contractDto.contractProductDeals;
             command.contractDto.forApprovalVersion.deliveryStatus = command.contractDto.deliveryStatus;
             command.contractDto.forApprovalVersion.paymentStatus = command.contractDto.paymentStatus;

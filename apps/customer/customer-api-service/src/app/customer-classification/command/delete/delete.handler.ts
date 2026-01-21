@@ -80,25 +80,31 @@ export class DeleteCustomerClassificationHandler implements ICommandHandler<Dele
         command.customerClassificationDto.customerClassificationId = command.recordId;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.customerClassificationDto.status = StatusEnum.FOR_DELETION;
+            // User can delete directly - set to FOR_DEACTIVATION for hard delete
+            command.customerClassificationDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Customer classification deleted by ${command.user.username}`;
             command.customerClassificationDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-            
+
             // Limit activity logs to last 10 entries
-            command.customerClassificationDto.activityLogs = reduceArrayContents(command.customerClassificationDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+            command.customerClassificationDto.activityLogs = reduceArrayContents(
+                command.customerClassificationDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
+            );
         } else {
-            // User needs approval - set to FOR_DELETION for soft delete
-            command.customerClassificationDto.status = StatusEnum.FOR_DELETION;
+            // User needs approval - set to FOR_DEACTIVATION for soft delete
+            command.customerClassificationDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Customer classification marked for deletion by ${command.user.username}`;
             command.customerClassificationDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-            
+
             // Limit activity logs to last 10 entries
-            command.customerClassificationDto.activityLogs = reduceArrayContents(command.customerClassificationDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+            command.customerClassificationDto.activityLogs = reduceArrayContents(
+                command.customerClassificationDto.activityLogs,
+                ACTIVITY_LOGS_LIMIT
+            );
         }
     }
 

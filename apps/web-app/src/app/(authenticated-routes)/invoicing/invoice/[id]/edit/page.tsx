@@ -279,16 +279,16 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     };
 
     const handleCancel = () => {
-        // Check if editing a draft with items
-        if (
-            selectedInvoice &&
-            selectedInvoice.status === StatusEnum.DRAFT &&
-            selectedInvoice.invoiceDetails &&
-            selectedInvoice.invoiceDetails.length > 0
-        ) {
+        // Show dialog if there are invoice details OR if editing a draft
+        // This includes cases where validation fails (e.g., contract amount exceeded)
+        const hasInvoiceDetails =
+            selectedInvoice && selectedInvoice.invoiceDetails && selectedInvoice.invoiceDetails.length > 0;
+        const isDraft = selectedInvoice && selectedInvoice.status === StatusEnum.DRAFT;
+
+        if (hasInvoiceDetails || isDraft) {
             setShowCancelDialog(true);
         } else {
-            // Not a draft or no items, just navigate away
+            // No items and not a draft, just navigate away
             router.push('/invoicing/invoice');
         }
     };
@@ -476,30 +476,52 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                             try {
                                 setIsLoading(true);
 
-                                // Validate stock availability
-                                if (selectedInvoice.invoiceDetails && selectedInvoice.invoiceDetails.length > 0) {
-                                    const validationResult = await InvoiceApi.validateStock(
-                                        selectedInvoice.invoiceDetails
-                                    );
+                                // Validate invoice before submitting
+                                const validationResult = await InvoiceApi.validateInvoice(
+                                    selectedInvoice,
+                                    'submitDraft'
+                                );
 
-                                    if (!validationResult.valid) {
-                                        const invalidItemsList = validationResult.invalidItems
+                                if (!validationResult.valid) {
+                                    // Show validation errors
+                                    const errorMessages: string[] = [];
+
+                                    if (validationResult.errors?.contractAmountExceeded) {
+                                        errorMessages.push(validationResult.errors.contractAmountExceeded.message);
+                                    }
+
+                                    if (validationResult.errors?.stockInsufficient) {
+                                        const invalidItemsList = validationResult.errors.stockInsufficient.invalidItems
                                             .map(
                                                 (item) =>
                                                     `• ${item.productName}: requested ${item.requested}, only ${item.available} available`
                                             )
                                             .join('\n');
-
-                                        setFlashNotification({
-                                            title: 'Cannot Submit Invoice',
-                                            message: `Insufficient stock for the following items:\n${invalidItemsList}`,
-                                            alertType: 'error',
-                                        });
-                                        return;
+                                        errorMessages.push(`Insufficient stock:\n${invalidItemsList}`);
                                     }
+
+                                    if (validationResult.errors?.missingFields) {
+                                        errorMessages.push(...validationResult.errors.missingFields);
+                                    }
+
+                                    if (validationResult.errors?.configurationError) {
+                                        errorMessages.push(validationResult.errors.configurationError);
+                                    }
+
+                                    if (validationResult.errors?.general) {
+                                        errorMessages.push(validationResult.errors.general);
+                                    }
+
+                                    setFlashNotification({
+                                        title: 'Cannot Submit Invoice',
+                                        message: errorMessages.join('\n'),
+                                        alertType: 'error',
+                                    });
+                                    setIsLoading(false);
+                                    return; // Stop here - draft is preserved
                                 }
 
-                                // Submit the draft
+                                // Validation passed - proceed with submission
                                 const userRole =
                                     env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
                                         ? authedUser?.userRole

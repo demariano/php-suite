@@ -78,6 +78,8 @@ export class ApproveCustomerTypeHandler implements ICommandHandler<ApproveCustom
                 return await this.approveCustomerType(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve customer type with status: ${existingRecord.status}`);
         }
@@ -120,6 +122,25 @@ export class ApproveCustomerTypeHandler implements ICommandHandler<ApproveCustom
 
         this.logger.log(`Customer type deletion approved: ${existingRecord.customerTypeId}`);
         return new ResponseDto<CustomerTypeDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a customer type (soft delete)
+     */
+    private async approveDeactivation(existingRecord: CustomerTypeDto): Promise<ResponseDto<CustomerTypeDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Customer type deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.customerTypeDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Customer type deactivation approved: ${existingRecord.customerTypeId}`);
+        return new ResponseDto<CustomerTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

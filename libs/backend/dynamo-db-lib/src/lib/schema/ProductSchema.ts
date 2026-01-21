@@ -17,7 +17,7 @@ export const ProductSchema = {
             SK: { type: String, value: '${productId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             productId: { type: String, generate: 'ulid' },
@@ -47,7 +47,7 @@ export const ProductSchema = {
             SK: { type: String, value: '${productCategoryId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             activityLogs: { type: Array },
@@ -72,7 +72,7 @@ export const ProductSchema = {
             changeReason: { type: String, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             GSI1PK: { type: String, value: 'PRODUCT_CLASS', hidden: false },
@@ -91,7 +91,7 @@ export const ProductSchema = {
             changeReason: { type: String, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             GSI1PK: { type: String, value: 'PRODUCT_UNIT', hidden: false },
@@ -110,7 +110,7 @@ export const ProductSchema = {
             changeReason: { type: String, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             GSI1PK: { type: String, value: 'PRODUCT_PRICE_TYPE', hidden: false },
@@ -131,7 +131,7 @@ export const ProductSchema = {
             changeReason: { type: String, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             GSI1PK: { type: String, value: 'PRODUCT_DEAL', hidden: false },
@@ -152,7 +152,7 @@ export const ProductSchema = {
             rawMaterialsPerUnit: { type: Array },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             GSI1PK: { type: String, value: 'PRODUCT_UNIT_RAW_MATERIAL#${productId}', hidden: false },

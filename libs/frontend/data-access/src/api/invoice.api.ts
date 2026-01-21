@@ -193,6 +193,48 @@ class InvoiceApi extends AxiosConfig {
     public validateStock = async (invoiceDetails: InvoiceDetailDto[]): Promise<StockValidationResult> => {
         return await this.axiosInstance.post('/invoices/validate-stock', { invoiceDetails });
     };
+
+    public validateInvoice = async (
+        invoice: InvoiceDto,
+        validationType: 'create' | 'update' | 'submitDraft',
+        existingInvoiceId?: string
+    ): Promise<{
+        valid: boolean;
+        errors?: {
+            contractAmountExceeded?: {
+                contractAmount: number;
+                alreadyInvoiced: number;
+                newAmount: number;
+                remaining: number;
+                message: string;
+            };
+            stockInsufficient?: {
+                invalidItems: Array<{
+                    stockId: string;
+                    stockName?: string;
+                    productName: string;
+                    requested: number;
+                    available: number;
+                }>;
+            };
+            missingFields?: string[];
+            configurationError?: string;
+            general?: string;
+        };
+    }> => {
+        return await this.axiosInstance.post('/invoices/validate', {
+            invoice,
+            validationType,
+            existingInvoiceId,
+        });
+    };
+
+    public getInvoicesByContractId = async (contractId: string): Promise<InvoiceDto[]> => {
+        console.log('InvoiceApi: Fetching invoices for contract:', contractId);
+        const response = await this.axiosInstance.get(`/invoices/contract/${contractId}`);
+        console.log('InvoiceApi: Response after interceptor:', response);
+        return response || [];
+    };
 }
 
 export default new InvoiceApi();

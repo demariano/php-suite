@@ -78,6 +78,8 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
                 return await this.approveSupplier(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve supplier with status: ${existingRecord.status}`);
         }
@@ -107,7 +109,7 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
 
         // Limit activity logs to last 10 entries
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-        
+
         // Reset changeReason to null after applying changes
         existingRecord.changeReason = null;
 
@@ -123,10 +125,26 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
     private async approveDeletion(existingRecord: SupplierDto): Promise<ResponseDto<SupplierDto>> {
         // Reset changeReason to null before deleting
         existingRecord.changeReason = null;
-        
+
         this.logger.log(`Supplier deletion approved: ${existingRecord.supplierId}`);
         await this.supplierDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<SupplierDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a supplier record (soft delete)
+     */
+    private async approveDeactivation(existingRecord: SupplierDto): Promise<ResponseDto<SupplierDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Supplier deactivation approved, status set to ${StatusEnum.INACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.supplierDatabaseService.updateRecord(existingRecord);
+        this.logger.log(`Supplier deactivation approved: ${existingRecord.supplierId}`);
+        return new ResponseDto<SupplierDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

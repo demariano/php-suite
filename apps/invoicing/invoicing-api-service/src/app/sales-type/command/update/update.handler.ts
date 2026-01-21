@@ -1,8 +1,18 @@
-import { ErrorResponseDto, ResponseDto, SalesTypeDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ResponseDto,
+    SalesTypeDto,
+    SalesTypeEventDto,
+    SalesTypeEventEnum,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { SalesTypeDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateSalesTypeCommand } from './update.command';
 
@@ -16,7 +26,10 @@ export class UpdateSalesTypeHandler implements ICommandHandler<UpdateSalesTypeCo
 
     constructor(
         @Inject('SalesTypeDatabaseService')
-        private readonly salesTypeDatabaseService: SalesTypeDatabaseServiceAbstract
+        private readonly salesTypeDatabaseService: SalesTypeDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateSalesTypeCommand): Promise<ResponseDto<SalesTypeDto | ErrorResponseDto>> {
@@ -33,7 +46,7 @@ export class UpdateSalesTypeHandler implements ICommandHandler<UpdateSalesTypeCo
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
-            this.updateSalesTypeStatus(command, existingRecord, hasApprovalPermission);
+            await this.updateSalesTypeStatus(command, existingRecord, hasApprovalPermission);
 
             // Update record in database
             const updatedRecord = await this.salesTypeDatabaseService.updateRecord(existingRecord);
@@ -86,13 +99,16 @@ export class UpdateSalesTypeHandler implements ICommandHandler<UpdateSalesTypeCo
     /**
      * Updates sales type status and activity logs based on user permissions
      */
-    private updateSalesTypeStatus(
+    private async updateSalesTypeStatus(
         command: UpdateSalesTypeCommand,
         existingRecord: SalesTypeDto,
         hasApprovalPermission: boolean
-    ): void {
+    ): Promise<void> {
         console.log('hasApprovalPermission', hasApprovalPermission);
         if (hasApprovalPermission) {
+            // Capture old sales type name BEFORE updating
+            const oldSalesTypeName = existingRecord.salesTypeName;
+
             // User can approve directly - update the existing record
             existingRecord.status = StatusEnum.ACTIVE;
             existingRecord.salesTypeName = command.salesTypeDto.salesTypeName;
@@ -112,6 +128,11 @@ export class UpdateSalesTypeHandler implements ICommandHandler<UpdateSalesTypeCo
 
             // Clear changeReason for admin users since changes are applied directly
             existingRecord.changeReason = undefined;
+
+            // Publish event if sales type name changed
+            if (oldSalesTypeName !== command.salesTypeDto.salesTypeName) {
+                await this.publishSalesTypeUpdatedEvent(existingRecord.salesTypeId, command.salesTypeDto.salesTypeName);
+            }
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
@@ -164,6 +185,32 @@ export class UpdateSalesTypeHandler implements ICommandHandler<UpdateSalesTypeCo
                 incomeGenerating: command.salesTypeDto.incomeGenerating,
                 taxable: command.salesTypeDto.taxable,
             };
+        }
+    }
+
+    /**
+     * Publishes a sales type updated event to the message queue
+     */
+    private async publishSalesTypeUpdatedEvent(salesTypeId: string, newSalesTypeName: string): Promise<void> {
+        try {
+            const eventDto: SalesTypeEventDto = {
+                salesTypeId,
+                newSalesTypeName,
+                eventType: SalesTypeEventEnum.SALES_TYPE_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('INVOICE_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published SALES_TYPE_UPDATED event for salesTypeId: ${salesTypeId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish SALES_TYPE_UPDATED event for salesTypeId: ${salesTypeId}`, error);
+            // Don't throw - event publishing failure shouldn't break the update
         }
     }
 

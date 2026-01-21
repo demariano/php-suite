@@ -3,6 +3,7 @@ import { PaymentStatusEnum } from '../../enums/payment.status.enum';
 import { PrintStatusEnum } from '../../enums/print.status.enum';
 import { StatusEnum } from '../../enums/status.enum';
 import { InvoiceDetailsDto } from './invoice.details.dto';
+import { InvoicePaymentDto } from './invoice.payment.dto';
 
 export class InvoiceDto {
     @ApiProperty()
@@ -79,6 +80,9 @@ export class InvoiceDto {
 
     @ApiProperty({ type: [InvoiceDetailsDto], isArray: true })
     invoiceDetails?: InvoiceDetailsDto[];
+
+    @ApiProperty({ type: [InvoicePaymentDto], isArray: true })
+    payments?: InvoicePaymentDto[];
 
     @ApiProperty()
     activityLogs?: string[];

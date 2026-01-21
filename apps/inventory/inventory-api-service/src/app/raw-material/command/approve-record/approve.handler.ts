@@ -65,6 +65,8 @@ export class ApproveRawMaterialHandler implements ICommandHandler<ApproveRawMate
                 return await this.approveRecord(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve raw material with status: ${existingRecord.status}`);
         }
@@ -97,6 +99,19 @@ export class ApproveRawMaterialHandler implements ICommandHandler<ApproveRawMate
         existingRecord.changeReason = null;
         await this.rawMaterialDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<RawMaterialDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    private async approveDeactivation(existingRecord: RawMaterialDto): Promise<ResponseDto<RawMaterialDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.approverMessage = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Raw material deactivation approved, status set to ${StatusEnum.INACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.rawMaterialDatabaseService.updateRecord(existingRecord);
+        return new ResponseDto<RawMaterialDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     private handleError(error: unknown, recordId: string): never {

@@ -1,8 +1,18 @@
-import { ContractDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ContractDto,
+    ContractEventDto,
+    ContractEventEnum,
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { ContractDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateContractCommand } from './update.command';
 
@@ -16,7 +26,10 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
 
     constructor(
         @Inject('ContractDatabaseService')
-        private readonly contractDatabaseService: ContractDatabaseServiceAbstract
+        private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateContractCommand): Promise<ResponseDto<ContractDto | ErrorResponseDto>> {
@@ -33,7 +46,7 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
-            this.updateContractStatus(command, existingRecord, hasApprovalPermission);
+            await this.updateContractStatus(command, existingRecord, hasApprovalPermission);
 
             // Update record in database
             const updatedRecord = await this.contractDatabaseService.updateRecord(existingRecord);
@@ -85,12 +98,15 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
     /**
      * Updates contract status and activity logs based on user permissions
      */
-    private updateContractStatus(
+    private async updateContractStatus(
         command: UpdateContractCommand,
         existingRecord: ContractDto,
         hasApprovalPermission: boolean
-    ): void {
+    ): Promise<void> {
         if (hasApprovalPermission) {
+            // Capture old contract name BEFORE updating
+            const oldContractName = existingRecord.contractName;
+
             // User can approve directly - update the existing record
             existingRecord.status = StatusEnum.ACTIVE;
             existingRecord.contractNo = command.contractDto.contractNo;
@@ -103,7 +119,7 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
             existingRecord.endDate = command.contractDto.endDate;
             existingRecord.contractType = command.contractDto.contractType;
             existingRecord.contractAmount = command.contractDto.contractAmount;
-            existingRecord.amountPaid = command.contractDto.amountPaid;
+            existingRecord.totalAmountPaid = command.contractDto.totalAmountPaid;
             existingRecord.contractProductDeals = command.contractDto.contractProductDeals;
             existingRecord.deliveryStatus = command.contractDto.deliveryStatus;
             existingRecord.paymentStatus = command.contractDto.paymentStatus;
@@ -122,6 +138,11 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
 
             // Limit activity logs to last 10 entries
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Publish event if contract name changed
+            if (oldContractName !== command.contractDto.contractName) {
+                await this.publishContractUpdatedEvent(existingRecord.contractId, command.contractDto.contractName);
+            }
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
@@ -174,7 +195,7 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
                 endDate: command.contractDto.endDate,
                 contractType: command.contractDto.contractType,
                 contractAmount: command.contractDto.contractAmount,
-                amountPaid: command.contractDto.amountPaid,
+                totalAmountPaid: command.contractDto.totalAmountPaid,
                 contractProductDeals: command.contractDto.contractProductDeals,
                 deliveryStatus: command.contractDto.deliveryStatus,
                 paymentStatus: command.contractDto.paymentStatus,
@@ -186,6 +207,32 @@ export class UpdateContractHandler implements ICommandHandler<UpdateContractComm
                 rebateClaimedAmount: command.contractDto.rebateClaimedAmount,
                 rebateClaimedStatus: command.contractDto.rebateClaimedStatus,
             };
+        }
+    }
+
+    /**
+     * Publishes a contract updated event to the message queue
+     */
+    private async publishContractUpdatedEvent(contractId: string, newContractName: string): Promise<void> {
+        try {
+            const eventDto: ContractEventDto = {
+                contractId,
+                newContractName,
+                eventType: ContractEventEnum.CONTRACT_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('INVOICE_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published CONTRACT_UPDATED event for contractId: ${contractId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish CONTRACT_UPDATED event for contractId: ${contractId}`, error);
+            // Don't throw - event publishing failure shouldn't break the update
         }
     }
 

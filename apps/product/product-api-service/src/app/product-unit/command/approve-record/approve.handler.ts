@@ -78,6 +78,8 @@ export class ApproveProductUnitHandler implements ICommandHandler<ApproveProduct
                 return await this.approveProductUnit(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve product unit with status: ${existingRecord.status}`);
         }
@@ -126,6 +128,25 @@ export class ApproveProductUnitHandler implements ICommandHandler<ApproveProduct
 
         this.logger.log(`Product unit deletion approved: ${existingRecord.productUnitId}`);
         return new ResponseDto<ProductUnitDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a product unit (soft delete)
+     */
+    private async approveDeactivation(existingRecord: ProductUnitDto): Promise<ResponseDto<ProductUnitDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product unit deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.productUnitDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product unit deactivation approved: ${existingRecord.productUnitId}`);
+        return new ResponseDto<ProductUnitDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

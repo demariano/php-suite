@@ -487,8 +487,8 @@ export class AppService {
         stockData.productUnitName = productUnitRecord1.productUnitName;
         stockData.stockTypeId = stockTypeRecord1.stockTypeId;
         stockData.stockTypeName = stockTypeRecord1.stockTypeName;
-        stockData.quantityOnHand = 100;
-        stockData.availableQuantity = 100;
+        stockData.totalQuantity = 100;
+
         stockData.expirationDate = '2025-12-01';
         stockData.status = StatusEnum.ACTIVE;
         await this.stockDatabaseService.createRecord(stockData);
@@ -501,8 +501,8 @@ export class AppService {
         stockData2.productUnitName = productUnitRecord2.productUnitName;
         stockData2.stockTypeId = stockTypeRecord2.stockTypeId;
         stockData2.stockTypeName = stockTypeRecord2.stockTypeName;
-        stockData2.quantityOnHand = 200;
-        stockData2.availableQuantity = 200;
+        stockData2.totalQuantity = 100;
+
         stockData2.expirationDate = '2025-12-02';
         stockData2.status = StatusEnum.ACTIVE;
         await this.stockDatabaseService.createRecord(stockData2);
@@ -515,8 +515,8 @@ export class AppService {
         stockData3.productUnitName = productUnitRecord1.productUnitName;
         stockData3.stockTypeId = stockTypeRecord1.stockTypeId;
         stockData3.stockTypeName = stockTypeRecord1.stockTypeName;
-        stockData3.quantityOnHand = 600;
-        stockData3.availableQuantity = 600;
+        stockData3.totalQuantity = 100;
+
         stockData3.expirationDate = '2025-12-01';
         stockData3.status = StatusEnum.ACTIVE;
         await this.stockDatabaseService.createRecord(stockData3);
@@ -531,7 +531,7 @@ export class AppService {
         contractData1.startDate = '2025-01-01';
         contractData1.endDate = '2025-12-31';
         contractData1.contractAmount = 10000;
-        contractData1.amountPaid = 0;
+        contractData1.totalAmountPaid = 0;
 
         contractData1.deliveryStatus = DeliveryStatusEnum.PENDING;
         contractData1.paymentStatus = PaymentStatusEnum.PENDING;
@@ -568,7 +568,7 @@ export class AppService {
         contractData2.startDate = '2025-01-01';
         contractData2.endDate = '2025-12-31';
         contractData2.contractAmount = 10000;
-        contractData2.amountPaid = 0;
+        contractData2.totalAmountPaid = 0;
         contractData2.contractProductDeals = [
             {
                 productId: productRecord1.productId,

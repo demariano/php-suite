@@ -32,5 +32,7 @@ export const configuration = async () => {
         REPORT_S3_BUCKET: process.env['REPORT_S3_BUCKET'],
         CUSTOMER_EVENT_SQS: process.env['CUSTOMER_EVENT_SQS'],
         INVENTORY_EVENT_SQS: process.env['INVENTORY_EVENT_SQS'],
+        INVOICE_EVENT_SQS: process.env['INVOICE_EVENT_SQS'],
+        ACCOUNTING_EVENT_SQS: process.env['ACCOUNTING_EVENT_SQS'],
     };
 };

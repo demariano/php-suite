@@ -75,6 +75,8 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
                 return await this.approveAccount(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve account with status: ${existingRecord.status}`);
         }
@@ -96,12 +98,10 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
         if (forApprovalVersion) {
-            existingRecord.accountName =
-                (forApprovalVersion.accountName as string) ?? existingRecord.accountName;
+            existingRecord.accountName = (forApprovalVersion.accountName as string) ?? existingRecord.accountName;
             existingRecord.accountType =
                 (forApprovalVersion.accountType as AccountTypeEnum) ?? existingRecord.accountType;
-            existingRecord.subAccounts =
-                (forApprovalVersion.subAccounts as string[]) ?? existingRecord.subAccounts;
+            existingRecord.subAccounts = (forApprovalVersion.subAccounts as string[]) ?? existingRecord.subAccounts;
         }
         existingRecord.forApprovalVersion = {};
         existingRecord.changeReason = null;
@@ -121,6 +121,25 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
 
         this.logger.log(`Account deletion approved: ${existingRecord.accountingId}`);
         return new ResponseDto<AccountsDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of an account (soft delete)
+     */
+    private async approveDeactivation(existingRecord: AccountsDto): Promise<ResponseDto<AccountsDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Account deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.accountsDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Account deactivation approved: ${existingRecord.accountingId}`);
+        return new ResponseDto<AccountsDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

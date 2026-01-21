@@ -12,6 +12,7 @@ import {
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useEffect, useState } from 'react';
 import InvoiceDetailsTab from './InvoiceDetailsTab';
+import PaymentsTab from './PaymentsTab';
 import RecordDetailsTab from './RecordDetailsTab';
 
 interface InvoiceFormProps {
@@ -20,8 +21,8 @@ interface InvoiceFormProps {
     successMessage: string | null;
     isAdminUser: boolean;
     isLoading: boolean;
-    activeTab: 'details' | 'approval' | 'logs';
-    onTabChange: (tab: 'details' | 'approval' | 'logs') => void;
+    activeTab: 'details' | 'approval' | 'logs' | 'payments';
+    onTabChange: (tab: 'details' | 'approval' | 'logs' | 'payments') => void;
     onSave: (invoice: InvoiceDto) => void;
     onDelete: () => void;
     onApprove: () => void;
@@ -314,6 +315,29 @@ export default function InvoiceForm({
                                     />
                                 </svg>
                                 Activity Logs
+                            </span>
+                        </button>
+                    )}
+
+                    {!isCreateMode && (
+                        <button
+                            onClick={() => onTabChange('payments')}
+                            className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                                activeTab === 'payments'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                                    />
+                                </svg>
+                                Payments
                             </span>
                         </button>
                     )}
@@ -654,11 +678,37 @@ export default function InvoiceForm({
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="mt-8 flex justify-end">
+                        <div className="flex items-center justify-end border-t-2 border-gray-200 pt-6">
                             <button
                                 type="button"
                                 onClick={onCancel}
-                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Payments Tab */}
+                {activeTab === 'payments' && !isCreateMode && selectedInvoice && (
+                    <div className="space-y-6 animate-fadeIn">
+                        <PaymentsTab formData={formData} />
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center justify-end border-t-2 border-gray-200 pt-6">
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
                             >
                                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path

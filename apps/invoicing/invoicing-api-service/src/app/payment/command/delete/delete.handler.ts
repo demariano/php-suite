@@ -1,7 +1,19 @@
-import { ErrorResponseDto, PaymentDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ContractPaymentDto,
+    ContractPaymentEventEnum,
+    ErrorResponseDto,
+    InvoicePaymentDto,
+    InvoicePaymentEventEnum,
+    PaymentDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { DeletePaymentCommand } from './delete.command';
 
@@ -15,7 +27,10 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
 
     constructor(
         @Inject('PaymentDatabaseService')
-        private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass
+        private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: DeletePaymentCommand): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -78,6 +93,14 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
         // Set the ID
         command.paymentDto.paymentId = command.id;
 
+        // Copy paymentInvoiceDetails from existing record for event sending
+        command.paymentDto.paymentInvoiceDetails = existingRecord.paymentInvoiceDetails;
+        command.paymentDto.receiptNo = existingRecord.receiptNo;
+        command.paymentDto.paymentDate = existingRecord.paymentDate;
+        command.paymentDto.paymentAmount = existingRecord.paymentAmount;
+        command.paymentDto.contractPayment = existingRecord.contractPayment;
+        command.paymentDto.contractId = existingRecord.contractId;
+
         if (hasApprovalPermission) {
             // User can delete directly - set to FOR_DELETION for hard delete
             command.paymentDto.status = StatusEnum.FOR_DELETION;
@@ -89,10 +112,7 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
             );
 
             // Limit activity logs to last 10 entries
-            command.paymentDto.activityLogs = reduceArrayContents(
-                command.paymentDto.activityLogs,
-                ACTIVITY_LOGS_LIMIT
-            );
+            command.paymentDto.activityLogs = reduceArrayContents(command.paymentDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
             // User needs approval - set to FOR_DELETION for soft delete
             command.paymentDto.status = StatusEnum.FOR_DELETION;
@@ -104,10 +124,7 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
             );
 
             // Limit activity logs to last 10 entries
-            command.paymentDto.activityLogs = reduceArrayContents(
-                command.paymentDto.activityLogs,
-                ACTIVITY_LOGS_LIMIT
-            );
+            command.paymentDto.activityLogs = reduceArrayContents(command.paymentDto.activityLogs, ACTIVITY_LOGS_LIMIT);
         }
     }
 
@@ -116,6 +133,31 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
      */
     private async performDeletion(command: DeletePaymentCommand, hasApprovalPermission: boolean): Promise<PaymentDto> {
         if (hasApprovalPermission) {
+            // Send PAYMENT_DELETED events BEFORE hard delete
+            if (command.paymentDto.paymentInvoiceDetails && command.paymentDto.paymentInvoiceDetails.length > 0) {
+                for (const detail of command.paymentDto.paymentInvoiceDetails) {
+                    const invoicePaymentDto: InvoicePaymentDto = {
+                        invoiceId: detail.invoiceId,
+                        receiptNo: command.paymentDto.receiptNo,
+                        paymentDate: command.paymentDto.paymentDate,
+                        paymentAmount: detail.amountApplied,
+                        contractPayment: command.paymentDto.contractPayment,
+                        paymentId: command.paymentDto.paymentId,
+                    };
+
+                    await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_DELETED, invoicePaymentDto);
+                }
+
+                this.logger.log(
+                    `Sent PAYMENT_DELETED events for ${command.paymentDto.paymentInvoiceDetails.length} invoices in payment ${command.paymentDto.paymentId}`
+                );
+            }
+
+            // Send contract payment deletion event if this is a contract payment
+            if (command.paymentDto.contractPayment && command.paymentDto.contractId) {
+                await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, command.paymentDto);
+            }
+
             // Hard delete
             return await this.paymentDatabaseService.deleteRecord(command.paymentDto);
         } else {
@@ -154,5 +196,47 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Sends invoice payment event to SQS queue
+     */
+    private async sendInvoicePaymentEvent(
+        eventType: InvoicePaymentEventEnum,
+        paymentData: InvoicePaymentDto
+    ): Promise<void> {
+        const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+        const eventPayload = {
+            eventType,
+            paymentData,
+        };
+
+        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+    }
+
+    /**
+     * Sends contract payment event to SQS queue
+     */
+    private async sendContractPaymentEvent(eventType: ContractPaymentEventEnum, payment: PaymentDto): Promise<void> {
+        const contractPaymentDto: ContractPaymentDto = {
+            contractId: payment.contractId,
+            receiptNo: payment.receiptNo,
+            paymentDate: payment.paymentDate,
+            paymentAmount: payment.paymentAmount,
+            contractPayment: payment.contractPayment,
+            paymentId: payment.paymentId,
+        };
+
+        const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+        const eventPayload = {
+            eventType,
+            paymentData: contractPaymentDto,
+        };
+
+        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+
+        this.logger.log(`Sent ${eventType} event for contract ${payment.contractId}, payment ${payment.paymentId}`);
     }
 }

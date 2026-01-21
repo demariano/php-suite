@@ -88,7 +88,7 @@ export class DeleteProductPriceTypeHandler implements ICommandHandler<DeleteProd
      */
     private async performSoftDelete(command: DeleteProductPriceTypeCommand): Promise<ResponseDto<ProductPriceTypeDto>> {
         // Update status and add activity log
-        command.productPriceTypeDto.status = StatusEnum.FOR_DELETION;
+        command.productPriceTypeDto.status = StatusEnum.FOR_DEACTIVATION;
         if (!command.productPriceTypeDto.activityLogs) {
             command.productPriceTypeDto.activityLogs = [];
         }

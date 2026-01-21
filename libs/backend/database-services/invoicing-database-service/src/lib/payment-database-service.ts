@@ -118,7 +118,7 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         name: string
     ): Promise<PageDto<PaymentDto>> {
         limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer, true);
 
         const records = await this.paymentTable.find(
             {
@@ -254,7 +254,7 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         cursorPointer: string
     ): Promise<PageDto<PaymentDto>> {
         limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer, true);
 
         const records = await this.paymentTable.find(
             {
@@ -288,7 +288,7 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         cursorPointer: string
     ): Promise<PageDto<PaymentDto>> {
         limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer, true);
 
         const records = await this.paymentTable.find(
             {
@@ -397,5 +397,117 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             approverMessage: dto.approverMessage,
         };
         return paymentData;
+    }
+
+    /**
+     * Find all payments by customerId with pagination
+     * Used for syncing customer name changes across all payments
+     */
+    async findRecordsByCustomerIdPagination(
+        limit: number,
+        customerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<PaymentDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.paymentTable.find(
+            {
+                GSI3PK: `PAYMENT#${customerId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Find payments by contractId with pagination (for contract name sync)
+     * Uses GSI6: PAYMENT#${contractId}
+     */
+    async findRecordsByContractIdPagination(
+        limit: number,
+        contractId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<PaymentDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.paymentTable.find(
+            {
+                GSI6PK: `PAYMENT#${contractId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Batch update payments (used by sync handlers)
+     * Updates 25 records at a time (DynamoDB BatchWrite limit)
+     */
+    async batchUpdateRecords(payments: PaymentDto[]): Promise<void> {
+        const BATCH_SIZE = 25; // DynamoDB BatchWriteItem limit
+
+        for (let i = 0; i < payments.length; i += BATCH_SIZE) {
+            const batch = payments.slice(i, i + BATCH_SIZE);
+
+            try {
+                // Convert DTOs to DataTypes
+                const batchData = await Promise.all(batch.map((payment) => this.convertToDataType(payment)));
+
+                // Use Promise.all to update all records in parallel (25 at a time)
+                await Promise.all(batchData.map((payment) => this.paymentTable.update(payment)));
+
+                this.logger.log(`Batch updated ${batch.length} payments (indices ${i} to ${i + batch.length - 1})`);
+            } catch (error) {
+                this.logger.error(`Failed to batch update payments at index ${i}:`, error);
+
+                // Fallback: Update one by one
+                for (const payment of batch) {
+                    try {
+                        await this.updateRecord(payment);
+                    } catch (itemError) {
+                        this.logger.error(`Failed to update payment ${payment.paymentId}:`, itemError);
+                        // Continue with other records
+                    }
+                }
+            }
+        }
     }
 }

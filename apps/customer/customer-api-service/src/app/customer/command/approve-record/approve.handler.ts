@@ -1,7 +1,9 @@
 import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
-import { CustomerDto, ResponseDto, StatusEnum } from '@dto';
+import { CustomerDto, CustomerEventDto, CustomerEventEnum, ResponseDto, StatusEnum } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveCustomerCommand } from './approve.command';
 
@@ -15,7 +17,10 @@ export class ApproveCustomerHandler implements ICommandHandler<ApproveCustomerCo
 
     constructor(
         @Inject('CustomerDatabaseService')
-        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveCustomerCommand): Promise<ResponseDto<CustomerDto>> {
@@ -87,6 +92,11 @@ export class ApproveCustomerHandler implements ICommandHandler<ApproveCustomerCo
             updatedCustomer.changeReason = null;
         } else if (existingCustomer.status === StatusEnum.FOR_APPROVAL) {
             updatedCustomer.status = StatusEnum.ACTIVE;
+            // Check if customerName changed before applying forApprovalVersion
+            const oldCustomerName = existingCustomer.customerName;
+            const newCustomerName = existingCustomer.forApprovalVersion?.customerName;
+            const customerNameChanged = newCustomerName && oldCustomerName !== newCustomerName;
+
             // Apply forApprovalVersion if it exists
             if (existingCustomer.forApprovalVersion) {
                 Object.assign(updatedCustomer, existingCustomer.forApprovalVersion);
@@ -94,8 +104,28 @@ export class ApproveCustomerHandler implements ICommandHandler<ApproveCustomerCo
             }
             // Reset changeReason after applying changes
             updatedCustomer.changeReason = null;
+
+            // Update record in database
+            const result = await this.customerDatabaseService.updateRecord(updatedCustomer);
+
+            // Publish customer name change event if name changed
+            if (customerNameChanged && newCustomerName) {
+                await this.publishCustomerNameChangeEvent(existingCustomer.customerId, newCustomerName as string);
+            }
+
+            return result;
         } else if (existingCustomer.status === StatusEnum.FOR_DELETION) {
             return await this.customerDatabaseService.deleteRecord(updatedCustomer);
+        } else if (existingCustomer.status === StatusEnum.FOR_DEACTIVATION) {
+            updatedCustomer.status = StatusEnum.INACTIVE;
+            updatedCustomer.changeReason = null;
+            updatedCustomer.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer deactivation approved, status set to ${StatusEnum.INACTIVE}`
+            );
+            updatedCustomer.activityLogs = reduceArrayContents(updatedCustomer.activityLogs, ACTIVITY_LOGS_LIMIT);
+            return await this.customerDatabaseService.updateRecord(updatedCustomer);
         }
 
         // Update record in database
@@ -132,5 +162,29 @@ export class ApproveCustomerHandler implements ICommandHandler<ApproveCustomerCo
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes customer name change event to SQS
+     */
+    private async publishCustomerNameChangeEvent(customerId: string, newCustomerName: string): Promise<void> {
+        try {
+            this.logger.log(`Publishing customer name change event for customerId: ${customerId}`);
+
+            const event: CustomerEventDto = {
+                eventType: CustomerEventEnum.CUSTOMER_UPDATED,
+                customerId: customerId,
+                newCustomerName: newCustomerName,
+                timestamp: new Date().toISOString(),
+            };
+
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+
+            this.logger.log(`Customer name change event published for customerId: ${customerId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish customer name change event for customerId: ${customerId}`, error);
+            // Don't throw - this is a non-critical operation
+        }
     }
 }

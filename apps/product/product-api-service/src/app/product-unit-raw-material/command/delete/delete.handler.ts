@@ -92,7 +92,7 @@ export class DeleteProductUnitRawMaterialHandler implements ICommandHandler<Dele
         changeReason?: string
     ): Promise<ResponseDto<ProductUnitRawMaterialDto>> {
         // Update status and add activity log
-        existingRecord.status = StatusEnum.FOR_DELETION;
+        existingRecord.status = StatusEnum.FOR_DEACTIVATION;
         existingRecord.activityLogs = existingRecord.activityLogs ?? [];
         existingRecord.changeReason = changeReason ?? existingRecord.changeReason;
         existingRecord.activityLogs.push(

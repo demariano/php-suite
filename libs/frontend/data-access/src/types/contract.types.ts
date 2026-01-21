@@ -21,8 +21,9 @@ export interface ContractDto {
     endDate?: string;
     contractType?: ContractTypeEnum;
     contractAmount?: number;
-    amountPaid?: number;
+    totalAmountPaid?: number;
     contractProductDeals?: ContractProductDealDto[];
+    payments?: ContractPaymentDto[];
     deliveryStatus?: DeliveryStatusEnum;
     paymentStatus?: PaymentStatusEnum;
     deliveredAmount?: number;
@@ -51,8 +52,9 @@ export interface CreateContractDto {
     endDate?: string;
     contractType?: ContractTypeEnum;
     contractAmount?: number;
-    amountPaid?: number;
+    totalAmountPaid?: number;
     contractProductDeals?: ContractProductDealDto[];
+    payments?: ContractPaymentDto[];
     deliveryStatus?: DeliveryStatusEnum;
     paymentStatus?: PaymentStatusEnum;
     deliveredAmount?: number;
@@ -66,4 +68,13 @@ export interface CreateContractDto {
     rebateAmount?: number;
     rebateClaimedAmount?: number;
     rebateClaimedStatus?: RebateClaimedStatusEnum;
+}
+
+export interface ContractPaymentDto {
+    contractId?: string;
+    receiptNo: string;
+    paymentDate: string;
+    paymentAmount: number;
+    contractPayment: string;
+    paymentId: string;
 }

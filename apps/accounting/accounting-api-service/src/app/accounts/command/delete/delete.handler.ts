@@ -72,7 +72,7 @@ export class DeleteAccountsHandler implements ICommandHandler<DeleteAccountsComm
         hasApprovalPermission: boolean
     ): AccountsDto {
         const record: AccountsDto = { ...existingRecord };
-        record.status = StatusEnum.FOR_DELETION;
+        record.status = StatusEnum.FOR_DEACTIVATION;
         record.activityLogs = record.activityLogs || [];
 
         const activityLog = hasApprovalPermission

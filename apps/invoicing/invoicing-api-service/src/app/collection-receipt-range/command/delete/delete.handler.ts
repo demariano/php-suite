@@ -1,4 +1,5 @@
-import { CollectionReceiptRangeDto, ErrorResponseDto, ResponseDto, UserRole } from '@dto';
+import { CollectionReceiptRangeDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { reduceArrayContents } from '@dynamo-db-lib';
 import { CollectionReceiptRangeDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -6,6 +7,7 @@ import { DeleteCollectionReceiptRangeCommand } from './delete.command';
 
 // Constants
 const HTTP_STATUS_OK = 200;
+const ACTIVITY_LOGS_LIMIT = 10;
 
 @CommandHandler(DeleteCollectionReceiptRangeCommand)
 export class DeleteCollectionReceiptRangeHandler implements ICommandHandler<DeleteCollectionReceiptRangeCommand> {
@@ -22,36 +24,22 @@ export class DeleteCollectionReceiptRangeHandler implements ICommandHandler<Dele
         this.logger.log(`Processing delete request for collection receipt range: ${command.id}`);
 
         try {
-            // Check admin authorization
-            this.validateAdminAccess(command.user.roles);
-
             // Validate that range exists
             const existingRecord = await this.validateRangeExists(command.id);
 
-            // Set the ID
-            command.rangeDto.collectionReceiptRangeId = command.id;
+            // Check user authorization
+            const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
-            // Hard delete (admin-only, no approval needed)
-            const deletedRecord = await this.collectionReceiptRangeDatabaseService.deleteRecord(existingRecord);
+            // Update status
+            this.updateRangeStatus(command, existingRecord, hasApprovalPermission);
 
-            this.logger.log(`Collection receipt range deleted successfully: ${deletedRecord.collectionReceiptRangeId}`);
-            return new ResponseDto<CollectionReceiptRangeDto>(deletedRecord, HTTP_STATUS_OK);
+            // Perform deletion
+            const result = await this.performDeletion(command, hasApprovalPermission);
+
+            this.logger.log(`Collection receipt range deletion processed successfully: ${command.id}`);
+            return new ResponseDto<CollectionReceiptRangeDto>(result, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, command.id);
-        }
-    }
-
-    /**
-     * Validates that the user is an admin or super admin
-     */
-    private validateAdminAccess(userRoles?: string[]): void {
-        if (!userRoles || userRoles.length === 0) {
-            throw new UnauthorizedException('Admin access required');
-        }
-
-        const isAdmin = userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
-        if (!isAdmin) {
-            throw new UnauthorizedException('Admin access required');
         }
     }
 
@@ -67,6 +55,64 @@ export class DeleteCollectionReceiptRangeHandler implements ICommandHandler<Dele
         }
 
         return existingRecord;
+    }
+
+    /**
+     * Checks if user has permission to approve deletions
+     */
+    private hasApprovalPermission(userRoles?: string[]): boolean {
+        if (!userRoles || userRoles.length === 0) {
+            return false;
+        }
+
+        return userRoles.includes(UserRole.SUPER_ADMIN) || userRoles.includes(UserRole.ADMIN);
+    }
+
+    /**
+     * Updates the range status based on user permissions
+     */
+    private updateRangeStatus(
+        command: DeleteCollectionReceiptRangeCommand,
+        existingRecord: CollectionReceiptRangeDto,
+        hasApprovalPermission: boolean
+    ): void {
+        // Set the ID
+        command.rangeDto.collectionReceiptRangeId = command.id;
+
+        if (hasApprovalPermission) {
+            // User can delete directly - set to FOR_DEACTIVATION
+            command.rangeDto.status = StatusEnum.FOR_DEACTIVATION;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Collection receipt range deleted by ${command.user.username}`;
+            command.rangeDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        } else {
+            // User needs approval - set to FOR_DEACTIVATION
+            command.rangeDto.status = StatusEnum.FOR_DEACTIVATION;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Collection receipt range marked for deletion by ${command.user.username}`;
+            command.rangeDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        }
+
+        // Limit activity logs
+        command.rangeDto.activityLogs = reduceArrayContents(command.rangeDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+    }
+
+    /**
+     * Performs the actual deletion based on user permissions
+     */
+    private async performDeletion(
+        command: DeleteCollectionReceiptRangeCommand,
+        hasApprovalPermission: boolean
+    ): Promise<CollectionReceiptRangeDto> {
+        if (hasApprovalPermission) {
+            // Update with status for approval workflow
+            return await this.collectionReceiptRangeDatabaseService.updateRecord(command.rangeDto);
+        } else {
+            // Mark for deletion approval
+            return await this.collectionReceiptRangeDatabaseService.updateRecord(command.rangeDto);
+        }
     }
 
     /**
@@ -105,4 +151,3 @@ export class DeleteCollectionReceiptRangeHandler implements ICommandHandler<Dele
         return 'An unexpected error occurred';
     }
 }
-

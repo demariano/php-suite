@@ -1,4 +1,13 @@
-import { ContractDto, ContractTypeEnum, CreateContractDto, DeliveryStatusEnum, PageDto, PaymentStatusEnum, StatusEnum } from '@dto';
+import {
+    ContractDto,
+    ContractPaymentDto,
+    ContractTypeEnum,
+    CreateContractDto,
+    DeliveryStatusEnum,
+    PageDto,
+    PaymentStatusEnum,
+    StatusEnum,
+} from '@dto';
 import {
     ContractDataType,
     createDynamoDbOptionWithPKSKIndex,
@@ -42,8 +51,9 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             endDate: contractDto.endDate,
             contractType: contractDto.contractType,
             contractAmount: contractDto.contractAmount,
-            amountPaid: contractDto.amountPaid,
+            totalAmountPaid: contractDto.totalAmountPaid,
             contractProductDeals: contractDto.contractProductDeals,
+            payments: contractDto.payments,
             deliveryStatus: contractDto.deliveryStatus,
             paymentStatus: contractDto.paymentStatus,
             deliveredAmount: contractDto.deliveredAmount,
@@ -400,8 +410,9 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         dto.endDate = record.endDate ? record.endDate : '';
         dto.contractType = record.contractType ? (record.contractType as ContractTypeEnum) : undefined;
         dto.contractAmount = record.contractAmount ? record.contractAmount : 0;
-        dto.amountPaid = record.amountPaid ? record.amountPaid : 0;
+        dto.totalAmountPaid = record.totalAmountPaid ? record.totalAmountPaid : 0;
         dto.contractProductDeals = record.contractProductDeals ? record.contractProductDeals : [];
+        dto.payments = record.payments ? record.payments : [];
         dto.deliveryStatus = record.deliveryStatus as DeliveryStatusEnum;
         dto.paymentStatus = record.paymentStatus as PaymentStatusEnum;
         dto.deliveredAmount = record.deliveredAmount ? record.deliveredAmount : 0;
@@ -416,6 +427,7 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         dto.rebateAmount = record.rebateAmount ? record.rebateAmount : undefined;
         dto.rebateClaimedAmount = record.rebateClaimedAmount ? record.rebateClaimedAmount : undefined;
         dto.rebateClaimedStatus = record.rebateClaimedStatus ? (record.rebateClaimedStatus as any) : undefined;
+
         return dto;
     }
 
@@ -444,8 +456,9 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             endDate: dto.endDate,
             contractType: dto.contractType,
             contractAmount: dto.contractAmount,
-            amountPaid: dto.amountPaid,
+            totalAmountPaid: dto.totalAmountPaid,
             contractProductDeals: dto.contractProductDeals,
+            payments: dto.payments,
             deliveryStatus: dto.deliveryStatus,
             paymentStatus: dto.paymentStatus,
             deliveredAmount: dto.deliveredAmount,
@@ -474,5 +487,201 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             rebateClaimedStatus: dto.rebateClaimedStatus,
         };
         return contractData;
+    }
+
+    /**
+     * Adds a payment to a contract's payments array
+     */
+    async addPaymentToContract(contractId: string, payment: ContractPaymentDto): Promise<ContractDto> {
+        const contract = await this.findRecordById(contractId);
+        if (!contract) {
+            throw new Error(`Contract not found: ${contractId}`);
+        }
+
+        // Initialize payments array if it doesn't exist
+        if (!contract.payments) {
+            contract.payments = [];
+        }
+
+        // Add the new payment
+        contract.payments.push(payment);
+
+        // Update the record
+        return await this.updateRecord(contract);
+    }
+
+    /**
+     * Removes a payment from a contract's payments array
+     */
+    async removePaymentFromContract(contractId: string, paymentId: string): Promise<ContractDto> {
+        const contract = await this.findRecordById(contractId);
+        if (!contract) {
+            throw new Error(`Contract not found: ${contractId}`);
+        }
+
+        // Remove the payment from the array
+        if (contract.payments && contract.payments.length > 0) {
+            contract.payments = contract.payments.filter((p) => p.paymentId !== paymentId);
+        }
+
+        // Update the record
+        return await this.updateRecord(contract);
+    }
+
+    /**
+     * Updates a payment in a contract's payments array
+     */
+    async updatePaymentInContract(
+        contractId: string,
+        paymentId: string,
+        updatedPayment: ContractPaymentDto
+    ): Promise<ContractDto> {
+        const contract = await this.findRecordById(contractId);
+        if (!contract) {
+            throw new Error(`Contract not found: ${contractId}`);
+        }
+
+        // Find and update the payment in the array
+        if (contract.payments && contract.payments.length > 0) {
+            const paymentIndex = contract.payments.findIndex((p) => p.paymentId === paymentId);
+            if (paymentIndex !== -1) {
+                contract.payments[paymentIndex] = updatedPayment;
+            } else {
+                throw new Error(`Payment not found in contract: ${paymentId}`);
+            }
+        } else {
+            throw new Error(`No payments found in contract: ${contractId}`);
+        }
+
+        // Update the record
+        return await this.updateRecord(contract);
+    }
+
+    /**
+     * Updates the invoiced amount field on a contract
+     */
+    async updateInvoicedAmount(contractId: string, invoicedAmount: number): Promise<ContractDto> {
+        const contract = await this.findRecordById(contractId);
+        if (!contract) {
+            throw new Error(`Contract not found: ${contractId}`);
+        }
+
+        // Update the invoiced amount
+        contract.invoicedAmount = invoicedAmount;
+
+        // Update the record
+        return await this.updateRecord(contract);
+    }
+
+    /**
+     * Find all contracts by customerId with pagination
+     * Used for syncing customer name changes across all contracts
+     */
+    async findRecordsByCustomerIdPagination(
+        limit: number,
+        customerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ContractDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.contractTable.find(
+            {
+                GSI3PK: `CONTRACT#${customerId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Find contracts by areaId with pagination
+     * Used for syncing area name changes across all contracts
+     */
+    async findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ContractDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.contractTable.find(
+            {
+                GSI6PK: `CONTRACT#${areaId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Batch update contracts (used by sync handlers)
+     * Updates 25 records at a time (DynamoDB BatchWrite limit)
+     */
+    async batchUpdateRecords(contracts: ContractDto[]): Promise<void> {
+        const BATCH_SIZE = 25; // DynamoDB BatchWriteItem limit
+
+        for (let i = 0; i < contracts.length; i += BATCH_SIZE) {
+            const batch = contracts.slice(i, i + BATCH_SIZE);
+
+            try {
+                // Convert DTOs to DataTypes
+                const batchData = await Promise.all(batch.map((contract) => this.convertToDataType(contract)));
+
+                // Use Promise.all to update all records in parallel (25 at a time)
+                await Promise.all(batchData.map((contract) => this.contractTable.update(contract)));
+
+                this.logger.log(`Batch updated ${batch.length} contracts (indices ${i} to ${i + batch.length - 1})`);
+            } catch (error) {
+                this.logger.error(`Failed to batch update contracts at index ${i}:`, error);
+
+                // Fallback: Update one by one
+                for (const contract of batch) {
+                    try {
+                        await this.updateRecord(contract);
+                    } catch (itemError) {
+                        this.logger.error(`Failed to update contract ${contract.contractId}:`, itemError);
+                        // Continue with other records
+                    }
+                }
+            }
+        }
     }
 }

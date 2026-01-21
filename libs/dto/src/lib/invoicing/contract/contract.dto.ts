@@ -5,6 +5,7 @@ import { PaymentStatusEnum } from '../../enums/payment.status.enum';
 import { RebateClaimedStatusEnum } from '../../enums/rebate.claimed.status.enum';
 import { RebateTypeEnum } from '../../enums/rebate.type.enum';
 import { StatusEnum } from '../../enums/status.enum';
+import { ContractPaymentDto } from './contract.payment.dto';
 import { ContractProductDealDto } from './contract.product.deal.dto';
 
 export class ContractDto {
@@ -42,7 +43,7 @@ export class ContractDto {
     contractAmount?: number;
 
     @ApiProperty()
-    amountPaid?: number;
+    totalAmountPaid?: number;
 
     @ApiProperty({
         enum: DeliveryStatusEnum,
@@ -74,6 +75,9 @@ export class ContractDto {
 
     @ApiProperty()
     contractProductDeals?: ContractProductDealDto[];
+
+    @ApiProperty({ type: [ContractPaymentDto], isArray: true })
+    payments?: ContractPaymentDto[];
 
     @ApiProperty()
     approverMessage?: string;

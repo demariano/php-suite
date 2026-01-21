@@ -51,6 +51,7 @@ export * from './lib/product/product.deal/product.deal.dto';
 export * from './lib/product/product.deal/product.deal.qty.dto';
 export * from './lib/product/product.price.type/create.product.price.type.dto';
 export * from './lib/product/product.price.type/product.price.type.dto';
+export * from './lib/product/product.price.type/product.price.type.event.dto';
 export * from './lib/product/product.unit.raw.material/create.product.unit.raw.material.dto';
 export * from './lib/product/product.unit.raw.material/product.unit.raw.material.dto';
 export * from './lib/product/product.unit/create.product.unit.dto';
@@ -63,6 +64,7 @@ export * from './lib/product/product/product.unit.price.dto';
 
 //CustomerSchema
 export * from './lib/customer/area/area.dto';
+export * from './lib/customer/area/area.event.dto';
 export * from './lib/customer/area/create.area.dto';
 export * from './lib/customer/customer.classification/create.customer.classification.dto';
 export * from './lib/customer/customer.classification/customer.classification.dto';
@@ -70,6 +72,7 @@ export * from './lib/customer/customer.type/create.customer.type.dto';
 export * from './lib/customer/customer.type/customer.type.dto';
 export * from './lib/customer/customer/create.customer.dto';
 export * from './lib/customer/customer/customer.dto';
+export * from './lib/customer/customer/customer.event.dto';
 export * from './lib/customer/customer/customer.filter.dto';
 export * from './lib/customer/customer/customer.product.deal.dto';
 export * from './lib/customer/terms/create.terms.dto';
@@ -77,6 +80,7 @@ export * from './lib/customer/terms/terms.dto';
 
 //StockSchema
 export * from './lib/enums/inventory.event.enum';
+export * from './lib/enums/invoice.payment.event.enum';
 export * from './lib/inventory/raw.material.location/create.raw.material.location.dto';
 export * from './lib/inventory/raw.material.location/raw.material.location.dto';
 export * from './lib/inventory/raw.material.stock/create.raw.material.stock.dto';
@@ -117,17 +121,34 @@ export * from './lib/enums/print.status.enum';
 export * from './lib/invoicing/invoice/create.invoice.dto';
 export * from './lib/invoicing/invoice/invoice.details.dto';
 export * from './lib/invoicing/invoice/invoice.dto';
+export * from './lib/invoicing/invoice/invoice.payment.dto';
+export * from './lib/invoicing/invoice/validate-invoice-request.dto';
+export * from './lib/invoicing/invoice/validate-invoice-response.dto';
+export * from './lib/invoicing/sales-type/sales-type.event.dto';
 export * from './lib/invoicing/sales.type/create.sales.type.dto';
 export * from './lib/invoicing/sales.type/sales.type.dto';
+export * from './lib/invoicing/terms/terms.event.dto';
+export * from './lib/invoicing/territory-manager/territory-manager.event.dto';
 export * from './lib/invoicing/territory.manager/create.territory.manager.dto';
 export * from './lib/invoicing/territory.manager/territory.manager.dto';
 
 //COntract
+export * from './lib/enums/area.event.enum';
+export * from './lib/enums/contract.event.enum';
+export * from './lib/enums/contract.invoice.event.enum';
+export * from './lib/enums/contract.payment.event.enum';
 export * from './lib/enums/contract.type.enum';
+export * from './lib/enums/customer.event.enum';
 export * from './lib/enums/delivery.status.enum';
+export * from './lib/enums/product-price-type.event.enum';
 export * from './lib/enums/rebate.claimed.status.enum';
 export * from './lib/enums/rebate.type.enum';
+export * from './lib/enums/sales-type.event.enum';
+export * from './lib/enums/terms.event.enum';
+export * from './lib/enums/territory-manager.event.enum';
 export * from './lib/invoicing/contract/contract.dto';
+export * from './lib/invoicing/contract/contract.event.dto';
+export * from './lib/invoicing/contract/contract.payment.dto';
 export * from './lib/invoicing/contract/contract.product.deal.dto';
 export * from './lib/invoicing/contract/create.contract.dto';
 

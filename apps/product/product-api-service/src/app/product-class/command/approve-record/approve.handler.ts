@@ -78,6 +78,8 @@ export class ApproveProductClassHandler implements ICommandHandler<ApproveProduc
                 return await this.approveProductClass(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve product class with status: ${existingRecord.status}`);
         }
@@ -126,6 +128,25 @@ export class ApproveProductClassHandler implements ICommandHandler<ApproveProduc
 
         this.logger.log(`Product class deletion approved: ${existingRecord.productClassId}`);
         return new ResponseDto<ProductClassDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a product class (soft delete)
+     */
+    private async approveDeactivation(existingRecord: ProductClassDto): Promise<ResponseDto<ProductClassDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product class deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.productClassDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product class deactivation approved: ${existingRecord.productClassId}`);
+        return new ResponseDto<ProductClassDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

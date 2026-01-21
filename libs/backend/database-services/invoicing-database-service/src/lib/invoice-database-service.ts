@@ -1,4 +1,12 @@
-import { CreateInvoiceDto, InvoiceDto, PageDto, PaymentStatusEnum, PrintStatusEnum, StatusEnum } from '@dto';
+import {
+    CreateInvoiceDto,
+    InvoiceDto,
+    InvoicePaymentDto,
+    PageDto,
+    PaymentStatusEnum,
+    PrintStatusEnum,
+    StatusEnum,
+} from '@dto';
 import {
     createDynamoDbOptionWithPKSKIndex,
     DynamoDbLibService,
@@ -87,6 +95,19 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         }
 
         return await this.convertToDto(record);
+    }
+
+    async findRecordsByContractId(contractId: string): Promise<InvoiceDto[] | null> {
+        const contractInvoices = await this.invoiceTable.find(
+            {
+                GSI5PK: `INVOICE#${contractId}`,
+            },
+            {
+                index: 'GSI5',
+            }
+        );
+
+        return await this.convertToDtoList(contractInvoices);
     }
 
     async deleteAllRecords(): Promise<void> {
@@ -446,6 +467,8 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         dto.changeReason = (record as InvoiceDataType & { changeReason?: string }).changeReason || undefined;
         dto.contractSales = record.contractSales ? record.contractSales : false;
         dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
+        dto.payments = record.payments ? record.payments : [];
+        dto.totalAmountPaid = record.totalAmountPaid ? record.totalAmountPaid : 0;
         return dto;
     }
 
@@ -518,7 +541,384 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
             approverMessage: dto.approverMessage,
+            payments: dto.payments,
+            totalAmountPaid: dto.totalAmountPaid,
         };
         return invoiceData;
+    }
+
+    /**
+     * Adds a payment to an invoice's payments array
+     */
+    async addPaymentToInvoice(invoiceId: string, payment: InvoicePaymentDto): Promise<InvoiceDto> {
+        const invoice = await this.findRecordById(invoiceId);
+        if (!invoice) {
+            throw new Error(`Invoice not found: ${invoiceId}`);
+        }
+
+        // Initialize payments array if it doesn't exist
+        if (!invoice.payments) {
+            invoice.payments = [];
+        }
+
+        // Add the new payment
+        invoice.payments.push(payment);
+
+        // Update the record
+        return await this.updateRecord(invoice);
+    }
+
+    /**
+     * Removes a payment from an invoice's payments array
+     */
+    async removePaymentFromInvoice(invoiceId: string, paymentId: string): Promise<InvoiceDto> {
+        const invoice = await this.findRecordById(invoiceId);
+        if (!invoice) {
+            throw new Error(`Invoice not found: ${invoiceId}`);
+        }
+
+        // Remove the payment from the array
+        if (invoice.payments && invoice.payments.length > 0) {
+            invoice.payments = invoice.payments.filter((p) => p.paymentId !== paymentId);
+        }
+
+        // Update the record
+        return await this.updateRecord(invoice);
+    }
+
+    /**
+     * Updates a payment in an invoice's payments array
+     */
+    async updatePaymentInInvoice(
+        invoiceId: string,
+        paymentId: string,
+        updatedPayment: InvoicePaymentDto
+    ): Promise<InvoiceDto> {
+        const invoice = await this.findRecordById(invoiceId);
+        if (!invoice) {
+            throw new Error(`Invoice not found: ${invoiceId}`);
+        }
+
+        // Find and update the payment in the array
+        if (invoice.payments && invoice.payments.length > 0) {
+            const paymentIndex = invoice.payments.findIndex((p) => p.paymentId === paymentId);
+            if (paymentIndex !== -1) {
+                invoice.payments[paymentIndex] = updatedPayment;
+            } else {
+                throw new Error(`Payment not found in invoice: ${paymentId}`);
+            }
+        } else {
+            throw new Error(`No payments found in invoice: ${invoiceId}`);
+        }
+
+        // Update the record
+        return await this.updateRecord(invoice);
+    }
+
+    /**
+     * Find all invoices by customerId with pagination
+     * Used for syncing customer name changes across all invoices
+     */
+    async findRecordsByCustomerIdPagination(
+        limit: number,
+        customerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.invoiceTable.find(
+            {
+                GSI3PK: `INVOICE#${customerId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Find invoices by areaId with pagination
+     * Used for syncing area name changes across all invoices
+     */
+    async findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI8', direction, cursorPointer);
+
+        const records = await this.invoiceTable.find(
+            {
+                GSI8PK: `INVOICE#${areaId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI8PK',
+            'GSI8SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Find invoices by territory manager ID with pagination (for territory manager sync)
+     * Uses GSI9: INVOICE#${territoryManagerId}
+     */
+    async findRecordsByTerritoryManagerIdPagination(
+        limit: number,
+        territoryManagerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI9', direction, cursorPointer);
+
+        const records = await this.invoiceTable.find(
+            {
+                GSI9PK: `INVOICE#${territoryManagerId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI9PK',
+            'GSI9SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Find invoices by sales type ID with pagination (for sales type sync)
+     * Uses GSI4: INVOICE#${salesTypeId}
+     */
+    async findRecordsBySalesTypeIdPagination(
+        limit: number,
+        salesTypeId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI4', direction, cursorPointer);
+
+        const records = await this.invoiceTable.find(
+            {
+                GSI4PK: `INVOICE#${salesTypeId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI4PK',
+            'GSI4SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Find invoices by contractId with pagination (for contract name sync)
+     * Uses GSI5: INVOICE#${contractId}
+     */
+    async findRecordsByContractIdPagination(
+        limit: number,
+        contractId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', direction, cursorPointer);
+
+        const records = await this.invoiceTable.find(
+            {
+                GSI5PK: `INVOICE#${contractId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI5PK',
+            'GSI5SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Find invoices by termsId with pagination (for terms name sync)
+     * Uses GSI6: INVOICE#${termsId}
+     */
+    async findRecordsByTermsIdPagination(
+        limit: number,
+        termsId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.invoiceTable.find(
+            {
+                GSI6PK: `INVOICE#${termsId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Finds invoice records by productPriceTypeId with pagination
+     * Uses GSI7: INVOICE#${productPriceTypeId}
+     */
+    async findRecordsByProductPriceTypeIdPagination(
+        limit: number,
+        productPriceTypeId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI7', direction, cursorPointer);
+
+        const records = await this.invoiceTable.find(
+            {
+                GSI7PK: `INVOICE#${productPriceTypeId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI7PK',
+            'GSI7SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    /**
+     * Batch update invoices (used by sync handlers)
+     * Updates 25 records at a time (DynamoDB BatchWrite limit)
+     */
+    async batchUpdateRecords(invoices: InvoiceDto[]): Promise<void> {
+        const BATCH_SIZE = 25; // DynamoDB BatchWriteItem limit
+
+        for (let i = 0; i < invoices.length; i += BATCH_SIZE) {
+            const batch = invoices.slice(i, i + BATCH_SIZE);
+
+            try {
+                // Convert DTOs to DataTypes
+                const batchData = await Promise.all(batch.map((invoice) => this.convertToDataType(invoice)));
+
+                // Use Promise.all to update all records in parallel (25 at a time)
+                await Promise.all(batchData.map((invoice) => this.invoiceTable.update(invoice)));
+
+                this.logger.log(`Batch updated ${batch.length} invoices (indices ${i} to ${i + batch.length - 1})`);
+            } catch (error) {
+                this.logger.error(`Failed to batch update invoices at index ${i}:`, error);
+
+                // Fallback: Update one by one
+                for (const invoice of batch) {
+                    try {
+                        await this.updateRecord(invoice);
+                    } catch (itemError) {
+                        this.logger.error(`Failed to update invoice ${invoice.invoiceId}:`, itemError);
+                        // Continue with other records
+                    }
+                }
+            }
+        }
     }
 }

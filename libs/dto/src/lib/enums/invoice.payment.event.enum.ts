@@ -1,0 +1,5 @@
+export enum InvoicePaymentEventEnum {
+    PAYMENT_ADDED = 'PAYMENT_ADDED',
+    PAYMENT_DELETED = 'PAYMENT_DELETED',
+    PAYMENT_UPDATED = 'PAYMENT_UPDATED',
+}

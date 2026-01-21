@@ -1,5 +1,6 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
 import {
+    ContractInvoiceEventEnum,
     ErrorResponseDto,
     InventoryEventDto,
     InventoryEventEnum,
@@ -9,7 +10,7 @@ import {
     UserRole,
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
+import { ContractDatabaseServiceAbstract, InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -28,6 +29,8 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
     constructor(
         @Inject('InvoiceDatabaseService')
         private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        @Inject('ContractDatabaseService')
+        private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
         @Inject('ConfigurationDatabaseService')
         private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract,
         @Inject('MessageQueueAwsLibService')
@@ -104,12 +107,30 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
                 this.updateInvoiceStatus(command, invoiceAmountNeededForApprovalValue);
             }
 
+            // Validate contract amount limit if invoice is for a contract
+            // (DRAFT invoices are handled above and return early, so this is always non-DRAFT)
+            if (command.invoiceDto.contractId) {
+                await this.validateContractAmountLimit(
+                    command.invoiceDto.contractId,
+                    command.invoiceDto.finalAmount,
+                    null // No existing invoice to subtract
+                );
+            }
+
             // Create record in database
             const createdRecord = await this.invoiceDatabaseService.createRecord(command.invoiceDto);
 
             // Send inventory event to deduct stock if invoice is ACTIVE
             if (createdRecord.status === StatusEnum.ACTIVE) {
                 await this.sendInventoryApprovedEvent(createdRecord);
+
+                // If invoice has a contractId, trigger recalculation of contract invoiced amount
+                if (createdRecord.contractId) {
+                    await this.sendContractInvoiceEvent(
+                        ContractInvoiceEventEnum.RECALCULATE_INVOICED_AMOUNT,
+                        createdRecord.contractId
+                    );
+                }
             }
 
             this.logger.log(
@@ -245,5 +266,68 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
         const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
         await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
         this.logger.log(`INVOICE_APPROVED event sent for invoice: ${invoice.invoiceId}`);
+    }
+
+    /**
+     * Sends contract invoice event to recalculate invoiced amount
+     */
+    private async sendContractInvoiceEvent(event: ContractInvoiceEventEnum, contractId: string): Promise<void> {
+        try {
+            this.logger.log(`Sending contract invoice event ${event} for contract ${contractId}`);
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(
+                invoiceEventSQSUrl,
+                JSON.stringify({
+                    event,
+                    data: contractId,
+                })
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send contract invoice event ${event} for contract ${contractId}:`, error);
+        }
+    }
+
+    /**
+     * Validates that adding this invoice won't exceed the contract amount limit
+     */
+    private async validateContractAmountLimit(
+        contractId: string,
+        newInvoiceAmount: number,
+        existingInvoiceAmount: number | null
+    ): Promise<void> {
+        // Fetch the contract
+        const contract = await this.contractDatabaseService.findRecordById(contractId);
+
+        if (!contract) {
+            throw new BadRequestException(`Contract not found: ${contractId}`);
+        }
+
+        // Calculate current invoiced amount (excluding this invoice if it's an update)
+        let currentInvoicedAmount = contract.invoicedAmount || 0;
+
+        // If this is an update, subtract the old invoice amount first
+        if (existingInvoiceAmount !== null) {
+            currentInvoicedAmount -= existingInvoiceAmount;
+        }
+
+        // Calculate what the new total would be
+        const projectedInvoicedAmount = currentInvoicedAmount + newInvoiceAmount;
+
+        // Check if it would exceed the contract amount
+        if (projectedInvoicedAmount > contract.contractAmount) {
+            const remaining = contract.contractAmount - currentInvoicedAmount;
+            throw new BadRequestException(
+                `Invoice amount (${newInvoiceAmount.toFixed(2)}) exceeds remaining contract balance. ` +
+                    `Contract: ${contract.contractAmount.toFixed(2)}, ` +
+                    `Already invoiced: ${currentInvoicedAmount.toFixed(2)}, ` +
+                    `Remaining: ${remaining.toFixed(2)}`
+            );
+        }
+
+        this.logger.log(
+            `Contract validation passed - Contract: ${contract.contractAmount}, ` +
+                `Current: ${currentInvoicedAmount}, New invoice: ${newInvoiceAmount}, ` +
+                `Projected: ${projectedInvoicedAmount}`
+        );
     }
 }

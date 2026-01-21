@@ -1,0 +1,3 @@
+export enum ContractInvoiceEventEnum {
+    RECALCULATE_INVOICED_AMOUNT = 'RECALCULATE_INVOICED_AMOUNT',
+}

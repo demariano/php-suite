@@ -1,4 +1,4 @@
-import { ContractDto, CreateContractDto, PageDto } from '@dto';
+import { ContractDto, ContractPaymentDto, CreateContractDto, PageDto } from '@dto';
 import { ContractDataType } from '@dynamo-db-lib';
 
 export abstract class ContractDatabaseServiceAbstract {
@@ -56,4 +56,16 @@ export abstract class ContractDatabaseServiceAbstract {
     abstract convertToDtoList(records: ContractDataType[]): Promise<ContractDto[]>;
 
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract addPaymentToContract(contractId: string, payment: ContractPaymentDto): Promise<ContractDto>;
+
+    abstract removePaymentFromContract(contractId: string, paymentId: string): Promise<ContractDto>;
+
+    abstract updatePaymentInContract(
+        contractId: string,
+        paymentId: string,
+        updatedPayment: ContractPaymentDto
+    ): Promise<ContractDto>;
+
+    abstract updateInvoicedAmount(contractId: string, invoicedAmount: number): Promise<ContractDto>;
 }

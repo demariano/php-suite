@@ -67,6 +67,8 @@ export class ApproveRawMaterialSupplierHandler implements ICommandHandler<Approv
                 return await this.approveRecord(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(
                     `Cannot approve raw material supplier with status: ${existingRecord.status}`
@@ -102,6 +104,21 @@ export class ApproveRawMaterialSupplierHandler implements ICommandHandler<Approv
         existingRecord.changeReason = null;
         await this.rawMaterialSupplierDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<RawMaterialSupplierDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    private async approveDeactivation(
+        existingRecord: RawMaterialSupplierDto
+    ): Promise<ResponseDto<RawMaterialSupplierDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.approverMessage = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Raw material supplier deactivation approved, status set to ${StatusEnum.INACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.rawMaterialSupplierDatabaseService.updateRecord(existingRecord);
+        return new ResponseDto<RawMaterialSupplierDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     private handleError(error: unknown, recordId: string): never {

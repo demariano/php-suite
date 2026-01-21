@@ -67,6 +67,8 @@ export class ApproveRawMaterialsLocationHandler implements ICommandHandler<Appro
                 return await this.approveRecord(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(
                     `Cannot approve raw materials location with status: ${existingRecord.status}`
@@ -102,6 +104,21 @@ export class ApproveRawMaterialsLocationHandler implements ICommandHandler<Appro
         existingRecord.changeReason = null;
         await this.rawMaterialsLocationDatabaseService.deleteRecord(existingRecord);
         return new ResponseDto<RawMaterialsLocationDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    private async approveDeactivation(
+        existingRecord: RawMaterialsLocationDto
+    ): Promise<ResponseDto<RawMaterialsLocationDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.approverMessage = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Raw materials location deactivation approved, status set to ${StatusEnum.INACTIVE}`;
+        existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.rawMaterialsLocationDatabaseService.updateRecord(existingRecord);
+        return new ResponseDto<RawMaterialsLocationDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     private handleError(error: unknown, recordId: string): never {

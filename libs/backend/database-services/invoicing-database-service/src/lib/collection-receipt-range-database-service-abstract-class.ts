@@ -44,6 +44,15 @@ export abstract class CollectionReceiptRangeDatabaseServiceAbstract {
 
     abstract deleteRecord(rangeDto: CollectionReceiptRangeDto): Promise<CollectionReceiptRangeDto>;
 
+    abstract findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CollectionReceiptRangeDto>>;
+
+    abstract batchUpdateRecords(ranges: CollectionReceiptRangeDto[]): Promise<void>;
+
     abstract convertToDto(record: CollectionReceiptRangeDataType): Promise<CollectionReceiptRangeDto>;
 
     abstract convertToDtoList(records: CollectionReceiptRangeDataType[]): Promise<CollectionReceiptRangeDto[]>;

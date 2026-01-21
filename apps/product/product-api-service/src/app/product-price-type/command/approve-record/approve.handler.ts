@@ -1,7 +1,17 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ProductPriceTypeDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ProductPriceTypeDto,
+    ProductPriceTypeEventDto,
+    ProductPriceTypeEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductPriceTypeDatabaseServiceAbstract } from '@product-database-service';
 import { ApproveProductPriceTypeCommand } from './approve.command';
@@ -16,7 +26,10 @@ export class ApproveProductPriceTypeHandler implements ICommandHandler<ApprovePr
 
     constructor(
         @Inject('ProductPriceTypeDatabaseService')
-        private readonly productPriceTypeDatabaseService: ProductPriceTypeDatabaseServiceAbstract
+        private readonly productPriceTypeDatabaseService: ProductPriceTypeDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(
@@ -80,6 +93,8 @@ export class ApproveProductPriceTypeHandler implements ICommandHandler<ApprovePr
                 return await this.approveProductPriceType(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(
                     `Cannot approve product price type with status: ${existingRecord.status}`
@@ -94,6 +109,9 @@ export class ApproveProductPriceTypeHandler implements ICommandHandler<ApprovePr
         existingRecord: ProductPriceTypeDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductPriceTypeDto>> {
+        // Capture old product price type name BEFORE updating
+        const oldProductPriceTypeName = existingRecord.productPriceTypeName;
+
         // Apply forApprovalVersion to main fields
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.productPriceTypeName = forApprovalVersion.productPriceTypeName as string;
@@ -115,8 +133,48 @@ export class ApproveProductPriceTypeHandler implements ICommandHandler<ApprovePr
         // Update record in database
         const updatedRecord = await this.productPriceTypeDatabaseService.updateRecord(existingRecord);
 
+        // Publish event if product price type name changed
+        if (oldProductPriceTypeName !== updatedRecord.productPriceTypeName) {
+            await this.publishProductPriceTypeUpdatedEvent(
+                updatedRecord.productPriceTypeId,
+                updatedRecord.productPriceTypeName
+            );
+        }
+
         this.logger.log(`Product price type approved successfully: ${existingRecord.productPriceTypeId}`);
         return new ResponseDto<ProductPriceTypeDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publishes a product price type updated event to the message queue
+     */
+    private async publishProductPriceTypeUpdatedEvent(
+        productPriceTypeId: string,
+        newProductPriceTypeName: string
+    ): Promise<void> {
+        try {
+            const eventDto: ProductPriceTypeEventDto = {
+                productPriceTypeId,
+                newProductPriceTypeName,
+                eventType: ProductPriceTypeEventEnum.PRODUCT_PRICE_TYPE_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('INVOICE_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_PRICE_TYPE_UPDATED event for productPriceTypeId: ${productPriceTypeId}`);
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_PRICE_TYPE_UPDATED event for productPriceTypeId: ${productPriceTypeId}`,
+                error
+            );
+            // Don't throw - event publishing failure shouldn't break the approval
+        }
     }
 
     /**
@@ -130,6 +188,25 @@ export class ApproveProductPriceTypeHandler implements ICommandHandler<ApprovePr
 
         this.logger.log(`Product price type deletion approved: ${existingRecord.productPriceTypeId}`);
         return new ResponseDto<ProductPriceTypeDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a product price type (soft delete)
+     */
+    private async approveDeactivation(existingRecord: ProductPriceTypeDto): Promise<ResponseDto<ProductPriceTypeDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product price type deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.productPriceTypeDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product price type deactivation approved: ${existingRecord.productPriceTypeId}`);
+        return new ResponseDto<ProductPriceTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

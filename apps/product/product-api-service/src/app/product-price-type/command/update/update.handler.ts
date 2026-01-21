@@ -1,7 +1,17 @@
-import { ErrorResponseDto, ProductPriceTypeDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ProductPriceTypeDto,
+    ProductPriceTypeEventDto,
+    ProductPriceTypeEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductPriceTypeDatabaseServiceAbstract } from '@product-database-service';
 import { UpdateProductPriceTypeCommand } from './update.command';
@@ -16,7 +26,10 @@ export class UpdateProductPriceTypeHandler implements ICommandHandler<UpdateProd
 
     constructor(
         @Inject('ProductPriceTypeDatabaseService')
-        private readonly productPriceTypeDatabaseService: ProductPriceTypeDatabaseServiceAbstract
+        private readonly productPriceTypeDatabaseService: ProductPriceTypeDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(
@@ -36,7 +49,7 @@ export class UpdateProductPriceTypeHandler implements ICommandHandler<UpdateProd
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
-            this.updateProductPriceTypeStatus(existingRecord, command, hasApprovalPermission);
+            await this.updateProductPriceTypeStatus(existingRecord, command, hasApprovalPermission);
 
             // Update record in database
             const updatedRecord = await this.productPriceTypeDatabaseService.updateRecord(existingRecord);
@@ -80,12 +93,15 @@ export class UpdateProductPriceTypeHandler implements ICommandHandler<UpdateProd
     /**
      * Updates product price type status and activity logs based on user permissions
      */
-    private updateProductPriceTypeStatus(
+    private async updateProductPriceTypeStatus(
         existingRecord: ProductPriceTypeDto,
         command: UpdateProductPriceTypeCommand,
         hasApprovalPermission: boolean
-    ): void {
+    ): Promise<void> {
         if (hasApprovalPermission) {
+            // Capture old product price type name BEFORE updating
+            const oldProductPriceTypeName = existingRecord.productPriceTypeName;
+
             // User can approve directly - update the existing record
             existingRecord.status = StatusEnum.ACTIVE;
             existingRecord.productPriceTypeName = command.productPriceTypeDto.productPriceTypeName;
@@ -98,6 +114,14 @@ export class UpdateProductPriceTypeHandler implements ICommandHandler<UpdateProd
 
             // Limit activity logs to last 10 entries
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // Publish event if product price type name changed
+            if (oldProductPriceTypeName !== command.productPriceTypeDto.productPriceTypeName) {
+                await this.publishProductPriceTypeUpdatedEvent(
+                    existingRecord.productPriceTypeId,
+                    command.productPriceTypeDto.productPriceTypeName
+                );
+            }
         } else {
             // User needs approval - store changes in forApprovalVersion, keep existing record unchanged
             existingRecord.status = StatusEnum.FOR_APPROVAL;
@@ -143,6 +167,38 @@ export class UpdateProductPriceTypeHandler implements ICommandHandler<UpdateProd
                 ...existingRecord.forApprovalVersion,
                 productPriceTypeName: command.productPriceTypeDto.productPriceTypeName,
             };
+        }
+    }
+
+    /**
+     * Publishes a product price type updated event to the message queue
+     */
+    private async publishProductPriceTypeUpdatedEvent(
+        productPriceTypeId: string,
+        newProductPriceTypeName: string
+    ): Promise<void> {
+        try {
+            const eventDto: ProductPriceTypeEventDto = {
+                productPriceTypeId,
+                newProductPriceTypeName,
+                eventType: ProductPriceTypeEventEnum.PRODUCT_PRICE_TYPE_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('INVOICE_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_PRICE_TYPE_UPDATED event for productPriceTypeId: ${productPriceTypeId}`);
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_PRICE_TYPE_UPDATED event for productPriceTypeId: ${productPriceTypeId}`,
+                error
+            );
+            // Don't throw - event publishing failure shouldn't break the update
         }
     }
 

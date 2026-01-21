@@ -68,13 +68,13 @@ export class DeleteCustomerHandler implements ICommandHandler<DeleteCustomerComm
         existingCustomer: CustomerDto
     ): void {
         if (hasApprovalPermission) {
-            // User can approve directly - set to FOR_DELETION
-            command.customerDto.status = StatusEnum.FOR_DELETION;
+            // User can approve directly - set to FOR_DEACTIVATION
+            command.customerDto.status = StatusEnum.FOR_DEACTIVATION;
             command.customerDto.activityLogs = existingCustomer.activityLogs || [];
             command.customerDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
-                })}, Customer deleted by ${command.user.username}, status set to ${StatusEnum.FOR_DELETION}`
+                })}, Customer deleted by ${command.user.username}, status set to ${StatusEnum.FOR_DEACTIVATION}`
             );
 
             // Limit activity logs to last 10 entries
@@ -83,8 +83,8 @@ export class DeleteCustomerHandler implements ICommandHandler<DeleteCustomerComm
                 ACTIVITY_LOGS_LIMIT
             );
         } else {
-            // User needs approval - set to FOR_DELETION
-            command.customerDto.status = StatusEnum.FOR_DELETION;
+            // User needs approval - set to FOR_DEACTIVATION
+            command.customerDto.status = StatusEnum.FOR_DEACTIVATION;
             command.customerDto.activityLogs = existingCustomer.activityLogs || [];
             command.customerDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {

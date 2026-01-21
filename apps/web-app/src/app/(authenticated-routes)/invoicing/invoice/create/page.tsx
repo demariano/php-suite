@@ -40,9 +40,45 @@ export default function CreateInvoicePage() {
                     ? authedUser?.userRole
                     : undefined;
 
+            // Validate invoice before proceeding
+            const validationResult = await InvoiceApi.validateInvoice(invoice, 'create');
+
+            if (!validationResult.valid) {
+                // Show validation errors
+                const errorMessages: string[] = [];
+
+                if (validationResult.errors?.contractAmountExceeded) {
+                    errorMessages.push(validationResult.errors.contractAmountExceeded.message);
+                }
+
+                if (validationResult.errors?.missingFields) {
+                    errorMessages.push(...validationResult.errors.missingFields);
+                }
+
+                if (validationResult.errors?.configurationError) {
+                    errorMessages.push(validationResult.errors.configurationError);
+                }
+
+                if (validationResult.errors?.general) {
+                    errorMessages.push(validationResult.errors.general);
+                }
+
+                setFlashNotification({
+                    title: 'Validation Error',
+                    message: errorMessages.join('\n'),
+                    alertType: 'error',
+                });
+                setIsLoading(false);
+                return; // Stop here - draft is preserved
+            }
+
+            // Validation passed - now proceed with deletion and creation
             // Delete draft invoice first if it exists (to prevent duplicate invoices)
             if (createdDraftId && createdInvoice) {
                 await InvoiceApi.deleteInvoice(createdInvoice, userRole);
+                // Clear draft state immediately after deletion
+                setCreatedDraftId(null);
+                setCreatedInvoice(null);
             }
 
             // Create new invoice (don't pass status - let backend determine it)
@@ -77,8 +113,7 @@ export default function CreateInvoicePage() {
                 userRole
             );
 
-            // Clear draft state and store the created invoice
-            setCreatedDraftId(null);
+            // Store the created invoice
             setCreatedInvoice(newInvoice);
             setShowSuccessDialog(true);
 
@@ -118,29 +153,53 @@ export default function CreateInvoicePage() {
         try {
             setIsLoading(true);
 
-            // Validate stock availability
             const invoice = createdInvoice;
-            if (invoice && invoice.invoiceDetails && invoice.invoiceDetails.length > 0) {
-                const validationResult = await InvoiceApi.validateStock(invoice.invoiceDetails);
+
+            // Validate invoice before submitting
+            if (invoice) {
+                const validationResult = await InvoiceApi.validateInvoice(invoice, 'submitDraft');
 
                 if (!validationResult.valid) {
-                    const invalidItemsList = validationResult.invalidItems
-                        .map(
-                            (item) =>
-                                `• ${item.productName}: requested ${item.requested}, only ${item.available} available`
-                        )
-                        .join('\n');
+                    // Show validation errors
+                    const errorMessages: string[] = [];
+
+                    if (validationResult.errors?.contractAmountExceeded) {
+                        errorMessages.push(validationResult.errors.contractAmountExceeded.message);
+                    }
+
+                    if (validationResult.errors?.stockInsufficient) {
+                        const invalidItemsList = validationResult.errors.stockInsufficient.invalidItems
+                            .map(
+                                (item) =>
+                                    `• ${item.productName}: requested ${item.requested}, only ${item.available} available`
+                            )
+                            .join('\n');
+                        errorMessages.push(`Insufficient stock:\n${invalidItemsList}`);
+                    }
+
+                    if (validationResult.errors?.missingFields) {
+                        errorMessages.push(...validationResult.errors.missingFields);
+                    }
+
+                    if (validationResult.errors?.configurationError) {
+                        errorMessages.push(validationResult.errors.configurationError);
+                    }
+
+                    if (validationResult.errors?.general) {
+                        errorMessages.push(validationResult.errors.general);
+                    }
 
                     setFlashNotification({
                         title: 'Cannot Submit Invoice',
-                        message: `Insufficient stock for the following items:\n${invalidItemsList}`,
+                        message: errorMessages.join('\n'),
                         alertType: 'error',
                     });
-                    return;
+                    setIsLoading(false);
+                    return; // Stop here - draft is preserved
                 }
             }
 
-            // Submit the draft
+            // Validation passed - proceed with submission
             const userRole =
                 env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
                     ? authedUser?.userRole
@@ -169,16 +228,16 @@ export default function CreateInvoicePage() {
     };
 
     const handleCancel = () => {
-        // Check if draft exists with items
-        if (
-            createdDraftId &&
-            createdInvoice &&
-            createdInvoice.invoiceDetails &&
-            createdInvoice.invoiceDetails.length > 0
-        ) {
+        // Show dialog if there are invoice details OR if a draft exists
+        // This includes cases where validation fails (e.g., contract amount exceeded)
+        const hasInvoiceDetails =
+            createdInvoice && createdInvoice.invoiceDetails && createdInvoice.invoiceDetails.length > 0;
+        const hasDraft = !!createdDraftId;
+
+        if (hasInvoiceDetails || hasDraft) {
             setShowCancelDialog(true);
         } else {
-            // No draft created yet, just navigate away
+            // No draft or items, just navigate away
             router.push('/invoicing/invoice');
         }
     };

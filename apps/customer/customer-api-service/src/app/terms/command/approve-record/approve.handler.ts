@@ -1,8 +1,10 @@
 import { UserCognito } from '@auth-guard-lib';
 import { TermsDatabaseServiceAbstract } from '@customer-database-service';
-import { TermsDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { ErrorResponseDto, ResponseDto, StatusEnum, TermsDto, TermsEventDto, TermsEventEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveTermsCommand } from './approve.command';
 
@@ -16,7 +18,10 @@ export class ApproveTermsHandler implements ICommandHandler<ApproveTermsCommand>
 
     constructor(
         @Inject('TermsDatabaseService')
-        private readonly termsDatabaseService: TermsDatabaseServiceAbstract
+        private readonly termsDatabaseService: TermsDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveTermsCommand): Promise<ResponseDto<TermsDto | ErrorResponseDto>> {
@@ -68,16 +73,15 @@ export class ApproveTermsHandler implements ICommandHandler<ApproveTermsCommand>
     /**
      * Processes the approval based on the current status of the record
      */
-    private async processApproval(
-        existingRecord: TermsDto,
-        user: UserCognito
-    ): Promise<ResponseDto<TermsDto>> {
+    private async processApproval(existingRecord: TermsDto, user: UserCognito): Promise<ResponseDto<TermsDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
             case StatusEnum.NEW_RECORD:
                 return await this.approveTerms(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve terms with status: ${existingRecord.status}`);
         }
@@ -86,10 +90,10 @@ export class ApproveTermsHandler implements ICommandHandler<ApproveTermsCommand>
     /**
      * Approves a terms for approval
      */
-    private async approveTerms(
-        existingRecord: TermsDto,
-        user: UserCognito
-    ): Promise<ResponseDto<TermsDto>> {
+    private async approveTerms(existingRecord: TermsDto, user: UserCognito): Promise<ResponseDto<TermsDto>> {
+        // Capture old terms name BEFORE updating
+        const oldTermsName = existingRecord.termsName;
+
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
@@ -108,8 +112,39 @@ export class ApproveTermsHandler implements ICommandHandler<ApproveTermsCommand>
         // Update record in database
         const updatedRecord = await this.termsDatabaseService.updateRecord(existingRecord);
 
+        // Publish event if terms name changed
+        if (oldTermsName !== updatedRecord.termsName) {
+            await this.publishTermsUpdatedEvent(updatedRecord.termsId, updatedRecord.termsName);
+        }
+
         this.logger.log(`Terms approved successfully: ${existingRecord.termsId}`);
         return new ResponseDto<TermsDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publishes a terms updated event to the message queue
+     */
+    private async publishTermsUpdatedEvent(termsId: string, newTermsName: string): Promise<void> {
+        try {
+            const eventDto: TermsEventDto = {
+                termsId,
+                newTermsName,
+                eventType: TermsEventEnum.TERMS_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('INVOICE_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published TERMS_UPDATED event for termsId: ${termsId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish TERMS_UPDATED event for termsId: ${termsId}`, error);
+            // Don't throw - event publishing failure shouldn't break the approval
+        }
     }
 
     /**
@@ -120,6 +155,25 @@ export class ApproveTermsHandler implements ICommandHandler<ApproveTermsCommand>
 
         this.logger.log(`Terms deletion approved: ${existingRecord.termsId}`);
         return new ResponseDto<TermsDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a terms (soft delete)
+     */
+    private async approveDeactivation(existingRecord: TermsDto): Promise<ResponseDto<TermsDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Terms deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.termsDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Terms deactivation approved: ${existingRecord.termsId}`);
+        return new ResponseDto<TermsDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

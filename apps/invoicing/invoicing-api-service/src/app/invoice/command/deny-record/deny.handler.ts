@@ -1,4 +1,5 @@
 import {
+    ContractInvoiceEventEnum,
     ErrorResponseDto,
     InventoryEventDto,
     InventoryEventEnum,
@@ -162,6 +163,17 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
         // Update record in database
         const updatedRecord = await this.invoiceDatabaseService.updateRecord(existingRecord);
 
+        // Send contract event to recalculate since invoice reverted to ACTIVE (GAP #3 fix)
+        if (updatedRecord.contractId) {
+            await this.sendContractInvoiceEvent(
+                ContractInvoiceEventEnum.RECALCULATE_INVOICED_AMOUNT,
+                updatedRecord.contractId
+            );
+            this.logger.log(
+                `Contract event sent for denied deletion: ${updatedRecord.invoiceId}, contract: ${updatedRecord.contractId}`
+            );
+        }
+
         this.logger.log(`Invoice deletion denied: ${existingRecord.invoiceId}`);
         return new ResponseDto<InvoiceDto>(updatedRecord, HTTP_STATUS_OK);
     }
@@ -248,5 +260,24 @@ export class DenyInvoiceHandler implements ICommandHandler<DenyInvoiceCommand> {
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Sends contract invoice event to SQS for processing
+     */
+    private async sendContractInvoiceEvent(event: ContractInvoiceEventEnum, contractId: string): Promise<void> {
+        try {
+            this.logger.log(`Sending contract invoice event ${event} for contract ${contractId}`);
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(
+                invoiceEventSQSUrl,
+                JSON.stringify({
+                    event,
+                    data: contractId,
+                })
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send contract invoice event ${event} for contract ${contractId}:`, error);
+        }
     }
 }

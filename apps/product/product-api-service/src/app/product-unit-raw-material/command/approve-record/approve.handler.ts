@@ -90,6 +90,8 @@ export class ApproveProductUnitRawMaterialHandler implements ICommandHandler<App
                 return await this.approveProductUnitRawMaterial(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(
                     `Cannot approve product unit raw material with status: ${existingRecord.status}`
@@ -143,6 +145,27 @@ export class ApproveProductUnitRawMaterialHandler implements ICommandHandler<App
 
         this.logger.log(`Product unit raw material deletion approved: ${existingRecord.productUnitRawMaterialId}`);
         return new ResponseDto<ProductUnitRawMaterialDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a product unit raw material (soft delete)
+     */
+    private async approveDeactivation(
+        existingRecord: ProductUnitRawMaterialDto
+    ): Promise<ResponseDto<ProductUnitRawMaterialDto>> {
+        existingRecord.changeReason = undefined;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product unit raw material deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.productUnitRawMaterialDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product unit raw material deactivation approved: ${existingRecord.productUnitRawMaterialId}`);
+        return new ResponseDto<ProductUnitRawMaterialDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

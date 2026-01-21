@@ -1,8 +1,10 @@
 import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
-import { CustomerDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { CustomerDto, CustomerEventDto, CustomerEventEnum, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateCustomerCommand } from './update.command';
 
@@ -16,7 +18,10 @@ export class UpdateCustomerHandler implements ICommandHandler<UpdateCustomerComm
 
     constructor(
         @Inject('CustomerDatabaseService')
-        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateCustomerCommand): Promise<ResponseDto<CustomerDto>> {
@@ -42,6 +47,11 @@ export class UpdateCustomerHandler implements ICommandHandler<UpdateCustomerComm
             // When ACTIVE: command.customerDto has new values applied directly
             const recordToUpdate = hasApprovalPermission ? command.customerDto : existingCustomer;
             const updatedRecord = await this.customerDatabaseService.updateRecord(recordToUpdate);
+
+            // If admin updated directly and customer name changed, publish event
+            if (hasApprovalPermission && existingCustomer.customerName !== command.customerDto.customerName) {
+                await this.publishCustomerNameChangeEvent(command.customerId, command.customerDto.customerName);
+            }
 
             this.logger.log(`Customer updated successfully: ${command.customerId}`);
             return new ResponseDto<CustomerDto>(updatedRecord, HTTP_STATUS_OK);
@@ -191,5 +201,29 @@ export class UpdateCustomerHandler implements ICommandHandler<UpdateCustomerComm
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes customer name change event to SQS
+     */
+    private async publishCustomerNameChangeEvent(customerId: string, newCustomerName: string): Promise<void> {
+        try {
+            this.logger.log(`Publishing customer name change event for customerId: ${customerId}`);
+
+            const event: CustomerEventDto = {
+                eventType: CustomerEventEnum.CUSTOMER_UPDATED,
+                customerId: customerId,
+                newCustomerName: newCustomerName,
+                timestamp: new Date().toISOString(),
+            };
+
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+
+            this.logger.log(`Customer name change event published for customerId: ${customerId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish customer name change event for customerId: ${customerId}`, error);
+            // Don't throw - this is a non-critical operation
+        }
     }
 }

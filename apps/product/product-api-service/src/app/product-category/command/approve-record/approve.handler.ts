@@ -78,6 +78,8 @@ export class ApproveProductCategoryHandler implements ICommandHandler<ApprovePro
                 return await this.approveProductCategory(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve product category with status: ${existingRecord.status}`);
         }
@@ -120,6 +122,25 @@ export class ApproveProductCategoryHandler implements ICommandHandler<ApprovePro
 
         this.logger.log(`Product category deletion approved: ${existingRecord.productCategoryId}`);
         return new ResponseDto<ProductCategoryDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a product category (soft delete)
+     */
+    private async approveDeactivation(existingRecord: ProductCategoryDto): Promise<ResponseDto<ProductCategoryDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product category deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.productCategoryDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Product category deactivation approved: ${existingRecord.productCategoryId}`);
+        return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**

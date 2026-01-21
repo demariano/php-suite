@@ -76,7 +76,7 @@ export class DeleteProductUnitHandler implements ICommandHandler<DeleteProductUn
      */
     private async performSoftDelete(command: DeleteProductUnitCommand): Promise<ResponseDto<ProductUnitDto>> {
         // Update status and add activity log
-        command.productUnitDto.status = StatusEnum.FOR_DELETION;
+        command.productUnitDto.status = StatusEnum.FOR_DEACTIVATION;
         command.productUnitDto.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',

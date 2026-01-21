@@ -1,8 +1,18 @@
-import { ErrorResponseDto, ResponseDto, StatusEnum, TerritoryManagerDto, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    TerritoryManagerDto,
+    TerritoryManagerEventDto,
+    TerritoryManagerEventEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { TerritoryManagerDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateTerritoryManagerCommand } from './update.command';
 
@@ -16,7 +26,10 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
 
     constructor(
         @Inject('TerritoryManagerDatabaseService')
-        private readonly territoryManagerDatabaseService: TerritoryManagerDatabaseServiceAbstract
+        private readonly territoryManagerDatabaseService: TerritoryManagerDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(
@@ -34,11 +47,22 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
+            // Capture old territory manager name before updating
+            const oldTerritoryManagerName = existingRecord.territoryManagerName;
+
             // Update status and activity logs based on permissions
             this.updateTerritoryManagerStatus(command, existingRecord, hasApprovalPermission);
 
             // Update record in database
             const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+            // If admin updated directly and territory manager name changed, publish event
+            if (hasApprovalPermission && oldTerritoryManagerName !== command.territoryManagerDto.territoryManagerName) {
+                await this.publishTerritoryManagerNameChangeEvent(
+                    command.id,
+                    command.territoryManagerDto.territoryManagerName
+                );
+            }
 
             this.logger.log(`Territory manager updated successfully: ${updatedRecord.territoryManagerId}`);
             return new ResponseDto<TerritoryManagerDto>(updatedRecord, HTTP_STATUS_OK);
@@ -103,7 +127,7 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
                 timeZone: 'Asia/Manila',
             })}, Territory manager updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`;
             existingRecord.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-            
+
             // Limit activity logs to last 10 entries
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         } else {
@@ -185,5 +209,39 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes territory manager name change event to SQS
+     */
+    private async publishTerritoryManagerNameChangeEvent(
+        territoryManagerId: string,
+        newTerritoryManagerName: string
+    ): Promise<void> {
+        try {
+            this.logger.log(
+                `Publishing territory manager name change event for territoryManagerId: ${territoryManagerId}`
+            );
+
+            const event: TerritoryManagerEventDto = {
+                eventType: TerritoryManagerEventEnum.TERRITORY_MANAGER_UPDATED,
+                territoryManagerId: territoryManagerId,
+                newTerritoryManagerName: newTerritoryManagerName,
+                timestamp: new Date().toISOString(),
+            };
+
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+
+            this.logger.log(
+                `Territory manager name change event published for territoryManagerId: ${territoryManagerId}`
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish territory manager name change event for territoryManagerId: ${territoryManagerId}`,
+                error
+            );
+            // Don't throw - this is a non-critical operation
+        }
     }
 }

@@ -76,15 +76,15 @@ export class DeleteCustomerTypeHandler implements ICommandHandler<DeleteCustomer
         command.customerTypeDto.customerTypeId = command.recordId;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.customerTypeDto.status = StatusEnum.FOR_DELETION;
+            // User can delete directly - set to FOR_DEACTIVATION for hard delete
+            command.customerTypeDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Customer type deleted by ${command.user.username}`;
             command.customerTypeDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         } else {
-            // User needs approval - set to FOR_DELETION for soft delete
-            command.customerTypeDto.status = StatusEnum.FOR_DELETION;
+            // User needs approval - set to FOR_DEACTIVATION for soft delete
+            command.customerTypeDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Customer type marked for deletion by ${command.user.username}`;

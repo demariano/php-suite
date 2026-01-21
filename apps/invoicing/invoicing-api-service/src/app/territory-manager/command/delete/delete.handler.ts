@@ -79,15 +79,15 @@ export class DeleteTerritoryManagerHandler implements ICommandHandler<DeleteTerr
         command.territoryManagerDto.territoryManagerId = command.id;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.territoryManagerDto.status = StatusEnum.FOR_DELETION;
+            // User can delete directly - set to FOR_DEACTIVATION for hard delete
+            command.territoryManagerDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Territory manager deleted by ${command.user.username}`;
             command.territoryManagerDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         } else {
-            // User needs approval - set to FOR_DELETION for soft delete
-            command.territoryManagerDto.status = StatusEnum.FOR_DELETION;
+            // User needs approval - set to FOR_DEACTIVATION for soft delete
+            command.territoryManagerDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Territory manager marked for deletion by ${command.user.username}`;

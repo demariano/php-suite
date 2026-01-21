@@ -1,8 +1,10 @@
 import { AreaDatabaseServiceAbstract } from '@customer-database-service';
-import { AreaDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { AreaDto, AreaEventDto, AreaEventEnum, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateAreaCommand } from './update.command';
 
@@ -16,7 +18,10 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
 
     constructor(
         @Inject('AreaDatabaseService')
-        private readonly areaDatabaseService: AreaDatabaseServiceAbstract
+        private readonly areaDatabaseService: AreaDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateAreaCommand): Promise<ResponseDto<AreaDto | ErrorResponseDto>> {
@@ -40,11 +45,19 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
+            // Capture old area name before updating
+            const oldAreaName = existingRecord.areaName;
+
             // Update status and activity logs based on permissions
             this.updateAreaStatus(command, existingRecord, hasApprovalPermission);
 
             // Update record in database
             const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);
+
+            // If admin updated directly and area name changed, publish event
+            if (hasApprovalPermission && oldAreaName !== command.areaDto.areaName) {
+                await this.publishAreaNameChangeEvent(command.recordId, command.areaDto.areaName);
+            }
 
             this.logger.log(`Area updated successfully: ${updatedRecord.areaId}`);
             return new ResponseDto<AreaDto>(updatedRecord, HTTP_STATUS_OK);
@@ -201,5 +214,29 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes area name change event to SQS
+     */
+    private async publishAreaNameChangeEvent(areaId: string, newAreaName: string): Promise<void> {
+        try {
+            this.logger.log(`Publishing area name change event for areaId: ${areaId}`);
+
+            const event: AreaEventDto = {
+                eventType: AreaEventEnum.AREA_UPDATED,
+                areaId: areaId,
+                newAreaName: newAreaName,
+                timestamp: new Date().toISOString(),
+            };
+
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+
+            this.logger.log(`Area name change event published for areaId: ${areaId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish area name change event for areaId: ${areaId}`, error);
+            // Don't throw - this is a non-critical operation
+        }
     }
 }

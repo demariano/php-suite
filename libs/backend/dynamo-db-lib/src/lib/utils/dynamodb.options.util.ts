@@ -4,7 +4,8 @@ export function createDynamoDbOptionWithPKSKIndex(
     limit: number,
     indexName: string,
     direction: string,
-    cursorPointer: string
+    cursorPointer: string,
+    reverse = false
 ) {
     if (!limit || limit == 0) {
         limit = 0;
@@ -18,6 +19,7 @@ export function createDynamoDbOptionWithPKSKIndex(
 
     dbOptions['limit'] = limitNumber + 1;
     dbOptions['follow'] = true;
+    dbOptions['reverse'] = reverse;
 
     if (cursorPointer != null && cursorPointer.trim() !== '') {
         const sanitizedCursorPointer = decodeURIComponent(cursorPointer);

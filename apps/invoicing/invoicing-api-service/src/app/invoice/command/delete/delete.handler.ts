@@ -1,4 +1,5 @@
 import {
+    ContractInvoiceEventEnum,
     ErrorResponseDto,
     InventoryEventDto,
     InventoryEventEnum,
@@ -124,6 +125,11 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
             );
             // Limit activity logs to last 10 entries
             command.invoiceDto.activityLogs = reduceArrayContents(command.invoiceDto.activityLogs, ACTIVITY_LOGS_LIMIT);
+
+            // If invoice was ACTIVE and has contractId, trigger recalculation since invoice is no longer ACTIVE
+            if (originalStatus === StatusEnum.ACTIVE && existingRecord.contractId) {
+                command.invoiceDto.forApprovalVersion.shouldRecalculateContract = true;
+            }
         }
     }
 
@@ -137,6 +143,7 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
         originalStatus: StatusEnum
     ): Promise<InvoiceDto> {
         let result: InvoiceDto;
+        const contractId = existingRecord.contractId; // Store before deletion
 
         if (hasApprovalPermission) {
             // Hard delete - restore stock only if invoice was ACTIVE/APPROVED
@@ -146,12 +153,21 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
             if (originalStatus === StatusEnum.ACTIVE) {
                 await this.restoreStockQuantities(existingRecord);
             }
+
+            // If invoice had a contractId and was ACTIVE, trigger recalculation of contract invoiced amount
+            if (contractId && originalStatus === StatusEnum.ACTIVE) {
+                await this.sendContractInvoiceEvent(ContractInvoiceEventEnum.RECALCULATE_INVOICED_AMOUNT, contractId);
+            }
         } else if (originalStatus === StatusEnum.DRAFT) {
             // DRAFT deletion - no stock restoration needed (drafts don't reserve stock)
             result = await this.invoiceDatabaseService.deleteRecord(command.invoiceDto);
         } else {
             // Soft delete (mark for deletion) - will restore stock when approved
             result = await this.invoiceDatabaseService.updateRecord(command.invoiceDto);
+
+            // GAP #5 optimization: Contract event removed from FOR_DELETION marking
+            // Recalculation will happen on approval (in approve.handler.ts when deletion is approved)
+            // This avoids redundant recalculation when invoice is marked FOR_DELETION
         }
 
         return result;
@@ -226,5 +242,24 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Sends contract invoice event to recalculate invoiced amount
+     */
+    private async sendContractInvoiceEvent(event: ContractInvoiceEventEnum, contractId: string): Promise<void> {
+        try {
+            this.logger.log(`Sending contract invoice event ${event} for contract ${contractId}`);
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(
+                invoiceEventSQSUrl,
+                JSON.stringify({
+                    event,
+                    data: contractId,
+                })
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send contract invoice event ${event} for contract ${contractId}:`, error);
+        }
     }
 }

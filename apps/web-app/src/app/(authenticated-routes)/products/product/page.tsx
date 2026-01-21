@@ -12,10 +12,14 @@ const getStatusText = (status: StatusEnum): string => {
     switch (status) {
         case StatusEnum.ACTIVE:
             return 'Active';
+        case StatusEnum.INACTIVE:
+            return 'Inactive';
         case StatusEnum.FOR_APPROVAL:
             return 'For Approval';
         case StatusEnum.FOR_DELETION:
             return 'For Deletion';
+        case StatusEnum.FOR_DEACTIVATION:
+            return 'For Deactivation';
         case StatusEnum.NEW_RECORD:
             return 'New Record';
         default:
@@ -28,14 +32,20 @@ const getStatusBadge = (status?: StatusEnum) => {
 
     const badgeStyles: Record<StatusEnum, string> = {
         [StatusEnum.ACTIVE]: 'bg-green-100 text-green-800',
+        [StatusEnum.INACTIVE]: 'bg-gray-200 text-gray-500',
         [StatusEnum.FOR_APPROVAL]: 'bg-yellow-100 text-yellow-800',
         [StatusEnum.FOR_DELETION]: 'bg-red-100 text-red-800',
+        [StatusEnum.FOR_DEACTIVATION]: 'bg-orange-100 text-orange-800',
         [StatusEnum.NEW_RECORD]: 'bg-blue-100 text-blue-800',
         [StatusEnum.DRAFT]: 'bg-gray-100 text-gray-700',
     };
 
     return (
-        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeStyles[resolvedStatus] ?? 'bg-gray-100 text-gray-700'}`}>
+        <span
+            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                badgeStyles[resolvedStatus] ?? 'bg-gray-100 text-gray-700'
+            }`}
+        >
             {getStatusText(resolvedStatus)}
         </span>
     );
@@ -62,8 +72,7 @@ export default function ProductsMainPage() {
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
             const currentPageSize = customPageSize ?? pageSize;
-            const serializedCursor =
-                cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
+            const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
             const trimmedQuery = searchQuery.trim();
             const response =
@@ -75,13 +84,7 @@ export default function ProductsMainPage() {
                           serializedCursor,
                           userRole
                       )
-                    : await ProductApi.getProducts(
-                          currentPageSize,
-                          undefined,
-                          direction,
-                          serializedCursor,
-                          userRole
-                      );
+                    : await ProductApi.getProducts(currentPageSize, undefined, direction, serializedCursor, userRole);
 
             if (response?.statusCode === 200 && Array.isArray(response.data)) {
                 setProducts(response.data);
@@ -146,14 +149,14 @@ export default function ProductsMainPage() {
                     const activityStyle = getActivityStyle(parsed.activity);
                     latestActivity = {
                         text: parsed.activity,
-                        style: activityStyle
+                        style: activityStyle,
                     };
                 }
 
                 return {
                     ...product,
                     status: getStatusBadge(product.status),
-                    latestActivity
+                    latestActivity,
                 };
             }),
         [products]

@@ -85,7 +85,7 @@ export class DeleteContractHandler implements ICommandHandler<DeleteContractComm
 
             return {
                 ...existingRecord,
-                status: StatusEnum.FOR_DELETION,
+                status: StatusEnum.FOR_DEACTIVATION,
                 changeReason: null,
                 activityLogs: updatedLogs,
             };
@@ -96,7 +96,7 @@ export class DeleteContractHandler implements ICommandHandler<DeleteContractComm
 
         return {
             ...existingRecord,
-            status: StatusEnum.FOR_DELETION,
+            status: StatusEnum.FOR_DEACTIVATION,
             changeReason: command.contractDto.changeReason ?? existingRecord.changeReason,
             activityLogs: logsWithDeletionRequest,
         };

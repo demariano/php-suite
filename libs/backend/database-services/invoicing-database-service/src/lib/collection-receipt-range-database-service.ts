@@ -272,7 +272,8 @@ export class CollectionReceiptRangeDatabaseService implements CollectionReceiptR
             if (receiptNumber >= range.startNumber && receiptNumber <= range.endNumber) {
                 // Verify this number is not cancelled
                 const isCancelled =
-                    range.cancelledReceiptNumbers?.some((cancelled) => cancelled.receiptNumber === receiptNumber) ?? false;
+                    range.cancelledReceiptNumbers?.some((cancelled) => cancelled.receiptNumber === receiptNumber) ??
+                    false;
 
                 if (isCancelled) {
                     throw new BadRequestException(`Receipt number ${receiptNumber} is cancelled and cannot be used`);
@@ -297,7 +298,9 @@ export class CollectionReceiptRangeDatabaseService implements CollectionReceiptR
                 // Skip cancelled numbers
                 while (nextAvailableNumber <= range.endNumber) {
                     const isNextCancelled =
-                        range.cancelledReceiptNumbers?.some((cancelled) => cancelled.receiptNumber === nextAvailableNumber) ?? false;
+                        range.cancelledReceiptNumbers?.some(
+                            (cancelled) => cancelled.receiptNumber === nextAvailableNumber
+                        ) ?? false;
                     if (!isNextCancelled) {
                         // Found an available number, range is not exhausted
                         break;
@@ -499,6 +502,63 @@ export class CollectionReceiptRangeDatabaseService implements CollectionReceiptR
 
         for (const record of records) {
             await this.collectionReceiptRangeTable.remove(record);
+        }
+    }
+
+    async findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CollectionReceiptRangeDto>> {
+        limit = Number(limit);
+        const effectiveDirection = cursorPointer ? direction : (null as unknown as string);
+        const effectiveCursorPointer = cursorPointer || '';
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(
+            limit,
+            'GSI3',
+            effectiveDirection,
+            effectiveCursorPointer
+        );
+
+        const records = await this.collectionReceiptRangeTable.find(
+            {
+                GSI3PK: `COLLECTION_RECEIPT_RANGE#${areaId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async batchUpdateRecords(ranges: CollectionReceiptRangeDto[]): Promise<void> {
+        const BATCH_SIZE = 25;
+
+        for (let i = 0; i < ranges.length; i += BATCH_SIZE) {
+            const batch = ranges.slice(i, i + BATCH_SIZE);
+            const updatePromises = batch.map(async (range) => {
+                const rangeData = await this.convertToDataType(range);
+                return this.collectionReceiptRangeTable.update(rangeData);
+            });
+
+            await Promise.all(updatePromises);
+            this.logger.log(`Batch updated ${batch.length} collection receipt ranges`);
         }
     }
 

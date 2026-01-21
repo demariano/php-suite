@@ -1,8 +1,18 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ResponseDto, StatusEnum, TerritoryManagerDto, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    TerritoryManagerDto,
+    TerritoryManagerEventDto,
+    TerritoryManagerEventEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { TerritoryManagerDatabaseServiceAbstract } from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveTerritoryManagerCommand } from './approve.command';
 
@@ -16,7 +26,10 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
 
     constructor(
         @Inject('TerritoryManagerDatabaseService')
-        private readonly territoryManagerDatabaseService: TerritoryManagerDatabaseServiceAbstract
+        private readonly territoryManagerDatabaseService: TerritoryManagerDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(
@@ -80,6 +93,8 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
                 return await this.approveTerritoryManager(existingRecord, user);
             case StatusEnum.FOR_DELETION:
                 return await this.approveDeletion(existingRecord);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve territory manager with status: ${existingRecord.status}`);
         }
@@ -105,7 +120,10 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
-        existingRecord.territoryManagerName = forApprovalVersion.territoryManagerName as string;
+        const oldTerritoryManagerName = existingRecord.territoryManagerName;
+        const newTerritoryManagerName = forApprovalVersion.territoryManagerName as string;
+
+        existingRecord.territoryManagerName = newTerritoryManagerName;
         existingRecord.contactNo = forApprovalVersion.contactNo as string;
         existingRecord.forApprovalVersion = {};
         // Reset changeReason to null AFTER applying forApprovalVersion
@@ -113,6 +131,14 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
 
         // Update record in database
         const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+        // If territory manager name changed, publish event
+        if (oldTerritoryManagerName !== newTerritoryManagerName) {
+            await this.publishTerritoryManagerNameChangeEvent(
+                existingRecord.territoryManagerId,
+                newTerritoryManagerName
+            );
+        }
 
         this.logger.log(`Territory manager approved successfully: ${existingRecord.territoryManagerId}`);
         return new ResponseDto<TerritoryManagerDto>(updatedRecord, HTTP_STATUS_OK);
@@ -128,6 +154,25 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
 
         this.logger.log(`Territory manager deletion approved: ${existingRecord.territoryManagerId}`);
         return new ResponseDto<TerritoryManagerDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Approves deactivation of a territory manager (soft delete)
+     */
+    private async approveDeactivation(existingRecord: TerritoryManagerDto): Promise<ResponseDto<TerritoryManagerDto>> {
+        existingRecord.changeReason = null;
+        existingRecord.status = StatusEnum.INACTIVE;
+        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Territory manager deactivation approved, status set to ${StatusEnum.INACTIVE}`
+        );
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+        this.logger.log(`Territory manager deactivation approved: ${existingRecord.territoryManagerId}`);
+        return new ResponseDto<TerritoryManagerDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
@@ -160,5 +205,39 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes territory manager name change event to SQS
+     */
+    private async publishTerritoryManagerNameChangeEvent(
+        territoryManagerId: string,
+        newTerritoryManagerName: string
+    ): Promise<void> {
+        try {
+            this.logger.log(
+                `Publishing territory manager name change event for territoryManagerId: ${territoryManagerId}`
+            );
+
+            const event: TerritoryManagerEventDto = {
+                eventType: TerritoryManagerEventEnum.TERRITORY_MANAGER_UPDATED,
+                territoryManagerId: territoryManagerId,
+                newTerritoryManagerName: newTerritoryManagerName,
+                timestamp: new Date().toISOString(),
+            };
+
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+
+            this.logger.log(
+                `Territory manager name change event published for territoryManagerId: ${territoryManagerId}`
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish territory manager name change event for territoryManagerId: ${territoryManagerId}`,
+                error
+            );
+            // Don't throw - this is a non-critical operation
+        }
     }
 }
