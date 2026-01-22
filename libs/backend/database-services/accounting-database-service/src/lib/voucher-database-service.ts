@@ -352,7 +352,123 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
             GSI2SK: dto.voucherNo,
             GSI3PK: `VOUCHER`,
             GSI3SK: dto.voucherDate,
+            GSI4PK: `VOUCHER#${dto.accountId}`,
+            GSI4SK: dto.voucherId,
+            GSI5PK: `VOUCHER#${dto.customerId}`,
+            GSI5SK: dto.voucherId,
+            GSI6PK: `VOUCHER#${dto.areaId}`,
+            GSI6SK: dto.voucherId,
         };
         return voucherData;
+    }
+
+    async findRecordsByAccountIdPagination(
+        limit: number,
+        accountId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<VoucherDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI4', direction, cursorPointer);
+
+        const records = await this.voucherTable.find(
+            {
+                GSI4PK: `VOUCHER#${accountId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI4PK',
+            'GSI4SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByCustomerIdPagination(
+        limit: number,
+        customerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<VoucherDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', direction, cursorPointer);
+
+        const records = await this.voucherTable.find(
+            {
+                GSI5PK: `VOUCHER#${customerId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI5PK',
+            'GSI5SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<VoucherDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.voucherTable.find(
+            {
+                GSI6PK: `VOUCHER#${areaId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async batchUpdate(records: VoucherDto[]): Promise<void> {
+        const updatePromises = records.map((record) => this.updateRecord(record));
+        await Promise.all(updatePromises);
     }
 }

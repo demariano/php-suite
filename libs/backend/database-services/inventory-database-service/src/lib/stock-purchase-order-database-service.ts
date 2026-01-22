@@ -61,6 +61,8 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
             GSI4SK: stockPurchaseOrderDto.poDate,
             GSI5PK: 'STOCK_PURCHASE_ORDER',
             GSI5SK: docNo,
+            GSI6PK: `STOCK_PURCHASE_ORDER#${stockPurchaseOrderDto.supplierId}`,
+            GSI6SK: stockPurchaseOrderDto.stockPurchaseOrderId || '',
         };
 
         const record: StockPurchaseOrderDataType = await this.stockPurchaseOrderTable.create(stockPurchaseOrderData);
@@ -92,6 +94,8 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
         data.GSI4SK = record.poDate;
         data.GSI5PK = 'STOCK_PURCHASE_ORDER';
         data.GSI5SK = docNo;
+        data.GSI6PK = `STOCK_PURCHASE_ORDER#${record.supplierId}`;
+        data.GSI6SK = record.stockPurchaseOrderId;
         data.forApprovalVersion = record.forApprovalVersion;
         data.changeReason = record.changeReason;
         data.approverMessage = record.approverMessage;
@@ -289,6 +293,28 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
         return dtoList;
     }
 
+    async findRecordsBySupplierIdPagination(
+        limit: number,
+        supplierId: string,
+        direction: 'forward' | 'backward',
+        cursorPointer?: string
+    ): Promise<PageDto<StockPurchaseOrderDto>> {
+        const options = createDynamoDbOptionWithPKSKIndex(
+            `STOCK_PURCHASE_ORDER#${supplierId}`,
+            undefined,
+            undefined,
+            limit,
+            direction,
+            cursorPointer
+        );
+
+        return this.pageRecordHandler(options, 'GSI6');
+    }
+
+    async batchUpdate(records: StockPurchaseOrderDto[]): Promise<void> {
+        await Promise.all(records.map((record) => this.updateRecord(record)));
+    }
+
     async convertToDataType(dto: StockPurchaseOrderDto): Promise<StockPurchaseOrderDataType> {
         const stockPurchaseOrderData: StockPurchaseOrderDataType = {
             stockPurchaseOrderId: dto.stockPurchaseOrderId,
@@ -310,6 +336,8 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
             GSI4SK: dto.poDate,
             GSI5PK: 'STOCK_PURCHASE_ORDER',
             GSI5SK: dto.docNo,
+            GSI6PK: `STOCK_PURCHASE_ORDER#${dto.supplierId}`,
+            GSI6SK: dto.stockPurchaseOrderId,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

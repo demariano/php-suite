@@ -226,12 +226,24 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
                 timestamp: new Date().toISOString(),
             };
 
+            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
             const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
 
-            this.logger.log(
-                `Territory manager name change event published for territoryManagerId: ${territoryManagerId}`
-            );
+            // Publish to Customer Event SQS (for Area entity)
+            if (customerEventSQSUrl) {
+                await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(event));
+                this.logger.log(
+                    `Territory manager name change event published to CUSTOMER_EVENT_SQS for territoryManagerId: ${territoryManagerId}`
+                );
+            }
+
+            // Publish to Invoice Event SQS (for Invoice entity)
+            if (invoiceEventSQSUrl) {
+                await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+                this.logger.log(
+                    `Territory manager name change event published to INVOICE_EVENT_SQS for territoryManagerId: ${territoryManagerId}`
+                );
+            }
         } catch (error) {
             this.logger.error(
                 `Failed to publish territory manager name change event for territoryManagerId: ${territoryManagerId}`,

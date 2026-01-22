@@ -274,6 +274,47 @@ export class AreaDatabaseService implements AreaDatabaseServiceAbstract {
         return dtoList;
     }
 
+    async findRecordsByTerritoryManagerIdPagination(
+        limit: number,
+        territoryManagerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<AreaDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.areaTable.find(
+            {
+                GSI3PK: `AREA`,
+                GSI3SK: territoryManagerId,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async batchUpdate(records: AreaDto[]): Promise<void> {
+        const updatePromises = records.map((record) => this.updateRecord(record));
+        await Promise.all(updatePromises);
+    }
+
     async convertToDataType(dto: AreaDto): Promise<AreaDataType> {
         const areaData: AreaDataType = {
             areaId: dto.areaId,

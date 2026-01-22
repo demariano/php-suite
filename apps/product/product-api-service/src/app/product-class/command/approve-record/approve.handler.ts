@@ -1,7 +1,17 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ProductClassDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ProductClassDto,
+    ProductClassEventDto,
+    ProductClassEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductClassDatabaseServiceAbstract } from '@product-database-service';
 import { ApproveProductClassCommand } from './approve.command';
@@ -16,7 +26,10 @@ export class ApproveProductClassHandler implements ICommandHandler<ApproveProduc
 
     constructor(
         @Inject('ProductClassDatabaseService')
-        private readonly productClassDatabaseService: ProductClassDatabaseServiceAbstract
+        private readonly productClassDatabaseService: ProductClassDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveProductClassCommand): Promise<ResponseDto<ProductClassDto | ErrorResponseDto>> {
@@ -92,6 +105,9 @@ export class ApproveProductClassHandler implements ICommandHandler<ApproveProduc
         existingRecord: ProductClassDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductClassDto>> {
+        // Capture old name BEFORE updating
+        const oldProductClassName = existingRecord.productClassName;
+
         // Apply forApprovalVersion to main fields
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.productClassName = forApprovalVersion.productClassName as string;
@@ -112,6 +128,11 @@ export class ApproveProductClassHandler implements ICommandHandler<ApproveProduc
 
         // Update record in database
         const updatedRecord = await this.productClassDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if product class name changed
+        if (oldProductClassName !== updatedRecord.productClassName) {
+            await this.publishProductClassUpdatedEvent(updatedRecord.productClassId, updatedRecord.productClassName);
+        }
 
         this.logger.log(`Product class approved successfully: ${existingRecord.productClassId}`);
         return new ResponseDto<ProductClassDto>(updatedRecord, HTTP_STATUS_OK);
@@ -147,6 +168,35 @@ export class ApproveProductClassHandler implements ICommandHandler<ApproveProduc
 
         this.logger.log(`Product class deactivation approved: ${existingRecord.productClassId}`);
         return new ResponseDto<ProductClassDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publishes a product class updated event to the message queue
+     */
+    private async publishProductClassUpdatedEvent(productClassId: string, newProductClassName: string): Promise<void> {
+        try {
+            const eventDto: ProductClassEventDto = {
+                productClassId,
+                newProductClassName,
+                eventType: ProductClassEventEnum.PRODUCT_CLASS_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('PRODUCT_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('PRODUCT_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_CLASS_UPDATED event for productClassId: ${productClassId}`);
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_CLASS_UPDATED event for productClassId: ${productClassId}`,
+                error
+            );
+            // Don't throw - event publishing failure shouldn't break the approval
+        }
     }
 
     /**

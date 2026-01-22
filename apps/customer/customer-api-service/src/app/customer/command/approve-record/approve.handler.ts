@@ -179,9 +179,19 @@ export class ApproveCustomerHandler implements ICommandHandler<ApproveCustomerCo
             };
 
             const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+            const accountingEventSQSUrl = this.configService.get<string>('ACCOUNTING_EVENT_SQS');
 
-            this.logger.log(`Customer name change event published for customerId: ${customerId}`);
+            // Publish to Invoice Event SQS
+            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+            this.logger.log(`Customer name change event published to INVOICE_EVENT_SQS for customerId: ${customerId}`);
+
+            // Publish to Accounting Event SQS
+            if (accountingEventSQSUrl) {
+                await this.messageQueueService.sendMessageToSQS(accountingEventSQSUrl, JSON.stringify(event));
+                this.logger.log(
+                    `Customer name change event published to ACCOUNTING_EVENT_SQS for customerId: ${customerId}`
+                );
+            }
         } catch (error) {
             this.logger.error(`Failed to publish customer name change event for customerId: ${customerId}`, error);
             // Don't throw - this is a non-critical operation

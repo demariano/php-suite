@@ -1,0 +1,3 @@
+export enum RawMaterialsLocationEventEnum {
+    RAW_MATERIALS_LOCATION_UPDATED = 'RAW_MATERIALS_LOCATION_UPDATED',
+}

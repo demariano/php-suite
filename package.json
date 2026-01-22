@@ -3,6 +3,8 @@
     "version": "0.0.0",
     "license": "MIT",
     "scripts": {
+    "build-product-event-handler-service": "nx build product-event-handler-service --skip-nx-cache --configuration=production",
+    "post-build-product-event-handler-service": "nx build-serverless-files product-event-handler-service",
     "build-accounting-event-handler-service": "nx build accounting-event-handler-service --skip-nx-cache --configuration=production",
     "post-build-accounting-event-handler-service": "nx build-serverless-files accounting-event-handler-service",
     "build-invoicing-event-handler-service": "nx build invoicing-event-handler-service --skip-nx-cache --configuration=production",

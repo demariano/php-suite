@@ -10,6 +10,7 @@ export const InventorySchema = {
         GSI4: { hash: 'GSI4PK', sort: 'GSI4SK' },
         GSI5: { hash: 'GSI5PK', sort: 'GSI5SK' },
         GSI6: { hash: 'GSI6PK', sort: 'GSI6SK' },
+        GSI7: { hash: 'GSI7PK', sort: 'GSI7SK' },
     },
     models: {
         Stock: {
@@ -44,6 +45,10 @@ export const InventorySchema = {
             GSI4SK: { type: String, value: '${lotNo}', hidden: false },
             GSI5PK: { type: String, value: 'STOCK#${status}#${productUnitId}#${productId}', hidden: false },
             GSI5SK: { type: String, value: '${expirationDate}', hidden: false },
+            GSI6PK: { type: String, value: 'STOCK#${stockTypeId}', hidden: false },
+            GSI6SK: { type: String, value: '${stockId}', hidden: false },
+            GSI7PK: { type: String, value: 'STOCK#${productUnitId}', hidden: false },
+            GSI7SK: { type: String, value: '${stockId}', hidden: false },
         },
         StockType: {
             PK: { type: String, value: 'STOCK_TYPE', hidden: false },
@@ -150,6 +155,14 @@ export const InventorySchema = {
             GSI1SK: { type: String, value: '${rawMaterialName}', hidden: false },
             GSI2PK: { type: String, value: 'RAW_MATERIAL_STOCK#${status}', hidden: false },
             GSI2SK: { type: String, value: '${rawMaterialName}', hidden: false },
+            GSI3PK: { type: String, value: 'RAW_MATERIAL_STOCK#${rawMaterialId}', hidden: false },
+            GSI3SK: { type: String, value: '${rawMaterialsStockId}', hidden: false },
+            GSI4PK: { type: String, value: 'RAW_MATERIAL_STOCK#${rawMaterialUnitId}', hidden: false },
+            GSI4SK: { type: String, value: '${rawMaterialsStockId}', hidden: false },
+            GSI5PK: { type: String, value: 'RAW_MATERIAL_STOCK#${rawMaterialSupplierId}', hidden: false },
+            GSI5SK: { type: String, value: '${rawMaterialsStockId}', hidden: false },
+            GSI6PK: { type: String, value: 'RAW_MATERIAL_STOCK#${rawMaterialsLocationId}', hidden: false },
+            GSI6SK: { type: String, value: '${rawMaterialsStockId}', hidden: false },
         },
         RawMaterialsPurchaseOrder: {
             PK: { type: String, value: 'RAW_MATERIALS_PURCHASE_ORDER', hidden: false },
@@ -189,6 +202,8 @@ export const InventorySchema = {
             GSI4SK: { type: String, value: '${poDate}', hidden: false },
             GSI5PK: { type: String, value: 'RAW_MATERIALS_PURCHASE_ORDER', hidden: false },
             GSI5SK: { type: String, value: '${docNo}', hidden: false },
+            GSI6PK: { type: String, value: 'RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialSupplierId}', hidden: false },
+            GSI6SK: { type: String, value: '${rawMaterialsPurchaseOrderId}', hidden: false },
         },
         RawMaterialUnits: {
             PK: { type: String, value: 'RAW_MATERIAL_UNIT', hidden: false },
@@ -258,6 +273,8 @@ export const InventorySchema = {
             GSI3SK: { type: String, value: '${dateReceived}', hidden: false },
             GSI4PK: { type: String, value: 'STOCK_DELIVERY', hidden: false },
             GSI4SK: { type: String, value: '${dateReceived}', hidden: false },
+            GSI5PK: { type: String, value: 'STOCK_DELIVERY#${supplierId}', hidden: false },
+            GSI5SK: { type: String, value: '${stockDeliveryId}', hidden: false },
         },
         StockPurchaseOrder: {
             PK: { type: String, value: 'STOCK_PURCHASE_ORDER', hidden: false },
@@ -297,6 +314,8 @@ export const InventorySchema = {
             GSI4SK: { type: String, value: '${poDate}', hidden: false },
             GSI5PK: { type: String, value: 'STOCK_PURCHASE_ORDER', hidden: false },
             GSI5SK: { type: String, value: '${docNo}', hidden: false },
+            GSI6PK: { type: String, value: 'STOCK_PURCHASE_ORDER#${supplierId}', hidden: false },
+            GSI6SK: { type: String, value: '${stockPurchaseOrderId}', hidden: false },
         },
     } as const,
     params: {

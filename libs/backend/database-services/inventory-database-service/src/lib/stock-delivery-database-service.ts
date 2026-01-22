@@ -45,6 +45,8 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
             GSI2SK: stockDeliveryDto.docno,
             GSI3PK: `STOCK_DELIVERY#${stockDeliveryDto.supplierId}`,
             GSI3SK: stockDeliveryDto.dateReceived,
+            GSI5PK: `STOCK_DELIVERY#${stockDeliveryDto.supplierId}`,
+            GSI5SK: stockDeliveryDto.stockDeliveryId || '',
         };
 
         const stockDeliveryRecord: StockDeliveryDataType = await this.stockDeliveryTable.create(stockDeliveryData);
@@ -67,6 +69,8 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
         stockDeliveryRecord.GSI2SK = record.docno;
         stockDeliveryRecord.GSI3PK = `STOCK_DELIVERY#${record.supplierId}`;
         stockDeliveryRecord.GSI3SK = record.dateReceived;
+        stockDeliveryRecord.GSI5PK = `STOCK_DELIVERY#${record.supplierId}`;
+        stockDeliveryRecord.GSI5SK = record.stockDeliveryId;
         stockDeliveryRecord.forApprovalVersion = record.forApprovalVersion;
         stockDeliveryRecord.changeReason = record.changeReason;
         stockDeliveryRecord.approverMessage = record.approverMessage;
@@ -370,6 +374,28 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
         return dtoList;
     }
 
+    async findRecordsBySupplierIdPagination(
+        limit: number,
+        supplierId: string,
+        direction: 'forward' | 'backward',
+        cursorPointer?: string
+    ): Promise<PageDto<StockDeliveryDto>> {
+        const options = createDynamoDbOptionWithPKSKIndex(
+            `STOCK_DELIVERY#${supplierId}`,
+            undefined,
+            undefined,
+            limit,
+            direction,
+            cursorPointer
+        );
+
+        return this.pageRecordHandler(options, 'GSI5');
+    }
+
+    async batchUpdate(records: StockDeliveryDto[]): Promise<void> {
+        await Promise.all(records.map((record) => this.updateRecord(record)));
+    }
+
     async convertToDataType(dto: StockDeliveryDto): Promise<StockDeliveryDataType> {
         const stockDeliveryData: StockDeliveryDataType = {
             stockDeliveryId: dto.stockDeliveryId,
@@ -385,6 +411,8 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
             GSI2SK: dto.docno,
             GSI3PK: `STOCK_DELIVERY#${dto.supplierId}`,
             GSI3SK: dto.dateReceived,
+            GSI5PK: `STOCK_DELIVERY#${dto.supplierId}`,
+            GSI5SK: dto.stockDeliveryId,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

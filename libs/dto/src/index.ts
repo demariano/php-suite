@@ -39,9 +39,16 @@ export * from './lib/configuration/configuration/update.configuration.dto';
 //initialize environment
 export * from './lib/initialization/initialization.dto';
 //ProductSchema
+export * from './lib/enums/product-category.event.enum';
+export * from './lib/enums/product-class.event.enum';
+export * from './lib/enums/product-unit.event.enum';
+export * from './lib/enums/product.event.enum';
 export * from './lib/enums/raw.materials.purchase-order.status.enum';
 export * from './lib/enums/status.enum';
 export * from './lib/enums/stock.purchase-order.status.enum';
+export * from './lib/product/product-category/product-category.event.dto';
+export * from './lib/product/product-class/product-class.event.dto';
+export * from './lib/product/product-unit.event.dto';
 export * from './lib/product/product.category/create.product.category.dto';
 export * from './lib/product/product.category/product.category.dto';
 export * from './lib/product/product.class/create.product.class.dto';
@@ -59,6 +66,7 @@ export * from './lib/product/product.unit/product.unit.dto';
 export * from './lib/product/product/create.product.dto';
 export * from './lib/product/product/product.deal.details.dto';
 export * from './lib/product/product/product.dto';
+export * from './lib/product/product/product.event.dto';
 export * from './lib/product/product/product.filter.dto';
 export * from './lib/product/product/product.unit.price.dto';
 
@@ -66,6 +74,8 @@ export * from './lib/product/product/product.unit.price.dto';
 export * from './lib/customer/area/area.dto';
 export * from './lib/customer/area/area.event.dto';
 export * from './lib/customer/area/create.area.dto';
+export * from './lib/customer/customer-classification.event.dto';
+export * from './lib/customer/customer-type.event.dto';
 export * from './lib/customer/customer.classification/create.customer.classification.dto';
 export * from './lib/customer/customer.classification/customer.classification.dto';
 export * from './lib/customer/customer.type/create.customer.type.dto';
@@ -75,12 +85,25 @@ export * from './lib/customer/customer/customer.dto';
 export * from './lib/customer/customer/customer.event.dto';
 export * from './lib/customer/customer/customer.filter.dto';
 export * from './lib/customer/customer/customer.product.deal.dto';
+export * from './lib/customer/terms.event.dto';
 export * from './lib/customer/terms/create.terms.dto';
 export * from './lib/customer/terms/terms.dto';
+export * from './lib/enums/customer-classification.event.enum';
+export * from './lib/enums/customer-type.event.enum';
 
 //StockSchema
 export * from './lib/enums/inventory.event.enum';
 export * from './lib/enums/invoice.payment.event.enum';
+export * from './lib/enums/raw-material-supplier.event.enum';
+export * from './lib/enums/raw-material-unit.event.enum';
+export * from './lib/enums/raw-material.event.enum';
+export * from './lib/enums/raw-materials-location.event.enum';
+export * from './lib/enums/stock-type.event.enum';
+export * from './lib/enums/supplier.event.enum';
+export * from './lib/inventory/raw-material-supplier.event.dto';
+export * from './lib/inventory/raw-material-unit.event.dto';
+export * from './lib/inventory/raw-material.event.dto';
+export * from './lib/inventory/raw-materials-location.event.dto';
 export * from './lib/inventory/raw.material.location/create.raw.material.location.dto';
 export * from './lib/inventory/raw.material.location/raw.material.location.dto';
 export * from './lib/inventory/raw.material.stock/create.raw.material.stock.dto';
@@ -99,6 +122,7 @@ export * from './lib/inventory/stock-delivery/create.stock-delivery.dto';
 export * from './lib/inventory/stock-delivery/delivery-details.dto';
 export * from './lib/inventory/stock-delivery/stock-delivery.dto';
 export * from './lib/inventory/stock-delivery/stock-delivery.filter.dto';
+export * from './lib/inventory/stock-type.event.dto';
 export * from './lib/inventory/stock.purchase-order/delivered.stock.purchase-order.delivery.dto';
 export * from './lib/inventory/stock.purchase-order/delivered.stock.purchase-order.detail.dto';
 export * from './lib/inventory/stock.purchase-order/stock.purchase-order.detail.dto';
@@ -110,6 +134,7 @@ export * from './lib/inventory/stock/inventory.event.dto';
 export * from './lib/inventory/stock/stock.dto';
 export * from './lib/inventory/stock/stock.filter.dto';
 export * from './lib/inventory/stock/update.available.qty.dto';
+export * from './lib/inventory/supplier.event.dto';
 export * from './lib/inventory/supplier/create.supplier.dto';
 export * from './lib/inventory/supplier/supplier.dto';
 export * from './lib/inventory/supplier/supplier.filter.dto';
@@ -127,7 +152,6 @@ export * from './lib/invoicing/invoice/validate-invoice-response.dto';
 export * from './lib/invoicing/sales-type/sales-type.event.dto';
 export * from './lib/invoicing/sales.type/create.sales.type.dto';
 export * from './lib/invoicing/sales.type/sales.type.dto';
-export * from './lib/invoicing/terms/terms.event.dto';
 export * from './lib/invoicing/territory-manager/territory-manager.event.dto';
 export * from './lib/invoicing/territory.manager/create.territory.manager.dto';
 export * from './lib/invoicing/territory.manager/territory.manager.dto';
@@ -173,10 +197,12 @@ export * from './lib/invoicing/collection-receipt-range/create.collection.receip
 
 //accounting
 export * from './lib/accounting/account.dto';
+export * from './lib/accounting/account/account.event.dto';
 export * from './lib/accounting/create.account.dto';
 export * from './lib/accounting/create.voucher.dto';
 export * from './lib/accounting/voucher.detail.dto';
 export * from './lib/accounting/voucher.dto';
+export * from './lib/enums/account.event.enum';
 export * from './lib/enums/account.type.enum';
 
 //reports

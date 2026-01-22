@@ -290,4 +290,44 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
             pageRecordCursorPointers.prevCursorPointer
         );
     }
+
+    async findRecordsByProductIdPagination(
+        limit: number,
+        productId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductUnitRawMaterialDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
+
+        const records = await this.productUnitRawMaterialTable.find(
+            {
+                GSI1PK: `PRODUCT_UNIT_RAW_MATERIAL#${productId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI1PK',
+            'GSI1SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async batchUpdate(records: ProductUnitRawMaterialDto[]): Promise<void> {
+        const updatePromises = records.map((record) => this.updateRecord(record));
+        await Promise.all(updatePromises);
+    }
 }

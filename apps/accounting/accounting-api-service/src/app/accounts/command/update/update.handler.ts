@@ -1,8 +1,18 @@
 import { AccountsDatabaseServiceAbstract } from '@accounting-database-service';
-import { AccountsDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    AccountEventDto,
+    AccountEventEnum,
+    AccountsDto,
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueAwsLibService } from '@message-queue-aws-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateAccountsCommand } from './update.command';
 
@@ -16,7 +26,9 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
 
     constructor(
         @Inject('AccountsDatabaseService')
-        private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract
+        private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract,
+        private readonly messageQueueService: MessageQueueAwsLibService,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateAccountsCommand): Promise<ResponseDto<AccountsDto | ErrorResponseDto>> {
@@ -42,6 +54,11 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
 
             // Update record in database
             const updatedRecord = await this.accountsDatabaseService.updateRecord(recordToPersist);
+
+            // Publish account updated event if name changed and approved
+            if (hasApprovalPermission && existingRecord.accountName !== command.accountsDto.accountName) {
+                await this.publishAccountUpdatedEvent(updatedRecord.accountingId, command.accountsDto.accountName);
+            }
 
             this.logger.log(`Account updated successfully: ${updatedRecord.accountingId}`);
             return new ResponseDto<AccountsDto>(updatedRecord, HTTP_STATUS_OK);
@@ -188,5 +205,30 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes account updated event to SQS
+     */
+    private async publishAccountUpdatedEvent(accountingId: string, newAccountName: string): Promise<void> {
+        try {
+            const accountEventSqsUrl = this.configService.get<string>('ACCOUNTING_EVENT_SQS');
+            if (!accountEventSqsUrl) {
+                this.logger.warn('ACCOUNTING_EVENT_SQS URL not configured');
+                return;
+            }
+
+            const event: AccountEventDto = {
+                eventType: AccountEventEnum.ACCOUNT_UPDATED,
+                accountingId,
+                newAccountName,
+                timestamp: new Date().toISOString(),
+            };
+
+            await this.messageQueueService.sendMessageToSQS(accountEventSqsUrl, event);
+            this.logger.log(`Account updated event published for accountingId: ${accountingId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish account updated event: ${error.message}`, error.stack);
+        }
     }
 }

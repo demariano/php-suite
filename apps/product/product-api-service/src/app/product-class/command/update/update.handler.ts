@@ -1,7 +1,17 @@
-import { ErrorResponseDto, ProductClassDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ProductClassDto,
+    ProductClassEventDto,
+    ProductClassEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductClassDatabaseServiceAbstract } from '@product-database-service';
 import { UpdateProductClassCommand } from './update.command';
@@ -16,7 +26,10 @@ export class UpdateProductClassHandler implements ICommandHandler<UpdateProductC
 
     constructor(
         @Inject('ProductClassDatabaseService')
-        private readonly productClassDatabaseService: ProductClassDatabaseServiceAbstract
+        private readonly productClassDatabaseService: ProductClassDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateProductClassCommand): Promise<ResponseDto<ProductClassDto | ErrorResponseDto>> {
@@ -29,11 +42,22 @@ export class UpdateProductClassHandler implements ICommandHandler<UpdateProductC
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
+            // Capture old name before updating
+            const oldProductClassName = existingRecord.productClassName;
+
             // Update status and activity logs based on permissions
-            this.updateProductClassStatus(existingRecord, command, hasApprovalPermission);
+            await this.updateProductClassStatus(existingRecord, command, hasApprovalPermission);
 
             // Update record in database
             const updatedRecord = await this.productClassDatabaseService.updateRecord(existingRecord);
+
+            // Publish event if product class name changed (admin only)
+            if (hasApprovalPermission && oldProductClassName !== command.productClassDto.productClassName) {
+                await this.publishProductClassUpdatedEvent(
+                    existingRecord.productClassId,
+                    command.productClassDto.productClassName
+                );
+            }
 
             this.logger.log(`Product class updated successfully: ${existingRecord.productClassId}`);
             return new ResponseDto<ProductClassDto>(updatedRecord, HTTP_STATUS_OK);
@@ -74,11 +98,11 @@ export class UpdateProductClassHandler implements ICommandHandler<UpdateProductC
     /**
      * Updates product class status and activity logs based on user permissions
      */
-    private updateProductClassStatus(
+    private async updateProductClassStatus(
         existingRecord: ProductClassDto,
         command: UpdateProductClassCommand,
         hasApprovalPermission: boolean
-    ): void {
+    ): Promise<void> {
         if (hasApprovalPermission) {
             // User can approve directly - update the existing record
             existingRecord.status = StatusEnum.ACTIVE;
@@ -137,6 +161,35 @@ export class UpdateProductClassHandler implements ICommandHandler<UpdateProductC
                 ...existingRecord.forApprovalVersion,
                 productClassName: command.productClassDto.productClassName,
             };
+        }
+    }
+
+    /**
+     * Publishes a product class updated event to the message queue
+     */
+    private async publishProductClassUpdatedEvent(productClassId: string, newProductClassName: string): Promise<void> {
+        try {
+            const eventDto: ProductClassEventDto = {
+                productClassId,
+                newProductClassName,
+                eventType: ProductClassEventEnum.PRODUCT_CLASS_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('PRODUCT_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('PRODUCT_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_CLASS_UPDATED event for productClassId: ${productClassId}`);
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_CLASS_UPDATED event for productClassId: ${productClassId}`,
+                error
+            );
+            // Don't throw - event publishing failure shouldn't break the update
         }
     }
 

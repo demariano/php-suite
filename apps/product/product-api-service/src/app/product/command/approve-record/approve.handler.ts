@@ -3,13 +3,17 @@ import {
     ErrorResponseDto,
     ProductDealDetailsDto,
     ProductDto,
+    ProductEventDto,
+    ProductEventEnum,
     ProductUnitPriceDto,
     ResponseDto,
     StatusEnum,
     UserRole,
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductDatabaseServiceAbstract } from '@product-database-service';
 import { ApproveProductCommand } from './approve.command';
@@ -24,7 +28,10 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
 
     constructor(
         @Inject('ProductDatabaseService')
-        private readonly productDatabaseService: ProductDatabaseServiceAbstract
+        private readonly productDatabaseService: ProductDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveProductCommand): Promise<ResponseDto<ProductDto | ErrorResponseDto>> {
@@ -92,6 +99,9 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
      * Approves a product for approval
      */
     private async approveProduct(existingRecord: ProductDto, user: UserCognito): Promise<ResponseDto<ProductDto>> {
+        // Capture old name BEFORE updating
+        const oldProductName = existingRecord.productName;
+
         const approvalVersion = existingRecord.forApprovalVersion ?? {};
 
         // Update status and add activity log
@@ -125,6 +135,11 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
         // Update record in database
         const updatedRecord = await this.productDatabaseService.updateRecord(existingRecord);
 
+        // Publish event if product name changed
+        if (oldProductName !== updatedRecord.productName) {
+            await this.publishProductUpdatedEvent(updatedRecord.productId, updatedRecord.productName);
+        }
+
         this.logger.log(`Product approved successfully: ${existingRecord.productId}`);
         return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
     }
@@ -146,6 +161,54 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
 
         this.logger.log(`Product deactivation approved: ${existingRecord.productId}`);
         return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publishes a product updated event to the message queue
+     */
+    private async publishProductUpdatedEvent(productId: string, newProductName: string): Promise<void> {
+        try {
+            const eventDto: ProductEventDto = {
+                productId,
+                newProductName,
+                eventType: ProductEventEnum.PRODUCT_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('PRODUCT_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('PRODUCT_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_UPDATED event for productId: ${productId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish PRODUCT_UPDATED event for productId: ${productId}`, error);
+        }
+
+        try {
+            const eventDto: ProductEventDto = {
+                productId,
+                newProductName,
+                eventType: ProductEventEnum.PRODUCT_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_UPDATED event to INVENTORY_EVENT_SQS for productId: ${productId}`);
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_UPDATED event to INVENTORY_EVENT_SQS for productId: ${productId}`,
+                error
+            );
+        }
     }
 
     /**

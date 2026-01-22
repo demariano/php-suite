@@ -1,8 +1,18 @@
 import { CustomerTypeDatabaseServiceAbstract } from '@customer-database-service';
-import { CustomerTypeDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    CustomerTypeDto,
+    CustomerTypeEventDto,
+    CustomerTypeEventEnum,
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueAwsLibService } from '@message-queue-aws-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateCustomerTypeCommand } from './update.command';
 
@@ -16,7 +26,9 @@ export class UpdateCustomerTypeHandler implements ICommandHandler<UpdateCustomer
 
     constructor(
         @Inject('CustomerTypeDatabaseService')
-        private readonly customerTypeDatabaseService: CustomerTypeDatabaseServiceAbstract
+        private readonly customerTypeDatabaseService: CustomerTypeDatabaseServiceAbstract,
+        private readonly messageQueueService: MessageQueueAwsLibService,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateCustomerTypeCommand): Promise<ResponseDto<CustomerTypeDto | ErrorResponseDto>> {
@@ -37,6 +49,14 @@ export class UpdateCustomerTypeHandler implements ICommandHandler<UpdateCustomer
 
             // Update record in database
             const updatedRecord = await this.customerTypeDatabaseService.updateRecord(existingRecord);
+
+            // Publish event if name changed and approved
+            if (hasApprovalPermission && existingRecord.customerTypeName !== command.customerTypeDto.customerTypeName) {
+                await this.publishCustomerTypeUpdatedEvent(
+                    updatedRecord.customerTypeId,
+                    command.customerTypeDto.customerTypeName
+                );
+            }
 
             this.logger.log(`Customer type updated successfully: ${updatedRecord.customerTypeId}`);
             return new ResponseDto<CustomerTypeDto>(updatedRecord, HTTP_STATUS_OK);
@@ -183,5 +203,30 @@ export class UpdateCustomerTypeHandler implements ICommandHandler<UpdateCustomer
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes customer type updated event to SQS
+     */
+    private async publishCustomerTypeUpdatedEvent(customerTypeId: string, newCustomerTypeName: string): Promise<void> {
+        try {
+            const customerEventSqsUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            if (!customerEventSqsUrl) {
+                this.logger.warn('CUSTOMER_EVENT_SQS URL not configured');
+                return;
+            }
+
+            const event: CustomerTypeEventDto = {
+                eventType: CustomerTypeEventEnum.CUSTOMER_TYPE_UPDATED,
+                customerTypeId,
+                newCustomerTypeName,
+                timestamp: new Date().toISOString(),
+            };
+
+            await this.messageQueueService.sendMessageToSQS(customerEventSqsUrl, event);
+            this.logger.log(`Customer type updated event published for customerTypeId: ${customerTypeId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish customer type updated event: ${error.message}`, error.stack);
+        }
     }
 }

@@ -1,7 +1,17 @@
-import { ErrorResponseDto, ProductDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ProductDto,
+    ProductEventDto,
+    ProductEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductDatabaseServiceAbstract } from '@product-database-service';
 import { UpdateProductCommand } from './update.command';
@@ -16,7 +26,10 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
 
     constructor(
         @Inject('ProductDatabaseService')
-        private readonly productDatabaseService: ProductDatabaseServiceAbstract
+        private readonly productDatabaseService: ProductDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateProductCommand): Promise<ResponseDto<ProductDto | ErrorResponseDto>> {
@@ -31,8 +44,11 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
+            // Capture old name before updating
+            const oldProductName = existingRecord.productName;
+
             // Update status and activity logs based on permissions
-            this.updateProductStatus(existingRecord, command, hasApprovalPermission);
+            await this.updateProductStatus(existingRecord, command, hasApprovalPermission);
 
             // Optimize activity logs
             existingRecord.activityLogs =
@@ -40,6 +56,11 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
 
             // Update record in database
             const updatedRecord = await this.productDatabaseService.updateRecord(existingRecord);
+
+            // Publish event if product name changed (admin only)
+            if (hasApprovalPermission && oldProductName !== command.productDto.productName) {
+                await this.publishProductUpdatedEvent(existingRecord.productId, command.productDto.productName);
+            }
 
             this.logger.log(`Product updated successfully: ${existingRecord.productId}`);
             return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
@@ -80,11 +101,11 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
     /**
      * Updates product status and activity logs based on user permissions
      */
-    private updateProductStatus(
+    private async updateProductStatus(
         existingRecord: ProductDto,
         command: UpdateProductCommand,
         hasApprovalPermission: boolean
-    ): void {
+    ): Promise<void> {
         existingRecord.activityLogs = existingRecord.activityLogs ?? [];
 
         if (hasApprovalPermission) {
@@ -143,6 +164,54 @@ export class UpdateProductHandler implements ICommandHandler<UpdateProductComman
             }
 
             existingRecord.activityLogs.push(activityLogMessage);
+        }
+    }
+
+    /**
+     * Publishes a product updated event to the message queue
+     */
+    private async publishProductUpdatedEvent(productId: string, newProductName: string): Promise<void> {
+        try {
+            const eventDto: ProductEventDto = {
+                productId,
+                newProductName,
+                eventType: ProductEventEnum.PRODUCT_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('PRODUCT_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('PRODUCT_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_UPDATED event for productId: ${productId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish PRODUCT_UPDATED event for productId: ${productId}`, error);
+        }
+
+        try {
+            const eventDto: ProductEventDto = {
+                productId,
+                newProductName,
+                eventType: ProductEventEnum.PRODUCT_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_UPDATED event to INVENTORY_EVENT_SQS for productId: ${productId}`);
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_UPDATED event to INVENTORY_EVENT_SQS for productId: ${productId}`,
+                error
+            );
         }
     }
 

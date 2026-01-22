@@ -1,8 +1,18 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, RawMaterialsLocationDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    RawMaterialsLocationDto,
+    RawMaterialsLocationEventDto,
+    RawMaterialsLocationEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { RawMaterialsLocationDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-aws-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveRawMaterialsLocationCommand } from './approve.command';
 
@@ -15,7 +25,10 @@ export class ApproveRawMaterialsLocationHandler implements ICommandHandler<Appro
 
     constructor(
         @Inject('RawMaterialsLocationDatabaseService')
-        private readonly rawMaterialsLocationDatabaseService: RawMaterialsLocationDatabaseServiceAbstract
+        private readonly rawMaterialsLocationDatabaseService: RawMaterialsLocationDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(
@@ -80,6 +93,9 @@ export class ApproveRawMaterialsLocationHandler implements ICommandHandler<Appro
         existingRecord: RawMaterialsLocationDto,
         user: UserCognito
     ): Promise<ResponseDto<RawMaterialsLocationDto>> {
+        // Capture old name before applying changes
+        const oldRawMaterialsLocationName = existingRecord.rawMaterialsLocationName;
+
         const forApprovalVersion = existingRecord.forApprovalVersion || {};
         existingRecord.rawMaterialsLocationName =
             (forApprovalVersion.rawMaterialsLocationName as string) || existingRecord.rawMaterialsLocationName;
@@ -95,6 +111,15 @@ export class ApproveRawMaterialsLocationHandler implements ICommandHandler<Appro
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const updatedRecord = await this.rawMaterialsLocationDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if raw materials location name changed
+        if (oldRawMaterialsLocationName !== updatedRecord.rawMaterialsLocationName) {
+            await this.publishRawMaterialsLocationUpdatedEvent(
+                updatedRecord.rawMaterialsLocationId,
+                updatedRecord.rawMaterialsLocationName
+            );
+        }
+
         return new ResponseDto<RawMaterialsLocationDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -119,6 +144,39 @@ export class ApproveRawMaterialsLocationHandler implements ICommandHandler<Appro
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         const updatedRecord = await this.rawMaterialsLocationDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<RawMaterialsLocationDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publish RAW_MATERIALS_LOCATION_UPDATED event to INVENTORY_EVENT_SQS
+     */
+    private async publishRawMaterialsLocationUpdatedEvent(
+        rawMaterialsLocationId: string,
+        newRawMaterialsLocationName: string
+    ): Promise<void> {
+        try {
+            const eventDto: RawMaterialsLocationEventDto = {
+                rawMaterialsLocationId,
+                newRawMaterialsLocationName,
+                eventType: RawMaterialsLocationEventEnum.RAW_MATERIALS_LOCATION_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(
+                `Published RAW_MATERIALS_LOCATION_UPDATED event to INVENTORY_EVENT_SQS for rawMaterialsLocationId: ${rawMaterialsLocationId}`
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish RAW_MATERIALS_LOCATION_UPDATED event for rawMaterialsLocationId: ${rawMaterialsLocationId}`,
+                error
+            );
+        }
     }
 
     private handleError(error: unknown, recordId: string): never {

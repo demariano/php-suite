@@ -2,7 +2,9 @@ import { ErrorResponseDto, ResponseDto, StatusEnum, SupplierDto, UserRole } from
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { SupplierDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateSupplierCommand } from './update.command';
 
@@ -16,7 +18,10 @@ export class UpdateSupplierHandler implements ICommandHandler<UpdateSupplierComm
 
     constructor(
         @Inject('SupplierDatabaseService')
-        private readonly supplierDatabaseService: SupplierDatabaseServiceAbstract
+        private readonly supplierDatabaseService: SupplierDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateSupplierCommand): Promise<ResponseDto<SupplierDto | ErrorResponseDto>> {
@@ -25,6 +30,9 @@ export class UpdateSupplierHandler implements ICommandHandler<UpdateSupplierComm
         try {
             // Fetch and validate existing supplier record
             const existingRecord = await this.fetchSupplierById(command.recordId);
+
+            // Capture old name before updating
+            const oldSupplierName = existingRecord.supplierName;
 
             // Validate that supplier name doesn't already exist (if changed)
             await this.validateSupplierNameUnique(command.supplierDto.supplierName, command.recordId);
@@ -37,6 +45,11 @@ export class UpdateSupplierHandler implements ICommandHandler<UpdateSupplierComm
 
             // Update record in database
             const updatedRecord = await this.supplierDatabaseService.updateRecord(existingRecord);
+
+            // Publish event if supplier name changed (admin only)
+            if (hasApprovalPermission && oldSupplierName !== command.supplierDto.supplierName) {
+                await this.publishSupplierUpdatedEvent(existingRecord.supplierId, command.supplierDto.supplierName);
+            }
 
             this.logger.log(`Supplier updated successfully: ${updatedRecord.supplierId}`);
             return new ResponseDto<SupplierDto>(updatedRecord, HTTP_STATUS_OK);
@@ -197,4 +210,3 @@ export class UpdateSupplierHandler implements ICommandHandler<UpdateSupplierComm
         return 'An unexpected error occurred';
     }
 }
-

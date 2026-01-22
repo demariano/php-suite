@@ -1,7 +1,17 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ProductUnitDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ProductUnitDto,
+    ProductUnitEventDto,
+    ProductUnitEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductUnitDatabaseServiceAbstract } from '@product-database-service';
 import { ApproveProductUnitCommand } from './approve.command';
@@ -16,7 +26,10 @@ export class ApproveProductUnitHandler implements ICommandHandler<ApproveProduct
 
     constructor(
         @Inject('ProductUnitDatabaseService')
-        private readonly productUnitDatabaseService: ProductUnitDatabaseServiceAbstract
+        private readonly productUnitDatabaseService: ProductUnitDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveProductUnitCommand): Promise<ResponseDto<ProductUnitDto | ErrorResponseDto>> {
@@ -92,6 +105,9 @@ export class ApproveProductUnitHandler implements ICommandHandler<ApproveProduct
         existingRecord: ProductUnitDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductUnitDto>> {
+        // Capture old name before applying approval
+        const oldProductUnitName = existingRecord.productUnitName;
+
         // Apply forApprovalVersion to main fields
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.productUnitName = forApprovalVersion.productUnitName as string;
@@ -112,6 +128,11 @@ export class ApproveProductUnitHandler implements ICommandHandler<ApproveProduct
 
         // Update record in database
         const updatedRecord = await this.productUnitDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if product unit name changed
+        if (oldProductUnitName !== existingRecord.productUnitName) {
+            await this.publishProductUnitUpdatedEvent(existingRecord.productUnitId, existingRecord.productUnitName);
+        }
 
         this.logger.log(`Product unit approved successfully: ${existingRecord.productUnitId}`);
         return new ResponseDto<ProductUnitDto>(updatedRecord, HTTP_STATUS_OK);
@@ -147,6 +168,36 @@ export class ApproveProductUnitHandler implements ICommandHandler<ApproveProduct
 
         this.logger.log(`Product unit deactivation approved: ${existingRecord.productUnitId}`);
         return new ResponseDto<ProductUnitDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publishes a product unit updated event to INVENTORY_EVENT_SQS
+     */
+    private async publishProductUnitUpdatedEvent(productUnitId: string, newProductUnitName: string): Promise<void> {
+        try {
+            const eventDto: ProductUnitEventDto = {
+                productUnitId,
+                newProductUnitName,
+                eventType: ProductUnitEventEnum.PRODUCT_UNIT_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(
+                `Published PRODUCT_UNIT_UPDATED event to INVENTORY_EVENT_SQS for productUnitId: ${productUnitId}`
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_UNIT_UPDATED event to INVENTORY_EVENT_SQS for productUnitId: ${productUnitId}`,
+                error
+            );
+        }
     }
 
     /**

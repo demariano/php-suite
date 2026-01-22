@@ -395,4 +395,79 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
 
         return productData;
     }
+
+    async findRecordsByProductCategoryIdPagination(
+        limit: number,
+        productCategoryId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.productTable.find(
+            {
+                GSI3PK: `PRODUCT#${productCategoryId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByProductClassIdPagination(
+        limit: number,
+        productClassId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI4', direction, cursorPointer);
+
+        const records = await this.productTable.find(
+            {
+                GSI4PK: `PRODUCT#${productClassId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI4PK',
+            'GSI4SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async batchUpdate(records: ProductDto[]): Promise<void> {
+        const updatePromises = records.map((record) => this.updateRecord(record));
+        await Promise.all(updatePromises);
+    }
 }

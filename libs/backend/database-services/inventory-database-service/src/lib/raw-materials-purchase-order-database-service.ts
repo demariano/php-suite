@@ -63,6 +63,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             GSI4SK: rawMaterialsPurchaseOrderDto.poDate,
             GSI5PK: 'RAW_MATERIALS_PURCHASE_ORDER',
             GSI5SK: docNo,
+            GSI6PK: `RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialsPurchaseOrderDto.rawMaterialSupplierId}`,
+            GSI6SK: rawMaterialsPurchaseOrderDto.rawMaterialsPurchaseOrderId || '',
         };
 
         const record: RawMaterialsPurchaseOrderDataType = await this.rawMaterialsPurchaseOrderTable.create(
@@ -96,6 +98,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         data.GSI4SK = record.poDate;
         data.GSI5PK = 'RAW_MATERIALS_PURCHASE_ORDER';
         data.GSI5SK = docNo;
+        data.GSI6PK = `RAW_MATERIALS_PURCHASE_ORDER#${record.rawMaterialSupplierId}`;
+        data.GSI6SK = record.rawMaterialsPurchaseOrderId;
         data.forApprovalVersion = record.forApprovalVersion;
         data.changeReason = record.changeReason;
         data.approverMessage = record.approverMessage;
@@ -293,6 +297,28 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         return dtoList;
     }
 
+    async findRecordsByRawMaterialSupplierIdPagination(
+        limit: number,
+        rawMaterialSupplierId: string,
+        direction: 'forward' | 'backward',
+        cursorPointer?: string
+    ): Promise<PageDto<RawMaterialsPurchaseOrderDto>> {
+        const options = createDynamoDbOptionWithPKSKIndex(
+            `RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialSupplierId}`,
+            undefined,
+            undefined,
+            limit,
+            direction,
+            cursorPointer
+        );
+
+        return this.pageRecordHandler(options, 'GSI6');
+    }
+
+    async batchUpdate(records: RawMaterialsPurchaseOrderDto[]): Promise<void> {
+        await Promise.all(records.map((record) => this.updateRecord(record)));
+    }
+
     async convertToDataType(dto: RawMaterialsPurchaseOrderDto): Promise<RawMaterialsPurchaseOrderDataType> {
         const rawMaterialsPurchaseOrderData: RawMaterialsPurchaseOrderDataType = {
             rawMaterialsPurchaseOrderId: dto.rawMaterialsPurchaseOrderId,
@@ -314,6 +340,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             GSI4SK: dto.poDate,
             GSI5PK: 'RAW_MATERIALS_PURCHASE_ORDER',
             GSI5SK: dto.docNo,
+            GSI6PK: `RAW_MATERIALS_PURCHASE_ORDER#${dto.rawMaterialSupplierId}`,
+            GSI6SK: dto.rawMaterialsPurchaseOrderId,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

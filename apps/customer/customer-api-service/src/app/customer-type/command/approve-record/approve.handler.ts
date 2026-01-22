@@ -1,8 +1,18 @@
 import { UserCognito } from '@auth-guard-lib';
 import { CustomerTypeDatabaseServiceAbstract } from '@customer-database-service';
-import { CustomerTypeDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    CustomerTypeDto,
+    CustomerTypeEventDto,
+    CustomerTypeEventEnum,
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueAwsLibService } from '@message-queue-aws-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveCustomerTypeCommand } from './approve.command';
 
@@ -16,7 +26,9 @@ export class ApproveCustomerTypeHandler implements ICommandHandler<ApproveCustom
 
     constructor(
         @Inject('CustomerTypeDatabaseService')
-        private readonly customerTypeDatabaseService: CustomerTypeDatabaseServiceAbstract
+        private readonly customerTypeDatabaseService: CustomerTypeDatabaseServiceAbstract,
+        private readonly messageQueueService: MessageQueueAwsLibService,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveCustomerTypeCommand): Promise<ResponseDto<CustomerTypeDto | ErrorResponseDto>> {
@@ -104,11 +116,17 @@ export class ApproveCustomerTypeHandler implements ICommandHandler<ApproveCustom
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
+        const oldName = existingRecord.customerTypeName;
         existingRecord.customerTypeName = forApprovalVersion.customerTypeName as string;
         existingRecord.forApprovalVersion = {};
 
         // Update record in database
         const updatedRecord = await this.customerTypeDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if name changed
+        if (oldName !== existingRecord.customerTypeName) {
+            await this.publishCustomerTypeUpdatedEvent(updatedRecord.customerTypeId, existingRecord.customerTypeName);
+        }
 
         this.logger.log(`Customer type approved successfully: ${existingRecord.customerTypeId}`);
         return new ResponseDto<CustomerTypeDto>(updatedRecord, HTTP_STATUS_OK);
@@ -173,5 +191,30 @@ export class ApproveCustomerTypeHandler implements ICommandHandler<ApproveCustom
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes customer type updated event to SQS
+     */
+    private async publishCustomerTypeUpdatedEvent(customerTypeId: string, newCustomerTypeName: string): Promise<void> {
+        try {
+            const customerEventSqsUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            if (!customerEventSqsUrl) {
+                this.logger.warn('CUSTOMER_EVENT_SQS URL not configured');
+                return;
+            }
+
+            const event: CustomerTypeEventDto = {
+                eventType: CustomerTypeEventEnum.CUSTOMER_TYPE_UPDATED,
+                customerTypeId,
+                newCustomerTypeName,
+                timestamp: new Date().toISOString(),
+            };
+
+            await this.messageQueueService.sendMessageToSQS(customerEventSqsUrl, event);
+            this.logger.log(`Customer type updated event published for customerTypeId: ${customerTypeId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish customer type updated event: ${error.message}`, error.stack);
+        }
     }
 }

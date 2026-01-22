@@ -1,0 +1,3 @@
+export enum CustomerClassificationEventEnum {
+    CUSTOMER_CLASSIFICATION_UPDATED = 'CUSTOMER_CLASSIFICATION_UPDATED',
+}

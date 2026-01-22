@@ -1,8 +1,18 @@
-import { ErrorResponseDto, ResponseDto, StatusEnum, StockTypeDto, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    StockTypeDto,
+    StockTypeEventDto,
+    StockTypeEventEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateStockTypeCommand } from './update.command';
 
@@ -16,7 +26,10 @@ export class UpdateStockTypeHandler implements ICommandHandler<UpdateStockTypeCo
 
     constructor(
         @Inject('StockTypeDatabaseService')
-        private readonly stockTypeDatabaseService: StockTypeDatabaseServiceAbstract
+        private readonly stockTypeDatabaseService: StockTypeDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateStockTypeCommand): Promise<ResponseDto<StockTypeDto | ErrorResponseDto>> {
@@ -25,6 +38,9 @@ export class UpdateStockTypeHandler implements ICommandHandler<UpdateStockTypeCo
         try {
             // Fetch and validate existing stock type record
             const existingRecord = await this.fetchStockTypeById(command.recordId);
+
+            // Capture old name before updating
+            const oldStockTypeName = existingRecord.stockTypeName;
 
             // Validate that stock type name doesn't already exist (if changed)
             await this.validateStockTypeNameUnique(command.stockTypeDto.stockTypeName, command.recordId);
@@ -37,6 +53,11 @@ export class UpdateStockTypeHandler implements ICommandHandler<UpdateStockTypeCo
 
             // Update record in database
             const updatedRecord = await this.stockTypeDatabaseService.updateRecord(existingRecord);
+
+            // Publish event if stock type name changed (admin only)
+            if (hasApprovalPermission && oldStockTypeName !== command.stockTypeDto.stockTypeName) {
+                await this.publishStockTypeUpdatedEvent(existingRecord.stockTypeId, command.stockTypeDto.stockTypeName);
+            }
 
             this.logger.log(`Stock type updated successfully: ${updatedRecord.stockTypeId}`);
             return new ResponseDto<StockTypeDto>(updatedRecord, HTTP_STATUS_OK);
@@ -149,6 +170,33 @@ export class UpdateStockTypeHandler implements ICommandHandler<UpdateStockTypeCo
                 ...existingRecord.forApprovalVersion,
                 stockTypeName: command.stockTypeDto.stockTypeName,
             };
+        }
+    }
+
+    /**
+     * Publishes a stock type updated event to INVENTORY_EVENT_SQS
+     */
+    private async publishStockTypeUpdatedEvent(stockTypeId: string, newStockTypeName: string): Promise<void> {
+        try {
+            const eventDto: StockTypeEventDto = {
+                stockTypeId,
+                newStockTypeName,
+                eventType: StockTypeEventEnum.STOCK_TYPE_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(
+                `Published STOCK_TYPE_UPDATED event to INVENTORY_EVENT_SQS for stockTypeId: ${stockTypeId}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to publish STOCK_TYPE_UPDATED event for stockTypeId: ${stockTypeId}`, error);
         }
     }
 

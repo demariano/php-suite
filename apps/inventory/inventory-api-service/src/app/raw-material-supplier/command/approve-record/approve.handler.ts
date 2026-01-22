@@ -1,8 +1,18 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, RawMaterialSupplierDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    RawMaterialSupplierDto,
+    RawMaterialSupplierEventDto,
+    RawMaterialSupplierEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { RawMaterialSupplierDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-aws-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveRawMaterialSupplierCommand } from './approve.command';
 
@@ -15,7 +25,10 @@ export class ApproveRawMaterialSupplierHandler implements ICommandHandler<Approv
 
     constructor(
         @Inject('RawMaterialSupplierDatabaseService')
-        private readonly rawMaterialSupplierDatabaseService: RawMaterialSupplierDatabaseServiceAbstract
+        private readonly rawMaterialSupplierDatabaseService: RawMaterialSupplierDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(
@@ -80,6 +93,9 @@ export class ApproveRawMaterialSupplierHandler implements ICommandHandler<Approv
         existingRecord: RawMaterialSupplierDto,
         user: UserCognito
     ): Promise<ResponseDto<RawMaterialSupplierDto>> {
+        // Capture old name before applying changes
+        const oldRawMaterialSupplierName = existingRecord.rawMaterialSupplierName;
+
         const forApprovalVersion = existingRecord.forApprovalVersion || {};
         existingRecord.rawMaterialSupplierName =
             (forApprovalVersion.rawMaterialSupplierName as string) || existingRecord.rawMaterialSupplierName;
@@ -95,6 +111,15 @@ export class ApproveRawMaterialSupplierHandler implements ICommandHandler<Approv
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const updatedRecord = await this.rawMaterialSupplierDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if raw material supplier name changed
+        if (oldRawMaterialSupplierName !== updatedRecord.rawMaterialSupplierName) {
+            await this.publishRawMaterialSupplierUpdatedEvent(
+                updatedRecord.rawMaterialSupplierId,
+                updatedRecord.rawMaterialSupplierName
+            );
+        }
+
         return new ResponseDto<RawMaterialSupplierDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -119,6 +144,39 @@ export class ApproveRawMaterialSupplierHandler implements ICommandHandler<Approv
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         const updatedRecord = await this.rawMaterialSupplierDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<RawMaterialSupplierDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publish RAW_MATERIAL_SUPPLIER_UPDATED event to INVENTORY_EVENT_SQS
+     */
+    private async publishRawMaterialSupplierUpdatedEvent(
+        rawMaterialSupplierId: string,
+        newRawMaterialSupplierName: string
+    ): Promise<void> {
+        try {
+            const eventDto: RawMaterialSupplierEventDto = {
+                rawMaterialSupplierId,
+                newRawMaterialSupplierName,
+                eventType: RawMaterialSupplierEventEnum.RAW_MATERIAL_SUPPLIER_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(
+                `Published RAW_MATERIAL_SUPPLIER_UPDATED event to INVENTORY_EVENT_SQS for rawMaterialSupplierId: ${rawMaterialSupplierId}`
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish RAW_MATERIAL_SUPPLIER_UPDATED event for rawMaterialSupplierId: ${rawMaterialSupplierId}`,
+                error
+            );
+        }
     }
 
     private handleError(error: unknown, recordId: string): never {

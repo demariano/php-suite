@@ -1,8 +1,18 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, RawMaterialDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    RawMaterialDto,
+    RawMaterialEventDto,
+    RawMaterialEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { RawMaterialDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateRawMaterialCommand } from './update.command';
 
@@ -15,7 +25,10 @@ export class UpdateRawMaterialHandler implements ICommandHandler<UpdateRawMateri
 
     constructor(
         @Inject('RawMaterialDatabaseService')
-        private readonly rawMaterialDatabaseService: RawMaterialDatabaseServiceAbstract
+        private readonly rawMaterialDatabaseService: RawMaterialDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateRawMaterialCommand): Promise<ResponseDto<RawMaterialDto | ErrorResponseDto>> {
@@ -23,6 +36,9 @@ export class UpdateRawMaterialHandler implements ICommandHandler<UpdateRawMateri
         if (!existing) {
             throw new NotFoundException(`Raw material not found for ID: ${command.recordId}`);
         }
+
+        // Capture old name before updating
+        const oldRawMaterialName = existing.rawMaterialName;
 
         // Prevent duplicate names when changing name
         const nextName = command.rawMaterialDto.rawMaterialName;
@@ -40,6 +56,12 @@ export class UpdateRawMaterialHandler implements ICommandHandler<UpdateRawMateri
             const updated = approveDirect
                 ? await this.rawMaterialDatabaseService.updateRecord(existing)
                 : await this.rawMaterialDatabaseService.updateRecord(existing);
+
+            // Publish event if raw material name changed (admin only)
+            if (approveDirect && oldRawMaterialName !== nextName) {
+                await this.publishRawMaterialUpdatedEvent(existing.rawMaterialId, nextName);
+            }
+
             return new ResponseDto<RawMaterialDto>(updated, HTTP_STATUS_OK);
         } catch (error) {
             this.logger.error('Failed to update raw material', error as Error);
@@ -81,6 +103,36 @@ export class UpdateRawMaterialHandler implements ICommandHandler<UpdateRawMateri
                 `Date: ${timestamp}, Raw material update requested by ${user.username} for approval`
             );
             existing.activityLogs = reduceArrayContents(existing.activityLogs, ACTIVITY_LOGS_LIMIT);
+        }
+    }
+
+    /**
+     * Publishes a raw material updated event to INVENTORY_EVENT_SQS
+     */
+    private async publishRawMaterialUpdatedEvent(rawMaterialId: string, newRawMaterialName: string): Promise<void> {
+        try {
+            const eventDto: RawMaterialEventDto = {
+                rawMaterialId,
+                newRawMaterialName,
+                eventType: RawMaterialEventEnum.RAW_MATERIAL_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(
+                `Published RAW_MATERIAL_UPDATED event to INVENTORY_EVENT_SQS for rawMaterialId: ${rawMaterialId}`
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish RAW_MATERIAL_UPDATED event for rawMaterialId: ${rawMaterialId}`,
+                error
+            );
         }
     }
 }

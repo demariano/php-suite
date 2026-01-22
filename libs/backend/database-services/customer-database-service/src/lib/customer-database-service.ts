@@ -434,6 +434,116 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         return dtoList;
     }
 
+    async findRecordsByCustomerClassificationIdPagination(
+        limit: number,
+        customerClassificationId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.customerTable.find(
+            {
+                GSI3PK: `CUSTOMER#${customerClassificationId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByCustomerTypeIdPagination(
+        limit: number,
+        customerTypeId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI4', direction, cursorPointer);
+
+        const records = await this.customerTable.find(
+            {
+                GSI4PK: `CUSTOMER#${customerTypeId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI4PK',
+            'GSI4SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<CustomerDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', direction, cursorPointer);
+
+        const records = await this.customerTable.find(
+            {
+                GSI5PK: `CUSTOMER#${areaId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI5PK',
+            'GSI5SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async batchUpdate(records: CustomerDto[]): Promise<void> {
+        const updatePromises = records.map((record) => this.updateRecord(record));
+        await Promise.all(updatePromises);
+    }
+
     async convertToDataType(dto: CustomerDto): Promise<CustomerDataType> {
         const customerData: CustomerDataType = {
             customerId: dto.customerId,

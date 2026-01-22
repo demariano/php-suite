@@ -1,8 +1,19 @@
 import { AccountsDatabaseServiceAbstract } from '@accounting-database-service';
 import { UserCognito } from '@auth-guard-lib';
-import { AccountsDto, AccountTypeEnum, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    AccountEventDto,
+    AccountEventEnum,
+    AccountsDto,
+    AccountTypeEnum,
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueAwsLibService } from '@message-queue-aws-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveAccountsCommand } from './approve.command';
 
@@ -16,7 +27,9 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
 
     constructor(
         @Inject('AccountsDatabaseService')
-        private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract
+        private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract,
+        private readonly messageQueueService: MessageQueueAwsLibService,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveAccountsCommand): Promise<ResponseDto<AccountsDto | ErrorResponseDto>> {
@@ -97,6 +110,7 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
+        const oldAccountName = existingRecord.accountName;
         if (forApprovalVersion) {
             existingRecord.accountName = (forApprovalVersion.accountName as string) ?? existingRecord.accountName;
             existingRecord.accountType =
@@ -107,6 +121,11 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
         existingRecord.changeReason = null;
 
         const updatedRecord = await this.accountsDatabaseService.updateRecord(existingRecord);
+
+        // Publish account updated event if name changed
+        if (oldAccountName !== existingRecord.accountName) {
+            await this.publishAccountUpdatedEvent(updatedRecord.accountingId, existingRecord.accountName);
+        }
 
         this.logger.log(`Account approved successfully: ${existingRecord.accountingId}`);
         return new ResponseDto<AccountsDto>(updatedRecord, HTTP_STATUS_OK);
@@ -172,5 +191,30 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes account updated event to SQS
+     */
+    private async publishAccountUpdatedEvent(accountingId: string, newAccountName: string): Promise<void> {
+        try {
+            const accountEventSqsUrl = this.configService.get<string>('ACCOUNTING_EVENT_SQS');
+            if (!accountEventSqsUrl) {
+                this.logger.warn('ACCOUNTING_EVENT_SQS URL not configured');
+                return;
+            }
+
+            const event: AccountEventDto = {
+                eventType: AccountEventEnum.ACCOUNT_UPDATED,
+                accountingId,
+                newAccountName,
+                timestamp: new Date().toISOString(),
+            };
+
+            await this.messageQueueService.sendMessageToSQS(accountEventSqsUrl, event);
+            this.logger.log(`Account updated event published for accountingId: ${accountingId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish account updated event: ${error.message}`, error.stack);
+        }
     }
 }

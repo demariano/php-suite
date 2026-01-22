@@ -1,7 +1,17 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ProductCategoryDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ProductCategoryDto,
+    ProductCategoryEventDto,
+    ProductCategoryEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductCategoryDatabaseServiceAbstract } from '@product-database-service';
 import { ApproveProductCategoryCommand } from './approve.command';
@@ -16,7 +26,10 @@ export class ApproveProductCategoryHandler implements ICommandHandler<ApprovePro
 
     constructor(
         @Inject('ProductCategoryDatabaseService')
-        private readonly productCategoryDatabaseService: ProductCategoryDatabaseServiceAbstract
+        private readonly productCategoryDatabaseService: ProductCategoryDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveProductCategoryCommand): Promise<ResponseDto<ProductCategoryDto | ErrorResponseDto>> {
@@ -92,6 +105,9 @@ export class ApproveProductCategoryHandler implements ICommandHandler<ApprovePro
         existingRecord: ProductCategoryDto,
         user: UserCognito
     ): Promise<ResponseDto<ProductCategoryDto>> {
+        // Capture old name BEFORE updating
+        const oldProductCategoryName = existingRecord.productCategoryName;
+
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs.push(
@@ -109,6 +125,14 @@ export class ApproveProductCategoryHandler implements ICommandHandler<ApprovePro
 
         // Update record in database
         const updatedRecord = await this.productCategoryDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if product category name changed
+        if (oldProductCategoryName !== updatedRecord.productCategoryName) {
+            await this.publishProductCategoryUpdatedEvent(
+                updatedRecord.productCategoryId,
+                updatedRecord.productCategoryName
+            );
+        }
 
         this.logger.log(`Product category approved successfully: ${existingRecord.productCategoryId}`);
         return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
@@ -141,6 +165,38 @@ export class ApproveProductCategoryHandler implements ICommandHandler<ApprovePro
 
         this.logger.log(`Product category deactivation approved: ${existingRecord.productCategoryId}`);
         return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publishes a product category updated event to the message queue
+     */
+    private async publishProductCategoryUpdatedEvent(
+        productCategoryId: string,
+        newProductCategoryName: string
+    ): Promise<void> {
+        try {
+            const eventDto: ProductCategoryEventDto = {
+                productCategoryId,
+                newProductCategoryName,
+                eventType: ProductCategoryEventEnum.PRODUCT_CATEGORY_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const queueUrl = this.configService.get<string>('PRODUCT_EVENT_SQS');
+            if (!queueUrl) {
+                this.logger.error('PRODUCT_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published PRODUCT_CATEGORY_UPDATED event for productCategoryId: ${productCategoryId}`);
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_CATEGORY_UPDATED event for productCategoryId: ${productCategoryId}`,
+                error
+            );
+            // Don't throw - event publishing failure shouldn't break the approval
+        }
     }
 
     /**

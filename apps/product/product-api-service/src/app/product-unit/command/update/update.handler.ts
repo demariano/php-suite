@@ -1,7 +1,17 @@
-import { ErrorResponseDto, ProductUnitDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ProductUnitDto,
+    ProductUnitEventDto,
+    ProductUnitEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ProductUnitDatabaseServiceAbstract } from '@product-database-service';
 import { UpdateProductUnitCommand } from './update.command';
@@ -16,7 +26,10 @@ export class UpdateProductUnitHandler implements ICommandHandler<UpdateProductUn
 
     constructor(
         @Inject('ProductUnitDatabaseService')
-        private readonly productUnitDatabaseService: ProductUnitDatabaseServiceAbstract
+        private readonly productUnitDatabaseService: ProductUnitDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: UpdateProductUnitCommand): Promise<ResponseDto<ProductUnitDto | ErrorResponseDto>> {
@@ -26,6 +39,9 @@ export class UpdateProductUnitHandler implements ICommandHandler<UpdateProductUn
             // Validate record exists
             const existingRecord = await this.validateProductUnitExists(command.productUnitDto.productUnitId);
 
+            // Capture old name before updating
+            const oldProductUnitName = existingRecord.productUnitName;
+
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
@@ -34,6 +50,14 @@ export class UpdateProductUnitHandler implements ICommandHandler<UpdateProductUn
 
             // Update record in database
             const updatedRecord = await this.productUnitDatabaseService.updateRecord(existingRecord);
+
+            // Publish event if product unit name changed (admin only)
+            if (hasApprovalPermission && oldProductUnitName !== command.productUnitDto.productUnitName) {
+                await this.publishProductUnitUpdatedEvent(
+                    existingRecord.productUnitId,
+                    command.productUnitDto.productUnitName
+                );
+            }
 
             this.logger.log(`Product unit updated successfully: ${existingRecord.productUnitId}`);
             return new ResponseDto<ProductUnitDto>(updatedRecord, HTTP_STATUS_OK);
@@ -137,6 +161,36 @@ export class UpdateProductUnitHandler implements ICommandHandler<UpdateProductUn
                 ...existingRecord.forApprovalVersion,
                 productUnitName: command.productUnitDto.productUnitName,
             };
+        }
+    }
+
+    /**
+     * Publishes a product unit updated event to INVENTORY_EVENT_SQS
+     */
+    private async publishProductUnitUpdatedEvent(productUnitId: string, newProductUnitName: string): Promise<void> {
+        try {
+            const eventDto: ProductUnitEventDto = {
+                productUnitId,
+                newProductUnitName,
+                eventType: ProductUnitEventEnum.PRODUCT_UNIT_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(
+                `Published PRODUCT_UNIT_UPDATED event to INVENTORY_EVENT_SQS for productUnitId: ${productUnitId}`
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish PRODUCT_UNIT_UPDATED event to INVENTORY_EVENT_SQS for productUnitId: ${productUnitId}`,
+                error
+            );
         }
     }
 

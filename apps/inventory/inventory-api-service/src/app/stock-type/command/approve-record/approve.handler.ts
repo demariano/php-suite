@@ -2,7 +2,9 @@ import { UserCognito } from '@auth-guard-lib';
 import { ErrorResponseDto, ResponseDto, StatusEnum, StockTypeDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-aws-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveStockTypeCommand } from './approve.command';
 
@@ -16,7 +18,10 @@ export class ApproveStockTypeHandler implements ICommandHandler<ApproveStockType
 
     constructor(
         @Inject('StockTypeDatabaseService')
-        private readonly stockTypeDatabaseService: StockTypeDatabaseServiceAbstract
+        private readonly stockTypeDatabaseService: StockTypeDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveStockTypeCommand): Promise<ResponseDto<StockTypeDto | ErrorResponseDto>> {
@@ -92,6 +97,9 @@ export class ApproveStockTypeHandler implements ICommandHandler<ApproveStockType
         existingRecord: StockTypeDto,
         user: UserCognito
     ): Promise<ResponseDto<StockTypeDto>> {
+        // Capture old name before applying changes
+        const oldStockTypeName = existingRecord.stockTypeName;
+
         // Apply changes from forApprovalVersion
         const forApprovalVersion = existingRecord.forApprovalVersion;
         existingRecord.stockTypeName = forApprovalVersion.stockTypeName as string;
@@ -112,6 +120,11 @@ export class ApproveStockTypeHandler implements ICommandHandler<ApproveStockType
 
         // Update record in database
         const updatedRecord = await this.stockTypeDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if stock type name changed
+        if (oldStockTypeName !== updatedRecord.stockTypeName) {
+            await this.publishStockTypeUpdatedEvent(updatedRecord.stockTypeId, updatedRecord.stockTypeName);
+        }
 
         return new ResponseDto<StockTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }
@@ -178,5 +191,33 @@ export class ApproveStockTypeHandler implements ICommandHandler<ApproveStockType
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publish STOCK_TYPE_UPDATED event to INVENTORY_EVENT_SQS
+     */
+    private async publishStockTypeUpdatedEvent(stockTypeId: string, newStockTypeName: string): Promise<void> {
+        try {
+            const eventDto: StockTypeEventDto = {
+                stockTypeId,
+                newStockTypeName,
+                eventType: StockTypeEventEnum.STOCK_TYPE_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(
+                `Published STOCK_TYPE_UPDATED event to INVENTORY_EVENT_SQS for stockTypeId: ${stockTypeId}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to publish STOCK_TYPE_UPDATED event for stockTypeId: ${stockTypeId}`, error);
+            // Don't throw - event publishing failure shouldn't break the approval
+        }
     }
 }

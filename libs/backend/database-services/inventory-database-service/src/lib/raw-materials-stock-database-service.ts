@@ -50,6 +50,14 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
             GSI1SK: rawMaterialsStockDto.rawMaterialName,
             GSI2PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.status}`,
             GSI2SK: rawMaterialsStockDto.rawMaterialName,
+            GSI3PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.rawMaterialId}`,
+            GSI3SK: rawMaterialsStockDto.rawMaterialsStockId,
+            GSI4PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.rawMaterialUnitId}`,
+            GSI4SK: rawMaterialsStockDto.rawMaterialsStockId,
+            GSI5PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.rawMaterialSupplierId}`,
+            GSI5SK: rawMaterialsStockDto.rawMaterialsStockId,
+            GSI6PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.rawMaterialsLocationId}`,
+            GSI6SK: rawMaterialsStockDto.rawMaterialsStockId,
         };
 
         const rawMaterialsStockRecord: RawMaterialsStockDataType = await this.rawMaterialsStockTable.create(
@@ -78,6 +86,14 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
         rawMaterialsStockRecord.GSI1SK = record.rawMaterialName;
         rawMaterialsStockRecord.GSI2PK = `RAW_MATERIAL_STOCK#${record.status}`;
         rawMaterialsStockRecord.GSI2SK = record.rawMaterialName;
+        rawMaterialsStockRecord.GSI3PK = `RAW_MATERIAL_STOCK#${record.rawMaterialId}`;
+        rawMaterialsStockRecord.GSI3SK = record.rawMaterialsStockId;
+        rawMaterialsStockRecord.GSI4PK = `RAW_MATERIAL_STOCK#${record.rawMaterialUnitId}`;
+        rawMaterialsStockRecord.GSI4SK = record.rawMaterialsStockId;
+        rawMaterialsStockRecord.GSI5PK = `RAW_MATERIAL_STOCK#${record.rawMaterialSupplierId}`;
+        rawMaterialsStockRecord.GSI5SK = record.rawMaterialsStockId;
+        rawMaterialsStockRecord.GSI6PK = `RAW_MATERIAL_STOCK#${record.rawMaterialsLocationId}`;
+        rawMaterialsStockRecord.GSI6SK = record.rawMaterialsStockId;
         rawMaterialsStockRecord.forApprovalVersion = record.forApprovalVersion;
         rawMaterialsStockRecord.changeReason = record.changeReason;
         rawMaterialsStockRecord.approverMessage = record.approverMessage;
@@ -326,6 +342,82 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
         return dtoList;
     }
 
+    async findRecordsByRawMaterialIdPagination(
+        limit: number,
+        rawMaterialId: string,
+        direction: 'forward' | 'backward',
+        cursorPointer?: string
+    ): Promise<PageDto<RawMaterialsStockDto>> {
+        const options = createDynamoDbOptionWithPKSKIndex(
+            `RAW_MATERIAL_STOCK#${rawMaterialId}`,
+            undefined,
+            undefined,
+            limit,
+            direction,
+            cursorPointer
+        );
+
+        return this.pageRecordHandler(options, 'GSI3');
+    }
+
+    async findRecordsByRawMaterialUnitIdPagination(
+        limit: number,
+        rawMaterialUnitId: string,
+        direction: 'forward' | 'backward',
+        cursorPointer?: string
+    ): Promise<PageDto<RawMaterialsStockDto>> {
+        const options = createDynamoDbOptionWithPKSKIndex(
+            `RAW_MATERIAL_STOCK#${rawMaterialUnitId}`,
+            undefined,
+            undefined,
+            limit,
+            direction,
+            cursorPointer
+        );
+
+        return this.pageRecordHandler(options, 'GSI4');
+    }
+
+    async findRecordsByRawMaterialSupplierIdPagination(
+        limit: number,
+        rawMaterialSupplierId: string,
+        direction: 'forward' | 'backward',
+        cursorPointer?: string
+    ): Promise<PageDto<RawMaterialsStockDto>> {
+        const options = createDynamoDbOptionWithPKSKIndex(
+            `RAW_MATERIAL_STOCK#${rawMaterialSupplierId}`,
+            undefined,
+            undefined,
+            limit,
+            direction,
+            cursorPointer
+        );
+
+        return this.pageRecordHandler(options, 'GSI5');
+    }
+
+    async findRecordsByRawMaterialsLocationIdPagination(
+        limit: number,
+        rawMaterialsLocationId: string,
+        direction: 'forward' | 'backward',
+        cursorPointer?: string
+    ): Promise<PageDto<RawMaterialsStockDto>> {
+        const options = createDynamoDbOptionWithPKSKIndex(
+            `RAW_MATERIAL_STOCK#${rawMaterialsLocationId}`,
+            undefined,
+            undefined,
+            limit,
+            direction,
+            cursorPointer
+        );
+
+        return this.pageRecordHandler(options, 'GSI6');
+    }
+
+    async batchUpdate(records: RawMaterialsStockDto[]): Promise<void> {
+        await Promise.all(records.map((record) => this.updateRecord(record)));
+    }
+
     async convertToDataType(dto: RawMaterialsStockDto): Promise<RawMaterialsStockDataType> {
         const rawMaterialsStockData: RawMaterialsStockDataType = {
             rawMaterialsStockId: dto.rawMaterialsStockId,
@@ -345,6 +437,14 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
             GSI1SK: dto.rawMaterialName,
             GSI2PK: `RAW_MATERIAL_STOCK#${dto.status}`,
             GSI2SK: dto.rawMaterialName,
+            GSI3PK: `RAW_MATERIAL_STOCK#${dto.rawMaterialId}`,
+            GSI3SK: dto.rawMaterialsStockId,
+            GSI4PK: `RAW_MATERIAL_STOCK#${dto.rawMaterialUnitId}`,
+            GSI4SK: dto.rawMaterialsStockId,
+            GSI5PK: `RAW_MATERIAL_STOCK#${dto.rawMaterialSupplierId}`,
+            GSI5SK: dto.rawMaterialsStockId,
+            GSI6PK: `RAW_MATERIAL_STOCK#${dto.rawMaterialsLocationId}`,
+            GSI6SK: dto.rawMaterialsStockId,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

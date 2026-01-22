@@ -53,6 +53,10 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             GSI4SK: stockDto.lotNo,
             GSI5PK: `STOCK#${stockDto.status}#${stockDto.productUnitId}#${stockDto.productId}`,
             GSI5SK: stockDto.expirationDate,
+            GSI6PK: `STOCK#${stockDto.stockTypeId}`,
+            GSI6SK: stockDto.stockId,
+            GSI7PK: `STOCK#${stockDto.productUnitId}`,
+            GSI7SK: stockDto.stockId,
         };
 
         const stockRecord: StockDataType = await this.stockTable.create(stockData);
@@ -86,6 +90,10 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         stockRecord.GSI4SK = stockRecord.lotNo;
         stockRecord.GSI5PK = `STOCK#${record.status}#${stockRecord.productUnitId}#${stockRecord.productId}`;
         stockRecord.GSI5SK = stockRecord.expirationDate;
+        stockRecord.GSI6PK = `STOCK#${stockRecord.stockTypeId}`;
+        stockRecord.GSI6SK = record.stockId;
+        stockRecord.GSI7PK = `STOCK#${stockRecord.productUnitId}`;
+        stockRecord.GSI7SK = record.stockId;
         stockRecord.forApprovalVersion = record.forApprovalVersion;
         stockRecord.changeReason = record.changeReason;
         stockRecord.approverMessage = record.approverMessage;
@@ -383,6 +391,91 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         return dtoList;
     }
 
+    async findRecordsByStockTypeIdPagination(
+        limit: number,
+        stockTypeId: string,
+        direction: 'next' | 'prev',
+        cursorPointer?: string
+    ): Promise<PageDto<StockDto>> {
+        const optionsWithPKIndex = createDynamoDbOptionWithPKSKIndex(
+            limit,
+            `STOCK#${stockTypeId}`,
+            cursorPointer,
+            direction,
+            'GSI6'
+        );
+
+        const pageRecord = await this.stockTable.find({}, optionsWithPKIndex);
+        const page = pageRecordHandler<StockDataType, StockDto>(pageRecord, async (items) => {
+            const dtoList: StockDto[] = [];
+            for (const item of items) {
+                const dto = await this.convertToDto(item);
+                dtoList.push(dto);
+            }
+            return dtoList;
+        });
+        return page;
+    }
+
+    async findRecordsByProductIdPagination(
+        limit: number,
+        productId: string,
+        direction: 'next' | 'prev',
+        cursorPointer?: string
+    ): Promise<PageDto<StockDto>> {
+        const optionsWithPKIndex = createDynamoDbOptionWithPKSKIndex(
+            limit,
+            `STOCK#${StatusEnum.ACTIVE}`,
+            cursorPointer,
+            direction,
+            'GSI3'
+        );
+
+        optionsWithPKIndex.where = `\${GSI3SK} = {GSI3SK}`;
+        optionsWithPKIndex.substitutions = { GSI3SK: productId };
+
+        const pageRecord = await this.stockTable.find({}, optionsWithPKIndex);
+        const page = pageRecordHandler<StockDataType, StockDto>(pageRecord, async (items) => {
+            const dtoList: StockDto[] = [];
+            for (const item of items) {
+                const dto = await this.convertToDto(item);
+                dtoList.push(dto);
+            }
+            return dtoList;
+        });
+        return page;
+    }
+
+    async findRecordsByProductUnitIdPagination(
+        limit: number,
+        productUnitId: string,
+        direction: 'next' | 'prev',
+        cursorPointer?: string
+    ): Promise<PageDto<StockDto>> {
+        const optionsWithPKIndex = createDynamoDbOptionWithPKSKIndex(
+            limit,
+            `STOCK#${productUnitId}`,
+            cursorPointer,
+            direction,
+            'GSI7'
+        );
+
+        const pageRecord = await this.stockTable.find({}, optionsWithPKIndex);
+        const page = pageRecordHandler<StockDataType, StockDto>(pageRecord, async (items) => {
+            const dtoList: StockDto[] = [];
+            for (const item of items) {
+                const dto = await this.convertToDto(item);
+                dtoList.push(dto);
+            }
+            return dtoList;
+        });
+        return page;
+    }
+
+    async batchUpdate(records: StockDto[]): Promise<void> {
+        await Promise.all(records.map((record) => this.updateRecord(record)));
+    }
+
     async convertToDataType(dto: StockDto): Promise<StockDataType> {
         // Sanitize empty strings to undefined for fields used in GSI keys
         const sanitize = (value: string | undefined) => (value === '' ? undefined : value);
@@ -415,6 +508,10 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             GSI4SK: lotNo,
             GSI5PK: `STOCK#${dto.status}#${productUnitId}#${productId}`,
             GSI5SK: expirationDate,
+            GSI6PK: `STOCK#${sanitize(dto.stockTypeId)}`,
+            GSI6SK: dto.stockId,
+            GSI7PK: `STOCK#${productUnitId}`,
+            GSI7SK: dto.stockId,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

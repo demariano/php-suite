@@ -1,8 +1,18 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ResponseDto, StatusEnum, SupplierDto, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    SupplierDto,
+    SupplierEventDto,
+    SupplierEventEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { SupplierDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-aws-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveSupplierCommand } from './approve.command';
 
@@ -16,7 +26,10 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
 
     constructor(
         @Inject('SupplierDatabaseService')
-        private readonly supplierDatabaseService: SupplierDatabaseServiceAbstract
+        private readonly supplierDatabaseService: SupplierDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveSupplierCommand): Promise<ResponseDto<SupplierDto | ErrorResponseDto>> {
@@ -89,6 +102,9 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
      * Approves a supplier record by applying forApprovalVersion changes
      */
     private async approveSupplier(existingRecord: SupplierDto, user: UserCognito): Promise<ResponseDto<SupplierDto>> {
+        // Capture old name before applying changes
+        const oldSupplierName = existingRecord.supplierName;
+
         // Apply changes from forApprovalVersion
         const forApprovalVersion = existingRecord.forApprovalVersion || {};
         existingRecord.supplierName = (forApprovalVersion.supplierName as string) || existingRecord.supplierName;
@@ -115,6 +131,11 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
 
         // Update record in database
         const updatedRecord = await this.supplierDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if supplier name changed
+        if (oldSupplierName !== updatedRecord.supplierName) {
+            await this.publishSupplierUpdatedEvent(updatedRecord.supplierId, updatedRecord.supplierName);
+        }
 
         return new ResponseDto<SupplierDto>(updatedRecord, HTTP_STATUS_OK);
     }
@@ -145,6 +166,31 @@ export class ApproveSupplierHandler implements ICommandHandler<ApproveSupplierCo
         const updatedRecord = await this.supplierDatabaseService.updateRecord(existingRecord);
         this.logger.log(`Supplier deactivation approved: ${existingRecord.supplierId}`);
         return new ResponseDto<SupplierDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publish SUPPLIER_UPDATED event to INVENTORY_EVENT_SQS
+     */
+    private async publishSupplierUpdatedEvent(supplierId: string, newSupplierName: string): Promise<void> {
+        try {
+            const eventDto: SupplierEventDto = {
+                supplierId,
+                newSupplierName,
+                eventType: SupplierEventEnum.SUPPLIER_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published SUPPLIER_UPDATED event to INVENTORY_EVENT_SQS for supplierId: ${supplierId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish SUPPLIER_UPDATED event for supplierId: ${supplierId}`, error);
+        }
     }
 
     /**

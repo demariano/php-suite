@@ -230,10 +230,27 @@ export class UpdateAreaHandler implements ICommandHandler<UpdateAreaCommand> {
                 timestamp: new Date().toISOString(),
             };
 
+            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
             const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+            const accountingEventSQSUrl = this.configService.get<string>('ACCOUNTING_EVENT_SQS');
 
-            this.logger.log(`Area name change event published for areaId: ${areaId}`);
+            // Publish to Customer Event SQS (for Customer entity)
+            if (customerEventSQSUrl) {
+                await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(event));
+                this.logger.log(`Area name change event published to CUSTOMER_EVENT_SQS for areaId: ${areaId}`);
+            }
+
+            // Publish to Invoice Event SQS (for Invoice, Contract, ReturnGoodSold, CollectionReceiptRange entities)
+            if (invoiceEventSQSUrl) {
+                await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+                this.logger.log(`Area name change event published to INVOICE_EVENT_SQS for areaId: ${areaId}`);
+            }
+
+            // Publish to Accounting Event SQS (for Voucher entity)
+            if (accountingEventSQSUrl) {
+                await this.messageQueueService.sendMessageToSQS(accountingEventSQSUrl, JSON.stringify(event));
+                this.logger.log(`Area name change event published to ACCOUNTING_EVENT_SQS for areaId: ${areaId}`);
+            }
         } catch (error) {
             this.logger.error(`Failed to publish area name change event for areaId: ${areaId}`, error);
             // Don't throw - this is a non-critical operation

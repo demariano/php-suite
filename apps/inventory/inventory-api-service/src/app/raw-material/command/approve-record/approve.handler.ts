@@ -1,8 +1,18 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, RawMaterialDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    RawMaterialDto,
+    RawMaterialEventDto,
+    RawMaterialEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { RawMaterialDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-aws-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveRawMaterialCommand } from './approve.command';
 
@@ -15,7 +25,10 @@ export class ApproveRawMaterialHandler implements ICommandHandler<ApproveRawMate
 
     constructor(
         @Inject('RawMaterialDatabaseService')
-        private readonly rawMaterialDatabaseService: RawMaterialDatabaseServiceAbstract
+        private readonly rawMaterialDatabaseService: RawMaterialDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveRawMaterialCommand): Promise<ResponseDto<RawMaterialDto | ErrorResponseDto>> {
@@ -76,6 +89,9 @@ export class ApproveRawMaterialHandler implements ICommandHandler<ApproveRawMate
         existingRecord: RawMaterialDto,
         user: UserCognito
     ): Promise<ResponseDto<RawMaterialDto>> {
+        // Capture old name before applying changes
+        const oldRawMaterialName = existingRecord.rawMaterialName;
+
         const forApprovalVersion = existingRecord.forApprovalVersion || {};
         existingRecord.rawMaterialName =
             (forApprovalVersion.rawMaterialName as string) ?? existingRecord.rawMaterialName;
@@ -92,6 +108,12 @@ export class ApproveRawMaterialHandler implements ICommandHandler<ApproveRawMate
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const updatedRecord = await this.rawMaterialDatabaseService.updateRecord(existingRecord);
+
+        // Publish event if raw material name changed
+        if (oldRawMaterialName !== updatedRecord.rawMaterialName) {
+            await this.publishRawMaterialUpdatedEvent(updatedRecord.rawMaterialId, updatedRecord.rawMaterialName);
+        }
+
         return new ResponseDto<RawMaterialDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -112,6 +134,36 @@ export class ApproveRawMaterialHandler implements ICommandHandler<ApproveRawMate
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         const updatedRecord = await this.rawMaterialDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<RawMaterialDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Publish RAW_MATERIAL_UPDATED event to INVENTORY_EVENT_SQS
+     */
+    private async publishRawMaterialUpdatedEvent(rawMaterialId: string, newRawMaterialName: string): Promise<void> {
+        try {
+            const eventDto: RawMaterialEventDto = {
+                rawMaterialId,
+                newRawMaterialName,
+                eventType: RawMaterialEventEnum.RAW_MATERIAL_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(
+                `Published RAW_MATERIAL_UPDATED event to INVENTORY_EVENT_SQS for rawMaterialId: ${rawMaterialId}`
+            );
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish RAW_MATERIAL_UPDATED event for rawMaterialId: ${rawMaterialId}`,
+                error
+            );
+        }
     }
 
     private handleError(error: unknown, recordId: string): never {

@@ -1,8 +1,18 @@
 import { CustomerClassificationDatabaseServiceAbstract } from '@customer-database-service';
-import { CustomerClassificationDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    CustomerClassificationDto,
+    CustomerClassificationEventDto,
+    CustomerClassificationEventEnum,
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
+import { MessageQueueAwsLibService } from '@message-queue-aws-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateCustomerClassificationCommand } from './update.command';
 
@@ -16,7 +26,9 @@ export class UpdateCustomerClassificationHandler implements ICommandHandler<Upda
 
     constructor(
         @Inject('CustomerClassificationDatabaseService')
-        private readonly customerClassificationDatabaseService: CustomerClassificationDatabaseServiceAbstract
+        private readonly customerClassificationDatabaseService: CustomerClassificationDatabaseServiceAbstract,
+        private readonly messageQueueService: MessageQueueAwsLibService,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(
@@ -42,6 +54,18 @@ export class UpdateCustomerClassificationHandler implements ICommandHandler<Upda
 
             // Update record in database
             const updatedRecord = await this.customerClassificationDatabaseService.updateRecord(existingRecord);
+
+            // Publish event if name changed and approved
+            if (
+                hasApprovalPermission &&
+                existingRecord.customerClassificationName !==
+                    command.customerClassificationDto.customerClassificationName
+            ) {
+                await this.publishCustomerClassificationUpdatedEvent(
+                    updatedRecord.customerClassificationId,
+                    command.customerClassificationDto.customerClassificationName
+                );
+            }
 
             this.logger.log(`Customer classification updated successfully: ${updatedRecord.customerClassificationId}`);
             return new ResponseDto<CustomerClassificationDto>(updatedRecord, HTTP_STATUS_OK);
@@ -193,5 +217,35 @@ export class UpdateCustomerClassificationHandler implements ICommandHandler<Upda
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Publishes customer classification updated event to SQS
+     */
+    private async publishCustomerClassificationUpdatedEvent(
+        customerClassificationId: string,
+        newCustomerClassificationName: string
+    ): Promise<void> {
+        try {
+            const customerEventSqsUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            if (!customerEventSqsUrl) {
+                this.logger.warn('CUSTOMER_EVENT_SQS URL not configured');
+                return;
+            }
+
+            const event: CustomerClassificationEventDto = {
+                eventType: CustomerClassificationEventEnum.CUSTOMER_CLASSIFICATION_UPDATED,
+                customerClassificationId,
+                newCustomerClassificationName,
+                timestamp: new Date().toISOString(),
+            };
+
+            await this.messageQueueService.sendMessageToSQS(customerEventSqsUrl, event);
+            this.logger.log(
+                `Customer classification updated event published for customerClassificationId: ${customerClassificationId}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to publish customer classification updated event: ${error.message}`, error.stack);
+        }
     }
 }
