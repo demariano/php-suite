@@ -11,7 +11,7 @@ import {
     UserRole,
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { MessageQueueAwsLibService } from '@message-queue-aws-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -28,7 +28,10 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
     constructor(
         @Inject('AccountsDatabaseService')
         private readonly accountsDatabaseService: AccountsDatabaseServiceAbstract,
-        private readonly messageQueueService: MessageQueueAwsLibService,
+
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+
         private readonly configService: ConfigService
     ) {}
 
@@ -211,7 +214,7 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
                 timestamp: new Date().toISOString(),
             };
 
-            await this.messageQueueService.sendMessageToSQS(accountEventSqsUrl, event);
+            await this.messageQueueService.sendMessageToSQS(accountEventSqsUrl, JSON.stringify(event));
             this.logger.log(`Account updated event published for accountingId: ${accountingId}`);
         } catch (error) {
             this.logger.error(`Failed to publish account updated event: ${error.message}`, error.stack);

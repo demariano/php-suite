@@ -10,7 +10,7 @@ import {
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
-import { MessageQueueAwsLibService } from '@message-queue-aws-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -27,7 +27,8 @@ export class UpdateCustomerTypeHandler implements ICommandHandler<UpdateCustomer
     constructor(
         @Inject('CustomerTypeDatabaseService')
         private readonly customerTypeDatabaseService: CustomerTypeDatabaseServiceAbstract,
-        private readonly messageQueueService: MessageQueueAwsLibService,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
         private readonly configService: ConfigService
     ) {}
 
@@ -223,7 +224,7 @@ export class UpdateCustomerTypeHandler implements ICommandHandler<UpdateCustomer
                 timestamp: new Date().toISOString(),
             };
 
-            await this.messageQueueService.sendMessageToSQS(customerEventSqsUrl, event);
+            await this.messageQueueService.sendMessageToSQS(customerEventSqsUrl, JSON.stringify(event));
             this.logger.log(`Customer type updated event published for customerTypeId: ${customerTypeId}`);
         } catch (error) {
             this.logger.error(`Failed to publish customer type updated event: ${error.message}`, error.stack);

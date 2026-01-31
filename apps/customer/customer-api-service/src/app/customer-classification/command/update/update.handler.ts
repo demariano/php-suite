@@ -10,7 +10,7 @@ import {
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
-import { MessageQueueAwsLibService } from '@message-queue-aws-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -27,7 +27,8 @@ export class UpdateCustomerClassificationHandler implements ICommandHandler<Upda
     constructor(
         @Inject('CustomerClassificationDatabaseService')
         private readonly customerClassificationDatabaseService: CustomerClassificationDatabaseServiceAbstract,
-        private readonly messageQueueService: MessageQueueAwsLibService,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
         private readonly configService: ConfigService
     ) {}
 
@@ -240,7 +241,7 @@ export class UpdateCustomerClassificationHandler implements ICommandHandler<Upda
                 timestamp: new Date().toISOString(),
             };
 
-            await this.messageQueueService.sendMessageToSQS(customerEventSqsUrl, event);
+            await this.messageQueueService.sendMessageToSQS(customerEventSqsUrl, JSON.stringify(event));
             this.logger.log(
                 `Customer classification updated event published for customerClassificationId: ${customerClassificationId}`
             );

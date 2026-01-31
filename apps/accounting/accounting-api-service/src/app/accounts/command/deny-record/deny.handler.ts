@@ -75,6 +75,7 @@ export class DenyAccountsHandler implements ICommandHandler<DenyAccountsCommand>
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyAccount(existingRecord, command);
             case StatusEnum.FOR_DELETION:
+            case StatusEnum.FOR_DEACTIVATION:
                 return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);

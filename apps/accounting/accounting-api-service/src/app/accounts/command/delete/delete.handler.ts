@@ -30,12 +30,10 @@ export class DeleteAccountsHandler implements ICommandHandler<DeleteAccountsComm
 
             const recordForDeletion = this.prepareRecordForDeletion(command, existingRecord, hasApprovalPermission);
 
-            const deletedRecord = hasApprovalPermission
-                ? await this.accountsDatabaseService.deleteRecord(recordForDeletion)
-                : await this.accountsDatabaseService.updateRecord(recordForDeletion);
+            const updatedRecord = await this.accountsDatabaseService.updateRecord(recordForDeletion);
 
-            this.logger.log(`Account deleted successfully: ${deletedRecord.accountingId}`);
-            return new ResponseDto<AccountsDto>(deletedRecord, HTTP_STATUS_OK);
+            this.logger.log(`Account status updated successfully: ${updatedRecord.accountingId}`);
+            return new ResponseDto<AccountsDto>(updatedRecord, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, command.recordId);
         }
@@ -72,13 +70,13 @@ export class DeleteAccountsHandler implements ICommandHandler<DeleteAccountsComm
         hasApprovalPermission: boolean
     ): AccountsDto {
         const record: AccountsDto = { ...existingRecord };
-        record.status = StatusEnum.FOR_DEACTIVATION;
+        record.status = hasApprovalPermission ? StatusEnum.INACTIVE : StatusEnum.FOR_DEACTIVATION;
         record.activityLogs = record.activityLogs || [];
 
         const activityLog = hasApprovalPermission
             ? `Date: ${new Date().toLocaleString('en-US', {
                   timeZone: 'Asia/Manila',
-              })}, Account deleted by ${command.user.username}`
+              })}, Account deactivated by ${command.user.username}`
             : `Date: ${new Date().toLocaleString('en-US', {
                   timeZone: 'Asia/Manila',
               })}, Account marked for deletion by ${command.user.username}`;
