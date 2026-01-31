@@ -30,7 +30,7 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
 
     async createRecord(rawMaterialsStockDto: CreateRawMaterialsStockDto): Promise<RawMaterialsStockDto> {
         const rawMaterialsStockData: RawMaterialsStockDataType = {
-            status: rawMaterialsStockDto.status,
+            status: rawMaterialsStockDto.status as any,
             rawMaterialId: rawMaterialsStockDto.rawMaterialId,
             rawMaterialName: rawMaterialsStockDto.rawMaterialName,
             rawMaterialUnitId: rawMaterialsStockDto.rawMaterialUnitId,
@@ -51,13 +51,9 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
             GSI2PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.status}`,
             GSI2SK: rawMaterialsStockDto.rawMaterialName,
             GSI3PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.rawMaterialId}`,
-            GSI3SK: rawMaterialsStockDto.rawMaterialsStockId,
             GSI4PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.rawMaterialUnitId}`,
-            GSI4SK: rawMaterialsStockDto.rawMaterialsStockId,
             GSI5PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.rawMaterialSupplierId}`,
-            GSI5SK: rawMaterialsStockDto.rawMaterialsStockId,
             GSI6PK: `RAW_MATERIAL_STOCK#${rawMaterialsStockDto.rawMaterialsLocationId}`,
-            GSI6SK: rawMaterialsStockDto.rawMaterialsStockId,
         };
 
         const rawMaterialsStockRecord: RawMaterialsStockDataType = await this.rawMaterialsStockTable.create(
@@ -81,7 +77,7 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
         rawMaterialsStockRecord.rawMaterialNamePoNo = record.rawMaterialNamePoNo;
         rawMaterialsStockRecord.qty = record.qty;
         rawMaterialsStockRecord.lotNo = record.lotNo;
-        rawMaterialsStockRecord.status = record.status;
+        rawMaterialsStockRecord.status = record.status as any;
         rawMaterialsStockRecord.GSI1PK = 'RAW_MATERIAL_STOCK';
         rawMaterialsStockRecord.GSI1SK = record.rawMaterialName;
         rawMaterialsStockRecord.GSI2PK = `RAW_MATERIAL_STOCK#${record.status}`;
@@ -224,7 +220,7 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
         const records = await this.rawMaterialsStockTable.find(
             {
                 GSI2PK: `RAW_MATERIAL_STOCK#${status}`,
-                ...(name != null ? { GSI2SK: { begins: name } } : {}),
+                ...(name != null && name.trim() !== '' ? { GSI2SK: { begins: name.trim() } } : {}),
             },
             dynamoDbOption
         );
@@ -345,73 +341,141 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
     async findRecordsByRawMaterialIdPagination(
         limit: number,
         rawMaterialId: string,
-        direction: 'forward' | 'backward',
-        cursorPointer?: string
+        direction: 'next' | 'prev',
+        cursorPointer: string
     ): Promise<PageDto<RawMaterialsStockDto>> {
-        const options = createDynamoDbOptionWithPKSKIndex(
-            `RAW_MATERIAL_STOCK#${rawMaterialId}`,
-            undefined,
-            undefined,
-            limit,
-            direction,
-            cursorPointer
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.rawMaterialsStockTable.find(
+            {
+                GSI3PK: `RAW_MATERIAL_STOCK#${rawMaterialId}`,
+            },
+            dynamoDbOption
         );
 
-        return this.pageRecordHandler(options, 'GSI3');
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordsByRawMaterialUnitIdPagination(
         limit: number,
         rawMaterialUnitId: string,
-        direction: 'forward' | 'backward',
-        cursorPointer?: string
+        direction: 'next' | 'prev',
+        cursorPointer: string
     ): Promise<PageDto<RawMaterialsStockDto>> {
-        const options = createDynamoDbOptionWithPKSKIndex(
-            `RAW_MATERIAL_STOCK#${rawMaterialUnitId}`,
-            undefined,
-            undefined,
-            limit,
-            direction,
-            cursorPointer
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI4', direction, cursorPointer);
+
+        const records = await this.rawMaterialsStockTable.find(
+            {
+                GSI4PK: `RAW_MATERIAL_STOCK#${rawMaterialUnitId}`,
+            },
+            dynamoDbOption
         );
 
-        return this.pageRecordHandler(options, 'GSI4');
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI4PK',
+            'GSI4SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordsByRawMaterialSupplierIdPagination(
         limit: number,
         rawMaterialSupplierId: string,
-        direction: 'forward' | 'backward',
-        cursorPointer?: string
+        direction: 'next' | 'prev',
+        cursorPointer: string
     ): Promise<PageDto<RawMaterialsStockDto>> {
-        const options = createDynamoDbOptionWithPKSKIndex(
-            `RAW_MATERIAL_STOCK#${rawMaterialSupplierId}`,
-            undefined,
-            undefined,
-            limit,
-            direction,
-            cursorPointer
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', direction, cursorPointer);
+
+        const records = await this.rawMaterialsStockTable.find(
+            {
+                GSI5PK: `RAW_MATERIAL_STOCK#${rawMaterialSupplierId}`,
+            },
+            dynamoDbOption
         );
 
-        return this.pageRecordHandler(options, 'GSI5');
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI5PK',
+            'GSI5SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordsByRawMaterialsLocationIdPagination(
         limit: number,
         rawMaterialsLocationId: string,
-        direction: 'forward' | 'backward',
-        cursorPointer?: string
+        direction: 'next' | 'prev',
+        cursorPointer: string
     ): Promise<PageDto<RawMaterialsStockDto>> {
-        const options = createDynamoDbOptionWithPKSKIndex(
-            `RAW_MATERIAL_STOCK#${rawMaterialsLocationId}`,
-            undefined,
-            undefined,
-            limit,
-            direction,
-            cursorPointer
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.rawMaterialsStockTable.find(
+            {
+                GSI6PK: `RAW_MATERIAL_STOCK#${rawMaterialsLocationId}`,
+            },
+            dynamoDbOption
         );
 
-        return this.pageRecordHandler(options, 'GSI6');
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async batchUpdate(records: RawMaterialsStockDto[]): Promise<void> {
@@ -432,7 +496,7 @@ export class RawMaterialsStockDatabaseService implements RawMaterialsStockDataba
             rawMaterialNamePoNo: dto.rawMaterialNamePoNo,
             qty: dto.qty,
             lotNo: dto.lotNo,
-            status: dto.status,
+            status: dto.status as any,
             GSI1PK: 'RAW_MATERIAL_STOCK',
             GSI1SK: dto.rawMaterialName,
             GSI2PK: `RAW_MATERIAL_STOCK#${dto.status}`,

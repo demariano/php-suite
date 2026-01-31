@@ -47,7 +47,7 @@ export const InvoicingSchema = {
             contractSales: { type: Boolean, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             printStatus: { type: String, enum: ['PENDING', 'COMPLETED', 'FOR_REPRINT'], required: false },
@@ -191,7 +191,7 @@ export const InvoicingSchema = {
             contractPayment: { type: Boolean, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             contractId: { type: String },
@@ -232,7 +232,7 @@ export const InvoicingSchema = {
             approverMessage: { type: String, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             changeReason: { type: String, required: false },

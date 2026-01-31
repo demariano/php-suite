@@ -39,4 +39,33 @@ export abstract class RawMaterialsStockDatabaseServiceAbstract {
     abstract convertToDtoList(records: RawMaterialsStockDto[]): Promise<RawMaterialsStockDto[]>;
 
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract batchUpdate(records: RawMaterialsStockDto[]): Promise<void>;
+    abstract findRecordsByRawMaterialIdPagination(
+        limit: number,
+        rawMaterialId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<RawMaterialsStockDto>>;
+
+    abstract findRecordsByRawMaterialUnitIdPagination(
+        limit: number,
+        rawMaterialUnitId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<RawMaterialsStockDto>>;
+
+    abstract findRecordsByRawMaterialSupplierIdPagination(
+        limit: number,
+        rawMaterialSupplierId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<RawMaterialsStockDto>>;
+
+    abstract findRecordsByRawMaterialsLocationIdPagination(
+        limit: number,
+        rawMaterialsLocationId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<RawMaterialsStockDto>>;
 }

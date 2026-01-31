@@ -30,7 +30,7 @@ export class RawMaterialsLocationDatabaseService implements RawMaterialsLocation
 
     async createRecord(rawMaterialsLocationDto: CreateRawMaterialsLocationDto): Promise<RawMaterialsLocationDto> {
         const rawMaterialsLocationData: RawMaterialsLocationDataType = {
-            status: rawMaterialsLocationDto.status,
+            status: rawMaterialsLocationDto.status as any,
             rawMaterialsLocationName: rawMaterialsLocationDto.rawMaterialsLocationName,
             activityLogs: rawMaterialsLocationDto.activityLogs,
             forApprovalVersion: rawMaterialsLocationDto.forApprovalVersion,
@@ -53,7 +53,7 @@ export class RawMaterialsLocationDatabaseService implements RawMaterialsLocation
         const rawMaterialsLocationRecord: RawMaterialsLocationDataType = await this.convertToDataType(record);
 
         rawMaterialsLocationRecord.rawMaterialsLocationName = record.rawMaterialsLocationName;
-        rawMaterialsLocationRecord.status = record.status;
+        rawMaterialsLocationRecord.status = record.status as any;
         rawMaterialsLocationRecord.GSI1PK = 'RAW_MATERIAL_LOCATION';
         rawMaterialsLocationRecord.GSI1SK = record.rawMaterialsLocationName;
         rawMaterialsLocationRecord.GSI2PK = `RAW_MATERIAL_LOCATION#${record.status}`;
@@ -274,7 +274,7 @@ export class RawMaterialsLocationDatabaseService implements RawMaterialsLocation
         const rawMaterialsLocationData: RawMaterialsLocationDataType = {
             rawMaterialsLocationId: dto.rawMaterialsLocationId,
             rawMaterialsLocationName: dto.rawMaterialsLocationName,
-            status: dto.status,
+            status: dto.status as any,
             GSI1PK: 'RAW_MATERIAL_LOCATION',
             GSI1SK: dto.rawMaterialsLocationName,
             GSI2PK: `RAW_MATERIAL_LOCATION#${dto.status}`,

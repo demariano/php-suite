@@ -1,12 +1,15 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { RawMaterialsStockDatabaseService } from '@php/backend/database-services/inventory-database-service';
-import { RawMaterialsLocationEventDto } from '@php/dto';
+import { RawMaterialsLocationEventDto } from '@dto';
+import { RawMaterialsStockDatabaseServiceAbstract } from '@inventory-database-service';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class RawMaterialsLocationSyncHandlerService {
     private readonly logger = new Logger(RawMaterialsLocationSyncHandlerService.name);
 
-    constructor(private readonly rawMaterialsStockDatabaseService: RawMaterialsStockDatabaseService) {}
+    constructor(
+        @Inject('RawMaterialsStockDatabaseService')
+        private readonly rawMaterialsStockDatabaseService: RawMaterialsStockDatabaseServiceAbstract
+    ) {}
 
     async handleRawMaterialsLocationUpdatedEvent(event: RawMaterialsLocationEventDto): Promise<void> {
         this.logger.log(

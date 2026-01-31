@@ -18,7 +18,7 @@ export const InventorySchema = {
             SK: { type: String, value: '${stockId}', hidden: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT', 'FOR_DEACTIVATION', 'INACTIVE'],
                 required: false,
             },
             stockId: { type: String, generate: 'ulid' },

@@ -1,4 +1,4 @@
-import { TermsEventEnum } from '../../enums/terms.event.enum';
+import { TermsEventEnum } from '../enums/terms.event.enum';
 
 export interface TermsEventDto {
     termsId: string;

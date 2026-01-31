@@ -1,7 +1,14 @@
 import { Module } from '@nestjs/common';
 
 import { DynamoDbLibModule } from '@dynamo-db-lib';
-import { InventoryDatabaseServiceModule, StockDatabaseService } from '@inventory-database-service';
+import {
+    InventoryDatabaseServiceModule,
+    RawMaterialsPurchaseOrderDatabaseService,
+    RawMaterialsStockDatabaseService,
+    StockDatabaseService,
+    StockDeliveryDatabaseService,
+    StockPurchaseOrderDatabaseService,
+} from '@inventory-database-service';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MessageHandlerService } from './message.handler.service';
@@ -26,6 +33,22 @@ import { SupplierSyncHandlerService } from './supplier-sync-handler.service';
         {
             provide: 'StockDatabaseService',
             useClass: StockDatabaseService,
+        },
+        {
+            provide: 'RawMaterialsStockDatabaseService',
+            useClass: RawMaterialsStockDatabaseService,
+        },
+        {
+            provide: 'RawMaterialsPurchaseOrderDatabaseService',
+            useClass: RawMaterialsPurchaseOrderDatabaseService,
+        },
+        {
+            provide: 'StockPurchaseOrderDatabaseService',
+            useClass: StockPurchaseOrderDatabaseService,
+        },
+        {
+            provide: 'StockDeliveryDatabaseService',
+            useClass: StockDeliveryDatabaseService,
         },
         StockQtyHandlerService,
         StockTypeSyncHandlerService,

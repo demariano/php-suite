@@ -45,4 +45,13 @@ export abstract class RawMaterialsPurchaseOrderDatabaseServiceAbstract {
     abstract convertToDtoList(records: RawMaterialsPurchaseOrderDataType[]): Promise<RawMaterialsPurchaseOrderDto[]>;
 
     abstract convertToDataType(dto: RawMaterialsPurchaseOrderDto): Promise<RawMaterialsPurchaseOrderDataType>;
+
+    abstract batchUpdate(records: RawMaterialsPurchaseOrderDto[]): Promise<void>;
+
+    abstract findRecordsByRawMaterialSupplierIdPagination(
+        limit: number,
+        rawMaterialId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<RawMaterialsPurchaseOrderDto>>;
 }

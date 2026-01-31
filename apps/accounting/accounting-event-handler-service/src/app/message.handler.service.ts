@@ -1,8 +1,8 @@
+import { AccountEventEnum, AreaEventEnum, CustomerEventEnum } from '@dto';
 import { Injectable, Logger } from '@nestjs/common';
-import { AccountEventEnum, AreaEventEnum, CustomerEventEnum } from '@php/dto';
 import { AccountSyncHandlerService } from './account-sync-handler/account-sync.handler.service';
 import { AreaSyncHandlerService } from './area-sync-handler/area-sync.handler.service';
-import { CustomerSyncHandlerService } from './customer-sync-handler/';
+import { CustomerSyncHandlerService } from './customer-sync-handler/customer-sync.handler.service';
 
 @Injectable()
 export class MessageHandlerService {

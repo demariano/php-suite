@@ -1,4 +1,5 @@
 import { CreateSalesTypeDto, PageDto, SalesTypeDto } from '@dto';
+import { SalesTypeDataType } from '@dynamo-db-lib';
 
 export abstract class SalesTypeDatabaseServiceAbstract {
     abstract createRecord(salesTypeDto: CreateSalesTypeDto): Promise<SalesTypeDto>;
@@ -36,5 +37,9 @@ export abstract class SalesTypeDatabaseServiceAbstract {
 
     abstract convertToDtoList(records: SalesTypeDto[]): Promise<SalesTypeDto[]>;
 
+    abstract convertToDataType(dto: SalesTypeDto): Promise<SalesTypeDataType>;
+
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract getDatabaseRecordById(recordId: string): Promise<SalesTypeDataType | undefined>;
 }

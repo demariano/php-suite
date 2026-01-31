@@ -1,26 +1,21 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 
-import { DeleteMessageCommand, ReceiveMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
-import { Logger } from "@nestjs/common";
-import { MessageHandlerService } from "./message.handler.service";
+import { DeleteMessageCommand, ReceiveMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { Logger } from '@nestjs/common';
+import { MessageHandlerService } from './message.handler.service';
 
 @Injectable()
 export class SqsLocalService {
-
     private readonly logger = new Logger(SqsLocalService.name);
 
     private readonly sqsClient = new SQSClient({
         region: process.env.DEFAULT_REGION,
+        endpoint: process.env.LOCALSTACK_ENDPOINT,
     });
 
-
-    constructor(private readonly messageHandlerService: MessageHandlerService) {
-    }
-
-
+    constructor(private readonly messageHandlerService: MessageHandlerService) {}
 
     async pollQueue() {
-
         const queueUrl = process.env.ACCOUNTING_EVENT_SQS;
         this.logger.log(`Polling queue ${queueUrl}`);
 
@@ -57,6 +52,5 @@ export class SqsLocalService {
                 this.logger.error('Error polling SQS queue:', error);
             }
         }
-
     }
-}   
+}

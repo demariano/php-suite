@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { VoucherDatabaseService } from '@php/accounting-database-service';
-import { AreaEventDto, VoucherDto } from '@php/dto';
+
+import { VoucherDatabaseService } from '@accounting-database-service';
+import { AreaEventDto, VoucherDto } from '@dto';
 
 @Injectable()
 export class AreaSyncHandlerService {

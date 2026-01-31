@@ -1,12 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { StockDatabaseService } from '@php/backend/database-services/inventory-database-service';
-import { ProductUnitEventDto } from '@php/dto';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+
+import { ProductUnitEventDto } from '@dto';
+import { StockDatabaseServiceAbstract } from '@inventory-database-service';
 
 @Injectable()
 export class ProductUnitSyncHandlerService {
     private readonly logger = new Logger(ProductUnitSyncHandlerService.name);
 
-    constructor(private readonly stockDatabaseService: StockDatabaseService) {}
+    constructor(
+        @Inject('StockDatabaseService')
+        private readonly stockDatabaseService: StockDatabaseServiceAbstract
+    ) {}
 
     /**
      * Main handler - processes product unit name sync

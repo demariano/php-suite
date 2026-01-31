@@ -55,6 +55,8 @@ export abstract class ContractDatabaseServiceAbstract {
 
     abstract convertToDtoList(records: ContractDataType[]): Promise<ContractDto[]>;
 
+    abstract convertToDataType(dto: ContractDto): Promise<ContractDataType>;
+
     abstract deleteAllRecords(): Promise<void>;
 
     abstract addPaymentToContract(contractId: string, payment: ContractPaymentDto): Promise<ContractDto>;
@@ -68,4 +70,6 @@ export abstract class ContractDatabaseServiceAbstract {
     ): Promise<ContractDto>;
 
     abstract updateInvoicedAmount(contractId: string, invoicedAmount: number): Promise<ContractDto>;
+
+    abstract batchUpdateRecords(contracts: ContractDto[]): Promise<void>;
 }

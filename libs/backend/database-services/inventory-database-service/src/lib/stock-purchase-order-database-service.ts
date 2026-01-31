@@ -39,7 +39,7 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
         const docNo = stockPurchaseOrderDto.docNo || stockPurchaseOrderDto.poDate || '';
 
         const stockPurchaseOrderData: StockPurchaseOrderDataType = {
-            status: stockPurchaseOrderDto.status,
+            status: stockPurchaseOrderDto.status as any,
             poStatus: stockPurchaseOrderDto.poStatus,
             supplierId: stockPurchaseOrderDto.supplierId,
             supplierName: stockPurchaseOrderDto.supplierName,
@@ -62,7 +62,6 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
             GSI5PK: 'STOCK_PURCHASE_ORDER',
             GSI5SK: docNo,
             GSI6PK: `STOCK_PURCHASE_ORDER#${stockPurchaseOrderDto.supplierId}`,
-            GSI6SK: stockPurchaseOrderDto.stockPurchaseOrderId || '',
         };
 
         const record: StockPurchaseOrderDataType = await this.stockPurchaseOrderTable.create(stockPurchaseOrderData);
@@ -83,7 +82,7 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
         data.docNo = docNo;
         data.purchaseOrderDetails = record.purchaseOrderDetails;
         data.deliveredPurchaseOrderDetails = record.deliveredPurchaseOrderDetails;
-        data.status = record.status;
+        data.status = record.status as any;
         data.GSI1PK = 'STOCK_PURCHASE_ORDER';
         data.GSI1SK = record.poDate;
         data.GSI2PK = `STOCK_PURCHASE_ORDER#${record.status}`;
@@ -263,10 +262,8 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
     async convertToDto(record: StockPurchaseOrderDataType): Promise<StockPurchaseOrderDto> {
         const dto = new StockPurchaseOrderDto();
         dto.stockPurchaseOrderId = record.stockPurchaseOrderId ? record.stockPurchaseOrderId : '';
-        dto.poStatus = record.poStatus
-            ? (record.poStatus as StockPurchaseOrderStatusEnum)
-            : StockPurchaseOrderStatusEnum.PENDING;
-        dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
+        dto.poStatus = (record.poStatus as StockPurchaseOrderStatusEnum) ?? StockPurchaseOrderStatusEnum.PENDING;
+        dto.status = (record.status as StatusEnum) ?? StatusEnum.ACTIVE;
         dto.supplierId = record.supplierId ? record.supplierId : '';
         dto.supplierName = record.supplierName ? record.supplierName : '';
         dto.poDate = record.poDate ? record.poDate : '';
@@ -296,19 +293,37 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
     async findRecordsBySupplierIdPagination(
         limit: number,
         supplierId: string,
-        direction: 'forward' | 'backward',
-        cursorPointer?: string
+        direction: string,
+        cursorPointer: string
     ): Promise<PageDto<StockPurchaseOrderDto>> {
-        const options = createDynamoDbOptionWithPKSKIndex(
-            `STOCK_PURCHASE_ORDER#${supplierId}`,
-            undefined,
-            undefined,
-            limit,
-            direction,
-            cursorPointer
+        limit = Number(limit);
+
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.stockPurchaseOrderTable.find(
+            {
+                GSI6PK: `STOCK_PURCHASE_ORDER#${supplierId}`,
+            },
+            dynamoDbOption
         );
 
-        return this.pageRecordHandler(options, 'GSI6');
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async batchUpdate(records: StockPurchaseOrderDto[]): Promise<void> {
@@ -325,7 +340,7 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
             docNo: dto.docNo,
             purchaseOrderDetails: dto.purchaseOrderDetails,
             deliveredPurchaseOrderDetails: dto.deliveredPurchaseOrderDetails,
-            status: dto.status,
+            status: dto.status as any,
             GSI1PK: 'STOCK_PURCHASE_ORDER',
             GSI1SK: dto.poDate,
             GSI2PK: `STOCK_PURCHASE_ORDER#${dto.status}`,

@@ -1,6 +1,6 @@
+import { VoucherDatabaseService } from '@accounting-database-service';
+import { CustomerEventDto, VoucherDto } from '@dto';
 import { Injectable, Logger } from '@nestjs/common';
-import { VoucherDatabaseService } from '@php/accounting-database-service';
-import { CustomerEventDto, VoucherDto } from '@php/dto';
 
 @Injectable()
 export class CustomerSyncHandlerService {

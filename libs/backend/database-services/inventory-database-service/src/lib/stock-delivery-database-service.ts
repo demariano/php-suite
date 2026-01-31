@@ -30,7 +30,7 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
 
     async createRecord(stockDeliveryDto: CreateStockDeliveryDto): Promise<StockDeliveryDto> {
         const stockDeliveryData: StockDeliveryDataType = {
-            status: stockDeliveryDto.status,
+            status: stockDeliveryDto.status as any,
             supplierId: stockDeliveryDto.supplierId,
             supplierName: stockDeliveryDto.supplierName,
             dateReceived: stockDeliveryDto.dateReceived,
@@ -46,7 +46,6 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
             GSI3PK: `STOCK_DELIVERY#${stockDeliveryDto.supplierId}`,
             GSI3SK: stockDeliveryDto.dateReceived,
             GSI5PK: `STOCK_DELIVERY#${stockDeliveryDto.supplierId}`,
-            GSI5SK: stockDeliveryDto.stockDeliveryId || '',
         };
 
         const stockDeliveryRecord: StockDeliveryDataType = await this.stockDeliveryTable.create(stockDeliveryData);
@@ -62,7 +61,7 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
         stockDeliveryRecord.dateReceived = record.dateReceived;
         stockDeliveryRecord.docno = record.docno;
         stockDeliveryRecord.deliveryDetails = record.deliveryDetails;
-        stockDeliveryRecord.status = record.status;
+        stockDeliveryRecord.status = record.status as any;
         stockDeliveryRecord.GSI1PK = `STOCK_DELIVERY`;
         stockDeliveryRecord.GSI1SK = record.docno;
         stockDeliveryRecord.GSI2PK = `STOCK_DELIVERY#${record.status}`;
@@ -377,19 +376,37 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
     async findRecordsBySupplierIdPagination(
         limit: number,
         supplierId: string,
-        direction: 'forward' | 'backward',
-        cursorPointer?: string
+        direction: string,
+        cursorPointer: string
     ): Promise<PageDto<StockDeliveryDto>> {
-        const options = createDynamoDbOptionWithPKSKIndex(
-            `STOCK_DELIVERY#${supplierId}`,
-            undefined,
-            undefined,
-            limit,
-            direction,
-            cursorPointer
+        limit = Number(limit);
+        const directionValue = direction === 'forward' ? 'next' : 'prev';
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', directionValue, cursorPointer);
+
+        const records = await this.stockDeliveryTable.find(
+            {
+                GSI5PK: `STOCK_DELIVERY#${supplierId}`,
+            },
+            dynamoDbOption
         );
 
-        return this.pageRecordHandler(options, 'GSI5');
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            directionValue,
+            'GSI5PK',
+            'GSI5SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async batchUpdate(records: StockDeliveryDto[]): Promise<void> {
@@ -399,7 +416,7 @@ export class StockDeliveryDatabaseService implements StockDeliveryDatabaseServic
     async convertToDataType(dto: StockDeliveryDto): Promise<StockDeliveryDataType> {
         const stockDeliveryData: StockDeliveryDataType = {
             stockDeliveryId: dto.stockDeliveryId,
-            status: dto.status,
+            status: dto.status as any,
             supplierId: dto.supplierId,
             supplierName: dto.supplierName,
             dateReceived: dto.dateReceived,

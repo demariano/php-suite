@@ -1,16 +1,19 @@
 import { Module } from '@nestjs/common';
 
-import { AccountingDatabaseServiceModule } from '@php/accounting-database-service';
+import { DynamoDbLibModule } from '@dynamo-db-lib';
+
 import { AccountSyncHandlerService } from './account-sync-handler/account-sync.handler.service';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AreaSyncHandlerService } from './area-sync-handler/area-sync.handler.service';
-import { CustomerSyncHandlerService } from './customer-sync-handler/';
+
+import { AccountingDatabaseServiceModule } from '@accounting-database-service';
+import { CustomerSyncHandlerService } from './customer-sync-handler/customer-sync.handler.service';
 import { MessageHandlerService } from './message.handler.service';
 import { SqsLocalService } from './sqs.local.service';
 
 @Module({
-    imports: [AccountingDatabaseServiceModule],
+    imports: [AccountingDatabaseServiceModule, DynamoDbLibModule],
     controllers: [AppController],
     providers: [
         AppService,

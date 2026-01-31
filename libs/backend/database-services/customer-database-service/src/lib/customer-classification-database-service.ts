@@ -17,7 +17,8 @@ export class CustomerClassificationDatabaseService implements CustomerClassifica
 
     private readonly customerClassificationTable: Model<CustomerClassificationDataType>;
 
-    constructor(private readonly configService: ConfigService) {
+    constructor(
+        private readonly configService: ConfigService) {
         const DYNAMO_DB_CUSTOMER_TABLE = configService.get<string>('DYNAMO_DB_CUSTOMER_TABLE');
         if (!DYNAMO_DB_CUSTOMER_TABLE) {
             throw new Error('DYNAMO_DB_CUSTOMER_TABLE is not defined in the configuration');

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { CustomerDatabaseServiceModule } from '@customer-database-service';
+import { DynamoDbLibModule } from '@dynamo-db-lib';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AreaSyncHandlerService } from './area-sync-handler/area-sync-handler.service';
@@ -11,7 +12,7 @@ import { SqsLocalService } from './sqs.local.service';
 import { TerritoryManagerSyncHandlerService } from './territory-manager-sync-handler/territory-manager-sync-handler.service';
 
 @Module({
-    imports: [CustomerDatabaseServiceModule],
+    imports: [CustomerDatabaseServiceModule, DynamoDbLibModule],
     controllers: [AppController],
     providers: [
         AppService,

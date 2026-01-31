@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { VoucherDatabaseService } from '@php/accounting-database-service';
-import { AccountEventDto, VoucherDto } from '@php/dto';
+
+import { VoucherDatabaseService } from '@accounting-database-service';
+import { AccountEventDto, VoucherDto } from '@dto';
 
 @Injectable()
 export class AccountSyncHandlerService {
@@ -21,36 +22,59 @@ export class AccountSyncHandlerService {
     }
 
     private async syncAccountNameToVouchers(accountingId: string, newAccountName: string): Promise<void> {
-        let hasMoreRecords = true;
-        let cursorPointer = '';
         const limit = 100;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let cursorPointer: any = null;
+        let totalUpdated = 0;
+        let pageNumber = 0;
 
-        while (hasMoreRecords) {
-            const pageDto = await this.voucherDatabaseService.findRecordsByAccountIdPagination(
-                limit,
-                accountingId,
-                'forward',
-                cursorPointer
-            );
+        this.logger.log(`Starting account sync for vouchers: accountingId=${accountingId}`);
 
-            if (pageDto.data && pageDto.data.length > 0) {
-                const updatedRecords: VoucherDto[] = pageDto.data.map((record) => {
-                    record.accountName = newAccountName;
-                    if (record.forApprovalVersion && typeof record.forApprovalVersion === 'object') {
-                        record.forApprovalVersion.accountName = newAccountName;
-                    }
-                    return record;
-                });
+        try {
+            do {
+                pageNumber++;
+                const direction = cursorPointer ? 'next' : null;
+
+                const pageDto = await this.voucherDatabaseService.findRecordsByAccountIdPagination(
+                    limit,
+                    accountingId,
+                    direction as 'next' | 'prev',
+                    cursorPointer
+                );
+
+                if (!pageDto.data || pageDto.data.length === 0) {
+                    this.logger.log('No more vouchers to process');
+                    break;
+                }
+
+                this.logger.log(`Processing page ${pageNumber}: ${pageDto.data.length} vouchers`);
+
+                const updatedRecords: VoucherDto[] = pageDto.data.map((record) => ({
+                    ...record,
+                    accountName: newAccountName,
+                    forApprovalVersion: record.forApprovalVersion
+                        ? {
+                              ...record.forApprovalVersion,
+                              accountName: newAccountName,
+                          }
+                        : undefined,
+                }));
 
                 await this.voucherDatabaseService.batchUpdate(updatedRecords);
-                this.logger.log(`Updated ${updatedRecords.length} voucher records for accountingId: ${accountingId}`);
-            }
+                totalUpdated += pageDto.data.length;
+                cursorPointer = pageDto.nextCursorPointer || null;
 
-            if (pageDto.nextCursorPointer) {
-                cursorPointer = pageDto.nextCursorPointer;
-            } else {
-                hasMoreRecords = false;
-            }
+                if (cursorPointer) await this.sleep(50);
+            } while (cursorPointer);
+
+            this.logger.log(`✅ Successfully synced ${totalUpdated} vouchers for accountingId: ${accountingId}`);
+        } catch (error) {
+            this.logger.error(`❌ Failed to sync vouchers for accountingId: ${accountingId}`, error);
+            throw error;
         }
+    }
+
+    private sleep(ms: number): Promise<void> {
+        return new Promise((resolve) => setTimeout(resolve, ms));
     }
 }

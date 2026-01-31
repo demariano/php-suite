@@ -38,7 +38,30 @@ export abstract class StockDatabaseServiceAbstract {
 
     abstract deleteAllRecords(): Promise<void>;
 
-    abstract convertToDto(record: StockDto): Promise<StockDto>;
+    abstract convertToDto(record: unknown): Promise<StockDto>;
 
-    abstract convertToDtoList(records: StockDto[]): Promise<StockDto[]>;
+    abstract convertToDtoList(records: unknown[]): Promise<StockDto[]>;
+
+    abstract batchUpdate(records: StockDto[]): Promise<void>;
+
+    abstract findRecordsByStockTypeIdPagination(
+        limit: number,
+        stockTypeId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockDto>>;
+
+    abstract findRecordsByProductIdPagination(
+        limit: number,
+        productId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockDto>>;
+
+    abstract findRecordsByProductUnitIdPagination(
+        limit: number,
+        productUnitId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockDto>>;
 }

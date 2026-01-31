@@ -54,4 +54,13 @@ export abstract class StockDeliveryDatabaseServiceAbstract {
     abstract convertToDtoList(records: StockDeliveryDataType[]): Promise<StockDeliveryDto[]>;
 
     abstract convertToDataType(dto: StockDeliveryDto): Promise<StockDeliveryDataType>;
+
+    abstract batchUpdate(records: StockDeliveryDto[]): Promise<void>;
+
+    abstract findRecordsBySupplierIdPagination(
+        limit: number,
+        supplierId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<StockDeliveryDto>>;
 }

@@ -1,4 +1,5 @@
 import { CreateInvoiceDto, InvoiceDto, InvoicePaymentDto, PageDto } from '@dto';
+import { InvoiceDataType } from '@dynamo-db-lib';
 
 export abstract class InvoiceDatabaseServiceAbstract {
     abstract createRecord(invoiceDto: CreateInvoiceDto): Promise<InvoiceDto>;
@@ -45,7 +46,11 @@ export abstract class InvoiceDatabaseServiceAbstract {
 
     abstract convertToDtoList(records: InvoiceDto[]): Promise<InvoiceDto[]>;
 
+    abstract convertToDataType(dto: InvoiceDto): Promise<InvoiceDataType>;
+
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract getDatabaseRecordById(recordId: string): Promise<InvoiceDataType | undefined>;
 
     abstract getInvoiceCount(): Promise<number>;
 

@@ -30,7 +30,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
 
     async createRecord(stockDto: CreateStockDto): Promise<StockDto> {
         const stockData: StockDataType = {
-            status: stockDto.status,
+            status: stockDto.status as StatusEnum,
             lotNo: stockDto.lotNo,
             productId: stockDto.productId,
             productName: stockDto.productName,
@@ -54,9 +54,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
             GSI5PK: `STOCK#${stockDto.status}#${stockDto.productUnitId}#${stockDto.productId}`,
             GSI5SK: stockDto.expirationDate,
             GSI6PK: `STOCK#${stockDto.stockTypeId}`,
-            GSI6SK: stockDto.stockId,
             GSI7PK: `STOCK#${stockDto.productUnitId}`,
-            GSI7SK: stockDto.stockId,
         };
 
         const stockRecord: StockDataType = await this.stockTable.create(stockData);
@@ -77,7 +75,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         stockRecord.productUnitId = sanitize(record.productUnitId);
         stockRecord.productUnitName = sanitize(record.productUnitName);
         stockRecord.expirationDate = sanitize(record.expirationDate);
-        stockRecord.status = record.status;
+        stockRecord.status = record.status as any;
         stockRecord.stockTypeId = sanitize(record.stockTypeId);
         stockRecord.stockTypeName = sanitize(record.stockTypeName);
         stockRecord.GSI1PK = `STOCK`;
@@ -200,7 +198,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
               };
 
         const indexToUse = status ? 'GSI2' : 'GSI1';
-        dynamoDbOption.index = indexToUse;
+        dynamoDbOption['index'] = indexToUse;
 
         const records = await this.stockTable.find(queryCondition, dynamoDbOption);
 
@@ -369,7 +367,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         dto.productUnitId = record.productUnitId ? record.productUnitId : '';
         dto.productUnitName = record.productUnitName ? record.productUnitName : '';
         dto.expirationDate = record.expirationDate ? record.expirationDate : '';
-        dto.status = record.status ? (record.status as StatusEnum) : StatusEnum.ACTIVE;
+        dto.status = (record.status as StatusEnum) ?? StatusEnum.ACTIVE;
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.stockTypeId = record.stockTypeId ? record.stockTypeId : '';
         dto.stockTypeName = record.stockTypeName ? record.stockTypeName : '';
@@ -395,81 +393,106 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         limit: number,
         stockTypeId: string,
         direction: 'next' | 'prev',
-        cursorPointer?: string
+        cursorPointer: string
     ): Promise<PageDto<StockDto>> {
-        const optionsWithPKIndex = createDynamoDbOptionWithPKSKIndex(
-            limit,
-            `STOCK#${stockTypeId}`,
-            cursorPointer,
-            direction,
-            'GSI6'
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', direction, cursorPointer);
+
+        const records = await this.stockTable.find(
+            {
+                GSI6PK: `STOCK#${stockTypeId}`,
+            },
+            dynamoDbOption
         );
 
-        const pageRecord = await this.stockTable.find({}, optionsWithPKIndex);
-        const page = pageRecordHandler<StockDataType, StockDto>(pageRecord, async (items) => {
-            const dtoList: StockDto[] = [];
-            for (const item of items) {
-                const dto = await this.convertToDto(item);
-                dtoList.push(dto);
-            }
-            return dtoList;
-        });
-        return page;
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordsByProductIdPagination(
         limit: number,
         productId: string,
         direction: 'next' | 'prev',
-        cursorPointer?: string
+        cursorPointer: string
     ): Promise<PageDto<StockDto>> {
-        const optionsWithPKIndex = createDynamoDbOptionWithPKSKIndex(
-            limit,
-            `STOCK#${StatusEnum.ACTIVE}`,
-            cursorPointer,
-            direction,
-            'GSI3'
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.stockTable.find(
+            {
+                GSI3PK: `STOCK#${StatusEnum.ACTIVE}`,
+                GSI3SK: productId,
+            },
+            dynamoDbOption
         );
 
-        optionsWithPKIndex.where = `\${GSI3SK} = {GSI3SK}`;
-        optionsWithPKIndex.substitutions = { GSI3SK: productId };
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
 
-        const pageRecord = await this.stockTable.find({}, optionsWithPKIndex);
-        const page = pageRecordHandler<StockDataType, StockDto>(pageRecord, async (items) => {
-            const dtoList: StockDto[] = [];
-            for (const item of items) {
-                const dto = await this.convertToDto(item);
-                dtoList.push(dto);
-            }
-            return dtoList;
-        });
-        return page;
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async findRecordsByProductUnitIdPagination(
         limit: number,
         productUnitId: string,
         direction: 'next' | 'prev',
-        cursorPointer?: string
+        cursorPointer: string
     ): Promise<PageDto<StockDto>> {
-        const optionsWithPKIndex = createDynamoDbOptionWithPKSKIndex(
-            limit,
-            `STOCK#${productUnitId}`,
-            cursorPointer,
-            direction,
-            'GSI7'
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI7', direction, cursorPointer);
+
+        const records = await this.stockTable.find(
+            {
+                GSI7PK: `STOCK#${productUnitId}`,
+            },
+            dynamoDbOption
         );
 
-        const pageRecord = await this.stockTable.find({}, optionsWithPKIndex);
-        const page = pageRecordHandler<StockDataType, StockDto>(pageRecord, async (items) => {
-            const dtoList: StockDto[] = [];
-            for (const item of items) {
-                const dto = await this.convertToDto(item);
-                dtoList.push(dto);
-            }
-            return dtoList;
-        });
-        return page;
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI7PK',
+            'GSI7SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async batchUpdate(records: StockDto[]): Promise<void> {
@@ -488,7 +511,7 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
 
         const stockData: StockDataType = {
             stockId: dto.stockId,
-            status: dto.status,
+            status: dto.status as any,
             lotNo: lotNo,
             productId: productId,
             productName: productName,

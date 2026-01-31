@@ -50,4 +50,11 @@ export abstract class VoucherDatabaseServiceAbstract {
     abstract convertToDtoList(records: VoucherDataType[]): Promise<VoucherDto[]>;
 
     abstract convertToDataType(dto: VoucherDto): Promise<VoucherDataType>;
+
+    abstract findRecordsByCustomerIdPagination(
+        limit: number,
+        customerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<VoucherDto>>;
 }

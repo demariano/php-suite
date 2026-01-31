@@ -65,7 +65,7 @@ export const AccountingSchema = {
             changeReason: { type: String, required: false },
             status: {
                 type: String,
-                enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+                enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
                 required: false,
             },
             remarks: { type: String, required: false },

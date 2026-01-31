@@ -1,15 +1,16 @@
-import { Injectable, Logger } from '@nestjs/common';
-import {
-    RawMaterialsPurchaseOrderDatabaseService,
-    RawMaterialsStockDatabaseService,
-} from '@php/backend/database-services/inventory-database-service';
-import { RawMaterialEventDto, RawMaterialSupplierEventDto } from '@php/dto';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+
+import { RawMaterialEventDto } from '@dto';
+import { RawMaterialsStockDatabaseServiceAbstract } from '@inventory-database-service';
 
 @Injectable()
 export class RawMaterialSyncHandlerService {
     private readonly logger = new Logger(RawMaterialSyncHandlerService.name);
 
-    constructor(private readonly rawMaterialsStockDatabaseService: RawMaterialsStockDatabaseService) {}
+    constructor(
+        @Inject('RawMaterialsStockDatabaseService')
+        private readonly rawMaterialsStockDatabaseService: RawMaterialsStockDatabaseServiceAbstract
+    ) {}
 
     async handleRawMaterialUpdatedEvent(event: RawMaterialEventDto): Promise<void> {
         this.logger.log(
@@ -92,97 +93,5 @@ export class RawMaterialSyncHandlerService {
 
     private sleep(ms: number): Promise<void> {
         return new Promise((resolve) => setTimeout(resolve, ms));
-    }
-}
-cat >
-    'd:/other_coding_projects/php/apps/inventory/inventory-event-handler-service/src/app/raw-material-supplier-sync-handler.service.ts' <<
-        'EOF';
-
-@Injectable()
-export class RawMaterialSupplierSyncHandlerService {
-    constructor(
-        private readonly rawMaterialsStockDatabaseService: RawMaterialsStockDatabaseService,
-        private readonly rawMaterialsPurchaseOrderDatabaseService: RawMaterialsPurchaseOrderDatabaseService
-    ) {}
-
-    async handleRawMaterialSupplierUpdatedEvent(event: RawMaterialSupplierEventDto): Promise<void> {
-        try {
-            await this.syncRawMaterialSupplierNameToRawMaterialsStock(
-                event.rawMaterialSupplierId,
-                event.newRawMaterialSupplierName
-            );
-        } catch {}
-
-        try {
-            await this.syncRawMaterialSupplierNameToPurchaseOrder(
-                event.rawMaterialSupplierId,
-                event.newRawMaterialSupplierName
-            );
-        } catch {}
-    }
-
-    private async syncRawMaterialSupplierNameToRawMaterialsStock(
-        rawMaterialSupplierId: string,
-        newRawMaterialSupplierName: string
-    ): Promise<void> {
-        let cursorPointer: string | undefined = undefined;
-        let hasMore = true;
-
-        while (hasMore) {
-            const result = await this.rawMaterialsStockDatabaseService.findRecordsByRawMaterialSupplierIdPagination(
-                100,
-                rawMaterialSupplierId,
-                'forward',
-                cursorPointer
-            );
-
-            if (result.data.length > 0) {
-                const updatedRecords = result.data.map((stock) => {
-                    stock.rawMaterialSupplierName = newRawMaterialSupplierName;
-                    if (stock.forApprovalVersion && stock.forApprovalVersion.rawMaterialSupplierName) {
-                        stock.forApprovalVersion.rawMaterialSupplierName = newRawMaterialSupplierName;
-                    }
-                    return stock;
-                });
-
-                await this.rawMaterialsStockDatabaseService.batchUpdate(updatedRecords);
-            }
-
-            hasMore = !!result.nextCursor;
-            cursorPointer = result.nextCursor;
-        }
-    }
-
-    private async syncRawMaterialSupplierNameToPurchaseOrder(
-        rawMaterialSupplierId: string,
-        newRawMaterialSupplierName: string
-    ): Promise<void> {
-        let cursorPointer: string | undefined = undefined;
-        let hasMore = true;
-
-        while (hasMore) {
-            const result =
-                await this.rawMaterialsPurchaseOrderDatabaseService.findRecordsByRawMaterialSupplierIdPagination(
-                    100,
-                    rawMaterialSupplierId,
-                    'forward',
-                    cursorPointer
-                );
-
-            if (result.data.length > 0) {
-                const updatedRecords = result.data.map((order) => {
-                    order.rawMaterialSupplierName = newRawMaterialSupplierName;
-                    if (order.forApprovalVersion && order.forApprovalVersion.rawMaterialSupplierName) {
-                        order.forApprovalVersion.rawMaterialSupplierName = newRawMaterialSupplierName;
-                    }
-                    return order;
-                });
-
-                await this.rawMaterialsPurchaseOrderDatabaseService.batchUpdate(updatedRecords);
-            }
-
-            hasMore = !!result.nextCursor;
-            cursorPointer = result.nextCursor;
-        }
     }
 }

@@ -41,7 +41,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         const docNo = rawMaterialsPurchaseOrderDto.docNo || rawMaterialsPurchaseOrderDto.poDate || '';
 
         const rawMaterialsPurchaseOrderData: RawMaterialsPurchaseOrderDataType = {
-            status: rawMaterialsPurchaseOrderDto.status,
+            status: rawMaterialsPurchaseOrderDto.status as any,
             poStatus: rawMaterialsPurchaseOrderDto.poStatus,
             rawMaterialSupplierId: rawMaterialsPurchaseOrderDto.rawMaterialSupplierId,
             rawMaterialSupplierName: rawMaterialsPurchaseOrderDto.rawMaterialSupplierName,
@@ -64,7 +64,6 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             GSI5PK: 'RAW_MATERIALS_PURCHASE_ORDER',
             GSI5SK: docNo,
             GSI6PK: `RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialsPurchaseOrderDto.rawMaterialSupplierId}`,
-            GSI6SK: rawMaterialsPurchaseOrderDto.rawMaterialsPurchaseOrderId || '',
         };
 
         const record: RawMaterialsPurchaseOrderDataType = await this.rawMaterialsPurchaseOrderTable.create(
@@ -87,7 +86,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         data.docNo = docNo;
         data.purchaseOrderDetails = record.purchaseOrderDetails;
         data.deliveredPurchaseOrderDetails = record.deliveredPurchaseOrderDetails;
-        data.status = record.status;
+        data.status = record.status as any;
         data.GSI1PK = 'RAW_MATERIALS_PURCHASE_ORDER';
         data.GSI1SK = record.poDate;
         data.GSI2PK = `RAW_MATERIALS_PURCHASE_ORDER#${record.status}`;
@@ -300,19 +299,37 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
     async findRecordsByRawMaterialSupplierIdPagination(
         limit: number,
         rawMaterialSupplierId: string,
-        direction: 'forward' | 'backward',
-        cursorPointer?: string
+        direction: string,
+        cursorPointer: string
     ): Promise<PageDto<RawMaterialsPurchaseOrderDto>> {
-        const options = createDynamoDbOptionWithPKSKIndex(
-            `RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialSupplierId}`,
-            undefined,
-            undefined,
-            limit,
-            direction,
-            cursorPointer
+        limit = Number(limit);
+        const directionValue = direction === 'forward' ? 'next' : 'prev';
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI6', directionValue, cursorPointer);
+
+        const records = await this.rawMaterialsPurchaseOrderTable.find(
+            {
+                GSI6PK: `RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialSupplierId}`,
+            },
+            dynamoDbOption
         );
 
-        return this.pageRecordHandler(options, 'GSI6');
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            directionValue,
+            'GSI6PK',
+            'GSI6SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 
     async batchUpdate(records: RawMaterialsPurchaseOrderDto[]): Promise<void> {
@@ -329,7 +346,7 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             docNo: dto.docNo,
             purchaseOrderDetails: dto.purchaseOrderDetails,
             deliveredPurchaseOrderDetails: dto.deliveredPurchaseOrderDetails,
-            status: dto.status,
+            status: dto.status as any,
             GSI1PK: 'RAW_MATERIALS_PURCHASE_ORDER',
             GSI1SK: dto.poDate,
             GSI2PK: `RAW_MATERIALS_PURCHASE_ORDER#${dto.status}`,

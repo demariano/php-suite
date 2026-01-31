@@ -1,17 +1,20 @@
-import { Injectable, Logger } from '@nestjs/common';
 import {
-    RawMaterialsPurchaseOrderDatabaseService,
-    RawMaterialsStockDatabaseService,
-} from '@php/backend/database-services/inventory-database-service';
-import { RawMaterialSupplierEventDto } from '@php/dto';
+    RawMaterialsPurchaseOrderDatabaseServiceAbstract,
+    RawMaterialsStockDatabaseServiceAbstract,
+} from '@inventory-database-service';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+
+import { RawMaterialSupplierEventDto } from '@dto';
 
 @Injectable()
 export class RawMaterialSupplierSyncHandlerService {
     private readonly logger = new Logger(RawMaterialSupplierSyncHandlerService.name);
 
     constructor(
-        private readonly rawMaterialsStockDatabaseService: RawMaterialsStockDatabaseService,
-        private readonly rawMaterialsPurchaseOrderDatabaseService: RawMaterialsPurchaseOrderDatabaseService
+        @Inject('RawMaterialsStockDatabaseService')
+        private readonly rawMaterialsStockDatabaseService: RawMaterialsStockDatabaseServiceAbstract,
+        @Inject('RawMaterialsPurchaseOrderDatabaseService')
+        private readonly rawMaterialsPurchaseOrderDatabaseService: RawMaterialsPurchaseOrderDatabaseServiceAbstract
     ) {}
 
     /**
@@ -83,7 +86,7 @@ export class RawMaterialSupplierSyncHandlerService {
                 const page = await this.rawMaterialsStockDatabaseService.findRecordsByRawMaterialSupplierIdPagination(
                     limit,
                     rawMaterialSupplierId,
-                    direction,
+                    direction as 'next' | 'prev',
                     cursorPointer
                 );
 

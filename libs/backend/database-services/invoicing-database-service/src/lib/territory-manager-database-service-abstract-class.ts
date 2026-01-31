@@ -1,4 +1,5 @@
 import { CreateTerritoryManagerDto, PageDto, TerritoryManagerDto } from '@dto';
+import { TerritoryManagerDataType } from '@dynamo-db-lib';
 
 export abstract class TerritoryManagerDatabaseServiceAbstract {
     abstract createRecord(territoryManagerDto: CreateTerritoryManagerDto): Promise<TerritoryManagerDto>;
@@ -38,5 +39,9 @@ export abstract class TerritoryManagerDatabaseServiceAbstract {
 
     abstract convertToDtoList(records: TerritoryManagerDto[]): Promise<TerritoryManagerDto[]>;
 
+    abstract convertToDataType(dto: TerritoryManagerDto): Promise<TerritoryManagerDataType>;
+
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract getDatabaseRecordById(recordId: string): Promise<TerritoryManagerDataType | undefined>;
 }
