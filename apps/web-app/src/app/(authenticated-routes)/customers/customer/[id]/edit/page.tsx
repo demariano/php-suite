@@ -191,10 +191,8 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to customer list after a short delay
-            setTimeout(() => {
-                router.push('/customers/customer');
-            }, 1500);
+            // Navigate back to customer list immediately - notification will persist
+            router.push('/customers/customer');
         } catch (error) {
             console.error('Error deleting customer:', error);
             const errorMessage = extractErrorMessage(error, 'Failed to delete customer. Please try again.');
@@ -249,10 +247,8 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to customer list after a short delay
-            setTimeout(() => {
-                router.push('/customers/customer');
-            }, 1500);
+            // Navigate back to customer list immediately - notification will persist
+            router.push('/customers/customer');
         } catch (error) {
             console.error('Error reactivating customer:', error);
             const errorMessage = extractErrorMessage(error, 'Failed to reactivate customer. Please try again.');
@@ -285,10 +281,8 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to customer list after a short delay
-            setTimeout(() => {
-                router.push('/customers/customer');
-            }, 1500);
+            // Navigate back to customer list immediately - notification will persist
+            router.push('/customers/customer');
         } catch (err) {
             console.error('Error approving customer:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to approve customer. Please try again.');
@@ -330,10 +324,8 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to customer list after a short delay
-            setTimeout(() => {
-                router.push('/customers/customer');
-            }, 1500);
+            // Navigate back to customer list immediately - notification will persist
+            router.push('/customers/customer');
         } catch (err) {
             console.error('Error denying customer:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to deny customer. Please try again.');

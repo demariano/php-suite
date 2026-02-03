@@ -1,113 +1,138 @@
 'use client';
 
-import { CustomerTypeApi, CustomerTypeDto, extractErrorMessage, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import {
+    CustomerTypeApi,
+    CustomerTypeDto,
+    extractErrorMessage,
+    useEnv,
+    useLocalStore,
+    useSessionStore,
+} from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import CustomerTypeForm from '../components/CustomerTypeForm';
 
 export default function CreateCustomerTypePage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const { env } = useEnv();
-  const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  const router = useRouter();
+    const [isLoading, setIsLoading] = useState(false);
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const { setFlashNotification } = useSessionStore();
+    const router = useRouter();
 
-  const handleSave = async (customerType: CustomerTypeDto) => {
-    try {
-      setIsLoading(true);
-      
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development')
-        ? authedUser?.userRole
-        : undefined;
+    const handleSave = async (customerType: CustomerTypeDto) => {
+        try {
+            setIsLoading(true);
 
-      await CustomerTypeApi.createCustomerType({
-        customerTypeName: customerType.customerTypeName,
-        status: customerType.status
-      }, userRole);
+            const userRole =
+                env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
+                    ? authedUser?.userRole
+                    : undefined;
 
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Customer Type created successfully!',
-        alertType: 'success'
-      });
+            await CustomerTypeApi.createCustomerType(
+                {
+                    customerTypeName: customerType.customerTypeName,
+                    status: customerType.status,
+                },
+                userRole
+            );
 
-      setTimeout(() => {
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Customer Type created successfully!',
+                alertType: 'success',
+            });
+
+            router.push('/customers/types');
+        } catch (error) {
+            console.error('Error creating customer type:', error);
+            const errorMessage = extractErrorMessage(error, 'Failed to create customer type. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCancel = () => {
         router.push('/customers/types');
-      }, 1500);
+    };
 
-    } catch (error) {
-      console.error('Error creating customer type:', error);
-      const errorMessage = extractErrorMessage(error, 'Failed to create customer type. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const handleDelete = () => {
+        // Not applicable for create mode
+    };
 
-  const handleCancel = () => {
-    router.push('/customers/types');
-  };
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
-  const handleDelete = () => {
-    // Not applicable for create mode
-  };
-
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
-
-  return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div>
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Home
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/customers" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Customers
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/customers/types" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Types
-          </a>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Create</span>
-        </nav>
-      </div>
-
-      <div className="flex justify-center">
-        <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
-          <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
-            <div className="flex flex-nowrap gap-2">
-              <button
-                className="flex-shrink-0 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm"
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Type Information
-                </span>
-              </button>
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            <div>
+                <nav className="flex items-center gap-2">
+                    <a
+                        href="/dashboard"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Home
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <a
+                        href="/customers"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Customers
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <a
+                        href="/customers/types"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Types
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <span className="text-gray-800 text-sm font-medium">Create</span>
+                </nav>
             </div>
-          </div>
 
-          <div className="bg-white p-4 sm:p-6">
-            <CustomerTypeForm
-              isCreateMode={true}
-              selectedCustomerType={null}
-              successMessage={null}
-              onSave={handleSave}
-              onDelete={handleDelete}
-              onCancel={handleCancel}
-              isAdminUser={isAdminUser}
-            />
-          </div>
+            <div className="flex justify-center">
+                <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                    <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
+                        <div className="flex flex-nowrap gap-2">
+                            <button className="flex-shrink-0 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm">
+                                <span className="flex items-center gap-2">
+                                    <svg
+                                        className="h-4 w-4 text-white"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                    Type Information
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-4 sm:p-6">
+                        <CustomerTypeForm
+                            isCreateMode={true}
+                            selectedCustomerType={null}
+                            successMessage={null}
+                            onSave={handleSave}
+                            onDelete={handleDelete}
+                            onCancel={handleCancel}
+                            isAdminUser={isAdminUser}
+                        />
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }

@@ -163,10 +163,8 @@ export default function EditStockPage({ params }: EditStockPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to stock list after a short delay
-            setTimeout(() => {
-                router.push('/inventory/stock');
-            }, 1500);
+            // Navigate back to stock list immediately - notification will persist
+            router.push('/inventory/stock');
         } catch (error) {
             console.error('Error deleting stock:', error);
             const errorMessage = extractErrorMessage(error, 'Failed to delete stock. Please try again.');
@@ -198,10 +196,8 @@ export default function EditStockPage({ params }: EditStockPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to stock list after a short delay
-            setTimeout(() => {
-                router.push('/inventory/stock');
-            }, 1500);
+            // Navigate back to stock list immediately - notification will persist
+            router.push('/inventory/stock');
         } catch (err) {
             console.error('Error approving stock:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to approve stock. Please try again.');
@@ -238,10 +234,8 @@ export default function EditStockPage({ params }: EditStockPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to stock list after a short delay
-            setTimeout(() => {
-                router.push('/inventory/stock');
-            }, 1500);
+            // Navigate back to stock list immediately - notification will persist
+            router.push('/inventory/stock');
         } catch (err) {
             console.error('Error denying stock:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to deny stock. Please try again.');

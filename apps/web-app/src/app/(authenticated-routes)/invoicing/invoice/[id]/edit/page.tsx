@@ -176,10 +176,8 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to invoice list after a short delay
-            setTimeout(() => {
-                router.push('/invoicing/invoice');
-            }, 1500);
+            // Navigate back to invoice list immediately - notification will persist
+            router.push('/invoicing/invoice');
         } catch (error) {
             console.error('Error deleting invoice:', error);
             const errorMessage = extractErrorMessage(error, 'Failed to delete invoice. Please try again.');
@@ -216,10 +214,8 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to invoice list after a short delay
-            setTimeout(() => {
-                router.push('/invoicing/invoice');
-            }, 1500);
+            // Navigate back to invoice list immediately - notification will persist
+            router.push('/invoicing/invoice');
         } catch (err) {
             console.error('Error approving invoice:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to approve invoice. Please try again.');
@@ -257,10 +253,8 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to invoice list after a short delay
-            setTimeout(() => {
-                router.push('/invoicing/invoice');
-            }, 1500);
+            // Navigate back to invoice list immediately - notification will persist
+            router.push('/invoicing/invoice');
         } catch (err) {
             console.error('Error denying invoice:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to deny invoice. Please try again.');

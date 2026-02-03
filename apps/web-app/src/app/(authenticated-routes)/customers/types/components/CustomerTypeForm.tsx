@@ -12,6 +12,7 @@ interface CustomerTypeFormProps {
     onDelete: () => void;
     onCancel: () => void;
     isAdminUser?: boolean;
+    onReactivate?: () => void;
 }
 
 export default function CustomerTypeForm({
@@ -22,6 +23,7 @@ export default function CustomerTypeForm({
     onDelete,
     onCancel,
     isAdminUser = false,
+    onReactivate,
 }: CustomerTypeFormProps) {
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [formData, setFormData] = useState({
@@ -196,6 +198,29 @@ export default function CustomerTypeForm({
                             />
                         </svg>
                         Delete
+                    </button>
+                ) : !isCreateMode &&
+                  selectedCustomerType?.status === StatusEnum.INACTIVE &&
+                  isAdminUser &&
+                  onReactivate ? (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onReactivate();
+                        }}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:w-auto"
+                    >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                        </svg>
+                        Reactivate
                     </button>
                 ) : (
                     <div className="hidden sm:block" />

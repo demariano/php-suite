@@ -48,10 +48,8 @@ export default function CreateStockPage() {
                 alertType: 'success',
             });
 
-            // Navigate back to stock list after a short delay
-            setTimeout(() => {
-                router.push('/inventory/stock');
-            }, 1500);
+            // Navigate immediately - notification will persist
+            router.push('/inventory/stock');
         } catch (error) {
             console.error('Error creating stock:', error);
             const errorMessage = extractErrorMessage(error, 'Failed to create stock. Please try again.');

@@ -1,114 +1,138 @@
 'use client';
 
-import { ProductPriceTypeApi, ProductPriceTypeDto, extractErrorMessage, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import {
+    ProductPriceTypeApi,
+    ProductPriceTypeDto,
+    extractErrorMessage,
+    useEnv,
+    useLocalStore,
+    useSessionStore,
+} from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import ProductPriceTypeForm from '../components/ProductPriceTypeForm';
 
 export default function CreateProductPriceTypePage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const { env } = useEnv();
-  const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  const router = useRouter();
+    const [isLoading, setIsLoading] = useState(false);
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const { setFlashNotification } = useSessionStore();
+    const router = useRouter();
 
-  const handleSave = async (productPriceType: ProductPriceTypeDto) => {
-    try {
-      setIsLoading(true);
-      
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development')
-        ? authedUser?.userRole
-        : undefined;
+    const handleSave = async (productPriceType: ProductPriceTypeDto) => {
+        try {
+            setIsLoading(true);
 
-      await ProductPriceTypeApi.createProductPriceType({
-        productPriceTypeName: productPriceType.productPriceTypeName,
-        status: productPriceType.status
-      }, userRole);
+            const userRole =
+                env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
+                    ? authedUser?.userRole
+                    : undefined;
 
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Product Price Type created successfully!',
-        alertType: 'success'
-      });
+            await ProductPriceTypeApi.createProductPriceType(
+                {
+                    productPriceTypeName: productPriceType.productPriceTypeName,
+                    status: productPriceType.status,
+                },
+                userRole
+            );
 
-      setTimeout(() => {
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Product Price Type created successfully!',
+                alertType: 'success',
+            });
+
+            router.push('/products/product-price-type');
+        } catch (error) {
+            console.error('Error creating product price type:', error);
+            const errorMessage = extractErrorMessage(error, 'Failed to create product price type. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleCancel = () => {
         router.push('/products/product-price-type');
-      }, 1500);
+    };
 
-    } catch (error) {
-      console.error('Error creating product price type:', error);
-      const errorMessage = extractErrorMessage(error, 'Failed to create product price type. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    const handleDelete = () => {
+        // Not applicable for create mode
+    };
 
-  const handleCancel = () => {
-    router.push('/products/product-price-type');
-  };
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
-  const handleDelete = () => {
-    // Not applicable for create mode
-  };
-
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
-
-  return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div>
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Home
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/products" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Products
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/products/product-price-type" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Product Price Type
-          </a>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Create</span>
-        </nav>
-      </div>
-
-      <div className="flex justify-center">
-        <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
-          <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
-            <div className="flex flex-nowrap gap-2">
-              <button
-                className="flex-shrink-0 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm"
-              >
-                <span className="flex items-center gap-2">
-                  <svg className="h-4 w-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Product Price Type Information
-                </span>
-              </button>
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            <div>
+                <nav className="flex items-center gap-2">
+                    <a
+                        href="/dashboard"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Home
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <a
+                        href="/products"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Products
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <a
+                        href="/products/product-price-type"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Product Price Type
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <span className="text-gray-800 text-sm font-medium">Create</span>
+                </nav>
             </div>
-          </div>
 
-          <div className="bg-white p-4 sm:p-6">
-            <ProductPriceTypeForm
-              isCreateMode={true}
-              selectedProductPriceType={null}
-              successMessage={null}
-              onSave={handleSave}
-              onDelete={handleDelete}
-              onCancel={handleCancel}
-              isAdminUser={isAdminUser}
-            />
-          </div>
+            <div className="flex justify-center">
+                <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                    <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
+                        <div className="flex flex-nowrap gap-2">
+                            <button className="flex-shrink-0 flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm">
+                                <span className="flex items-center gap-2">
+                                    <svg
+                                        className="h-4 w-4 text-white"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                        />
+                                    </svg>
+                                    Product Price Type Information
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-4 sm:p-6">
+                        <ProductPriceTypeForm
+                            isCreateMode={true}
+                            selectedProductPriceType={null}
+                            successMessage={null}
+                            onSave={handleSave}
+                            onDelete={handleDelete}
+                            onCancel={handleCancel}
+                            isAdminUser={isAdminUser}
+                        />
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
-  );
+    );
 }
-

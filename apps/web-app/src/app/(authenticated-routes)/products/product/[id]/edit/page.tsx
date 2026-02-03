@@ -98,10 +98,8 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         alertType: 'success'
       });
       
-      // Navigate back to product list after a short delay
-      setTimeout(() => {
-        router.push('/products/product');
-      }, 1500);
+      // Navigate back to product list immediately - notification will persist
+      router.push('/products/product');
       
     } catch (error) {
       console.error('Error updating product:', error);
@@ -142,10 +140,8 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         alertType: 'success'
       });
       
-      // Navigate back to product list after a short delay
-      setTimeout(() => {
-        router.push('/products/product');
-      }, 1500);
+      // Navigate back to product list immediately - notification will persist
+      router.push('/products/product');
       
     } catch (error) {
       console.error('Error deleting product:', error);
@@ -184,16 +180,8 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         alertType: 'success'
       });
       
-      // Navigate back to product list after a short delay
-      setTimeout(() => {
-        router.push('/products/product');
-      }, 1500);
-      
-    } catch (err) {
-      console.error('Error approving product:', err);
-      const errorMessage = extractErrorMessage(err, 'Failed to approve product. Please try again.');
-      setFlashNotification({
-        title: 'Error',
+      // Navigate back to product list immediately - notification will persist
+      router.push('/products/product');
         message: errorMessage,
         alertType: 'error'
       });
@@ -226,16 +214,8 @@ export default function EditProductPage({ params }: EditProductPageProps) {
         alertType: 'success'
       });
       
-      // Navigate back to product list after a short delay
-      setTimeout(() => {
-        router.push('/products/product');
-      }, 1500);
-      
-    } catch (err) {
-      console.error('Error denying product:', err);
-      const errorMessage = extractErrorMessage(err, 'Failed to deny product. Please try again.');
-      setFlashNotification({
-        title: 'Error',
+      // Navigate back to product list immediately - notification will persist
+      router.push('/products/product');
         message: errorMessage,
         alertType: 'error'
       });

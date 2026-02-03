@@ -1,6 +1,6 @@
 'use client';
 
-import { DeleteConfirmationModal, DenyReasonDialog } from '@components-web';
+import { ConfirmationModal, DeleteConfirmationModal, DenyReasonDialog } from '@components-web';
 import {
     extractErrorMessage,
     StatusEnum,
@@ -28,6 +28,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
     const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
+    const [showReactivateModal, setShowReactivateModal] = useState(false);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
     const { setFlashNotification } = useSessionStore();
@@ -222,6 +223,52 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
 
     const handleDenyCancel = () => {
         setShowDenyDialog(false);
+    };
+
+    const handleReactivate = () => {
+        setShowReactivateModal(true);
+    };
+
+    const handleReactivateConfirm = async () => {
+        if (!selectedTerms) return;
+
+        try {
+            setIsLoading(true);
+            setShowReactivateModal(false);
+
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
+            const reactivatedTerms: TermsDto = {
+                termsId: selectedTerms.termsId,
+                termsName: selectedTerms.termsName,
+                days: selectedTerms.days,
+                status: StatusEnum.ACTIVE,
+                changeReason: selectedTerms.changeReason,
+            };
+
+            const updatedTerms = await TermsApi.updateTerms(params.id, reactivatedTerms, userRole);
+            setSelectedTerms(updatedTerms);
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Terms reactivated successfully!',
+                alertType: 'success',
+            });
+            router.push('/customers/terms');
+        } catch (err) {
+            console.error('Error reactivating terms:', err);
+            const errorMessage = extractErrorMessage(err, 'Failed to reactivate terms. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleReactivateCancel = () => {
+        setShowReactivateModal(false);
     };
 
     const handleCancel = () => {
@@ -810,6 +857,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
                                     onDelete={handleDelete}
                                     onCancel={handleCancel}
                                     isAdminUser={isAdminUser}
+                                    onReactivate={handleReactivate}
                                 />
                             )}
 
@@ -820,6 +868,15 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
                     </div>
                 </div>
             )}
+
+            <ConfirmationModal
+                show={showReactivateModal}
+                record={selectedTerms}
+                variant="reactivate"
+                recordDisplayName={selectedTerms?.termsName}
+                onConfirm={handleReactivateConfirm}
+                onCancel={handleReactivateCancel}
+            />
         </div>
     );
 }

@@ -122,10 +122,8 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to voucher list after a short delay
-            setTimeout(() => {
-                router.push('/accounting/voucher');
-            }, 1500);
+            // Navigate back to voucher list immediately - notification will persist
+            router.push('/accounting/voucher');
         } catch (error) {
             console.error('Error updating voucher:', error);
             const errorMessage = extractErrorMessage(error, 'Failed to update voucher. Please try again.');
@@ -177,10 +175,8 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to voucher list after a short delay
-            setTimeout(() => {
-                router.push('/accounting/voucher');
-            }, 1500);
+            // Navigate back to voucher list immediately - notification will persist
+            router.push('/accounting/voucher');
         } catch (error) {
             console.error('Error deleting voucher:', error);
             const errorMessage = extractErrorMessage(error, 'Failed to delete voucher. Please try again.');
@@ -217,10 +213,8 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to voucher list after a short delay
-            setTimeout(() => {
-                router.push('/accounting/voucher');
-            }, 1500);
+            // Navigate back to voucher list immediately - notification will persist
+            router.push('/accounting/voucher');
         } catch (err) {
             console.error('Error approving voucher:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to approve voucher. Please try again.');
@@ -258,10 +252,8 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to voucher list after a short delay
-            setTimeout(() => {
-                router.push('/accounting/voucher');
-            }, 1500);
+            // Navigate back to voucher list immediately - notification will persist
+            router.push('/accounting/voucher');
         } catch (err) {
             console.error('Error denying voucher:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to deny voucher. Please try again.');

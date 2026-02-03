@@ -249,7 +249,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
         setShowReactivateModal(true);
     };
 
-    const handleReactivateConfirm = async (reactivationReason: string) => {
+    const handleReactivateConfirm = async () => {
         if (!selectedArea) return;
 
         try {
@@ -258,14 +258,12 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-            // Update the area to ACTIVE status with reactivation reason
+            // Update the area to ACTIVE status
             const reactivatedArea = await AreaApi.updateArea(
                 selectedArea.areaId,
                 {
                     ...selectedArea,
                     status: StatusEnum.ACTIVE,
-                    reactivationReason,
-                    changeReason: `Reactivated: ${reactivationReason}`,
                 },
                 userRole
             );
@@ -918,9 +916,9 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
             />
 
             <ConfirmationModal
-                variant="reactivate"
                 show={showReactivateModal}
                 record={selectedArea}
+                variant="reactivate"
                 recordDisplayName={selectedArea?.areaName}
                 onConfirm={handleReactivateConfirm}
                 onCancel={() => setShowReactivateModal(false)}

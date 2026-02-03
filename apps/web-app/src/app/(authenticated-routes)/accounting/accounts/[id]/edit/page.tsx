@@ -83,7 +83,7 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
                 message: 'Account updated successfully.',
                 alertType: 'success',
             });
-            setTimeout(() => router.push('/accounting/accounts'), 1000);
+            router.push('/accounting/accounts');
             setSelectedAccount(updated);
         } catch (error) {
             console.error('Error updating account', error);
@@ -195,10 +195,8 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
                 alertType: 'success',
             });
 
-            // Navigate back to accounts list after a short delay
-            setTimeout(() => {
-                router.push('/accounting/accounts');
-            }, 1500);
+            // Navigate back to accounts list immediately - notification will persist
+            router.push('/accounting/accounts');
         } catch (err) {
             console.error('Error denying account:', err);
             const errorMessage = extractErrorMessage(err, 'Failed to deny account. Please try again.');

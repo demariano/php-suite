@@ -1,6 +1,6 @@
 'use client';
 
-import { DeleteConfirmationModal, DenyReasonDialog } from '@components-web';
+import { ConfirmationModal, DeleteConfirmationModal, DenyReasonDialog } from '@components-web';
 import {
     CustomerTypeApi,
     CustomerTypeDto,
@@ -28,6 +28,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
     const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
+    const [showReactivateModal, setShowReactivateModal] = useState(false);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
     const { setFlashNotification } = useSessionStore();
@@ -230,6 +231,51 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
 
     const handleDenyCancel = () => {
         setShowDenyDialog(false);
+    };
+
+    const handleReactivate = () => {
+        setShowReactivateModal(true);
+    };
+
+    const handleReactivateConfirm = async () => {
+        if (!selectedCustomerType) return;
+
+        try {
+            setIsLoading(true);
+            setShowReactivateModal(false);
+
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
+            const reactivatedType = await CustomerTypeApi.updateCustomerType(
+                params.id,
+                {
+                    customerTypeId: selectedCustomerType.customerTypeId,
+                    customerTypeName: selectedCustomerType.customerTypeName,
+                    status: StatusEnum.ACTIVE,
+                    changeReason: selectedCustomerType.changeReason,
+                },
+                userRole
+            );
+
+            setSelectedCustomerType(reactivatedType);
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Customer Type reactivated successfully!',
+                alertType: 'success',
+            });
+
+            router.push('/customers/types');
+        } catch (error) {
+            console.error('Error reactivating customer type:', error);
+            const errorMessage = extractErrorMessage(error, 'Failed to reactivate customer type. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleCancel = () => {
@@ -715,6 +761,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
                                     successMessage={null}
                                     onSave={handleSave}
                                     onDelete={handleDelete}
+                                    onReactivate={handleReactivate}
                                     onCancel={handleCancel}
                                     isAdminUser={isAdminUser}
                                 />
@@ -743,6 +790,16 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
                 recordDisplayName={selectedCustomerType?.customerTypeName || ''}
                 onConfirm={handleDenyConfirm}
                 onCancel={handleDenyCancel}
+            />
+
+            <ConfirmationModal
+                show={showReactivateModal}
+                record={selectedCustomerType}
+                variant="reactivate"
+                recordDisplayName={selectedCustomerType?.customerTypeName}
+                customMessage="This will change the status from INACTIVE to ACTIVE."
+                onConfirm={handleReactivateConfirm}
+                onCancel={() => setShowReactivateModal(false)}
             />
         </div>
     );

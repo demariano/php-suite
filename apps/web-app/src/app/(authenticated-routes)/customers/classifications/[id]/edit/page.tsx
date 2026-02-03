@@ -1,6 +1,6 @@
 'use client';
 
-import { DeleteConfirmationModal, DenyReasonDialog, StatusBadge } from '@components-web';
+import { ConfirmationModal, DeleteConfirmationModal, DenyReasonDialog, StatusBadge } from '@components-web';
 import {
     CustomerClassificationApi,
     CustomerClassificationDto,
@@ -29,6 +29,7 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
     const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
+    const [showReactivateModal, setShowReactivateModal] = useState(false);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
     const { setFlashNotification } = useSessionStore();
@@ -264,6 +265,54 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
 
     const handleDenyCancel = () => {
         setShowDenyDialog(false);
+    };
+
+    const handleReactivate = () => {
+        setShowReactivateModal(true);
+    };
+
+    const handleReactivateConfirm = async () => {
+        if (!selectedCustomerClassification) return;
+
+        try {
+            setIsLoading(true);
+            setShowReactivateModal(false);
+
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
+            const reactivatedClassification = await CustomerClassificationApi.updateCustomerClassification(
+                params.id,
+                {
+                    customerClassificationId: selectedCustomerClassification.customerClassificationId,
+                    customerClassificationName: selectedCustomerClassification.customerClassificationName,
+                    status: StatusEnum.ACTIVE,
+                    changeReason: selectedCustomerClassification.changeReason,
+                },
+                userRole
+            );
+
+            setSelectedCustomerClassification(reactivatedClassification);
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Customer Classification reactivated successfully!',
+                alertType: 'success',
+            });
+
+            router.push('/customers/classifications');
+        } catch (error) {
+            console.error('Error reactivating customer classification:', error);
+            const errorMessage = extractErrorMessage(
+                error,
+                'Failed to reactivate customer classification. Please try again.'
+            );
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleCancel = () => {
@@ -669,6 +718,7 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
                                     successMessage={null}
                                     onSave={handleSave}
                                     onDelete={handleDelete}
+                                    onReactivate={handleReactivate}
                                     onCancel={handleCancel}
                                     isAdminUser={isAdminUser}
                                 />
@@ -681,6 +731,32 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
                     </div>
                 </div>
             )}
+
+            <DenyReasonDialog
+                show={showDenyDialog}
+                record={selectedCustomerClassification}
+                recordDisplayName={selectedCustomerClassification?.customerClassificationName}
+                onConfirm={handleDenyConfirm}
+                onCancel={handleDenyCancel}
+            />
+
+            <DeleteConfirmationModal
+                show={showDeleteModal}
+                record={selectedCustomerClassification}
+                recordDisplayName={selectedCustomerClassification?.customerClassificationName}
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setShowDeleteModal(false)}
+            />
+
+            <ConfirmationModal
+                show={showReactivateModal}
+                record={selectedCustomerClassification}
+                variant="reactivate"
+                recordDisplayName={selectedCustomerClassification?.customerClassificationName}
+                customMessage="This will change the status from INACTIVE to ACTIVE."
+                onConfirm={handleReactivateConfirm}
+                onCancel={() => setShowReactivateModal(false)}
+            />
         </div>
     );
 }
