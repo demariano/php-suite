@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { CustomerClassificationDatabaseServiceAbstract } from '@customer-database-service';
 import { CustomerClassificationDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
@@ -79,8 +78,8 @@ export class DenyCustomerClassificationHandler implements ICommandHandler<DenyCu
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyCustomerClassification(existingRecord, command);
-            case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord, command);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.denyDeactivation(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -110,7 +109,9 @@ export class DenyCustomerClassificationHandler implements ICommandHandler<DenyCu
             existingRecord.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
-                })}, Customer classification denied by ${command.user.username}, approver message: ${command.approverMessage}`
+                })}, Customer classification denied by ${command.user.username}, approver message: ${
+                    command.approverMessage
+                }`
             );
         }
 
@@ -126,21 +127,23 @@ export class DenyCustomerClassificationHandler implements ICommandHandler<DenyCu
     }
 
     /**
-     * Denies deletion of a customer classification
+     * Denies deactivation of a customer classification
      */
-    private async denyDeletion(
+    private async denyDeactivation(
         existingRecord: CustomerClassificationDto,
         command: DenyCustomerClassificationCommand
     ): Promise<ResponseDto<CustomerClassificationDto>> {
-        this.logger.log(`Customer classification deletion denied: ${existingRecord.customerClassificationId}`);
+        this.logger.log(`Customer classification deactivation denied: ${existingRecord.customerClassificationId}`);
         existingRecord.status = StatusEnum.ACTIVE;
-        
+
         // Add activity log for denial
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Customer classification deletion denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+            })}, Customer classification deactivation denied by ${command.user.username}, status reverted to ${
+                StatusEnum.ACTIVE
+            }`
         );
 
         // Add approver message if provided
@@ -148,14 +151,16 @@ export class DenyCustomerClassificationHandler implements ICommandHandler<DenyCu
             existingRecord.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
-                })}, Customer classification deletion denied by ${command.user.username}, approver message: ${command.approverMessage}`
+                })}, Customer classification deactivation denied by ${command.user.username}, approver message: ${
+                    command.approverMessage
+                }`
             );
         }
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.approverMessage = null;
-        
+
         const updatedRecord = await this.customerClassificationDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<CustomerClassificationDto>(updatedRecord, HTTP_STATUS_OK);
     }

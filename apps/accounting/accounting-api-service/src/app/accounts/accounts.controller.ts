@@ -190,13 +190,19 @@ export class AccountsController {
             },
         },
     })
-    deleteAccount(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    deleteAccount(
+        @Param('id') id: string,
+        @Query('userRole') userRole: string,
+        @Query('deletionReason') deletionReason: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
         const accountsDto = new AccountsDto();
+        accountsDto.deletionReason = deletionReason;
         return this.commandBus.execute(new DeleteAccountsCommand(id, accountsDto, user));
     }
 

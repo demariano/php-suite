@@ -23,6 +23,9 @@ export class TerritoryManagerDto {
     @ApiProperty({ required: false })
     changeReason?: string;
 
+    @ApiProperty({ required: false })
+    deletionReason?: string;
+
     @ApiProperty()
     approverMessage?: string;
 }

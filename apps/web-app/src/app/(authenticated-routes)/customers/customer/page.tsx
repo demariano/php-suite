@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { CustomerApi, CustomerDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
@@ -8,6 +9,7 @@ import { CustomerHeader, CustomerTable } from './components';
 export default function CustomersMainPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [customers, setCustomers] = useState<CustomerDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
@@ -50,12 +52,24 @@ export default function CustomersMainPage() {
                     userRole
                 );
             } else {
-                response = await CustomerApi.getCustomers(currentPageSize, direction, serializedCursor, userRole);
+                // Use backend status filtering via GSI2 for efficiency
+                if (statusFilter !== 'ALL') {
+                    response = await CustomerApi.getCustomersByStatus(
+                        statusFilter,
+                        currentPageSize,
+                        direction,
+                        serializedCursor,
+                        userRole
+                    );
+                } else {
+                    response = await CustomerApi.getCustomers(currentPageSize, direction, serializedCursor, userRole);
+                }
             }
 
             if (response && response.statusCode === 200 && response.data) {
                 // The response.data contains the array of customers
                 if (Array.isArray(response.data)) {
+                    // No client-side filtering needed - backend already filtered by status
                     setCustomers(response.data);
 
                     // Set pagination cursors from response
@@ -101,11 +115,23 @@ export default function CustomersMainPage() {
         }
 
         const delayDebounceFn = setTimeout(() => {
+            // Reset pagination when search changes
+            setNextCursor(undefined);
+            setPrevCursor(undefined);
+            setCurrentCursor(undefined);
             fetchCustomers();
         }, 500); // 500ms delay
 
         return () => clearTimeout(delayDebounceFn);
     }, [searchTerm]);
+
+    // Refetch when status filter changes
+    useEffect(() => {
+        setCurrentCursor(undefined);
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchCustomers();
+    }, [statusFilter]);
 
     const headers = [
         { key: 'customerName', label: 'CUSTOMER NAME' },
@@ -115,77 +141,6 @@ export default function CustomersMainPage() {
         { key: 'status', label: 'STATUS' },
         { key: 'latestActivity', label: 'LATEST ACTIVITY' },
     ];
-
-    // Helper function to get status text
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
 
     const handleRowClick = async (customer: CustomerDto) => {
         // Navigate to edit customer page
@@ -224,7 +179,7 @@ export default function CustomersMainPage() {
 
             return {
                 ...customer,
-                status: getStatusBadge(customer.status || StatusEnum.ACTIVE),
+                status: <StatusBadge status={customer.status || StatusEnum.ACTIVE} />,
                 latestActivity,
             };
         }) || [];
@@ -268,6 +223,7 @@ export default function CustomersMainPage() {
             {/* Header Bar */}
             <CustomerHeader
                 searchTerm={searchTerm}
+                statusFilter={statusFilter}
                 onSearchChange={(value) => {
                     setSearchTerm(value);
                     // Reset pagination when search term changes
@@ -275,8 +231,16 @@ export default function CustomersMainPage() {
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                onStatusFilterChange={(value) => {
+                    setStatusFilter(value);
+                    // Reset pagination when status filter changes
+                    setCurrentCursor(undefined);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
                 onRefresh={() => {
                     setSearchTerm('');
+                    setStatusFilter('ALL');
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
@@ -285,6 +249,7 @@ export default function CustomersMainPage() {
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 canCreate={isAdminUser}
+                isAdminUser={isAdminUser}
             />
 
             {/* Table */}

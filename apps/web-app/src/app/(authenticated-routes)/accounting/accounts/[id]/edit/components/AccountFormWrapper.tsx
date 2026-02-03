@@ -1,11 +1,12 @@
 'use client';
 
+import { ConfirmationModal, DeleteConfirmationModal } from '@components-web';
 import { AccountsDto, StatusEnum } from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useState } from 'react';
 import { ChangeReasonReadOnly } from '../../../../../components';
 import { isFieldChanged as checkFieldChanged } from '../../../../../utils/fieldChangeDetection';
-import { AccountForm, DeleteConfirmationModal } from '../../../components';
+import { AccountForm } from '../../../components';
 
 interface AccountFormWrapperProps {
     isCreateMode: boolean;
@@ -17,6 +18,7 @@ interface AccountFormWrapperProps {
     onTabChange: (tab: 'details' | 'approval' | 'logs') => void;
     onSave: (account: AccountsDto) => void;
     onDelete: () => void;
+    onReactivate: () => void;
     onApprove: () => void;
     onDeny: () => void;
     onCancel: () => void;
@@ -128,11 +130,13 @@ export default function AccountFormWrapper({
     onTabChange,
     onSave,
     onDelete,
+    onReactivate,
     onApprove,
     onDeny,
     onCancel,
 }: AccountFormWrapperProps) {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showReactivateModal, setShowReactivateModal] = useState(false);
     const status = selectedAccount?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = (selectedAccount?.forApprovalVersion as Partial<AccountsDto>) || {};
 
@@ -520,6 +524,7 @@ export default function AccountFormWrapper({
                                 successMessage={successMessage}
                                 onSave={onSave}
                                 onDelete={() => setShowDeleteModal(true)}
+                                onReactivate={() => setShowReactivateModal(true)}
                                 onCancel={onCancel}
                                 isAdminUser={isAdminUser}
                             />
@@ -534,12 +539,26 @@ export default function AccountFormWrapper({
 
             <DeleteConfirmationModal
                 show={showDeleteModal}
-                account={selectedAccount}
+                record={selectedAccount}
+                recordDisplayName={selectedAccount?.accountName || 'Account'}
                 onConfirm={() => {
                     setShowDeleteModal(false);
                     onDelete();
                 }}
                 onCancel={() => setShowDeleteModal(false)}
+            />
+
+            <ConfirmationModal
+                show={showReactivateModal}
+                record={selectedAccount}
+                variant="reactivate"
+                recordDisplayName={selectedAccount?.accountName || 'Account'}
+                customMessage="This will change the status from INACTIVE to ACTIVE."
+                onConfirm={() => {
+                    setShowReactivateModal(false);
+                    onReactivate();
+                }}
+                onCancel={() => setShowReactivateModal(false)}
             />
         </div>
     );

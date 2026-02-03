@@ -93,8 +93,6 @@ export class ApproveCustomerClassificationHandler implements ICommandHandler<App
             case StatusEnum.FOR_APPROVAL:
             case StatusEnum.NEW_RECORD:
                 return await this.approveCustomerClassification(existingRecord, user);
-            case StatusEnum.FOR_DELETION:
-                return await this.approveDeletion(existingRecord);
             case StatusEnum.FOR_DEACTIVATION:
                 return await this.approveDeactivation(existingRecord);
             default:
@@ -140,18 +138,6 @@ export class ApproveCustomerClassificationHandler implements ICommandHandler<App
 
         this.logger.log(`Customer classification approved successfully: ${existingRecord.customerClassificationId}`);
         return new ResponseDto<CustomerClassificationDto>(updatedRecord, HTTP_STATUS_OK);
-    }
-
-    /**
-     * Approves deletion of a customer classification
-     */
-    private async approveDeletion(
-        existingRecord: CustomerClassificationDto
-    ): Promise<ResponseDto<CustomerClassificationDto>> {
-        await this.customerClassificationDatabaseService.deleteRecord(existingRecord);
-
-        this.logger.log(`Customer classification deletion approved: ${existingRecord.customerClassificationId}`);
-        return new ResponseDto<CustomerClassificationDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**

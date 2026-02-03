@@ -160,6 +160,13 @@ export class AreaController {
         example: 'area_123456789',
     })
     @ApiQuery({
+        name: 'deletionReason',
+        type: String,
+        required: false,
+        description: 'Reason for marking the area for deactivation',
+        example: 'Area no longer in service',
+    })
+    @ApiQuery({
         name: 'userRole',
         type: String,
         required: false,
@@ -188,14 +195,18 @@ export class AreaController {
             },
         },
     })
-    deleteArea(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    deleteArea(
+        @Param('id') id: string,
+        @Query('deletionReason') deletionReason: string,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const areaDto = new AreaDto();
-        return this.commandBus.execute(new DeleteAreaCommand(id, areaDto, user));
+        return this.commandBus.execute(new DeleteAreaCommand(id, deletionReason, user));
     }
 
     @Post(':id/approve')

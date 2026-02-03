@@ -35,6 +35,13 @@ export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherComman
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
+            // Detect field changes to avoid unnecessary updates
+            const fieldChanges = this.detectChanges(existingRecord, command.voucherDto);
+            if (Object.keys(fieldChanges).length === 0) {
+                this.logger.log(`No changes detected for voucher: ${command.recordId}`);
+                return new ResponseDto<VoucherDto>(existingRecord, HTTP_STATUS_OK);
+            }
+
             // Update status and activity logs based on permissions
             // When FOR_APPROVAL: keeps original values in main fields, stores new values in forApprovalVersion
             // When ACTIVE: applies new values directly to main fields
@@ -43,7 +50,16 @@ export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherComman
             // Update record in database
             // When FOR_APPROVAL: existingRecord has original values + forApprovalVersion with new values
             // When ACTIVE: command.voucherDto has new values applied directly
-            const recordToUpdate = hasApprovalPermission ? command.voucherDto : existingRecord;
+            let recordToUpdate: VoucherDto;
+            if (hasApprovalPermission) {
+                // Ensure voucherId is preserved when admin updates
+                recordToUpdate = {
+                    ...command.voucherDto,
+                    voucherId: existingRecord.voucherId,
+                };
+            } else {
+                recordToUpdate = existingRecord;
+            }
             const updatedRecord = await this.voucherDatabaseService.updateRecord(recordToUpdate);
 
             this.logger.log(`Voucher updated successfully: ${updatedRecord.voucherId}`);
@@ -213,6 +229,49 @@ export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherComman
         // Handle unknown errors
         const errorMessage = this.extractErrorMessage(error);
         throw new BadRequestException(errorMessage);
+    }
+
+    /**
+     * Detects changes between existing record and new data
+     */
+    private detectChanges(existingRecord: VoucherDto, newData: Partial<VoucherDto>): Record<string, any> {
+        const changes: Record<string, any> = {};
+        const fieldsToCheck = [
+            'voucherNo',
+            'voucherDate',
+            'voucherAmount',
+            'remarks',
+            'paymentType',
+            'bankName',
+            'chequeNo',
+            'chequeDate',
+            'totalAmount',
+            'accountId',
+            'accountName',
+            'accountType',
+            'customerId',
+            'customerName',
+            'areaId',
+            'areaName',
+        ];
+
+        fieldsToCheck.forEach((field) => {
+            const oldValue = (existingRecord as any)[field];
+            const newValue = (newData as any)[field];
+            if (newValue !== undefined && JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+                changes[field] = { old: oldValue, new: newValue };
+            }
+        });
+
+        // Check voucherDetails array
+        if (
+            newData.voucherDetails &&
+            JSON.stringify(existingRecord.voucherDetails) !== JSON.stringify(newData.voucherDetails)
+        ) {
+            changes.voucherDetails = { old: existingRecord.voucherDetails, new: newData.voucherDetails };
+        }
+
+        return changes;
     }
 
     /**

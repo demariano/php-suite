@@ -171,6 +171,13 @@ export class VouchersController {
         enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
         example: 'ADMIN',
     })
+    @ApiQuery({
+        name: 'deletionReason',
+        type: String,
+        required: false,
+        description: 'Reason for deleting the voucher',
+        example: 'Duplicate entry',
+    })
     @ApiResponse({
         status: 200,
         description: 'Voucher successfully deleted or marked for deletion',
@@ -192,13 +199,19 @@ export class VouchersController {
             },
         },
     })
-    deleteVoucher(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    deleteVoucher(
+        @Param('id') id: string,
+        @Query('deletionReason') deletionReason: string,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
         const voucherDto = new VoucherDto();
+        voucherDto.deletionReason = deletionReason;
         return this.commandBus.execute(new DeleteVoucherCommand(id, voucherDto, user));
     }
 

@@ -89,8 +89,6 @@ export class ApproveCustomerTypeHandler implements ICommandHandler<ApproveCustom
             case StatusEnum.FOR_APPROVAL:
             case StatusEnum.NEW_RECORD:
                 return await this.approveCustomerType(existingRecord, user);
-            case StatusEnum.FOR_DELETION:
-                return await this.approveDeletion(existingRecord);
             case StatusEnum.FOR_DEACTIVATION:
                 return await this.approveDeactivation(existingRecord);
             default:
@@ -131,16 +129,6 @@ export class ApproveCustomerTypeHandler implements ICommandHandler<ApproveCustom
 
         this.logger.log(`Customer type approved successfully: ${existingRecord.customerTypeId}`);
         return new ResponseDto<CustomerTypeDto>(updatedRecord, HTTP_STATUS_OK);
-    }
-
-    /**
-     * Approves deletion of a customer type
-     */
-    private async approveDeletion(existingRecord: CustomerTypeDto): Promise<ResponseDto<CustomerTypeDto>> {
-        await this.customerTypeDatabaseService.deleteRecord(existingRecord);
-
-        this.logger.log(`Customer type deletion approved: ${existingRecord.customerTypeId}`);
-        return new ResponseDto<CustomerTypeDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**

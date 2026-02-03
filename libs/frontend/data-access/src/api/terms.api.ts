@@ -143,17 +143,21 @@ class TermsApi extends AxiosConfig {
         return await this.axiosInstance.put(url, terms);
     };
 
-    public deleteTerms = async (terms: TermsDto, userRole?: string): Promise<void> => {
+    public deleteTerms = async (id: string, deletionReason: string, userRole?: string): Promise<void> => {
         const params = new URLSearchParams();
 
         if (userRole) {
             params.append('userRole', userRole);
         }
 
-        const queryString = params.toString();
-        const url = queryString ? `/terms/${terms.termsId}?${queryString}` : `/terms/${terms.termsId}`;
+        if (deletionReason) {
+            params.append('deletionReason', deletionReason);
+        }
 
-        return await this.axiosInstance.delete(url, { data: terms });
+        const queryString = params.toString();
+        const url = queryString ? `/terms/${id}?${queryString}` : `/terms/${id}`;
+
+        return await this.axiosInstance.delete(url);
     };
 
     public approveTerms = async (id: string, userRole?: string): Promise<TermsDto> => {

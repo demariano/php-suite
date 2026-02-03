@@ -49,6 +49,7 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
 
             // Capture old territory manager name before updating
             const oldTerritoryManagerName = existingRecord.territoryManagerName;
+            const oldStatus = existingRecord.status;
 
             // Update status and activity logs based on permissions
             this.updateTerritoryManagerStatus(command, existingRecord, hasApprovalPermission);
@@ -62,6 +63,15 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
                     command.id,
                     command.territoryManagerDto.territoryManagerName
                 );
+            }
+
+            // If admin reactivated (INACTIVE -> ACTIVE), publish reactivation event
+            if (
+                hasApprovalPermission &&
+                oldStatus === StatusEnum.INACTIVE &&
+                existingRecord.status === StatusEnum.ACTIVE
+            ) {
+                await this.publishTerritoryManagerReactivatedEvent(command.id);
             }
 
             this.logger.log(`Territory manager updated successfully: ${updatedRecord.territoryManagerId}`);
@@ -251,6 +261,49 @@ export class UpdateTerritoryManagerHandler implements ICommandHandler<UpdateTerr
         } catch (error) {
             this.logger.error(
                 `Failed to publish territory manager name change event for territoryManagerId: ${territoryManagerId}`,
+                error
+            );
+            // Don't throw - this is a non-critical operation
+        }
+    }
+
+    /**
+     * Publishes territory manager reactivated event to SQS
+     */
+    private async publishTerritoryManagerReactivatedEvent(territoryManagerId: string): Promise<void> {
+        try {
+            this.logger.log(
+                `Publishing territory manager reactivated event for territoryManagerId: ${territoryManagerId}`
+            );
+
+            const event: TerritoryManagerEventDto = {
+                eventType: TerritoryManagerEventEnum.TERRITORY_MANAGER_REACTIVATED,
+                territoryManagerId: territoryManagerId,
+                newTerritoryManagerName: '', // Not applicable for reactivation
+                timestamp: new Date().toISOString(),
+            };
+
+            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            const invoiceEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+            // Publish to Customer Event SQS
+            if (customerEventSQSUrl) {
+                await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(event));
+                this.logger.log(
+                    `Territory manager reactivated event published to CUSTOMER_EVENT_SQS for territoryManagerId: ${territoryManagerId}`
+                );
+            }
+
+            // Publish to Invoice Event SQS
+            if (invoiceEventSQSUrl) {
+                await this.messageQueueService.sendMessageToSQS(invoiceEventSQSUrl, JSON.stringify(event));
+                this.logger.log(
+                    `Territory manager reactivated event published to INVOICE_EVENT_SQS for territoryManagerId: ${territoryManagerId}`
+                );
+            }
+        } catch (error) {
+            this.logger.error(
+                `Failed to publish territory manager reactivated event for territoryManagerId: ${territoryManagerId}`,
                 error
             );
             // Don't throw - this is a non-critical operation

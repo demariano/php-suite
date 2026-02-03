@@ -1,5 +1,6 @@
 'use client';
 
+import { Pagination } from '@components-web';
 import { VoucherDto } from '@data-access/index';
 
 interface VoucherTableProps {
@@ -172,45 +173,14 @@ export default function VoucherTable({
             )}
 
             {/* Pagination */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-                    <span className="text-sm font-medium text-gray-600">Rows per page:</span>
-                    <select
-                        value={pageSize}
-                        onChange={(e) => onPageSizeChange(Number(e.target.value))}
-                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:w-auto"
-                    >
-                        <option value="10">10</option>
-                        <option value="20">20</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                    </select>
-                </div>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                    <button
-                        onClick={onPrevious}
-                        disabled={!prevCursor}
-                        className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
-                            !prevCursor
-                                ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                                : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
-                        }`}
-                    >
-                        Previous
-                    </button>
-                    <button
-                        onClick={onNext}
-                        disabled={!nextCursor}
-                        className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
-                            !nextCursor
-                                ? 'border-gray-200 text-gray-300 cursor-not-allowed bg-gray-50'
-                                : 'border-gray-300 text-gray-700 hover:bg-gray-50 hover:border-gray-400'
-                        }`}
-                    >
-                        Next
-                    </button>
-                </div>
-            </div>
+            <Pagination
+                pageSize={pageSize}
+                onPageSizeChange={onPageSizeChange}
+                onPrevious={onPrevious}
+                onNext={onNext}
+                hasPrevious={!!prevCursor}
+                hasNext={!!nextCursor}
+            />
         </>
     );
 }

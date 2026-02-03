@@ -69,6 +69,7 @@ export class DeleteTerritoryManagerHandler implements ICommandHandler<DeleteTerr
 
     /**
      * Updates territory manager status and activity logs based on user permissions
+     * Master data pattern: Uses soft delete (INACTIVE/FOR_DEACTIVATION) to preserve referential integrity
      */
     private updateTerritoryManagerStatus(
         command: DeleteTerritoryManagerCommand,
@@ -78,15 +79,18 @@ export class DeleteTerritoryManagerHandler implements ICommandHandler<DeleteTerr
         // Set the ID
         command.territoryManagerDto.territoryManagerId = command.id;
 
+        // Store deletion reason
+        command.territoryManagerDto.deletionReason = command.deletionReason || 'No reason provided';
+
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DEACTIVATION for hard delete
-            command.territoryManagerDto.status = StatusEnum.FOR_DEACTIVATION;
+            // ADMIN: Immediate soft delete - set to INACTIVE
+            command.territoryManagerDto.status = StatusEnum.INACTIVE;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Territory manager deleted by ${command.user.username}`;
+            })}, Territory manager soft deleted by ${command.user.username}`;
             command.territoryManagerDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         } else {
-            // User needs approval - set to FOR_DEACTIVATION for soft delete
+            // USER: Mark for deactivation - requires approval
             command.territoryManagerDto.status = StatusEnum.FOR_DEACTIVATION;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
@@ -96,19 +100,16 @@ export class DeleteTerritoryManagerHandler implements ICommandHandler<DeleteTerr
     }
 
     /**
-     * Performs the actual deletion based on user permissions
+     * Performs soft deletion via status update (master data pattern)
+     * Records are never physically deleted to maintain referential integrity with Area and Invoice entities
      */
     private async performDeletion(
         command: DeleteTerritoryManagerCommand,
         hasApprovalPermission: boolean
     ): Promise<TerritoryManagerDto> {
-        if (hasApprovalPermission) {
-            // Hard delete
-            return await this.territoryManagerDatabaseService.deleteRecord(command.territoryManagerDto);
-        } else {
-            // Soft delete (mark for deletion)
-            return await this.territoryManagerDatabaseService.updateRecord(command.territoryManagerDto);
-        }
+        // Both ADMIN and USER use updateRecord for soft delete
+        // ADMIN sets INACTIVE immediately, USER sets FOR_DEACTIVATION (requires approval)
+        return await this.territoryManagerDatabaseService.updateRecord(command.territoryManagerDto);
     }
 
     /**

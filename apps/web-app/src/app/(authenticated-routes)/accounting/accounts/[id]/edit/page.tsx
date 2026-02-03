@@ -1,5 +1,6 @@
 'use client';
 
+import { DenyReasonDialog } from '@components-web';
 import {
     AccountApi,
     AccountsDto,
@@ -12,7 +13,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import AccountFormWrapper from './components/AccountFormWrapper';
-import DenyReasonDialog from '../../components/DenyReasonDialog';
 
 interface EditAccountPageProps {
     params: {
@@ -113,6 +113,34 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
             setFlashNotification({
                 title: 'Delete failed',
                 message: 'We were unable to delete this account.',
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleReactivate = async () => {
+        if (!selectedAccount) return;
+        try {
+            setIsLoading(true);
+            // Update the account with status set to ACTIVE
+            const reactivatedAccount: AccountsDto = {
+                ...selectedAccount,
+                status: StatusEnum.ACTIVE,
+            };
+            await AccountApi.updateAccount(selectedAccount.accountingId, reactivatedAccount, userRoleParam);
+            setFlashNotification({
+                title: 'Account reactivated',
+                message: 'The account has been reactivated successfully.',
+                alertType: 'success',
+            });
+            router.push('/accounting/accounts');
+        } catch (error) {
+            console.error('Error reactivating account', error);
+            setFlashNotification({
+                title: 'Reactivation failed',
+                message: 'We were unable to reactivate this account.',
                 alertType: 'error',
             });
         } finally {
@@ -231,6 +259,7 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
                     onTabChange={setActiveTab}
                     onSave={handleSave}
                     onDelete={handleDelete}
+                    onReactivate={handleReactivate}
                     onApprove={handleApprove}
                     onDeny={handleDeny}
                     onCancel={handleCancel}
@@ -239,7 +268,8 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
 
             <DenyReasonDialog
                 show={showDenyDialog}
-                account={selectedAccount}
+                record={selectedAccount}
+                recordDisplayName={selectedAccount?.accountName || 'Account'}
                 onConfirm={handleDenyConfirm}
                 onCancel={handleDenyCancel}
             />

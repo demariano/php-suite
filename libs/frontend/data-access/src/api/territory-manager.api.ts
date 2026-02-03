@@ -150,8 +150,16 @@ class TerritoryManagerApi extends AxiosConfig {
         return await this.axiosInstance.put(url, territoryManager);
     };
 
-    public deleteTerritoryManager = async (territoryManager: TerritoryManagerDto, userRole?: string): Promise<void> => {
+    public deleteTerritoryManager = async (
+        territoryManager: TerritoryManagerDto,
+        deletionReason?: string,
+        userRole?: string
+    ): Promise<void> => {
         const params = new URLSearchParams();
+
+        if (deletionReason) {
+            params.append('deletionReason', deletionReason);
+        }
 
         if (userRole) {
             params.append('userRole', userRole);
@@ -180,7 +188,11 @@ class TerritoryManagerApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyTerritoryManager = async (id: string, approverMessage: string, userRole?: string): Promise<TerritoryManagerDto> => {
+    public denyTerritoryManager = async (
+        id: string,
+        approverMessage: string,
+        userRole?: string
+    ): Promise<TerritoryManagerDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {

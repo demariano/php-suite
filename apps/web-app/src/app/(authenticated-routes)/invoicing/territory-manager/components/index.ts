@@ -1,5 +1,3 @@
-export { default as DeleteConfirmationModal } from './DeleteConfirmationModal';
-export { default as DenyReasonDialog } from './DenyReasonDialog';
 export { default as TerritoryManagerForm } from './TerritoryManagerForm';
 export { default as TerritoryManagerHeader } from './TerritoryManagerHeader';
 export { default as TerritoryManagerModal } from './TerritoryManagerModal';

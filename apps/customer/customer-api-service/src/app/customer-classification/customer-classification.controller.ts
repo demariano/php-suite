@@ -208,9 +208,24 @@ export class CustomerClassificationController {
             },
         },
     })
+    @ApiQuery({
+        name: 'deletionReason',
+        type: String,
+        required: false,
+        description: 'Reason for marking the customer classification for deletion',
+        example: 'No longer needed for business operations',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
     deleteRecord(
         @Param('id') id: string,
-        @Body() customerClassificationDto: CustomerClassificationDto,
+        @Query('deletionReason') deletionReason: string | undefined,
         @Query('userRole') userRole: string,
         @CurrentUser() user: UserCognito
     ) {
@@ -219,7 +234,7 @@ export class CustomerClassificationController {
             user.roles = [userRole];
         }
 
-        const command = new DeleteCustomerClassificationCommand(id, customerClassificationDto, user);
+        const command = new DeleteCustomerClassificationCommand(id, deletionReason, user);
         return this.commandBus.execute(command);
     }
 

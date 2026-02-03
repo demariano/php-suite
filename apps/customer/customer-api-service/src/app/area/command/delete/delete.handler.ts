@@ -23,14 +23,23 @@ export class DeleteAreaHandler implements ICommandHandler<DeleteAreaCommand> {
             // Fetch and validate existing area record
             const existingRecord = await this.fetchAreaById(command.recordId);
 
+            // Process and store deletion reason
+            const deletionReason = command.deletionReason?.trim();
+            const finalDeletionReason = deletionReason || undefined;
+
             // Check user authorization
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
-            // Update status and activity logs based on permissions
-            this.updateAreaStatus(command, existingRecord, hasApprovalPermission);
+            // Create AreaDto with updated status and activity logs
+            const areaDto = this.buildAreaDto(
+                existingRecord,
+                command.user.username,
+                hasApprovalPermission,
+                finalDeletionReason
+            );
 
-            // Delete or mark for deletion based on permissions
-            const deletedRecord = await this.performDeletion(command, hasApprovalPermission);
+            // Delete or mark for deletion based on permissions and record status
+            const deletedRecord = await this.performDeletion(areaDto, existingRecord);
 
             this.logger.log(`Area deleted successfully: ${deletedRecord.areaId}`);
             return new ResponseDto<AreaDto>(deletedRecord, HTTP_STATUS_OK);
@@ -65,44 +74,50 @@ export class DeleteAreaHandler implements ICommandHandler<DeleteAreaCommand> {
     }
 
     /**
-     * Updates area status and activity logs based on user permissions
+     * Builds AreaDto with updated status, activity logs, and deletion reason
      */
-    private updateAreaStatus(
-        command: DeleteAreaCommand,
+    private buildAreaDto(
         existingRecord: AreaDto,
-        hasApprovalPermission: boolean
-    ): void {
-        // Set the ID
-        command.areaDto.areaId = command.recordId;
+        username: string,
+        hasApprovalPermission: boolean,
+        deletionReason?: string
+    ): AreaDto {
+        // Copy all fields from existing record to preserve data integrity
+        const areaDto = { ...existingRecord };
+        areaDto.deletionReason = deletionReason;
+
+        const timestamp = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
+        const reasonText = deletionReason ? ` Reason: ${deletionReason}` : '';
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DEACTIVATION for hard delete
-            command.areaDto.status = StatusEnum.FOR_DEACTIVATION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Area deleted by ${command.user.username}`;
-            command.areaDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            // ADMIN can soft delete directly - set to INACTIVE (Master Data pattern)
+            areaDto.status = StatusEnum.INACTIVE;
+            const activityLog = `Date: ${timestamp}, Area marked for deactivation by ${username}.${reasonText}`;
+            areaDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         } else {
-            // User needs approval - set to FOR_DEACTIVATION for soft delete
-            command.areaDto.status = StatusEnum.FOR_DEACTIVATION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Area marked for deletion by ${command.user.username}`;
-            command.areaDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            // USER needs approval - set to FOR_DEACTIVATION (requires admin approval)
+            areaDto.status = StatusEnum.FOR_DEACTIVATION;
+            const activityLog = `Date: ${timestamp}, Area marked for deactivation by ${username}, requires approval.${reasonText}`;
+            areaDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         }
+
+        return areaDto;
     }
 
     /**
-     * Performs the actual deletion based on user permissions
+     * Performs the actual deletion based on record status
      */
-    private async performDeletion(command: DeleteAreaCommand, hasApprovalPermission: boolean): Promise<AreaDto> {
-        if (hasApprovalPermission) {
-            // Hard delete
-            return await this.areaDatabaseService.deleteRecord(command.areaDto);
-        } else {
-            // Soft delete (mark for deletion)
-            return await this.areaDatabaseService.updateRecord(command.areaDto);
+    private async performDeletion(areaDto: AreaDto, existingRecord: AreaDto): Promise<AreaDto> {
+        // SPECIAL CASE: NEW_RECORD can be hard deleted (not yet in production)
+        if (existingRecord.status === StatusEnum.NEW_RECORD) {
+            this.logger.log(`Hard deleting NEW_RECORD area: ${areaDto.areaId}`);
+            return await this.areaDatabaseService.deleteRecord(areaDto);
         }
+
+        // MASTER DATA PATTERN: Always use soft delete for ACTIVE/FOR_APPROVAL records
+        // Record stays in database for referential integrity and audit trail
+        // Both ADMIN (direct INACTIVE) and USER (FOR_DEACTIVATION) use updateRecord
+        return await this.areaDatabaseService.updateRecord(areaDto);
     }
 
     /**

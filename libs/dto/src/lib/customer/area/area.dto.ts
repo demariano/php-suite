@@ -33,5 +33,11 @@ export class AreaDto {
     approverMessage?: string;
 
     @ApiProperty()
+    deletionReason?: string;
+
+    @ApiProperty()
+    reactivationReason?: string;
+
+    @ApiProperty()
     idPrefix?: string;
 }

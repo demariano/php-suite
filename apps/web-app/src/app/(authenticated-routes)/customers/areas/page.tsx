@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { AreaApi, AreaDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
@@ -8,6 +9,7 @@ import { AreaHeader, AreaTable } from './components';
 export default function CustomerAreasPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [customerAreas, setCustomerAreas] = useState<AreaDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
@@ -51,7 +53,7 @@ export default function CustomerAreasPage() {
             } else {
                 response = await AreaApi.getAreas(
                     currentPageSize,
-                    undefined, // No status filter - show all records
+                    statusFilter !== 'ALL' ? (statusFilter as StatusEnum) : undefined,
                     direction,
                     serializedCursor,
                     userRole
@@ -112,6 +114,13 @@ export default function CustomerAreasPage() {
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
 
+    // Refetch when status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return; // Skip on initial mount
+
+        fetchCustomerAreas();
+    }, [statusFilter]);
+
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const canCreateArea = isAdminUser;
 
@@ -120,77 +129,6 @@ export default function CustomerAreasPage() {
         { key: 'status', label: 'STATUS' },
         { key: 'latestActivity', label: 'LATEST ACTIVITY' },
     ];
-
-    // Helper function to get status text
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
 
     const handleRowClick = async (area: AreaDto) => {
         // Navigate to edit area page
@@ -229,7 +167,7 @@ export default function CustomerAreasPage() {
 
             return {
                 ...area,
-                status: getStatusBadge(area.status || StatusEnum.ACTIVE),
+                status: <StatusBadge status={area.status || StatusEnum.ACTIVE} />,
                 latestActivity,
             };
         }) || [];
@@ -273,15 +211,24 @@ export default function CustomerAreasPage() {
             {/* Header Bar */}
             <AreaHeader
                 searchQuery={searchQuery}
-                onSearchChange={(value: string) => {
+                statusFilter={statusFilter}
+                onSearchChange={(value) => {
                     setSearchQuery(value);
                     // Reset pagination when search query changes
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                onStatusFilterChange={(value) => {
+                    setStatusFilter(value);
+                    // Reset pagination when status filter changes
+                    setCurrentCursor(undefined);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
                 onRefresh={() => {
                     setSearchQuery('');
+                    setStatusFilter('ALL');
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
@@ -290,6 +237,7 @@ export default function CustomerAreasPage() {
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 canCreate={canCreateArea}
+                isAdminUser={isAdminUser}
             />
 
             {/* Table */}

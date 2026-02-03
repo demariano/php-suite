@@ -150,19 +150,21 @@ class CustomerTypeApi extends AxiosConfig {
         return await this.axiosInstance.put(url, customerType);
     };
 
-    public deleteCustomerType = async (customerType: CustomerTypeDto, userRole?: string): Promise<void> => {
+    public deleteCustomerType = async (id: string, deletionReason?: string, userRole?: string): Promise<void> => {
         const params = new URLSearchParams();
+
+        if (deletionReason) {
+            params.append('deletionReason', deletionReason);
+        }
 
         if (userRole) {
             params.append('userRole', userRole);
         }
 
         const queryString = params.toString();
-        const url = queryString
-            ? `/customer-type/${customerType.customerTypeId}?${queryString}`
-            : `/customer-type/${customerType.customerTypeId}`;
+        const url = queryString ? `/customer-type/${id}?${queryString}` : `/customer-type/${id}`;
 
-        return await this.axiosInstance.delete(url, { data: customerType });
+        return await this.axiosInstance.delete(url);
     };
 
     public approveCustomerType = async (id: string, userRole?: string): Promise<CustomerTypeDto> => {
@@ -178,7 +180,11 @@ class CustomerTypeApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyCustomerType = async (id: string, approverMessage: string, userRole?: string): Promise<CustomerTypeDto> => {
+    public denyCustomerType = async (
+        id: string,
+        approverMessage: string,
+        userRole?: string
+    ): Promise<CustomerTypeDto> => {
         const params = new URLSearchParams();
 
         if (userRole) {

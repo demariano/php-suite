@@ -34,6 +34,21 @@ export class TerritoryManagerSyncHandlerService {
         }
     }
 
+    /**
+     * Handles territory manager reactivation events
+     * Note: Reactivation only changes status INACTIVE→ACTIVE, name doesn't change
+     * So no action needed for Areas (they still reference the correct name)
+     */
+    async handleTerritoryManagerReactivatedEvent(event: TerritoryManagerEventDto): Promise<void> {
+        this.logger.log(`Received TerritoryManagerReactivatedEvent: territoryManagerId=${event.territoryManagerId}`);
+
+        // No action required - Areas are still valid with existing territoryManagerName
+        // Log for audit trail only
+        this.logger.log(
+            `✅ Territory manager reactivated - no area updates needed for territoryManagerId: ${event.territoryManagerId}`
+        );
+    }
+
     private async syncTerritoryManagerNameToAreas(
         territoryManagerId: string,
         newTerritoryManagerName: string

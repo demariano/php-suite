@@ -28,3 +28,13 @@ export { default as Header } from './navigation/header/header';
 export { default as Sidebar } from './navigation/sidebar/sidebar';
 
 export * from './icons';
+
+// Shared account module components
+export { ConfirmationModal } from './ConfirmationModal';
+export type { ConfirmationModalVariant } from './ConfirmationModal';
+export { DeleteConfirmationModal } from './DeleteConfirmationModal';
+export { DenyReasonDialog } from './DenyReasonDialog';
+export { ListHeader } from './ListHeader';
+export { Pagination } from './Pagination';
+export { StatusBadge } from './StatusBadge';
+export { StatusTabs } from './StatusTabs';

@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { StatusEnum, TerritoryManagerApi, TerritoryManagerDto, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
@@ -8,6 +9,7 @@ import { TerritoryManagerHeader, TerritoryManagerTable } from './components';
 export default function TerritoryManagerPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [territoryManagers, setTerritoryManagers] = useState<TerritoryManagerDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
@@ -49,13 +51,24 @@ export default function TerritoryManagerPage() {
                     userRole
                 );
             } else {
-                response = await TerritoryManagerApi.getTerritoryManagers(
-                    currentPageSize,
-                    undefined, // No status filter - show all records
-                    direction,
-                    serializedCursor,
-                    userRole
-                );
+                // Use backend status filtering via GSI2 for efficiency
+                if (statusFilter !== 'ALL') {
+                    response = await TerritoryManagerApi.getTerritoryManagersByStatus(
+                        statusFilter,
+                        currentPageSize,
+                        direction,
+                        serializedCursor,
+                        userRole
+                    );
+                } else {
+                    response = await TerritoryManagerApi.getTerritoryManagers(
+                        currentPageSize,
+                        undefined,
+                        direction,
+                        serializedCursor,
+                        userRole
+                    );
+                }
             }
 
             if (response && response.statusCode === 200 && response.data) {
@@ -112,82 +125,19 @@ export default function TerritoryManagerPage() {
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
 
+    // Refetch when status filter changes
+    useEffect(() => {
+        setCurrentCursor(undefined);
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchTerritoryManagers();
+    }, [statusFilter]);
+
     const headers = [
         { key: 'territoryManagerName', label: 'NAME' },
         { key: 'status', label: 'STATUS' },
         { key: 'latestActivity', label: 'LATEST ACTIVITY' },
     ];
-
-    // Helper function to get status text
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
 
     const handleRowClick = (territoryManager: TerritoryManagerDto) => {
         if (!territoryManager || !territoryManager.territoryManagerId) {
@@ -227,7 +177,7 @@ export default function TerritoryManagerPage() {
 
             return {
                 ...territoryManager,
-                status: getStatusBadge(territoryManager.status || StatusEnum.ACTIVE),
+                status: <StatusBadge status={territoryManager.status || StatusEnum.ACTIVE} />,
                 latestActivity,
             };
         }) || [];
@@ -271,6 +221,7 @@ export default function TerritoryManagerPage() {
             {/* Header */}
             <TerritoryManagerHeader
                 searchQuery={searchQuery}
+                statusFilter={statusFilter}
                 onSearchChange={(value: string) => {
                     setSearchQuery(value);
                     // Reset pagination when search query changes
@@ -278,14 +229,21 @@ export default function TerritoryManagerPage() {
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                onStatusFilterChange={(value: string) => {
+                    setStatusFilter(value);
+                }}
                 onRefresh={() => {
                     setSearchQuery('');
+                    setStatusFilter('ALL');
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                     fetchTerritoryManagers();
                 }}
                 onCreateClick={handleCreateClick}
+                isLoading={isLoading}
+                canCreate={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
+                isAdminUser={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
             />
 
             {/* Table */}

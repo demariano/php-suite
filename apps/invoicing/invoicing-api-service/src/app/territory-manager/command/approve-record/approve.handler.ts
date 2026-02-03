@@ -82,6 +82,7 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
 
     /**
      * Processes the approval based on the current status of the record
+     * Master data pattern: Only supports FOR_APPROVAL, NEW_RECORD, and FOR_DEACTIVATION (soft delete)
      */
     private async processApproval(
         existingRecord: TerritoryManagerDto,
@@ -91,8 +92,6 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
             case StatusEnum.FOR_APPROVAL:
             case StatusEnum.NEW_RECORD:
                 return await this.approveTerritoryManager(existingRecord, user);
-            case StatusEnum.FOR_DELETION:
-                return await this.approveDeletion(existingRecord);
             case StatusEnum.FOR_DEACTIVATION:
                 return await this.approveDeactivation(existingRecord);
             default:
@@ -145,19 +144,8 @@ export class ApproveTerritoryManagerHandler implements ICommandHandler<ApproveTe
     }
 
     /**
-     * Approves deletion of a territory manager
-     */
-    private async approveDeletion(existingRecord: TerritoryManagerDto): Promise<ResponseDto<TerritoryManagerDto>> {
-        // Reset changeReason to null before deleting
-        existingRecord.changeReason = null;
-        await this.territoryManagerDatabaseService.deleteRecord(existingRecord);
-
-        this.logger.log(`Territory manager deletion approved: ${existingRecord.territoryManagerId}`);
-        return new ResponseDto<TerritoryManagerDto>(existingRecord, HTTP_STATUS_OK);
-    }
-
-    /**
      * Approves deactivation of a territory manager (soft delete)
+     * Master data pattern: Sets status to INACTIVE, record remains in database
      */
     private async approveDeactivation(existingRecord: TerritoryManagerDto): Promise<ResponseDto<TerritoryManagerDto>> {
         existingRecord.changeReason = null;

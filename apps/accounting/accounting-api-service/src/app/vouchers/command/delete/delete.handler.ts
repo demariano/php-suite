@@ -76,18 +76,24 @@ export class DeleteVoucherHandler implements ICommandHandler<DeleteVoucherComman
         command.voucherDto.voucherId = command.recordId;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DELETION for hard delete
-            command.voucherDto.status = StatusEnum.FOR_DELETION;
+            // Admin deletes immediately - no need to set status (record will be deleted)
+            // Just log the deletion with reason if provided
+            const deletionReason = command.voucherDto.deletionReason
+                ? ` - Reason: ${command.voucherDto.deletionReason}`
+                : '';
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Voucher deleted by ${command.user.username}`;
+            })}, Voucher deleted by ${command.user.username}${deletionReason}`;
             command.voucherDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         } else {
-            // User needs approval - set to FOR_DELETION for soft delete
+            // User needs approval - set to FOR_DELETION
             command.voucherDto.status = StatusEnum.FOR_DELETION;
+            const deletionReason = command.voucherDto.deletionReason
+                ? ` - Reason: ${command.voucherDto.deletionReason}`
+                : '';
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Voucher marked for deletion by ${command.user.username}`;
+            })}, Voucher marked for deletion by ${command.user.username}${deletionReason}`;
             command.voucherDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         }
     }

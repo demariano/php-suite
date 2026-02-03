@@ -25,4 +25,10 @@ export class TermsDto {
 
     @ApiProperty()
     approverMessage?: string;
+
+    @ApiProperty()
+    deletionReason?: string;
+
+    @ApiProperty()
+    reactivationReason?: string;
 }

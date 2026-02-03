@@ -144,12 +144,19 @@ export class TerritoryManagerController {
     @Delete(':id')
     @ApiOperation({
         summary: 'Delete territory manager',
-        description: 'Deletes a territory manager record',
+        description: 'Soft deletes a territory manager record (master data pattern)',
     })
     @ApiParam({
         name: 'id',
         description: 'Territory manager ID',
         example: 'territory-mgr-123',
+    })
+    @ApiQuery({
+        name: 'deletionReason',
+        type: String,
+        required: false,
+        description: 'Reason for deleting the territory manager',
+        example: 'Territory no longer active',
     })
     @ApiQuery({
         name: 'userRole',
@@ -171,20 +178,28 @@ export class TerritoryManagerController {
                     properties: {
                         territoryManagerId: { type: 'string', example: 'territory-mgr-123' },
                         territoryManagerName: { type: 'string', example: 'John Doe' },
-                        status: { type: 'string', example: 'FOR_DELETION' },
+                        status: { type: 'string', example: 'FOR_DEACTIVATION' },
+                        deletionReason: { type: 'string', example: 'Territory no longer active' },
                     },
                 },
             },
         },
     })
-    delete(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    delete(
+        @Param('id') id: string,
+        @Query('deletionReason') deletionReason: string,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
         const territoryManagerDto = new TerritoryManagerDto();
-        return this.commandBus.execute(new DeleteTerritoryManagerCommand(id, territoryManagerDto, user));
+        return this.commandBus.execute(
+            new DeleteTerritoryManagerCommand(id, territoryManagerDto, user, deletionReason)
+        );
     }
 
     @Post(':id/approve')

@@ -5,6 +5,7 @@ export class DeleteTerritoryManagerCommand {
     constructor(
         public readonly id: string,
         public readonly territoryManagerDto: TerritoryManagerDto,
-        public readonly user: UserCognito
+        public readonly user: UserCognito,
+        public readonly deletionReason?: string
     ) {}
 }

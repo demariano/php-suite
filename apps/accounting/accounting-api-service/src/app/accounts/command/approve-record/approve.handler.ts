@@ -89,8 +89,6 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
             case StatusEnum.FOR_APPROVAL:
             case StatusEnum.NEW_RECORD:
                 return await this.approveAccount(existingRecord, user);
-            case StatusEnum.FOR_DELETION:
-                return await this.approveDeletion(existingRecord);
             case StatusEnum.FOR_DEACTIVATION:
                 return await this.approveDeactivation(existingRecord);
             default:
@@ -132,17 +130,6 @@ export class ApproveAccountsHandler implements ICommandHandler<ApproveAccountsCo
 
         this.logger.log(`Account approved successfully: ${existingRecord.accountingId}`);
         return new ResponseDto<AccountsDto>(updatedRecord, HTTP_STATUS_OK);
-    }
-
-    /**
-     * Approves deletion of an account
-     */
-    private async approveDeletion(existingRecord: AccountsDto): Promise<ResponseDto<AccountsDto>> {
-        existingRecord.changeReason = null;
-        await this.accountsDatabaseService.deleteRecord(existingRecord);
-
-        this.logger.log(`Account deletion approved: ${existingRecord.accountingId}`);
-        return new ResponseDto<AccountsDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**

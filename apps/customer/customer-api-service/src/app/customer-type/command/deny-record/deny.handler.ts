@@ -1,4 +1,3 @@
-import { UserCognito } from '@auth-guard-lib';
 import { CustomerTypeDatabaseServiceAbstract } from '@customer-database-service';
 import { CustomerTypeDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
@@ -75,8 +74,8 @@ export class DenyCustomerTypeHandler implements ICommandHandler<DenyCustomerType
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyCustomerType(existingRecord, command);
-            case StatusEnum.FOR_DELETION:
-                return await this.denyDeletion(existingRecord, command);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.denyDeactivation(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -120,21 +119,21 @@ export class DenyCustomerTypeHandler implements ICommandHandler<DenyCustomerType
     }
 
     /**
-     * Denies deletion of a customer type
+     * Denies deactivation of a customer type
      */
-    private async denyDeletion(
+    private async denyDeactivation(
         existingRecord: CustomerTypeDto,
         command: DenyCustomerTypeCommand
     ): Promise<ResponseDto<CustomerTypeDto>> {
-        this.logger.log(`Customer type deletion denied: ${existingRecord.customerTypeId}`);
+        this.logger.log(`Customer type deactivation denied: ${existingRecord.customerTypeId}`);
         existingRecord.status = StatusEnum.ACTIVE;
-        
+
         // Add activity log for denial
         existingRecord.activityLogs = existingRecord.activityLogs || [];
         existingRecord.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Customer type deletion denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+            })}, Customer type deactivation denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
         );
 
         // Add approver message if provided
@@ -142,14 +141,16 @@ export class DenyCustomerTypeHandler implements ICommandHandler<DenyCustomerType
             existingRecord.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
                     timeZone: 'Asia/Manila',
-                })}, Customer type deletion denied by ${command.user.username}, approver message: ${command.approverMessage}`
+                })}, Customer type deactivation denied by ${command.user.username}, approver message: ${
+                    command.approverMessage
+                }`
             );
         }
 
         // Optimize activity logs
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         existingRecord.approverMessage = null;
-        
+
         const updatedRecord = await this.customerTypeDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<CustomerTypeDto>(updatedRecord, HTTP_STATUS_OK);
     }

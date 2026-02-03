@@ -22,6 +22,12 @@ export class AccountsDto {
     changeReason?: string;
 
     @ApiProperty()
+    deletionReason?: string;
+
+    @ApiProperty()
+    reactivationReason?: string;
+
+    @ApiProperty()
     activityLogs?: string[];
 
     @ApiProperty()

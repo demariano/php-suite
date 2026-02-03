@@ -1,51 +1,15 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { AccountApi, AccountsDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
 import { AccountHeader, AccountTable } from './components';
 
-const getStatusText = (status: StatusEnum): string => {
-    switch (status) {
-        case StatusEnum.ACTIVE:
-            return 'Active';
-        case StatusEnum.FOR_APPROVAL:
-            return 'For Approval';
-        case StatusEnum.FOR_DELETION:
-            return 'For Deletion';
-        case StatusEnum.FOR_DEACTIVATION:
-            return 'For Deactivation';
-        case StatusEnum.INACTIVE:
-            return 'Inactive';
-        case StatusEnum.NEW_RECORD:
-            return 'New Record';
-        default:
-            return status || 'Inactive';
-    }
-};
-
-const getStatusBadge = (status: StatusEnum) => {
-    const baseClasses =
-        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wide shadow-sm';
-    const variants: Record<StatusEnum | string, string> = {
-        [StatusEnum.ACTIVE]: 'bg-green-100 text-green-800 border border-green-200',
-        [StatusEnum.FOR_APPROVAL]: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-        [StatusEnum.FOR_DELETION]: 'bg-red-100 text-red-800 border border-red-200',
-        [StatusEnum.FOR_DEACTIVATION]: 'bg-orange-100 text-orange-800 border border-orange-200',
-        [StatusEnum.INACTIVE]: 'bg-gray-200 text-gray-500 border border-gray-300',
-        [StatusEnum.NEW_RECORD]: 'bg-blue-100 text-blue-800 border border-blue-200',
-    };
-
-    return (
-        <span className={`${baseClasses} ${variants[status] ?? 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
-            {getStatusText(status)}
-        </span>
-    );
-};
-
 export default function AccountsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [accounts, setAccounts] = useState<AccountsDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [pageSize, setPageSize] = useState(10);
@@ -59,6 +23,7 @@ export default function AccountsPage() {
 
     const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
     const canCreateAccount = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
     const fetchAccounts = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
         try {
@@ -69,17 +34,32 @@ export default function AccountsPage() {
             const currentPageSize = customPageSize ?? pageSize;
             const trimmedQuery = searchQuery.trim();
 
-            const response = trimmedQuery
-                ? await AccountApi.getAccountsByName(
-                      trimmedQuery,
-                      currentPageSize,
-                      direction,
-                      serializedCursor,
-                      userRole
-                  )
-                : await AccountApi.getAccounts(currentPageSize, direction, serializedCursor, userRole);
+            let response;
+            if (trimmedQuery) {
+                response = await AccountApi.getAccountsByName(
+                    trimmedQuery,
+                    currentPageSize,
+                    direction,
+                    serializedCursor,
+                    userRole
+                );
+            } else {
+                // Use backend status filtering via GSI2 for efficiency
+                if (statusFilter !== 'ALL') {
+                    response = await AccountApi.getAccountsByStatus(
+                        statusFilter,
+                        currentPageSize,
+                        direction,
+                        serializedCursor,
+                        userRole
+                    );
+                } else {
+                    response = await AccountApi.getAccounts(currentPageSize, direction, serializedCursor, userRole);
+                }
+            }
 
             if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                // No client-side filtering needed - backend already filtered by status
                 setAccounts(response.data);
                 setNextCursor(response.nextCursorPointer || undefined);
                 setPrevCursor(response.prevCursorPointer || undefined);
@@ -120,6 +100,13 @@ export default function AccountsPage() {
 
         return () => clearTimeout(timeoutId);
     }, [searchQuery]);
+
+    useEffect(() => {
+        setCurrentCursor(undefined);
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchAccounts();
+    }, [statusFilter]);
 
     const headers = [
         { key: 'accountName', label: 'ACCOUNT NAME' },
@@ -162,7 +149,7 @@ export default function AccountsPage() {
 
             return {
                 ...account,
-                status: getStatusBadge(account.status || StatusEnum.ACTIVE),
+                status: <StatusBadge status={account.status || StatusEnum.ACTIVE} />,
                 latestActivity,
             };
         }) ?? [];
@@ -204,8 +191,11 @@ export default function AccountsPage() {
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                statusFilter={statusFilter}
+                onStatusFilterChange={setStatusFilter}
                 onRefresh={() => {
                     setSearchQuery('');
+                    setStatusFilter('ALL');
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
@@ -214,6 +204,7 @@ export default function AccountsPage() {
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 canCreate={canCreateAccount}
+                isAdminUser={isAdminUser}
             />
 
             <AccountTable

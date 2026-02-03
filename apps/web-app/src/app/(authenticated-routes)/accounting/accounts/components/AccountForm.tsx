@@ -10,6 +10,7 @@ interface AccountFormProps {
     successMessage: string | null;
     onSave: (account: AccountsDto) => void;
     onDelete: () => void;
+    onReactivate: () => void;
     onCancel: () => void;
     isAdminUser: boolean;
     isReadOnly?: boolean;
@@ -20,6 +21,7 @@ const initialFormState = {
     accountType: '' as AccountTypeEnum | '',
     changeReason: '',
     subAccounts: [] as string[],
+    status: '' as StatusEnum | '',
 };
 
 export default function AccountForm({
@@ -28,6 +30,7 @@ export default function AccountForm({
     successMessage,
     onSave,
     onDelete,
+    onReactivate,
     onCancel,
     isAdminUser,
     isReadOnly = false,
@@ -38,6 +41,8 @@ export default function AccountForm({
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [userHasInteracted, setUserHasInteracted] = useState(false);
 
+    // CRITICAL: INACTIVE records cannot have fields edited (only reactivation allowed)
+    // See ACCOUNTS_MODULE_REFERENCE.md - Form Field State for INACTIVE Records
     const canEditFields = !isReadOnly && (isCreateMode || selectedAccount?.status === StatusEnum.ACTIVE);
     const requiresChangeReason = !isCreateMode && !isAdminUser && selectedAccount?.status === StatusEnum.ACTIVE;
 
@@ -54,6 +59,7 @@ export default function AccountForm({
                 accountType: (selectedAccount.accountType as AccountTypeEnum) || '',
                 changeReason: selectedAccount.changeReason || '',
                 subAccounts: selectedAccount.subAccounts || [],
+                status: selectedAccount.status || '',
             });
         }
     }, [isCreateMode, selectedAccount]);
@@ -119,7 +125,11 @@ export default function AccountForm({
             accountName: formData.accountName.trim(),
             accountType: formData.accountType as AccountTypeEnum,
             subAccounts: formData.subAccounts,
-            status: isCreateMode ? (isAdminUser ? StatusEnum.ACTIVE : StatusEnum.NEW_RECORD) : selectedAccount?.status,
+            status: isCreateMode
+                ? isAdminUser
+                    ? StatusEnum.ACTIVE
+                    : StatusEnum.NEW_RECORD
+                : formData.status || selectedAccount?.status,
             changeReason: changeReasonValue ? changeReasonValue : undefined,
             activityLogs: selectedAccount?.activityLogs,
             forApprovalVersion: selectedAccount?.forApprovalVersion,
@@ -128,7 +138,8 @@ export default function AccountForm({
         onSave(payload);
     };
 
-    const saveDisabled = !canEditFields && !isCreateMode;
+    // Save button disabled for INACTIVE records (only reactivation allowed)
+    const saveDisabled = !isCreateMode && (!canEditFields || selectedAccount?.status === StatusEnum.INACTIVE);
     const subAccountList = useMemo(() => formData.subAccounts, [formData.subAccounts]);
 
     return (
@@ -153,6 +164,20 @@ export default function AccountForm({
                     </ul>
                 </div>
             )}
+
+            {/* Warning banner for pending records */}
+            {!isCreateMode &&
+                selectedAccount &&
+                [StatusEnum.FOR_APPROVAL, StatusEnum.FOR_DEACTIVATION, StatusEnum.NEW_RECORD].includes(
+                    selectedAccount.status as StatusEnum
+                ) && (
+                    <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 shadow-sm">
+                        <div className="flex items-center gap-2 text-yellow-800">
+                            <span className="text-lg">⚠️</span>
+                            <p className="m-0 font-semibold">This record has pending changes that require approval.</p>
+                        </div>
+                    </div>
+                )}
 
             {/* Change Reason Field - First component when displayed */}
             {!isCreateMode && !isAdminUser && !isReadOnly && (
@@ -207,6 +232,25 @@ export default function AccountForm({
                                 <option value={AccountTypeEnum.OTHERS}>Others</option>
                             </select>
                         </div>
+                        {/* Status Selector for Admin Reactivation */}
+                        {isAdminUser && !isCreateMode && selectedAccount?.status === StatusEnum.INACTIVE && (
+                            <div className="space-y-2">
+                                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" /> Reactivate Account
+                                </label>
+                                <select
+                                    value={formData.status}
+                                    onChange={(event) => updateField('status', event.target.value as StatusEnum)}
+                                    className="w-full rounded-xl border-2 border-gray-300 px-4 py-3 text-sm font-medium text-gray-900 shadow-sm transition focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    <option value={StatusEnum.INACTIVE}>Inactive (Current)</option>
+                                    <option value={StatusEnum.ACTIVE}>Active (Reactivate)</option>
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Change status to Active to reactivate this account
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
@@ -348,6 +392,22 @@ export default function AccountForm({
             <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 {isCreateMode ? (
                     <div className="hidden sm:block" />
+                ) : selectedAccount?.status === StatusEnum.INACTIVE && isAdminUser ? (
+                    <button
+                        type="button"
+                        onClick={onReactivate}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:w-auto"
+                    >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                        </svg>
+                        Reactivate Account
+                    </button>
                 ) : (
                     <button
                         type="button"

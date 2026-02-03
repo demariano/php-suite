@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { StatusEnum, TermsApi, TermsDto, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useEffect, useRef, useState } from 'react';
@@ -8,6 +9,7 @@ import { TermsHeader, TermsTable } from './components';
 export default function TermsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [terms, setTerms] = useState<TermsDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
@@ -51,7 +53,7 @@ export default function TermsPage() {
             } else {
                 response = await TermsApi.getTerms(
                     currentPageSize,
-                    undefined, // No status filter - show all records
+                    statusFilter === 'ALL' ? undefined : statusFilter,
                     direction,
                     serializedCursor,
                     userRole
@@ -96,7 +98,7 @@ export default function TermsPage() {
         hasFetchedRef.current = true;
 
         fetchTerms();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize, statusFilter]);
 
     // Debounce search query changes (but not on initial mount with empty search)
     useEffect(() => {
@@ -231,6 +233,9 @@ export default function TermsPage() {
             };
         }) || [];
 
+    // Use StatusBadge component for rendering
+    const renderStatusBadge = (status: StatusEnum) => <StatusBadge status={status} />;
+
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const canCreateTerms = isAdminUser;
 
@@ -270,6 +275,13 @@ export default function TermsPage() {
 
             <TermsHeader
                 searchQuery={searchQuery}
+                statusFilter={statusFilter}
+                onStatusFilterChange={(value: string) => {
+                    setStatusFilter(value);
+                    setCurrentCursor(undefined);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
                 onSearchChange={(value: string) => {
                     setSearchQuery(value);
                     setCurrentCursor(undefined);
@@ -278,6 +290,7 @@ export default function TermsPage() {
                 }}
                 onRefresh={() => {
                     setSearchQuery('');
+                    setStatusFilter('ALL');
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);

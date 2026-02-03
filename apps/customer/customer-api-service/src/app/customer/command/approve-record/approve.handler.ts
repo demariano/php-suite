@@ -114,9 +114,8 @@ export class ApproveCustomerHandler implements ICommandHandler<ApproveCustomerCo
             }
 
             return result;
-        } else if (existingCustomer.status === StatusEnum.FOR_DELETION) {
-            return await this.customerDatabaseService.deleteRecord(updatedCustomer);
         } else if (existingCustomer.status === StatusEnum.FOR_DEACTIVATION) {
+            // FOR_DEACTIVATION → INACTIVE (soft delete for Master Data)
             updatedCustomer.status = StatusEnum.INACTIVE;
             updatedCustomer.changeReason = null;
             updatedCustomer.activityLogs.push(

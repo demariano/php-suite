@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import {
     CustomerClassificationApi,
     CustomerClassificationDto,
@@ -14,6 +15,7 @@ import { CustomerClassificationHeader, CustomerClassificationTable } from './com
 export default function CustomerClassificationsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<StatusEnum | 'ALL'>('ALL');
     const [customerClassifications, setCustomerClassifications] = useState<CustomerClassificationDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
@@ -61,7 +63,7 @@ export default function CustomerClassificationsPage() {
             } else {
                 response = await CustomerClassificationApi.getCustomerClassifications(
                     currentPageSize,
-                    undefined, // No status filter - show all records
+                    statusFilter === 'ALL' ? undefined : statusFilter, // Pass status filter to API
                     direction,
                     serializedCursor,
                     userRole
@@ -106,7 +108,7 @@ export default function CustomerClassificationsPage() {
         hasFetchedRef.current = true;
 
         fetchCustomerClassifications();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize, statusFilter]);
 
     // Debounce search query changes (but not on initial mount with empty search)
     useEffect(() => {
@@ -236,7 +238,7 @@ export default function CustomerClassificationsPage() {
 
             return {
                 ...customerClassification,
-                status: getStatusBadge(customerClassification.status || StatusEnum.ACTIVE),
+                status: <StatusBadge status={customerClassification.status || StatusEnum.ACTIVE} />,
                 latestActivity,
             };
         }) || [];
@@ -283,6 +285,14 @@ export default function CustomerClassificationsPage() {
             {/* Header Bar */}
             <CustomerClassificationHeader
                 searchQuery={searchQuery}
+                statusFilter={statusFilter}
+                isAdminUser={isAdminUser}
+                onStatusFilterChange={(filter: StatusEnum | 'ALL') => {
+                    setStatusFilter(filter);
+                    setCurrentCursor(undefined);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
                 onSearchChange={(value: string) => {
                     setSearchQuery(value);
                     // Reset pagination when search query changes

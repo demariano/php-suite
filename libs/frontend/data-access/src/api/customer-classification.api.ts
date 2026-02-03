@@ -168,7 +168,8 @@ class CustomerClassificationApi extends AxiosConfig {
     };
 
     public deleteCustomerClassification = async (
-        classification: CustomerClassificationDto,
+        id: string,
+        deletionReason?: string,
         userRole?: string
     ): Promise<void> => {
         const params = new URLSearchParams();
@@ -179,13 +180,15 @@ class CustomerClassificationApi extends AxiosConfig {
             params.append('userRole', userRole);
         }
 
-        const queryString = params.toString();
-        const url = queryString
-            ? `/customer-classifications/${classification.customerClassificationId}?${queryString}`
-            : `/customer-classifications/${classification.customerClassificationId}`;
+        // Add deletionReason as query parameter
+        if (deletionReason) {
+            params.append('deletionReason', deletionReason);
+        }
 
-        // Send the entire classification object in the request body
-        return await this.axiosInstance.delete(url, { data: classification });
+        const queryString = params.toString();
+        const url = queryString ? `/customer-classifications/${id}?${queryString}` : `/customer-classifications/${id}`;
+
+        return await this.axiosInstance.delete(url);
     };
 
     public approveCustomerClassification = async (
@@ -208,7 +211,11 @@ class CustomerClassificationApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyCustomerClassification = async (id: string, approverMessage: string, userRole?: string): Promise<CustomerClassificationDto> => {
+    public denyCustomerClassification = async (
+        id: string,
+        approverMessage: string,
+        userRole?: string
+    ): Promise<CustomerClassificationDto> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled

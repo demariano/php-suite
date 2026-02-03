@@ -142,12 +142,20 @@ export class CustomerTypeController {
     @Delete(':id')
     @ApiOperation({
         summary: 'Delete customer type',
-        description: 'Deletes a customer type record',
+        description:
+            'Soft deletes a customer type record (sets status to INACTIVE for admin or FOR_DEACTIVATION for user)',
     })
     @ApiParam({
         name: 'id',
         description: 'Customer type ID',
         example: 'cust-type-123',
+    })
+    @ApiQuery({
+        name: 'deletionReason',
+        type: String,
+        required: false,
+        description: 'Reason for deleting the customer type',
+        example: 'No longer needed',
     })
     @ApiQuery({
         name: 'userRole',
@@ -169,20 +177,24 @@ export class CustomerTypeController {
                     properties: {
                         customerTypeId: { type: 'string', example: 'cust-type-123' },
                         customerTypeName: { type: 'string', example: 'Premium Customer' },
-                        status: { type: 'string', example: 'FOR_DELETION' },
+                        status: { type: 'string', example: 'FOR_DEACTIVATION' },
                     },
                 },
             },
         },
     })
-    delete(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    delete(
+        @Param('id') id: string,
+        @Query('deletionReason') deletionReason: string,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const customerTypeDto = new CustomerTypeDto();
-        return this.commandBus.execute(new DeleteCustomerTypeCommand(id, customerTypeDto, user));
+        return this.commandBus.execute(new DeleteCustomerTypeCommand(id, deletionReason, user));
     }
 
     @Post(':id/approve')
@@ -448,7 +460,7 @@ export class CustomerTypeController {
         type: String,
         required: true,
         description: 'Filter by status',
-        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DEACTIVATION', 'NEW_RECORD'],
     })
     @ApiQuery({ name: 'name', type: String, required: false, description: 'Filter by name', example: 'Premium' })
     @ApiResponse({ status: 200, description: 'Customer types retrieved successfully' })

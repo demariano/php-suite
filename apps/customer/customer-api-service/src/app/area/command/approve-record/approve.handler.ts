@@ -78,8 +78,6 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
             case StatusEnum.FOR_APPROVAL:
             case StatusEnum.NEW_RECORD:
                 return await this.approveArea(existingRecord, user);
-            case StatusEnum.FOR_DELETION:
-                return await this.approveDeletion(existingRecord);
             case StatusEnum.FOR_DEACTIVATION:
                 return await this.approveDeactivation(existingRecord);
             default:
@@ -126,18 +124,6 @@ export class ApproveAreaHandler implements ICommandHandler<ApproveAreaCommand> {
 
         this.logger.log(`Area approved successfully: ${existingRecord.areaId}`);
         return new ResponseDto<AreaDto>(updatedRecord, HTTP_STATUS_OK);
-    }
-
-    /**
-     * Approves deletion of an area
-     */
-    private async approveDeletion(existingRecord: AreaDto): Promise<ResponseDto<AreaDto>> {
-        // Reset changeReason before deleting
-        existingRecord.changeReason = null;
-        await this.areaDatabaseService.deleteRecord(existingRecord);
-
-        this.logger.log(`Area deletion approved: ${existingRecord.areaId}`);
-        return new ResponseDto<AreaDto>(existingRecord, HTTP_STATUS_OK);
     }
 
     /**

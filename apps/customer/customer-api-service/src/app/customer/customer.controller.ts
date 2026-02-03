@@ -208,6 +208,13 @@ export class CustomerController {
         enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
         example: 'ADMIN',
     })
+    @ApiQuery({
+        name: 'deletionReason',
+        type: String,
+        required: false,
+        description: 'Reason for deleting the customer',
+        example: 'Customer requested account closure',
+    })
     @ApiResponse({
         status: 200,
         description: 'Customer successfully deleted',
@@ -217,7 +224,12 @@ export class CustomerController {
         status: 404,
         description: 'Customer not found',
     })
-    deleteRecord(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    deleteRecord(
+        @Param('id') id: string,
+        @Query('userRole') userRole: string,
+        @Query('deletionReason') deletionReason: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
@@ -225,6 +237,7 @@ export class CustomerController {
 
         const customerDto = new CustomerDto();
         customerDto.customerId = id;
+        customerDto.deletionReason = deletionReason;
         const command = new DeleteCustomerCommand(id, customerDto, user);
         return this.commandBus.execute(command);
     }

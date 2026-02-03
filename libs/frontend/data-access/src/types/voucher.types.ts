@@ -18,6 +18,7 @@ export interface VoucherDto {
     activityLogs: string[];
     forApprovalVersion: Record<string, unknown>;
     changeReason: string;
+    deletionReason?: string;
     status: StatusEnum;
     remarks: string;
     voucherDetails: VoucherDetailDto[];
@@ -42,6 +43,7 @@ export interface CreateVoucherDto {
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
     changeReason?: string;
+    deletionReason?: string;
     status?: StatusEnum;
     remarks?: string;
     voucherDetails?: VoucherDetailDto[];

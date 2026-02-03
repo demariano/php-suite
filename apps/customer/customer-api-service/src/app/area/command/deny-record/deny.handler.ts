@@ -73,6 +73,8 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
                 return await this.denyArea(existingRecord, command);
             case StatusEnum.FOR_DELETION:
                 return await this.denyDeletion(existingRecord, command);
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.denyDeactivation(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
             default:
@@ -112,6 +114,40 @@ export class DenyAreaHandler implements ICommandHandler<DenyAreaCommand> {
         const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);
 
         this.logger.log(`Area denied successfully: ${existingRecord.areaId}`);
+        return new ResponseDto<AreaDto>(updatedRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Denies deactivation of an area (soft delete denial)
+     */
+    private async denyDeactivation(existingRecord: AreaDto, command: DenyAreaCommand): Promise<ResponseDto<AreaDto>> {
+        // Reset changeReason when denying deactivation
+        existingRecord.changeReason = null;
+
+        // Add activity log for denial
+        existingRecord.activityLogs = existingRecord.activityLogs || [];
+        existingRecord.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Area deactivation denied by ${command.user.username}, status reverted to ${StatusEnum.ACTIVE}`
+        );
+
+        // Add approver message if provided
+        if (command.approverMessage) {
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Area deactivation denied by ${command.user.username}, approver message: ${command.approverMessage}`
+            );
+        }
+
+        // Optimize activity logs
+        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
+        existingRecord.approverMessage = null;
+
+        this.logger.log(`Area deactivation denied: ${existingRecord.areaId}`);
+        existingRecord.status = StatusEnum.ACTIVE;
+        const updatedRecord = await this.areaDatabaseService.updateRecord(existingRecord);
         return new ResponseDto<AreaDto>(updatedRecord, HTTP_STATUS_OK);
     }
 

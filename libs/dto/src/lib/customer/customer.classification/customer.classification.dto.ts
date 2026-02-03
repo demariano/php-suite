@@ -22,4 +22,10 @@ export class CustomerClassificationDto {
 
     @ApiProperty()
     approverMessage?: string;
+
+    @ApiProperty()
+    deletionReason?: string;
+
+    @ApiProperty()
+    reactivationReason?: string;
 }

@@ -142,12 +142,19 @@ export class TermsController {
     @Delete(':id')
     @ApiOperation({
         summary: 'Delete terms',
-        description: 'Deletes a terms record',
+        description: 'Soft deletes a terms record (Master Data pattern - no hard delete)',
     })
     @ApiParam({
         name: 'id',
         description: 'Terms ID',
         example: 'terms-123',
+    })
+    @ApiQuery({
+        name: 'deletionReason',
+        type: String,
+        required: false,
+        description: 'Reason for deletion',
+        example: 'Terms no longer needed',
     })
     @ApiQuery({
         name: 'userRole',
@@ -159,7 +166,8 @@ export class TermsController {
     })
     @ApiResponse({
         status: 200,
-        description: 'Terms deleted successfully',
+        description:
+            'Terms deleted successfully (soft delete: ACTIVE → INACTIVE for admin, ACTIVE → FOR_DEACTIVATION for regular user)',
         schema: {
             type: 'object',
             properties: {
@@ -169,20 +177,25 @@ export class TermsController {
                     properties: {
                         termsId: { type: 'string', example: 'terms-123' },
                         termsName: { type: 'string', example: 'Standard Terms' },
-                        status: { type: 'string', example: 'FOR_DELETION' },
+                        status: { type: 'string', example: 'INACTIVE' },
+                        deletionReason: { type: 'string', example: 'Terms no longer needed' },
                     },
                 },
             },
         },
     })
-    delete(@Param('id') id: string, @Query('userRole') userRole: string, @CurrentUser() user: UserCognito) {
+    delete(
+        @Param('id') id: string,
+        @Query('deletionReason') deletionReason: string,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
         // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
         if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
             user.roles = [userRole];
         }
 
-        const termsDto = new TermsDto();
-        return this.commandBus.execute(new DeleteTermsCommand(id, termsDto, user));
+        return this.commandBus.execute(new DeleteTermsCommand(id, deletionReason || '', user));
     }
 
     @Post(':id/approve')

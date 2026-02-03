@@ -110,10 +110,17 @@ export class MessageHandlerService {
                 `Handling territory manager event: ${territoryManagerEvent.eventType} for territoryManagerId: ${territoryManagerEvent.territoryManagerId}`
             );
 
-            await this.territoryManagerSyncHandlerService.handleTerritoryManagerUpdatedEvent({
-                territoryManagerId: territoryManagerEvent.territoryManagerId,
-                newTerritoryManagerName: territoryManagerEvent.newTerritoryManagerName,
-            });
+            if (territoryManagerEvent.eventType === TerritoryManagerEventEnum.TERRITORY_MANAGER_UPDATED) {
+                await this.territoryManagerSyncHandlerService.handleTerritoryManagerUpdatedEvent({
+                    territoryManagerId: territoryManagerEvent.territoryManagerId,
+                    newTerritoryManagerName: territoryManagerEvent.newTerritoryManagerName,
+                });
+            } else if (territoryManagerEvent.eventType === TerritoryManagerEventEnum.TERRITORY_MANAGER_REACTIVATED) {
+                this.logger.log(
+                    `Territory manager reactivated - no invoice updates needed for territoryManagerId: ${territoryManagerEvent.territoryManagerId}`
+                );
+                // No action required - invoices don't directly reference territory manager
+            }
             return;
         }
 

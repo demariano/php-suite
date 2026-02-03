@@ -27,6 +27,9 @@ export class VoucherDto {
     changeReason?: string;
 
     @ApiProperty()
+    deletionReason?: string;
+
+    @ApiProperty()
     status!: StatusEnum;
 
     @ApiProperty()

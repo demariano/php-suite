@@ -36,6 +36,9 @@ export class MessageHandlerService {
                 case TerritoryManagerEventEnum.TERRITORY_MANAGER_UPDATED:
                     await this.territoryManagerSyncHandler.handleTerritoryManagerUpdatedEvent(message);
                     break;
+                case TerritoryManagerEventEnum.TERRITORY_MANAGER_REACTIVATED:
+                    await this.territoryManagerSyncHandler.handleTerritoryManagerReactivatedEvent(message);
+                    break;
                 default:
                     this.logger.warn(`Unknown event type: ${eventType}`);
             }

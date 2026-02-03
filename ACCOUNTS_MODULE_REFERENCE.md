@@ -1,36 +1,325 @@
-# Accounts Module - Complete Reference Documentation
+# Module Implementation - Complete Reference Documentation
 
-**Purpose**: This document serves as the authoritative reference for the Accounts module implementation, covering all backend handlers, frontend components, business logic, UI/UX patterns, and best practices. Use this as a template for implementing other modules with consistent patterns and quality.
+## Master Data (Accounts) & Transactional Data (Vouchers) Patterns
 
-**Last Updated**: January 31, 2026  
-**Status**: ✅ All functionality working as intended for USER, ADMIN, and SUPER_ADMIN roles
+**Purpose**: This document serves as the **authoritative reference for AI models and developers** to analyze existing modules and implement new ones with consistent patterns. It covers **complete stack implementation** (Frontend → Backend → Database Schema) for both **Master Data** (soft delete) and **Transactional Data** (hard delete) patterns.
+
+**Last Updated**: February 3, 2026  
+**Status**: ✅ 100% Working - Accounts, Territory Manager (Master Data) & Vouchers (Transactional) verified  
+**Validation**: All module types tested and production-ready with reusable components
+
+**Reference Modules**:
+
+-   **Master Data Example 1**: Accounts Module (Soft Delete Pattern)
+-   **Master Data Example 2**: Territory Manager Module (Soft Delete Pattern + Reusable Components) ⭐ **LATEST**
+-   **Transactional Example**: Vouchers Module (Hard Delete Pattern)
+
+---
+
+## 🎯 How to Use This Document (For AI Models)
+
+**When analyzing an existing module:**
+
+1. Identify if it's **Master Data** or **Transactional Data** (see [Decision Tree](#decision-tree-which-delete-strategy-should-i-use))
+2. Compare against the appropriate pattern in this document
+3. Use the [Implementation Checklists](#implementation-checklists) to verify completeness
+4. Check each layer: DTO → Backend Handler → Frontend Component → Database Schema
+
+**When implementing a new module:**
+
+1. Determine module type first (Master vs Transactional)
+2. Follow the complete implementation pattern for that type
+3. Use code templates from this document
+4. Verify against checklists before marking as complete
+
+**Critical Sections**:
+
+-   📋 [Delete Strategy](#critical-delete-strategy---soft-vs-hard-delete) - **READ THIS FIRST**
+-   🏗️ [Complete Stack Requirements](#complete-stack-requirements) - DTO, Schema, Handlers
+-   ✅ [Implementation Checklists](#implementation-checklists) - Verification matrix
+
+---
+
+## 🤖 AI Model Usage Guidelines
+
+**This section explains how to effectively use this reference document for module analysis and implementation.**
+
+### Step 1: Determine Module Type
+
+When analyzing or implementing a module, FIRST determine whether it is:
+
+-   **Master Data** (Customer, Product, Account, Supplier) → Use SOFT DELETE pattern
+-   **Transactional** (Invoice, Voucher, Purchase Order) → Use HARD DELETE pattern
+
+**Ask this question**: "Is this record referenced by other entities?"
+
+-   YES → Master Data → Soft Delete
+-   NO → Transactional → Hard Delete
+
+---
+
+### Step 2: Navigate to Appropriate Section
+
+Based on module type, jump to:
+
+-   **Master Data** → [Backend Implementation - Master Data (Accounts Pattern)](#backend-implementation---master-data-accounts-pattern)
+-   **Transactional** → [Backend Implementation - Transactional Data (Vouchers Pattern)](#backend-implementation---transactional-vouchers-pattern)
+
+---
+
+### Step 3: Use the Feature Comparison Matrix
+
+The [Feature Comparison Matrix](#-feature-comparison-matrix) provides a quick reference for:
+
+-   ✅ Features that are **identical** across both patterns
+-   ⚠️ Features that **differ** and require pattern-specific implementation
+-   🔍 Implementation decisions for each layer (DTO, Schema, Backend, Frontend)
+
+**When analyzing an existing module**:
+
+1. Go through each row in the matrix
+2. Verify the module implements the correct pattern
+3. Identify missing or incorrectly implemented features
+4. Flag discrepancies for correction
+
+---
+
+### Step 4: Verify Complete Stack
+
+For comprehensive analysis, check ALL layers:
+
+1. **DTO Layer** → [DTO Layer Requirements](#dto-layer)
+
+    - Backend DTO properties
+    - Frontend TypeScript interfaces
+    - Required vs optional fields
+
+2. **Database Schema** → [Database Schema Requirements](#database-schema)
+
+    - Primary key structure (PK/SK)
+    - GSI configuration (GSI1/GSI2)
+    - Field types and validations
+    - Index query patterns
+
+3. **Backend Handlers** → Pattern-specific sections
+
+    - Create, Update, Delete, Approve, Deny handlers
+    - Status transition logic
+    - Role-based authorization
+    - Activity logging
+
+4. **Frontend Components** → [Frontend Components](#frontend-components)
+
+    - Page structure (list, create, edit)
+    - Form validation
+    - Modal integrations
+    - Table/grid implementation
+
+5. **API Layer** → [API Layer Requirements](#api-layer)
+    - RESTful endpoints
+    - Request/response types
+    - Error handling
+
+---
+
+### Step 5: Use Implementation Checklists
+
+After identifying missing features, use the checklists to implement:
+
+**Master Data** → [Master Data Implementation Checklist](#master-data-implementation-checklist)  
+**Transactional** → [Transactional Implementation Checklist](#transactional-implementation-checklist)
+
+Each checklist provides:
+
+-   ✅ Required features
+-   ⏸️ Optional features
+-   📝 Code examples
+-   🔍 Validation steps
+
+---
+
+### Analysis Workflow Example
+
+**Scenario**: Analyzing the "Products" module for compliance
+
+```
+STEP 1: Determine type
+→ Products are master data (referenced by invoices, inventory)
+→ Pattern: SOFT DELETE
+
+STEP 2: Navigate to section
+→ Go to "Backend Implementation - Master Data"
+
+STEP 3: Check Feature Matrix
+→ Verify DELETE handler uses INACTIVE/FOR_DEACTIVATION
+→ Verify APPROVE handler sets INACTIVE (NOT deleteRecord)
+→ Verify StatusEnum includes INACTIVE and FOR_DEACTIVATION
+
+STEP 4: Verify Complete Stack
+→ DTO: Check deletionReason property exists
+→ Schema: Check GSI1 filters out INACTIVE
+→ Backend: Check delete.handler.ts uses status assignment
+→ Frontend: Check DeleteConfirmationModal integration
+→ API: Check DELETE endpoint exists
+
+STEP 5: Use checklist
+→ Go through Master Data checklist line-by-line
+→ Mark completed features ✅
+→ Flag missing features ❌
+→ Generate report of missing items
+```
+
+---
+
+### Implementation Workflow Example
+
+**Scenario**: Implementing a new "Purchase Orders" module
+
+```
+STEP 1: Determine type
+→ Purchase orders are transactional (discrete business events)
+→ Pattern: HARD DELETE
+
+STEP 2: Navigate to section
+→ Go to "Backend Implementation - Transactional Data"
+
+STEP 3: Use Feature Matrix as template
+→ Copy implementation patterns from Vouchers column
+→ Note critical differences from Master Data
+
+STEP 4: Implement Complete Stack (bottom-up)
+→ Schema: Define DynamoDB table with GSI1/GSI2
+→ DTO: Create backend DTO and frontend interfaces
+→ Backend: Implement CQRS handlers (use Transactional pattern)
+→ Frontend: Create components (list, create, edit)
+→ API: Wire up RESTful endpoints
+
+STEP 5: Validate against checklist
+→ Go through Transactional checklist
+→ Verify each item is implemented ✅
+→ Test delete flow: USER→FOR_DELETION→APPROVE→deleteRecord()
+→ Test approval workflow
+```
+
+---
+
+### Common Pitfalls to Avoid
+
+When analyzing or implementing, watch out for:
+
+❌ **Mixing delete patterns**
+
+-   Don't use INACTIVE for transactional data
+-   Don't use FOR_DELETION for master data
+-   Don't use deleteRecord() for master data
+
+❌ **Missing modal integration**
+
+-   DeleteConfirmationModal must be imported AND rendered
+-   Modal must capture deletionReason
+-   Reason must be passed to API
+
+❌ **Incomplete DTO synchronization**
+
+-   Backend DTO and frontend interface must match
+-   Missing properties cause TypeScript errors
+-   Optional properties must have `?` marker
+
+❌ **GSI filtering errors**
+
+-   Always use GSI1 for status-based queries
+-   Filter out soft-deleted records (INACTIVE, FOR_DEACTIVATION)
+-   Don't rely on primary key for list queries
+
+❌ **Role authorization bypass**
+
+-   Always check hasApprovalPermission()
+-   USER cannot bypass approval workflow
+-   ADMIN can perform direct operations
+
+---
+
+### Quick Reference Commands
+
+**Find modules using wrong delete pattern**:
+
+```bash
+# Search for INACTIVE in transactional modules (should not exist)
+grep -r "INACTIVE" apps/invoicing/ apps/inventory/
+
+# Search for FOR_DELETION in master data modules (should not exist)
+grep -r "FOR_DELETION" apps/customer/ apps/product/
+```
+
+**Find missing DeleteConfirmationModal integration**:
+
+```bash
+# Search for modal import
+grep -r "DeleteConfirmationModal" apps/{module}/*/edit/page.tsx
+
+# Search for modal rendering
+grep -r "<DeleteConfirmationModal" apps/{module}/*/edit/page.tsx
+```
+
+**Find missing deletionReason in DTOs**:
+
+```bash
+# Backend DTOs
+grep -r "deletionReason" libs/dto/src/lib/
+
+# Frontend interfaces
+grep -r "deletionReason" libs/frontend/data-access/src/types/
+```
 
 ---
 
 ## Table of Contents
 
-1. [Module Overview](#module-overview)
-2. [⚠️ CRITICAL: Delete Strategy - Soft vs Hard Delete](#critical-delete-strategy---soft-vs-hard-delete)
-3. [Backend Implementation](#backend-implementation)
+1. [🤖 AI Model Usage Guidelines](#-ai-model-usage-guidelines)
+    - [Step 1: Determine Module Type](#step-1-determine-module-type)
+    - [Step 2: Navigate to Appropriate Section](#step-2-navigate-to-appropriate-section)
+    - [Step 3: Use the Feature Comparison Matrix](#step-3-use-the-feature-comparison-matrix)
+    - [Step 4: Verify Complete Stack](#step-4-verify-complete-stack)
+    - [Step 5: Use Implementation Checklists](#step-5-use-implementation-checklists)
+    - [Analysis Workflow Example](#analysis-workflow-example)
+    - [Implementation Workflow Example](#implementation-workflow-example)
+    - [Common Pitfalls to Avoid](#common-pitfalls-to-avoid)
+    - [Quick Reference Commands](#quick-reference-commands)
+2. [Module Overview](#module-overview)
+3. [⚠️ CRITICAL: Delete Strategy - Soft vs Hard Delete](#critical-delete-strategy---soft-vs-hard-delete)
+4. [🏗️ Complete Stack Requirements](#-complete-stack-requirements)
+    - [DTO Layer](#dto-layer)
+    - [Database Schema](#database-schema)
+    - [Backend Handlers](#backend-handlers)
+    - [Frontend Components](#frontend-components)
+    - [API Layer](#api-layer)
+5. [Backend Implementation - Master Data (Accounts Pattern)](#backend-implementation---master-data-accounts-pattern)
     - [CREATE Operation](#create-operation)
     - [UPDATE Operation](#update-operation)
-    - [DELETE Operation](#delete-operation)
+    - [DELETE Operation (Soft Delete)](#delete-operation-soft-delete)
+    - [REACTIVATE Operation](#reactivate-operation)
     - [APPROVE Operation](#approve-operation)
     - [DENY Operation](#deny-operation)
-4. [Frontend Implementation](#frontend-implementation)
+6. [Backend Implementation - Transactional (Vouchers Pattern)](#backend-implementation---transactional-vouchers-pattern)
+    - [CREATE Operation](#create-operation-transactional)
+    - [UPDATE Operation](#update-operation-transactional)
+    - [DELETE Operation (Hard Delete)](#delete-operation-hard-delete)
+    - [APPROVE Operation](#approve-operation-transactional)
+    - [DENY Operation](#deny-operation-transactional)
+7. [Frontend Implementation](#frontend-implementation)
     - [List/Table View](#listtable-view)
     - [Create View](#create-view)
     - [Edit View](#edit-view)
-    - [AccountForm Component](#accountform-component)
-    - [AccountFormWrapper Component](#accountformwrapper-component)
+    - [Form Component Patterns](#form-component-patterns)
     - [Modal Components](#modal-components)
-5. [UI/UX Standards](#uiux-standards)
-6. [Business Rules & Validation](#business-rules--validation)
-7. [Status Lifecycle & Transitions](#status-lifecycle--transitions)
-8. [Role-Based Authorization](#role-based-authorization)
-9. [Code Templates](#code-templates)
-10. [Anti-Patterns & Common Mistakes](#anti-patterns--common-mistakes)
-11. [Implementation Checklists](#implementation-checklists)
+8. [UI/UX Standards](#uiux-standards)
+9. [Business Rules & Validation](#business-rules--validation)
+10. [Status Lifecycle & Transitions](#status-lifecycle--transitions)
+11. [Role-Based Authorization](#role-based-authorization)
+12. [📊 Feature Comparison Matrix](#-feature-comparison-matrix)
+13. [Code Templates](#code-templates)
+14. [Anti-Patterns & Common Mistakes](#anti-patterns--common-mistakes)
+15. [Implementation Checklists](#implementation-checklists)
 
 ---
 
@@ -52,6 +341,7 @@
 │  - AccountFormWrapper (Tab interface for edit)                  │
 │  - AccountTable (Data grid with pagination)                     │
 │  - DeleteConfirmationModal (Soft delete dialog)                 │
+│  - ReactivateConfirmationModal (Reactivation confirm)           │
 │  - DenyReasonDialog (Denial reason input)                       │
 └─────────────────────────────────────────────────────────────────┘
                               ↓ HTTP/API
@@ -104,11 +394,25 @@ export enum AccountStatus {
 
 ### User Roles & Capabilities
 
-| Role        | Create       | Update         | Delete             | Approve | Deny |
-| ----------- | ------------ | -------------- | ------------------ | ------- | ---- |
-| USER        | → NEW_RECORD | → FOR_APPROVAL | → FOR_DEACTIVATION | ❌      | ❌   |
-| ADMIN       | → ACTIVE     | Direct Update  | → INACTIVE         | ✅      | ✅   |
-| SUPER_ADMIN | → ACTIVE     | Direct Update  | → INACTIVE         | ✅      | ✅   |
+| Role        | Create       | Update         | Delete             | Reactivate        | Approve | Deny |
+| ----------- | ------------ | -------------- | ------------------ | ----------------- | ------- | ---- |
+| USER        | → NEW_RECORD | → FOR_APPROVAL | → FOR_DEACTIVATION | ❌                | ❌      | ❌   |
+| ADMIN       | → ACTIVE     | Direct Update  | → INACTIVE         | INACTIVE → ACTIVE | ✅      | ✅   |
+| SUPER_ADMIN | → ACTIVE     | Direct Update  | → INACTIVE         | INACTIVE → ACTIVE | ✅      | ✅   |
+
+**Key Feature: Account Reactivation** (Added February 2, 2026)
+
+ADMIN and SUPER_ADMIN users can reactivate INACTIVE accounts by changing their status back to ACTIVE. This feature:
+
+-   Uses the UPDATE endpoint with special status handling
+-   Only allows INACTIVE → ACTIVE transitions (validated)
+-   No approval workflow required (immediate reactivation)
+-   No change reason required
+-   Publishes ACCOUNT_REACTIVATED event for downstream systems
+-   Shows green REACTIVATE button in UI (replaces DELETE for INACTIVE records)
+-   Displays confirmation modal with clear status change messaging
+
+See [REACTIVATE Operation](#reactivate-operation) for complete implementation details.
 
 ---
 
@@ -281,7 +585,2349 @@ Is this record referenced by other transactions or entities?
 
 ---
 
-## Backend Implementation
+## 📦 Territory Manager Module - Complete Implementation Reference
+
+**Module Type**: Master Data (Soft Delete Pattern)  
+**Status**: ✅ 100% Verified & Production-Ready  
+**Updated**: February 3, 2026  
+**Reusable Components**: ✅ Fully Integrated
+
+This section documents the **complete Territory Manager implementation** as the authoritative reference for master data modules with reusable component integration. Every detail from Tailwind classes to database indexes is documented here.
+
+### Why Territory Manager is the Definitive Reference
+
+The Territory Manager module represents the **gold standard** for master data implementation because:
+
+1. ✅ **Complete soft delete pattern** with FOR_DEACTIVATION status
+2. ✅ **Full approval workflow** (NEW_RECORD → FOR_APPROVAL → FOR_DEACTIVATION)
+3. ✅ **100% reusable component integration** from @components-web
+4. ✅ **Proper status filtering** with GSI2 index
+5. ✅ **Change reason with auto-detection** using @field-change-utils-lib
+6. ✅ **Exact Tailwind CSS standards** documented
+7. ✅ **Event publishing** for name changes and reactivation
+8. ✅ **Role-based authorization** throughout all layers
+9. ✅ **Comprehensive tabs** (Details, Pending Changes, Activity Logs)
+10. ✅ **Field change highlighting** in approval tab
+
+---
+
+### 🎯 Territory Manager Frontend Implementation
+
+#### List Page (page.tsx)
+
+**File**: `apps/web-app/src/app/(authenticated-routes)/invoicing/territory-manager/page.tsx`
+
+**Complete State Management**:
+
+```typescript
+const [isLoading, setIsLoading] = useState(false);
+const [searchQuery, setSearchQuery] = useState('');
+const [statusFilter, setStatusFilter] = useState('ALL');
+const [territoryManagers, setTerritoryManagers] = useState<TerritoryManagerDto[]>([]);
+const [error, setError] = useState<string | null>(null);
+const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
+const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
+const [pageSize, setPageSize] = useState<number>(10);
+const hasFetchedRef = useRef(false); // React Strict Mode protection
+```
+
+**Business Rules**:
+
+1. **Initial fetch prevention**: `hasFetchedRef` prevents duplicate calls in development
+2. **Search debounce**: 500ms delay using `useEffect` with cleanup
+3. **Conditional API selection**:
+    ```typescript
+    if (statusFilter !== 'ALL') {
+        // Use GSI2 status query
+        response = await TerritoryManagerApi.getTerritoryManagersByStatus(...)
+    } else if (searchQuery && searchQuery.trim() !== '') {
+        // Use GSI1 name query
+        response = await TerritoryManagerApi.getTerritoryManagersByName(...)
+    } else {
+        // Use GSI1 pagination
+        response = await TerritoryManagerApi.getTerritoryManagers(...)
+    }
+    ```
+4. **Security**: Only passes `userRole` when `env.BYPASS_AUTH === 'ENABLED'`
+5. **Pagination reset triggers**: Search change, status filter change, page size change
+
+**Table Headers**:
+
+```typescript
+const headers = [
+    { key: 'territoryManagerName', label: 'NAME' },
+    { key: 'status', label: 'STATUS' },
+    { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+];
+```
+
+**Data Transformation**:
+
+```typescript
+const tableData =
+    territoryManagers?.map((territoryManager) => {
+        let latestActivity = null;
+        if (territoryManager.activityLogs && territoryManager.activityLogs.length > 0) {
+            const lastLog = territoryManager.activityLogs[territoryManager.activityLogs.length - 1];
+            const parsed = parseActivityLog(lastLog);
+            const activityStyle = getActivityStyle(parsed.activity);
+            latestActivity = { text: parsed.activity, style: activityStyle };
+        }
+
+        return {
+            ...territoryManager,
+            status: <StatusBadge status={territoryManager.status || StatusEnum.ACTIVE} />,
+            latestActivity,
+        };
+    }) || [];
+```
+
+**Reusable Components Used**:
+
+-   ✅ `StatusBadge` from @components-web
+-   ✅ `Input` from @components-web (in header)
+-   ✅ `Search` icon from @components-web
+-   ✅ `Add` icon from @components-web
+-   ✅ `Pagination` from @components-web (in table)
+
+**Breadcrumbs Structure**:
+
+```tsx
+<a href="/dashboard">Home</a> / <a href="/invoicing">Invoicing</a> / <span>Territory Manager</span>;
+```
+
+**Error Display**:
+
+```tsx
+<div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+    <span>{error}</span>
+    <button onClick={() => setError(null)}>×</button>
+</div>
+```
+
+---
+
+#### Header Component (TerritoryManagerHeader.tsx)
+
+**File**: `apps/web-app/src/app/(authenticated-routes)/invoicing/territory-manager/components/TerritoryManagerHeader.tsx`
+
+**Props Interface**:
+
+```typescript
+interface TerritoryManagerHeaderProps {
+    searchQuery: string;
+    statusFilter: string;
+    onSearchChange: (value: string) => void;
+    onStatusFilterChange: (value: string) => void;
+    onRefresh: () => void;
+    onCreateClick: () => void;
+    isLoading?: boolean;
+    canCreate?: boolean;
+    isAdminUser?: boolean;
+}
+```
+
+**CRITICAL LAYOUT PATTERN** - All Controls in Single Row (Common Mistake: Don't Place Status Dropdown in Separate Row!)
+
+**✅ CORRECT LAYOUT** - Single row with inline status filter:
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  [Search Input]  [Status Dropdown]  [Refresh]    [Create Button]   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**❌ WRONG LAYOUT** - Status filter in separate row (DO NOT USE):
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  [Search Input]                      [Refresh]    [Create Button]   │
+│  Filter by status: [Status Dropdown]                                │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Complete Component Structure** (✅ CORRECT):
+
+```tsx
+export function TerritoryManagerHeader({
+    searchQuery,
+    statusFilter,
+    onSearchChange,
+    onStatusFilterChange,
+    onRefresh,
+    onCreateClick,
+    isLoading = false,
+    canCreate = true,
+    isAdminUser = false,
+}: TerritoryManagerHeaderProps) {
+    return (
+        <div className="space-y-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {/* SINGLE ROW: Search + Status + Refresh (all inline) */}
+                <div className="flex w-full items-center gap-3 sm:flex-1">
+                    {/* Search Input - flex-1 to take available space */}
+                    <div className="flex-1">
+                        <Input
+                            placeholder="Search by name"
+                            value={searchQuery}
+                            onChange={(e) => onSearchChange(e.target.value)}
+                            leftIcon={Search}
+                            aria-label="Search territory managers"
+                        />
+                    </div>
+
+                    {/* Status Dropdown - INLINE (no label, no wrapper) */}
+                    {isAdminUser && (
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => onStatusFilterChange(e.target.value)}
+                            className="rounded-md border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors duration-200 hover:bg-gray-50 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                            aria-label="Filter by status"
+                        >
+                            <option value="ALL">All Status</option>
+                            <option value="ACTIVE">Active</option>
+                            <option value="INACTIVE">Inactive</option>
+                            <option value="FOR_APPROVAL">For Approval</option>
+                            <option value="FOR_DEACTIVATION">For Deactivation</option>
+                            <option value="NEW_RECORD">New Record</option>
+                        </select>
+                    )}
+
+                    {/* Refresh Button - INLINE */}
+                    <button
+                        type="button"
+                        onClick={onRefresh}
+                        disabled={isLoading}
+                        className="rounded-md border border-gray-300 bg-white p-2 transition-colors duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        title="Refresh"
+                        aria-label="Refresh list"
+                    >
+                        <RefreshIcon className="text-gray-600" size={20} />
+                    </button>
+                </div>
+
+                {/* Create Button - Adjacent to the inline group */}
+                {canCreate && (
+                    <button
+                        type="button"
+                        onClick={onCreateClick}
+                        className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                    >
+                        <Add size={18} />
+                        Add Territory Manager
+                    </button>
+                )}
+            </div>
+        </div>
+    );
+}
+```
+
+**❌ COMMON MISTAKE - DO NOT USE THIS PATTERN**:
+
+```tsx
+// WRONG: Status dropdown in separate row with label
+<div className="flex flex-col gap-3">
+    {/* Row 1: Search, Refresh, Create */}
+    <div className="flex items-center gap-3">
+        <Input placeholder="Search..." value={searchQuery} onChange={...} />
+        <button onClick={onRefresh}>Refresh</button>
+        <button onClick={onCreateClick}>Create</button>
+    </div>
+
+    {/* Row 2: Status filter - THIS IS WRONG! */}
+    {isAdminUser && (
+        <div className="flex items-center gap-2">
+            <label>Filter by status:</label>
+            <select value={statusFilter} onChange={...}>...</select>
+        </div>
+    )}
+</div>
+```
+
+**Key Rules for Header Layout**:
+
+1. ✅ **Status dropdown MUST be inline** with search input and refresh button
+2. ✅ **No separate row** for status filter
+3. ✅ **No label** for status dropdown (use aria-label for accessibility)
+4. ✅ **Conditional rendering** with `{isAdminUser && <select>}` - no wrapper div
+5. ✅ **Gap-3 spacing** between all inline controls
+6. ✅ **Search input uses flex-1** to take available space
+7. ✅ **Create button** is outside the search group but adjacent (sm:w-auto)
+
+**Layout Structure** (single row with all controls):
+
+```tsx
+<div className="flex w-full items-center gap-3 sm:flex-1">
+    {/* Search Input */}
+    <div className="flex-1">
+        <Input placeholder="Search by name" value={searchQuery} onChange={...} leftIcon={Search} />
+    </div>
+
+    {/* Status Dropdown - INLINE, CONDITIONAL, NO LABEL */}
+    {isAdminUser && <select className="...">...</select>}
+
+    {/* Refresh Button */}
+    <button className="...">...</button>
+</div>
+
+{/* Create Button (outside but adjacent) */}
+{canCreate && <button className="...">...</button>}
+```
+
+**Status Dropdown - Complete Implementation**:
+
+```tsx
+<select
+    value={statusFilter}
+    onChange={(e) => onStatusFilterChange(e.target.value)}
+    className="rounded-md border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors duration-200 hover:bg-gray-50 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+>
+    <option value="ALL">All Status</option>
+    <option value="ACTIVE">Active</option>
+    {isAdminUser && (
+        <>
+            <option value="INACTIVE">Inactive</option>
+            <option value="FOR_APPROVAL">For Approval</option>
+            <option value="FOR_DEACTIVATION">For Deactivation</option>
+            <option value="NEW_RECORD">New Record</option>
+        </>
+    )}
+</select>
+```
+
+**CRITICAL**: Non-admin users only see "All Status" and "Active". Admin-only statuses are conditionally rendered.
+
+**Refresh Button** (exact classes):
+
+```tsx
+<button
+    type="button"
+    onClick={onRefresh}
+    disabled={isLoading}
+    className="rounded-md border border-gray-300 bg-white p-2 transition-colors duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+    title="Refresh"
+>
+    <svg className="text-gray-600" width="20" height="20">
+        {/* Circular refresh arrows icon */}
+    </svg>
+</button>
+```
+
+**Add Button** (exact classes):
+
+```tsx
+<button
+    type="button"
+    onClick={onCreateClick}
+    className="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+>
+    <Add size={18} />
+    Add Territory Manager
+</button>
+```
+
+---
+
+#### Table Component (TerritoryManagerTable.tsx)
+
+**File**: `apps/web-app/src/app/(authenticated-routes)/invoicing/territory-manager/components/TerritoryManagerTable.tsx`
+
+**Desktop Table - Exact Classes**:
+
+```tsx
+{
+    /* Container */
+}
+<div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+    <table className="w-full border-collapse">
+        {/* Header */}
+        <thead className="border-b border-blue-700 bg-blue-600">
+            <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white">NAME</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white">
+                    STATUS
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white">
+                    LATEST ACTIVITY
+                </th>
+            </tr>
+        </thead>
+
+        {/* Body */}
+        <tbody className="divide-y divide-gray-200 bg-white">
+            <tr className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50">
+                <td className="px-6 py-5 text-sm font-medium text-gray-900">...</td>
+                <td className="px-6 py-5">...</td>
+                <td className="px-6 py-5 text-sm">...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>;
+```
+
+**Mobile Cards - Exact Classes**:
+
+```tsx
+<div className="space-y-4 sm:hidden">
+    <button
+        type="button"
+        onClick={() => onRowClick(territoryManager)}
+        className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+    >
+        <div className="flex items-start justify-between gap-4">
+            <div>
+                <h3 className="text-base font-semibold text-gray-900">
+                    {territoryManager.territoryManagerName || '-'}
+                </h3>
+            </div>
+            <div>{renderStatus(territoryManager.status)}</div>
+        </div>
+        {territoryManager.latestActivity && (
+            <div className="mt-2">
+                <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                <dd>...</dd>
+            </div>
+        )}
+    </button>
+</div>
+```
+
+**Empty State**:
+
+```tsx
+<tr>
+    <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
+        {searchQuery ? `No territory managers found matching "${searchQuery}"` : 'No territory managers found'}
+    </td>
+</tr>
+```
+
+**Pagination Integration**:
+
+```tsx
+<Pagination
+    pageSize={pageSize}
+    onPageSizeChange={onPageSizeChange}
+    onPrevious={onPrevious}
+    onNext={onNext}
+    hasPrevious={!!prevCursor}
+    hasNext={!!nextCursor}
+/>
+```
+
+---
+
+#### Edit Page (id]/edit/page.tsx)
+
+**File**: `apps/web-app/src/app/(authenticated-routes)/invoicing/territory-manager/[id]/edit/page.tsx`
+
+**Complete State Management**:
+
+```typescript
+const [selectedTerritoryManager, setSelectedTerritoryManager] = useState<TerritoryManagerDto | null>(null);
+const [isLoading, setIsLoading] = useState(false);
+const [error, setError] = useState<string | null>(null);
+const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
+const [showDenyDialog, setShowDenyDialog] = useState(false);
+```
+
+**Tab Auto-Selection Logic**:
+
+```typescript
+useEffect(() => {
+    // ... fetch territory manager ...
+
+    if (
+        (territoryManager.status === StatusEnum.FOR_APPROVAL ||
+            territoryManager.status === StatusEnum.NEW_RECORD ||
+            territoryManager.status === StatusEnum.FOR_DELETION ||
+            territoryManager.status === StatusEnum.FOR_DEACTIVATION) &&
+        isAdminUser
+    ) {
+        setActiveTab('approval');
+    } else {
+        setActiveTab('details');
+    }
+}, [params.id, env.BYPASS_AUTH, authedUser?.userRole, isAdminUser]);
+```
+
+**Tab Color Coding Function**:
+
+```typescript
+const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+    if (!isActive) {
+        return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+    }
+
+    switch (status) {
+        case StatusEnum.ACTIVE:
+            return 'bg-green-600 text-white shadow-sm';
+        case StatusEnum.FOR_APPROVAL:
+            return 'bg-yellow-500 text-white shadow-sm';
+        case StatusEnum.FOR_DELETION:
+        case StatusEnum.FOR_DEACTIVATION:
+            return 'bg-red-600 text-white shadow-sm';
+        case StatusEnum.NEW_RECORD:
+            return 'bg-blue-600 text-white shadow-sm';
+        default:
+            return 'bg-gray-500 text-white shadow-sm';
+    }
+};
+```
+
+**Tab Rendering**:
+
+```tsx
+<div className="flex flex-wrap gap-2 overflow-x-auto border-b-2 border-gray-200 px-4 pb-2 pt-6 sm:px-6">
+    <button
+        onClick={() => setActiveTab('details')}
+        className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${getTabColorClasses(
+            status,
+            activeTab === 'details'
+        )}`}
+    >
+        <span className="flex items-center gap-2">
+            <svg className="w-4 h-4">/* Document icon */</svg>
+            Territory Manager Information
+            {selectedTerritoryManager && (
+                <>
+                    <span className="mx-1">-</span>
+                    <span>{getStatusText(selectedTerritoryManager.status)}</span>
+                </>
+            )}
+        </span>
+    </button>
+
+    {selectedTerritoryManager.status !== StatusEnum.ACTIVE && (
+        <button
+            onClick={() => setActiveTab('approval')}
+            className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                activeTab === 'approval'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white text-gray-600 hover:bg-gray-100'
+            }`}
+        >
+            <span className="flex items-center gap-2">
+                <svg className="w-4 h-4">/* Check circle icon */</svg>
+                Pending Changes
+            </span>
+        </button>
+    )}
+
+    <button
+        onClick={() => setActiveTab('logs')}
+        className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+            activeTab === 'logs' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-gray-600 hover:bg-gray-100'
+        }`}
+    >
+        <span className="flex items-center gap-2">
+            <svg className="w-4 h-4">/* Clock icon */</svg>
+            Activity Logs
+        </span>
+    </button>
+</div>
+```
+
+**Approval Tab - FOR_DEACTIVATION Status**:
+
+```tsx
+{selectedTerritoryManager?.status === StatusEnum.FOR_DELETION ||
+ selectedTerritoryManager?.status === StatusEnum.FOR_DEACTIVATION ? (
+    <>
+        {/* Red deletion warning banner */}
+        <div className="mb-6 flex items-center gap-3 rounded-xl border-2 border-red-500 bg-red-50 p-4 text-red-700 shadow-sm">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-sm font-bold text-white">
+                ⚠
+            </div>
+            <span className="text-sm font-semibold">
+                This record is pending deletion and will be soft deleted (status set to INACTIVE) if approved.
+            </span>
+        </div>
+
+        {/* Display deletion reason */}
+        <div className="mb-6 space-y-3">
+            <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-red-600 p-2 text-white shadow-sm">
+                    <svg className="h-5 w-5">/* Trash icon */</svg>
+                </div>
+                <h4 className="m-0 text-base font-bold text-red-600">Deletion Reason</h4>
+            </div>
+            <div className="w-full rounded-xl border-2 border-red-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm whitespace-pre-wrap leading-relaxed">
+                {selectedTerritoryManager.deletionReason || 'No reason provided'}
+            </div>
+        </div>
+
+        {/* Action buttons */}
+        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row">
+            <button onClick={handleDenyRecord} className="... bg-red-600 hover:bg-red-700">
+                Deny Deletion
+            </button>
+            <button onClick={handleApproveRecord} className="... bg-green-600 hover:bg-green-700">
+                Approve Deletion
+            </button>
+        </div>
+    </>
+) : (
+    /* FOR_APPROVAL / NEW_RECORD display */
+)}
+```
+
+**Approval Tab - Field Change Highlighting**:
+
+```tsx
+const renderReadOnlyField = (label: string, value: string, fieldName: string) => {
+    const isFieldChanged = createFieldChangeDetector(
+        selectedTerritoryManager,
+        selectedTerritoryManager.forApprovalVersion
+    );
+
+    const isChanged = isFieldChanged(fieldName);
+
+    return (
+        <div className={`group ${isChanged ? 'border-2 border-blue-400 bg-blue-50 rounded-xl p-3' : ''}`}>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+                {label}
+                {isChanged && <span className="ml-2 text-xs font-semibold text-blue-600">(Changed)</span>}
+            </label>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-600">
+                {value || '-'}
+            </div>
+        </div>
+    );
+};
+```
+
+**Change Reason Display** (in approval tab):
+
+```tsx
+{
+    selectedTerritoryManager.changeReason && (
+        <div className="mb-6 space-y-3">
+            <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                    <svg className="h-5 w-5">/* Edit icon */</svg>
+                </div>
+                <h4 className="m-0 text-base font-bold text-blue-600">Change Reason and Modification Made</h4>
+            </div>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm whitespace-pre-wrap leading-relaxed">
+                {selectedTerritoryManager.changeReason}
+            </div>
+        </div>
+    );
+}
+```
+
+**Modal Integration (exact props)**:
+
+```tsx
+<DenyReasonDialog
+    show={showDenyDialog}
+    record={selectedTerritoryManager}
+    recordDisplayName={selectedTerritoryManager?.territoryManagerName}
+    onConfirm={handleDenyConfirm}
+    onCancel={handleDenyCancel}
+/>
+
+<DeleteConfirmationModal
+    show={showDeleteConfirm}
+    record={selectedTerritoryManager}
+    recordDisplayName={selectedTerritoryManager?.territoryManagerName}
+    onConfirm={handleDeleteConfirm}
+    onCancel={handleDeleteCancel}
+/>
+
+<ConfirmationModal
+    show={showReactivateConfirm}
+    record={selectedTerritoryManager}
+    variant="reactivate"
+    recordDisplayName={selectedTerritoryManager?.territoryManagerName}
+    customMessage="This will change the status from INACTIVE to ACTIVE."
+    onConfirm={handleReactivateConfirm}
+    onCancel={handleReactivateCancel}
+/>
+```
+
+**CRITICAL**: All modals from @components-web require `record` prop (not `entityName` or individual fields).
+
+---
+
+#### Form Component (TerritoryManagerForm.tsx)
+
+**File**: `apps/web-app/src/app/(authenticated-routes)/invoicing/territory-manager/components/TerritoryManagerForm.tsx`
+
+**ChangeReasonField Integration**:
+
+```tsx
+{
+    /* Change Reason Field - FIRST component when displayed */
+}
+{
+    !isCreateMode && !isAdminUser && (
+        <ChangeReasonField
+            value={formData.changeReason}
+            onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
+            disabled={selectedTerritoryManager?.status !== StatusEnum.ACTIVE}
+        />
+    );
+}
+```
+
+**Visibility Rules**:
+
+-   ✅ Shown: Edit mode + Non-admin user + ACTIVE record
+-   ❌ Hidden: Create mode
+-   ❌ Hidden: Admin user
+-   ❌ Hidden: Non-ACTIVE record status
+
+**Warning Banner** (shown for pending records):
+
+```tsx
+{
+    !isCreateMode &&
+        selectedTerritoryManager &&
+        (selectedTerritoryManager.status === StatusEnum.FOR_APPROVAL ||
+            selectedTerritoryManager.status === StatusEnum.NEW_RECORD ||
+            selectedTerritoryManager.status === StatusEnum.FOR_DELETION) && (
+            <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
+                    ⚠
+                </div>
+                <span className="text-sm font-semibold">
+                    {selectedTerritoryManager.status === StatusEnum.FOR_DELETION
+                        ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
+                        : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
+                </span>
+            </div>
+        );
+}
+```
+
+**Form Fields - Complete Classes**:
+
+```tsx
+{
+    /* Label with blue dot indicator */
+}
+<label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+    Territory Manager Name
+</label>;
+
+{
+    /* Input (enabled) */
+}
+<input
+    type="text"
+    className="w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+    disabled={isFormDisabled}
+    required
+/>;
+
+{
+    /* Input (disabled) */
+}
+<input
+    type="text"
+    className="w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
+    disabled={true}
+/>;
+```
+
+**Button Logic & Classes**:
+
+**Delete Button** (shown when NOT create mode AND status is ACTIVE):
+
+```tsx
+{
+    !isCreateMode && selectedTerritoryManager?.status === StatusEnum.ACTIVE && (
+        <button
+            type="button"
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onDelete();
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"
+        >
+            <svg className="h-5 w-5">/* Trash icon */</svg>
+            Delete
+        </button>
+    );
+}
+```
+
+**Reactivate Button** (shown when NOT create mode AND admin user AND status is INACTIVE AND onReactivate provided):
+
+```tsx
+{
+    !isCreateMode && isAdminUser && selectedTerritoryManager?.status === StatusEnum.INACTIVE && onReactivate && (
+        <button
+            type="button"
+            onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onReactivate();
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:w-auto"
+        >
+            <svg className="h-5 w-5">/* Check icon */</svg>
+            Reactivate
+        </button>
+    );
+}
+```
+
+**Save/Create Button** (shown when create mode OR status is ACTIVE):
+
+```tsx
+{
+    (isCreateMode || selectedTerritoryManager?.status === StatusEnum.ACTIVE) && (
+        <button
+            type="submit"
+            className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+            <svg className="h-5 w-5">/* Check icon */</svg>
+            {isCreateMode ? 'Create Territory Manager' : 'Save Changes'}
+        </button>
+    );
+}
+```
+
+**Cancel Button** (always shown):
+
+```tsx
+<button
+    type="button"
+    onClick={onCancel}
+    className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+>
+    <svg className="h-5 w-5">/* X icon */</svg>
+    Cancel
+</button>
+```
+
+**Validation Logic**:
+
+```typescript
+const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const errors: string[] = [];
+
+    if (!formData.territoryManagerName.trim()) {
+        errors.push('Territory Manager Name is required.');
+    }
+
+    if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        errors.push('Please provide a reason for the change.');
+    }
+
+    if (errors.length > 0) {
+        setValidationErrors(errors);
+        return;
+    }
+
+    // ... proceed with save
+};
+```
+
+**Status Assignment on Save**:
+
+```typescript
+if (isCreateMode) {
+    const newTerritoryManager = {
+        territoryManagerName: formData.territoryManagerName,
+        contactNo: formData.contactNo,
+        status: StatusEnum.NEW_RECORD,
+    } as TerritoryManagerDto;
+    onSave(newTerritoryManager);
+} else {
+    const newStatus = isAdminUser ? StatusEnum.ACTIVE : StatusEnum.FOR_APPROVAL;
+    const updatedTerritoryManager = {
+        ...selectedTerritoryManager,
+        territoryManagerName: formData.territoryManagerName,
+        contactNo: formData.contactNo,
+        status: newStatus,
+        changeReason: formData.changeReason.trim() || undefined,
+    } as TerritoryManagerDto;
+    onSave(updatedTerritoryManager);
+}
+```
+
+---
+
+### 🔧 Territory Manager Backend Implementation
+
+#### API Controller (territory-manager.controller.ts)
+
+**File**: `apps/invoicing/invoicing-api-service/src/app/territory-manager/territory-manager.controller.ts`
+
+**Complete Endpoint Mapping**:
+
+```typescript
+@Controller('territory-manager')
+export class TerritoryManagerController {
+    // CREATE - POST /territory-manager
+    @Post()
+    async create(
+        @Body() dto: CreateTerritoryManagerDto,
+        @Query('userRole') userRole?: string,
+        @Headers() user?: User
+    ): Promise<ResponseDto<TerritoryManagerDto>> {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+        return await this.commandBus.execute(new CreateTerritoryManagerCommand(dto, user));
+    }
+
+    // UPDATE - PUT /territory-manager/:id
+    @Put(':id')
+    async update(
+        @Param('id') id: string,
+        @Body() dto: Partial<TerritoryManagerDto>,
+        @Query('userRole') userRole?: string,
+        @Headers() user?: User
+    ): Promise<ResponseDto<TerritoryManagerDto>> {
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+        return await this.commandBus.execute(new UpdateTerritoryManagerCommand(id, dto, user));
+    }
+
+    // DELETE - DELETE /territory-manager/:id
+    @Delete(':id')
+    async delete(
+        @Param('id') id: string,
+        @Query('deletionReason') deletionReason?: string,
+        @Query('userRole') userRole?: string,
+        @Headers() user?: User
+    ): Promise<ResponseDto<TerritoryManagerDto>> {
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+        return await this.commandBus.execute(new DeleteTerritoryManagerCommand(id, deletionReason, user));
+    }
+
+    // APPROVE - POST /territory-manager/:id/approve
+    @Post(':id/approve')
+    async approve(
+        @Param('id') id: string,
+        @Query('userRole') userRole?: string,
+        @Headers() user?: User
+    ): Promise<ResponseDto<TerritoryManagerDto>> {
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+        return await this.commandBus.execute(new ApproveTerritoryManagerCommand(id, user));
+    }
+
+    // DENY - POST /territory-manager/:id/deny
+    @Post(':id/deny')
+    async deny(
+        @Param('id') id: string,
+        @Body() dto: DenyTerritoryManagerDto,
+        @Query('userRole') userRole?: string,
+        @Headers() user?: User
+    ): Promise<ResponseDto<TerritoryManagerDto>> {
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+        return await this.commandBus.execute(new DenyTerritoryManagerCommand(id, dto.approverMessage, user));
+    }
+
+    // SEARCH BY NAME - GET /territory-manager/name/:name
+    @Get('name/:name')
+    async getByName(
+        @Param('name') name: string,
+        @Query('limit') limit?: string,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string,
+        @Query('userRole') userRole?: string
+    ): Promise<ResponseDto<PageDto<TerritoryManagerDto>>> {
+        return await this.queryBus.execute(
+            new GetTerritoryManagerByNameQuery(name, Number(limit) || 10, direction, cursorPointer)
+        );
+    }
+
+    // FILTER BY STATUS - GET /territory-manager/status
+    @Get('status')
+    async getByStatus(
+        @Query('status') status: string,
+        @Query('limit') limit?: string,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string,
+        @Query('userRole') userRole?: string,
+        @Query('name') name?: string
+    ): Promise<ResponseDto<PageDto<TerritoryManagerDto>>> {
+        return await this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(
+                Number(limit) || 10,
+                status as StatusEnum,
+                direction,
+                cursorPointer,
+                name
+            )
+        );
+    }
+
+    // LIST ALL (PAGINATED) - GET /territory-manager
+    @Get()
+    async getAll(
+        @Query('limit') limit?: string,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string,
+        @Query('userRole') userRole?: string
+    ): Promise<ResponseDto<PageDto<TerritoryManagerDto>>> {
+        return await this.queryBus.execute(
+            new GetRecordsPaginationQuery(
+                Number(limit) || 10,
+                undefined, // status
+                direction,
+                cursorPointer
+            )
+        );
+    }
+
+    // GET BY ID - GET /territory-manager/:id
+    @Get(':id')
+    async getById(@Param('id') id: string): Promise<ResponseDto<TerritoryManagerDto>> {
+        return await this.queryBus.execute(new GetTerritoryManagerByIdQuery(id));
+    }
+}
+```
+
+**CRITICAL PATTERN**: `userRole` query parameter only works when `BYPASS_AUTH === 'ENABLED'` (dev only).
+
+---
+
+#### Command Handlers
+
+**CREATE HANDLER** (`command/create-record/create.handler.ts`):
+
+```typescript
+async execute(command: CreateTerritoryManagerCommand): Promise<ResponseDto<TerritoryManagerDto>> {
+    try {
+        // 1. Validate name uniqueness
+        const existing = await this.territoryManagerDatabaseService.findRecordByName(
+            command.dto.territoryManagerName
+        );
+        if (existing) {
+            throw new BadRequestException(
+                `Territory Manager with name "${command.dto.territoryManagerName}" already exists`
+            );
+        }
+
+        // 2. Check user authorization and set status
+        const hasApprovalPermission =
+            command.user.roles?.includes(UserRole.SUPER_ADMIN) ||
+            command.user.roles?.includes(UserRole.ADMIN);
+
+        const status = hasApprovalPermission ? StatusEnum.ACTIVE : StatusEnum.NEW_RECORD;
+
+        // 3. Build DTO
+        const newRecord: TerritoryManagerDto = {
+            territoryManagerId: uuidv4(),
+            territoryManagerName: command.dto.territoryManagerName,
+            contactNo: command.dto.contactNo || '',
+            status,
+            activityLogs: [],
+            forApprovalVersion: hasApprovalPermission ? undefined : {
+                territoryManagerName: command.dto.territoryManagerName,
+                contactNo: command.dto.contactNo || ''
+            }
+        };
+
+        // 4. Add activity log
+        const activityMessage = hasApprovalPermission
+            ? `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager created by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+            : `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager created by ${command.user.username} for approval`;
+
+        newRecord.activityLogs.push(activityMessage);
+
+        // 5. Save to database
+        const createdRecord = await this.territoryManagerDatabaseService.createRecord(newRecord);
+
+        this.logger.log(`Territory manager created: ${createdRecord.territoryManagerId}`);
+        return new ResponseDto<TerritoryManagerDto>(createdRecord, 201);
+
+    } catch (error) {
+        return this.handleError(error, command.dto.territoryManagerName);
+    }
+}
+```
+
+**UPDATE HANDLER** (`command/update-record/update.handler.ts`):
+
+```typescript
+async execute(command: UpdateTerritoryManagerCommand): Promise<ResponseDto<TerritoryManagerDto>> {
+    try {
+        // 1. Validate record exists
+        const existingRecord = await this.territoryManagerDatabaseService.findRecordById(
+            command.recordId
+        );
+        if (!existingRecord) {
+            throw new NotFoundException(`Territory manager not found for id ${command.recordId}`);
+        }
+
+        // 2. Validate name uniqueness (if name changed)
+        if (command.dto.territoryManagerName &&
+            command.dto.territoryManagerName !== existingRecord.territoryManagerName) {
+            const duplicate = await this.territoryManagerDatabaseService.findRecordByName(
+                command.dto.territoryManagerName
+            );
+            if (duplicate && duplicate.territoryManagerId !== command.recordId) {
+                throw new BadRequestException(
+                    `Territory Manager with name "${command.dto.territoryManagerName}" already exists`
+                );
+            }
+        }
+
+        // 3. Check authorization
+        const hasApprovalPermission =
+            command.user.roles?.includes(UserRole.SUPER_ADMIN) ||
+            command.user.roles?.includes(UserRole.ADMIN);
+
+        // 4. Process update based on role
+        if (hasApprovalPermission) {
+            // ADMIN: Direct update to ACTIVE
+            const oldName = existingRecord.territoryManagerName;
+
+            existingRecord.status = StatusEnum.ACTIVE;
+            existingRecord.territoryManagerName = command.dto.territoryManagerName || existingRecord.territoryManagerName;
+            existingRecord.contactNo = command.dto.contactNo !== undefined ? command.dto.contactNo : existingRecord.contactNo;
+            existingRecord.changeReason = undefined; // Clear changeReason for admin updates
+
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+            );
+
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, 10);
+
+            const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+            // Publish name change event if name changed
+            if (oldName !== updatedRecord.territoryManagerName) {
+                await this.publishTerritoryManagerNameChangeEvent(
+                    updatedRecord.territoryManagerId,
+                    updatedRecord.territoryManagerName
+                );
+            }
+
+            return new ResponseDto<TerritoryManagerDto>(updatedRecord, 200);
+
+        } else {
+            // USER: Store changes in forApprovalVersion, status = FOR_APPROVAL
+            existingRecord.status = StatusEnum.FOR_APPROVAL;
+
+            // Detect field changes
+            const fieldChanges = detectFieldChanges(existingRecord, {
+                territoryManagerName: command.dto.territoryManagerName,
+                contactNo: command.dto.contactNo
+            });
+            const formattedChanges = formatFieldChanges(fieldChanges);
+
+            // Combine user reason with auto-detected changes
+            existingRecord.changeReason = command.dto.changeReason
+                ? `${command.dto.changeReason}${formattedChanges}`
+                : formattedChanges;
+
+            existingRecord.forApprovalVersion = {
+                territoryManagerName: command.dto.territoryManagerName || existingRecord.territoryManagerName,
+                contactNo: command.dto.contactNo !== undefined ? command.dto.contactNo : existingRecord.contactNo
+            };
+
+            existingRecord.activityLogs = existingRecord.activityLogs || [];
+            existingRecord.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager updated by ${command.user.username} for approval - ${formattedChanges}`
+            );
+
+            existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, 10);
+
+            const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+            return new ResponseDto<TerritoryManagerDto>(updatedRecord, 200);
+        }
+
+    } catch (error) {
+        return this.handleError(error, command.recordId);
+    }
+}
+```
+
+**DELETE HANDLER** (`command/delete-record/delete.handler.ts`):
+
+```typescript
+async execute(command: DeleteTerritoryManagerCommand): Promise<ResponseDto<TerritoryManagerDto>> {
+    try {
+        // 1. Validate record exists
+        const existingRecord = await this.territoryManagerDatabaseService.findRecordById(
+            command.recordId
+        );
+        if (!existingRecord) {
+            throw new NotFoundException(`Territory manager not found for id ${command.recordId}`);
+        }
+
+        // 2. Check authorization
+        const hasApprovalPermission =
+            command.user.roles?.includes(UserRole.SUPER_ADMIN) ||
+            command.user.roles?.includes(UserRole.ADMIN);
+
+        // 3. Soft delete based on role
+        const dto: TerritoryManagerDto = {
+            ...existingRecord,
+            status: hasApprovalPermission ? StatusEnum.INACTIVE : StatusEnum.FOR_DEACTIVATION,
+            deletionReason: command.deletionReason || 'No reason provided'
+        };
+
+        dto.activityLogs = dto.activityLogs || [];
+        const activityMessage = hasApprovalPermission
+            ? `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager soft deleted by ${command.user.username}`
+            : `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager marked for deletion by ${command.user.username}`;
+
+        dto.activityLogs.push(activityMessage);
+        dto.activityLogs = reduceArrayContents(dto.activityLogs, 10);
+
+        // 4. Update record (soft delete - never deleteRecord())
+        const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(dto);
+
+        this.logger.log(`Territory manager ${hasApprovalPermission ? 'soft deleted' : 'marked for deletion'}: ${dto.territoryManagerId}`);
+        return new ResponseDto<TerritoryManagerDto>(updatedRecord, 200);
+
+    } catch (error) {
+        return this.handleError(error, command.recordId);
+    }
+}
+```
+
+**CRITICAL**: Territory Manager is **MASTER DATA** - always uses `updateRecord()`, never `deleteRecord()`. Maintains referential integrity with Area and Invoice entities.
+
+**APPROVE HANDLER** (`command/approve-record/approve.handler.ts`):
+
+```typescript
+async execute(command: ApproveTerritoryManagerCommand): Promise<ResponseDto<TerritoryManagerDto>> {
+    try {
+        // 1. Validate record exists
+        const existingRecord = await this.territoryManagerDatabaseService.findRecordById(
+            command.recordId
+        );
+        if (!existingRecord) {
+            throw new NotFoundException(`Territory manager not found for id ${command.recordId}`);
+        }
+
+        // 2. Check authorization
+        const hasApprovalPermission =
+            command.user.roles?.includes(UserRole.SUPER_ADMIN) ||
+            command.user.roles?.includes(UserRole.ADMIN);
+
+        if (!hasApprovalPermission) {
+            throw new ForbiddenException('User not authorized to approve territory manager');
+        }
+
+        // 3. Process approval based on current status
+        switch (existingRecord.status) {
+            case StatusEnum.FOR_APPROVAL:
+            case StatusEnum.NEW_RECORD:
+                return await this.approveTerritoryManager(existingRecord, command);
+
+            case StatusEnum.FOR_DEACTIVATION:
+                return await this.approveDeactivation(existingRecord, command);
+
+            default:
+                throw new BadRequestException(
+                    `Cannot approve territory manager with status: ${existingRecord.status}`
+                );
+        }
+
+    } catch (error) {
+        return this.handleError(error, command.recordId);
+    }
+}
+
+private async approveTerritoryManager(
+    existingRecord: TerritoryManagerDto,
+    command: ApproveTerritoryManagerCommand
+): Promise<ResponseDto<TerritoryManagerDto>> {
+    const oldName = existingRecord.territoryManagerName;
+
+    // Apply forApprovalVersion changes
+    existingRecord.status = StatusEnum.ACTIVE;
+    existingRecord.territoryManagerName = existingRecord.forApprovalVersion?.territoryManagerName || existingRecord.territoryManagerName;
+    existingRecord.contactNo = existingRecord.forApprovalVersion?.contactNo !== undefined
+        ? existingRecord.forApprovalVersion.contactNo
+        : existingRecord.contactNo;
+
+    // Clear approval-related fields
+    existingRecord.forApprovalVersion = {};
+    existingRecord.changeReason = null;
+
+    existingRecord.activityLogs = existingRecord.activityLogs || [];
+    existingRecord.activityLogs.push(
+        `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager approved by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+    );
+
+    existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, 10);
+
+    const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+    // Publish event if name changed
+    if (oldName !== updatedRecord.territoryManagerName) {
+        await this.publishTerritoryManagerNameChangeEvent(
+            updatedRecord.territoryManagerId,
+            updatedRecord.territoryManagerName
+        );
+    }
+
+    return new ResponseDto<TerritoryManagerDto>(updatedRecord, 200);
+}
+
+private async approveDeactivation(
+    existingRecord: TerritoryManagerDto,
+    command: ApproveTerritoryManagerCommand
+): Promise<ResponseDto<TerritoryManagerDto>> {
+    // Set status to INACTIVE (soft delete)
+    existingRecord.status = StatusEnum.INACTIVE;
+    existingRecord.changeReason = null;
+
+    existingRecord.activityLogs = existingRecord.activityLogs || [];
+    existingRecord.activityLogs.push(
+        `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager deactivation approved by ${command.user.username}, status set to ${StatusEnum.INACTIVE}`
+    );
+
+    existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, 10);
+
+    const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+    return new ResponseDto<TerritoryManagerDto>(updatedRecord, 200);
+}
+```
+
+**DENY HANDLER** (`command/deny-record/deny.handler.ts`):
+
+```typescript
+private async processDenial(
+    existingRecord: TerritoryManagerDto,
+    command: DenyTerritoryManagerCommand
+): Promise<ResponseDto<TerritoryManagerDto>> {
+    switch (existingRecord.status) {
+        case StatusEnum.FOR_APPROVAL:
+            return await this.denyTerritoryManager(existingRecord, command);
+
+        case StatusEnum.FOR_DELETION:
+        case StatusEnum.FOR_DEACTIVATION:
+            return await this.denyDeletion(existingRecord, command);
+
+        case StatusEnum.NEW_RECORD:
+            return await this.deleteRecord(existingRecord);
+
+        default:
+            throw new BadRequestException(
+                `Cannot deny territory manager with status: ${existingRecord.status}`
+            );
+    }
+}
+
+private async denyTerritoryManager(
+    existingRecord: TerritoryManagerDto,
+    command: DenyTerritoryManagerCommand
+): Promise<ResponseDto<TerritoryManagerDto>> {
+    // Revert to ACTIVE, discard forApprovalVersion
+    existingRecord.status = StatusEnum.ACTIVE;
+
+    existingRecord.activityLogs = existingRecord.activityLogs || [];
+    existingRecord.activityLogs.push(
+        `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager denied by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
+    );
+    existingRecord.activityLogs.push(
+        `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager denied by ${command.user.username}, approver message: ${command.approverMessage}`
+    );
+
+    existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, 10);
+
+    existingRecord.forApprovalVersion = {};
+    existingRecord.changeReason = null;
+    existingRecord.approverMessage = null;
+
+    const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+    return new ResponseDto<TerritoryManagerDto>(updatedRecord, 200);
+}
+
+private async denyDeletion(
+    existingRecord: TerritoryManagerDto,
+    command: DenyTerritoryManagerCommand
+): Promise<ResponseDto<TerritoryManagerDto>> {
+    // Cancel deletion request, revert to ACTIVE
+    existingRecord.changeReason = null;
+    existingRecord.status = StatusEnum.ACTIVE;
+
+    existingRecord.activityLogs = existingRecord.activityLogs || [];
+    existingRecord.activityLogs.push(
+        `Date: ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}, Territory manager deletion denied by ${command.user.username}, approver message: ${command.approverMessage}, status set to ${StatusEnum.ACTIVE}`
+    );
+
+    existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, 10);
+    existingRecord.approverMessage = null;
+
+    const updatedRecord = await this.territoryManagerDatabaseService.updateRecord(existingRecord);
+
+    return new ResponseDto<TerritoryManagerDto>(updatedRecord, 200);
+}
+
+private async deleteRecord(
+    existingRecord: TerritoryManagerDto
+): Promise<ResponseDto<TerritoryManagerDto>> {
+    // NEW_RECORD denial = hard delete (never reached ACTIVE state)
+    existingRecord.changeReason = null;
+    await this.territoryManagerDatabaseService.deleteRecord(existingRecord);
+
+    return new ResponseDto<TerritoryManagerDto>(existingRecord, 200);
+}
+```
+
+**CRITICAL**: `FOR_DEACTIVATION` denial reverts to `ACTIVE`, just like `FOR_DELETION`.
+
+---
+
+### 🗄️ Territory Manager Database Schema
+
+#### DynamoDB Table Structure
+
+**Table Name**: From environment configuration (e.g., `invoicing-dev`)
+
+**Primary Keys**:
+
+```typescript
+PK: 'TERRITORY_MANAGER';
+SK: '{territoryManagerId}'; // UUID v4
+```
+
+**GSI1 - Name Index**:
+
+```typescript
+GSI1PK: 'TERRITORY_MANAGER';
+GSI1SK: '{territoryManagerName}';
+```
+
+**Purpose**: Search by name, list all territory managers, name-based pagination
+
+**GSI2 - Status Index**:
+
+```typescript
+GSI2PK: 'TERRITORY_MANAGER#{status}';
+GSI2SK: '{territoryManagerName}';
+```
+
+**Purpose**: Filter by status (ACTIVE, INACTIVE, FOR_APPROVAL, FOR_DEACTIVATION, NEW_RECORD)
+
+**Complete Field List**:
+
+```typescript
+{
+    // Primary identifiers
+    territoryManagerId: string;          // UUID v4
+    territoryManagerName: string;        // Required, unique
+    contactNo: string;                   // Optional
+
+    // Status and workflow
+    status: StatusEnum;                  // ACTIVE | INACTIVE | FOR_APPROVAL | FOR_DEACTIVATION | NEW_RECORD
+
+    // Approval workflow
+    forApprovalVersion: {                // Pending changes from USER updates
+        territoryManagerName?: string;
+        contactNo?: string;
+    };
+    changeReason: string;                // User reason + auto-detected changes
+    approverMessage: string;             // Admin denial reason
+    deletionReason: string;              // Soft delete reason
+
+    // Audit
+    activityLogs: string[];             // Last 10 entries
+
+    // Index keys
+    GSI1PK: string;                     // 'TERRITORY_MANAGER'
+    GSI1SK: string;                     // territoryManagerName
+    GSI2PK: string;                     // 'TERRITORY_MANAGER#{status}'
+    GSI2SK: string;                     // territoryManagerName
+}
+```
+
+---
+
+#### Database Service Methods
+
+**File**: `libs/backend/invoicing-database-service/src/lib/territory-manager-database.service.ts`
+
+**CREATE**:
+
+```typescript
+async createRecord(dto: TerritoryManagerDto): Promise<TerritoryManagerDto> {
+    dto.GSI1PK = 'TERRITORY_MANAGER';
+    dto.GSI1SK = dto.territoryManagerName;
+    dto.GSI2PK = `TERRITORY_MANAGER#${dto.status}`;
+    dto.GSI2SK = dto.territoryManagerName;
+
+    await this.territoryManagerTable.put({
+        PK: 'TERRITORY_MANAGER',
+        SK: dto.territoryManagerId,
+        ...dto
+    });
+
+    return dto;
+}
+```
+
+**UPDATE**:
+
+```typescript
+async updateRecord(dto: TerritoryManagerDto): Promise<TerritoryManagerDto> {
+    // Update GSI keys if name or status changed
+    dto.GSI1PK = 'TERRITORY_MANAGER';
+    dto.GSI1SK = dto.territoryManagerName;
+    dto.GSI2PK = `TERRITORY_MANAGER#${dto.status}`;
+    dto.GSI2SK = dto.territoryManagerName;
+
+    await this.territoryManagerTable.put({
+        PK: 'TERRITORY_MANAGER',
+        SK: dto.territoryManagerId,
+        ...dto
+    });
+
+    return dto;
+}
+```
+
+**FIND BY ID**:
+
+```typescript
+async findRecordById(id: string): Promise<TerritoryManagerDto | null> {
+    const record = await this.territoryManagerTable.get({
+        PK: 'TERRITORY_MANAGER',
+        SK: id
+    });
+
+    return record ? this.convertToDto(record) : null;
+}
+```
+
+**FIND BY NAME**:
+
+```typescript
+async findRecordByName(name: string): Promise<TerritoryManagerDto | null> {
+    const record = await this.territoryManagerTable.get(
+        {
+            GSI1PK: 'TERRITORY_MANAGER',
+            GSI1SK: name
+        },
+        { index: 'GSI1' }
+    );
+
+    return record ? this.convertToDto(record) : null;
+}
+```
+
+**FIND BY STATUS (with optional name filter)**:
+
+```typescript
+async findRecordsByStatusPagination(
+    limit: number,
+    status: StatusEnum,
+    direction?: string,
+    cursor?: string,
+    name?: string
+): Promise<PageDto<TerritoryManagerDto>> {
+    const records = await this.territoryManagerTable.find(
+        {
+            GSI2PK: `TERRITORY_MANAGER#${status}`,
+            ...(name ? { GSI2SK: { begins: name } } : {})
+        },
+        createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursor)
+    );
+
+    const pageRecordCursorPointers = pageRecordHandler(
+        records,
+        limit,
+        direction,
+        'GSI2PK',
+        'GSI2SK',
+        'PK',
+        'SK',
+        JSON.stringify(records.next),
+        JSON.stringify(records.prev)
+    );
+
+    return new PageDto(
+        await this.convertToDtoList(records),
+        pageRecordCursorPointers.nextCursorPointer,
+        pageRecordCursorPointers.prevCursorPointer
+    );
+}
+```
+
+**FIND BY NAME (pagination)**:
+
+```typescript
+async findRecordsByNamePagination(
+    limit: number,
+    direction?: string,
+    cursor?: string,
+    name?: string
+): Promise<PageDto<TerritoryManagerDto>> {
+    const records = await this.territoryManagerTable.find(
+        {
+            GSI1PK: 'TERRITORY_MANAGER',
+            ...(name ? { GSI1SK: { begins: name } } : {})
+        },
+        createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursor)
+    );
+
+    const pageRecordCursorPointers = pageRecordHandler(
+        records,
+        limit,
+        direction,
+        'GSI1PK',
+        'GSI1SK',
+        'PK',
+        'SK',
+        JSON.stringify(records.next),
+        JSON.stringify(records.prev)
+    );
+
+    return new PageDto(
+        await this.convertToDtoList(records),
+        pageRecordCursorPointers.nextCursorPointer,
+        pageRecordCursorPointers.prevCursorPointer
+    );
+}
+```
+
+**PAGINATION (all records)**:
+
+```typescript
+async findRecordsByPagination(
+    limit: number,
+    direction?: string,
+    cursor?: string
+): Promise<PageDto<TerritoryManagerDto>> {
+    const records = await this.territoryManagerTable.find(
+        {
+            GSI1PK: 'TERRITORY_MANAGER'
+        },
+        createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursor)
+    );
+
+    const pageRecordCursorPointers = pageRecordHandler(
+        records,
+        limit,
+        direction,
+        'GSI1PK',
+        'GSI1SK',
+        'PK',
+        'SK',
+        JSON.stringify(records.next),
+        JSON.stringify(records.prev)
+    );
+
+    return new PageDto(
+        await this.convertToDtoList(records),
+        pageRecordCursorPointers.nextCursorPointer,
+        pageRecordCursorPointers.prevCursorPointer
+    );
+}
+```
+
+**Cursor Format**: JSON-serialized DynamoDB pagination tokens
+
+---
+
+### 📋 Territory Manager Business Rules Summary
+
+#### Status Transitions
+
+```
+CREATE:
+  ADMIN/SUPER_ADMIN → ACTIVE (immediate)
+  USER → NEW_RECORD (requires approval)
+
+UPDATE (ACTIVE record):
+  ADMIN/SUPER_ADMIN → ACTIVE (direct, immediate)
+  USER → FOR_APPROVAL (changes in forApprovalVersion)
+
+DELETE:
+  ADMIN/SUPER_ADMIN → INACTIVE (immediate soft delete)
+  USER → FOR_DEACTIVATION (requires approval for soft delete)
+
+APPROVE:
+  NEW_RECORD → ACTIVE (apply initial data)
+  FOR_APPROVAL → ACTIVE (apply forApprovalVersion changes)
+  FOR_DEACTIVATION → INACTIVE (approve soft delete)
+
+DENY:
+  NEW_RECORD → [HARD DELETE - never reached ACTIVE state]
+  FOR_APPROVAL → ACTIVE (discard forApprovalVersion)
+  FOR_DEACTIVATION → ACTIVE (cancel deletion request)
+
+REACTIVATE (ADMIN only):
+  INACTIVE → ACTIVE (restore record)
+```
+
+#### Validation Rules
+
+1. **Territory Manager Name**:
+
+    - Required on create and update
+    - Must be unique across all records
+    - Checked using `findRecordByName()` before create/update
+
+2. **Change Reason** (non-admin updates):
+
+    - Required for USER when editing ACTIVE records
+    - Minimum 10 characters (enforced by ChangeReasonField component)
+    - Auto-combined with field change detection:
+        ```
+        {userReason}
+        \nterritoryManagerName: {oldValue} → {newValue}
+        \ncontactNo: {oldValue} → {newValue}
+        ```
+
+3. **Deletion Reason**:
+
+    - Optional but recommended
+    - Default: "No reason provided"
+    - Stored in `deletionReason` field
+    - Displayed in approval tab for FOR_DEACTIVATION records
+
+4. **Approver Message**:
+    - Required when denying changes
+    - Minimum 3 characters (enforced by DenyReasonDialog component)
+    - Stored in activity logs
+    - Cleared after processing
+
+#### Role-based Permissions
+
+**SUPER_ADMIN / ADMIN**:
+
+-   ✅ Create → ACTIVE immediately (no approval)
+-   ✅ Update → Direct changes, ACTIVE status maintained
+-   ✅ Delete → INACTIVE immediately (soft delete)
+-   ✅ Approve pending records (NEW_RECORD, FOR_APPROVAL, FOR_DEACTIVATION)
+-   ✅ Deny pending records with approver message
+-   ✅ Reactivate INACTIVE records
+-   ✅ See all statuses in filter dropdown
+-   ✅ ChangeReasonField hidden (no reason required)
+-   ✅ Event publishing for name changes
+
+**USER**:
+
+-   ❌ Create → NEW_RECORD (requires approval)
+-   ❌ Update → FOR_APPROVAL (changes in forApprovalVersion)
+-   ❌ Delete → FOR_DEACTIVATION (requires approval)
+-   ❌ Cannot approve/deny
+-   ❌ Cannot reactivate INACTIVE records
+-   ❌ Limited status filter options (ALL, ACTIVE only)
+-   ✅ ChangeReasonField required and visible for edits
+-   ❌ No event publishing
+
+#### Activity Logs
+
+-   Limited to last 10 entries via `reduceArrayContents()`
+-   Format: `Date: {timestamp}, {action} by {username}, {details}`
+-   Timestamps: `new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })`
+-   Two entries for denial: one for denial action, one for approver message
+-   Displayed in Activity Logs tab with styled badges from `getActivityStyle()`
+
+#### Event Publishing
+
+**TERRITORY_MANAGER_NAME_CHANGED** (SQS):
+
+-   Triggered when:
+    -   Admin updates name directly (update handler)
+    -   Admin approves name change (approve handler)
+-   Event data: `{ territoryManagerId, newTerritoryManagerName }`
+-   Purpose: Update related Area and Invoice records
+-   Queue: Configured in environment
+
+**TERRITORY_MANAGER_REACTIVATED** (SQS):
+
+-   Triggered when: Admin changes INACTIVE → ACTIVE
+-   Event data: `{ territoryManagerId, status: 'ACTIVE' }`
+-   Purpose: Notify dependent systems of reactivation
+
+#### Pagination
+
+-   **Type**: Cursor-based (DynamoDB native)
+-   **Default Page Size**: 10 items
+-   **Cursor Serialization**: JSON.stringify() on pagination tokens
+-   **Direction**: 'next' | 'prev'
+-   **Reset Triggers**: Search change, status filter change, page size change
+-   **Cursor Storage**: `nextCursor`, `prevCursor`, `currentCursor` in state
+
+#### Search & Filtering
+
+-   **Search by Name**: Uses GSI1 with `{ GSI1SK: { begins: searchQuery } }`
+-   **Filter by Status**: Uses GSI2 with `GSI2PK: 'TERRITORY_MANAGER#{status}'`
+-   **Combined Filter**: Can filter by status AND search by name simultaneously
+-   **Debounce**: 500ms on search input (frontend only)
+-   **Case Sensitivity**: DynamoDB native (case-sensitive)
+
+---
+
+### ✅ Territory Manager Reusable Components Integration
+
+#### From @components-web Library
+
+**1. StatusBadge**:
+
+```tsx
+<StatusBadge status={territoryManager.status || StatusEnum.ACTIVE} />
+```
+
+-   **Usage**: Table status column
+-   **Props**: `status` (required)
+-   **Styling**: Auto color-coded by status
+-   **Location**: List page table transformation
+
+**2. Pagination**:
+
+```tsx
+<Pagination
+    pageSize={pageSize}
+    onPageSizeChange={onPageSizeChange}
+    onPrevious={onPrevious}
+    onNext={onNext}
+    hasPrevious={!!prevCursor}
+    hasNext={!!nextCursor}
+/>
+```
+
+-   **Usage**: Bottom of table component
+-   **Props**: All required except page size options (default: 10, 20, 50, 100)
+-   **Styling**: Consistent with design system
+-   **Location**: TerritoryManagerTable component
+
+**3. DeleteConfirmationModal**:
+
+```tsx
+<DeleteConfirmationModal
+    show={showDeleteConfirm}
+    record={selectedTerritoryManager}
+    recordDisplayName={selectedTerritoryManager?.territoryManagerName}
+    onConfirm={handleDeleteConfirm}
+    onCancel={handleDeleteCancel}
+/>
+```
+
+-   **Usage**: Soft delete confirmation with reason capture
+-   **Props**: `record` (required), `recordDisplayName` (optional)
+-   **Validation**: Minimum 3 characters for deletion reason
+-   **Location**: Edit page modal section
+
+**4. DenyReasonDialog**:
+
+```tsx
+<DenyReasonDialog
+    show={showDenyDialog}
+    record={selectedTerritoryManager}
+    recordDisplayName={selectedTerritoryManager?.territoryManagerName}
+    onConfirm={handleDenyConfirm}
+    onCancel={handleDenyCancel}
+/>
+```
+
+-   **Usage**: Admin denial with approver message capture
+-   **Props**: `record` (required), `recordDisplayName` (optional)
+-   **Validation**: Minimum 3 characters for approver message
+-   **Styling**: Yellow-themed warning modal
+-   **Location**: Edit page modal section
+
+**5. ConfirmationModal**:
+
+```tsx
+<ConfirmationModal
+    show={showReactivateConfirm}
+    record={selectedTerritoryManager}
+    variant="reactivate"
+    recordDisplayName={selectedTerritoryManager?.territoryManagerName}
+    customMessage="This will change the status from INACTIVE to ACTIVE."
+    onConfirm={handleReactivateConfirm}
+    onCancel={handleReactivateCancel}
+/>
+```
+
+-   **Usage**: Generic confirmation (reactivate, etc.)
+-   **Variants**: 'delete' | 'reactivate' | 'warning' | 'info'
+-   **Props**: `variant` determines colors and icon
+-   **Location**: Edit page modal section
+
+**6. Input**:
+
+```tsx
+<Input
+    placeholder="Search by name"
+    value={searchQuery}
+    onChange={(val) => onSearchChange(val as string)}
+    leftIcon={Search}
+/>
+```
+
+-   **Usage**: Search input with icon
+-   **Props**: Standard input props + `leftIcon`
+-   **Location**: TerritoryManagerHeader component
+
+**7. Search Icon**:
+
+```tsx
+<Search />
+```
+
+-   **Usage**: Left icon in search Input
+-   **Location**: TerritoryManagerHeader
+
+**8. Add Icon**:
+
+```tsx
+<Add size={18} />
+```
+
+-   **Usage**: Create button icon
+-   **Location**: TerritoryManagerHeader
+
+#### From authenticated-routes/components
+
+**9. ChangeReasonField**:
+
+```tsx
+<ChangeReasonField
+    value={formData.changeReason}
+    onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
+    disabled={selectedTerritoryManager?.status !== StatusEnum.ACTIVE}
+/>
+```
+
+-   **Usage**: Change reason capture for non-admin updates
+-   **Styling**: Yellow-themed with icon and character counter
+-   **Validation**: Minimum 10 characters
+-   **Character Counter**: `X/10 characters` (green when valid, yellow otherwise)
+-   **Visibility**: Hidden for create, hidden for admin, hidden for non-ACTIVE status
+-   **Position**: First component in form (before warning banners)
+-   **Location**: TerritoryManagerForm component
+
+---
+
+### 🎨 Territory Manager Tailwind CSS Standards
+
+#### Color Palette
+
+**Primary Colors**:
+
+-   Blue (primary actions): `bg-blue-600`, `hover:bg-blue-700`, `focus:ring-blue-500`
+-   Red (danger/delete): `bg-red-600`, `hover:bg-red-700`, `focus:ring-red-500`
+-   Green (success/approve): `bg-green-600`, `hover:bg-green-700`, `focus:ring-green-500`
+-   Yellow (warning/pending): `bg-yellow-500`, `border-yellow-500`, `text-yellow-700`
+-   Gray (neutral): `bg-gray-50`, `border-gray-200`, `text-gray-600`
+
+**Status-based Tab Colors**:
+
+-   ACTIVE: `bg-green-600 text-white`
+-   FOR_APPROVAL: `bg-yellow-500 text-white`
+-   FOR_DELETION/FOR_DEACTIVATION: `bg-red-600 text-white`
+-   NEW_RECORD: `bg-blue-600 text-white`
+-   Inactive tabs: `bg-white text-gray-600 hover:bg-gray-100`
+
+#### Typography
+
+**Font Weights**:
+
+-   `font-bold`: Labels, headings
+-   `font-semibold`: Buttons, important text
+-   `font-medium`: Form inputs, table text
+-   `text-sm`: Standard size
+-   `text-xs`: Headers, small labels
+
+#### Spacing
+
+**Padding**:
+
+-   Buttons: `px-6 py-3` (standard), `px-4 py-2` (compact)
+-   Inputs: `px-4 py-3`
+-   Cards: `p-4` (mobile), `p-6` (desktop)
+-   Containers: `px-4 py-4` (mobile), `px-6 py-6` (desktop)
+
+**Gaps**:
+
+-   Button groups: `gap-2`
+-   Form fields: `gap-3`
+-   Sections: `gap-6`
+-   Icons with text: `gap-2`
+
+#### Borders
+
+**Border Widths**:
+
+-   Standard: `border` or `border-2`
+-   Emphasis: `border-2`
+
+**Border Radii**:
+
+-   Standard: `rounded-md`
+-   Large: `rounded-xl`
+-   Full: `rounded-full` (badges, dots)
+
+**Border Colors**:
+
+-   Neutral: `border-gray-200`, `border-gray-300`
+-   Focus: `border-blue-500`
+-   Danger: `border-red-500`
+-   Warning: `border-yellow-500`
+
+#### Shadows
+
+-   Standard: `shadow-sm`
+-   Elevated: `shadow-lg`
+-   Hover: `hover:shadow-md`
+
+#### Transitions
+
+-   Standard: `transition-colors duration-200`
+-   Comprehensive: `transition-all duration-200`
+
+#### Focus States
+
+```tsx
+focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+```
+
+#### Disabled States
+
+```tsx
+disabled:cursor-not-allowed disabled:opacity-50
+```
+
+#### Responsive Patterns
+
+```tsx
+// Mobile first, then desktop
+<div className="w-full sm:w-auto">
+<div className="flex-col sm:flex-row">
+<div className="hidden sm:block">  // Desktop only
+<div className="sm:hidden">        // Mobile only
+```
+
+---
+
+### 🔑 Territory Manager Key Takeaways
+
+**What Makes Territory Manager the Reference Implementation**:
+
+1. **Complete Soft Delete Pattern**: Uses INACTIVE and FOR_DEACTIVATION statuses correctly
+2. **Proper Modal Integration**: All modals use `record` prop pattern from @components-web
+3. **Change Detection**: Auto-detects field changes and combines with user reason
+4. **Status Filtering**: Efficient GSI2-based queries with admin-only options
+5. **Tab Auto-Selection**: Automatically opens Pending Changes tab for admins
+6. **Field Highlighting**: Visual indicators for changed fields in approval tab
+7. **Event Publishing**: Publishes SQS events for name changes and reactivation
+8. **Role-based UI**: Components conditionally rendered based on user role
+9. **Comprehensive Validation**: Frontend and backend validation with clear error messages
+10. **Activity Logging**: Proper timestamp formatting and log rotation
+11. **Responsive Design**: Mobile and desktop layouts with consistent styling
+12. **Cursor Pagination**: Efficient DynamoDB-native pagination with direction support
+
+**Common Patterns to Replicate**:
+
+-   Status dropdown in header: Admin sees all statuses, users see limited options
+-   ChangeReasonField position: Always first component in form when visible
+-   Modal props: Always use `record` and `recordDisplayName`, never `entityName`
+-   Tab colors: Status-based color coding for visual consistency
+-   Button classes: Exact Tailwind classes for hover, focus, disabled states
+-   GSI structure: GSI1 for name/pagination, GSI2 for status filtering
+-   Activity logs: Manila timezone, 10-entry limit, two entries for denial
+
+---
+
+## 🏗️ Complete Stack Requirements
+
+**This section defines the COMPLETE implementation requirements across all layers of the application.**
+
+### DTO Layer
+
+**Purpose**: Data Transfer Objects define the shape of data moving between layers.
+
+#### Required Properties for ALL Modules
+
+```typescript
+// Backend DTO (libs/dto/src/lib/{module}/{entity}.dto.ts)
+export class EntityDto {
+    @ApiProperty()
+    entityId!: string; // ✅ Required - Primary key
+
+    @ApiProperty()
+    status!: StatusEnum; // ✅ Required - Lifecycle status
+
+    @ApiProperty()
+    activityLogs!: string[]; // ✅ Required - Audit trail
+
+    @ApiProperty()
+    forApprovalVersion!: Record<string, unknown>; // ✅ Required - Pending changes
+
+    @ApiProperty()
+    changeReason?: string; // ✅ Required for USER updates
+
+    @ApiProperty()
+    approverMessage?: string; // ✅ Optional - Denial reason
+
+    // Master Data ONLY (soft delete):
+    @ApiProperty()
+    deletionReason?: string; // ❌ For FOR_DEACTIVATION status
+
+    // Transactional Data ONLY (hard delete):
+    @ApiProperty()
+    deletionReason?: string; // ✅ For hard delete audit
+
+    // ... entity-specific fields
+}
+```
+
+#### Frontend TypeScript Interface
+
+```typescript
+// Frontend (libs/frontend/data-access/src/types/{entity}.types.ts)
+export interface EntityDto {
+    entityId: string;
+    status: StatusEnum;
+    activityLogs: string[];
+    forApprovalVersion: Record<string, unknown>;
+    changeReason?: string;
+    deletionReason?: string;
+    approverMessage?: string;
+    // ... entity-specific fields
+}
+
+export interface CreateEntityDto {
+    // All fields optional except business-required ones
+    status?: StatusEnum;
+    changeReason?: string;
+    // ... entity-specific fields
+}
+```
+
+---
+
+### Database Schema
+
+**Purpose**: DynamoDB table structure with proper indexes for querying.
+
+#### Table Structure (DynamoDB OneTable)
+
+```typescript
+// Schema Definition (libs/backend/database/dynamo-db-lib/src/lib/schemas/{module}.schema.ts)
+export const EntitySchema = {
+    format: 'onetable:1.1.0',
+    version: '0.0.1',
+    indexes: {
+        primary: { hash: 'PK', sort: 'SK' },
+        GSI1: { hash: 'GSI1PK', sort: 'GSI1SK' }, // Status-based queries
+        GSI2: { hash: 'GSI2PK', sort: 'GSI2SK' }, // Entity-specific index
+    },
+    models: {
+        Entity: {
+            PK: { type: String, value: 'ENTITY' },
+            SK: { type: String, value: '${entityId}' },
+
+            // Primary fields
+            entityId: { type: String, required: true, generate: 'ulid' },
+            status: { type: String, required: true, enum: Object.values(StatusEnum) },
+            activityLogs: { type: Array, items: { type: String }, default: [] },
+            forApprovalVersion: { type: Object },
+            changeReason: { type: String },
+            deletionReason: { type: String },
+            approverMessage: { type: String },
+
+            // Timestamps
+            created: { type: String },
+            updated: { type: String },
+
+            // GSI1 - Status index (CRITICAL for filtering)
+            GSI1PK: { type: String, value: 'ENTITY' },
+            GSI1SK: { type: String, value: '${status}#${entityId}' },
+
+            // GSI2 - Entity number search
+            GSI2PK: { type: String, value: 'ENTITY#${status}' },
+            GSI2SK: { type: String, value: '${entityNumber}' },
+
+            // ... entity-specific fields with GSI mappings
+        },
+    },
+};
+```
+
+#### Critical Index Patterns
+
+| Index                    | Purpose           | Query Pattern                                         | Example                             |
+| ------------------------ | ----------------- | ----------------------------------------------------- | ----------------------------------- |
+| **Primary (PK/SK)**      | Get by ID         | `PK: 'ENTITY', SK: entityId`                          | Get single record                   |
+| **GSI1 (Status Filter)** | List by status    | `GSI1PK: 'ENTITY', GSI1SK: begins_with('ACTIVE')`     | Show only active records            |
+| **GSI2 (Search)**        | Search/pagination | `GSI2PK: 'ENTITY#ACTIVE', GSI2SK: begins_with('INV')` | Search invoices starting with "INV" |
+
+**⚠️ CRITICAL**: Always include GSI1 for status filtering to exclude soft-deleted records!
+
+---
+
+### Backend Handlers
+
+**Purpose**: CQRS command handlers that implement business logic.
+
+#### Required Handler Files
+
+**Master Data (Accounts Pattern)**:
+
+```
+commands/handlers/
+├── create.handler.ts       # ✅ USER → NEW_RECORD, ADMIN → ACTIVE
+├── update.handler.ts       # ✅ USER → FOR_APPROVAL, ADMIN → direct update
+├── delete.handler.ts       # ✅ USER → FOR_DEACTIVATION, ADMIN → INACTIVE (soft delete)
+├── approve.handler.ts      # ✅ Handles NEW_RECORD, FOR_APPROVAL, FOR_DEACTIVATION
+└── deny.handler.ts         # ✅ Reverts to ACTIVE or hard deletes NEW_RECORD
+```
+
+**Transactional (Vouchers Pattern)**:
+
+```
+commands/handlers/
+├── create.handler.ts       # ✅ USER → NEW_RECORD, ADMIN → ACTIVE
+├── update.handler.ts       # ✅ USER → FOR_APPROVAL, ADMIN → direct update
+├── delete.handler.ts       # ✅ USER → FOR_DELETION, ADMIN → deleteRecord() (hard delete)
+├── approve.handler.ts      # ✅ Handles NEW_RECORD, FOR_APPROVAL, FOR_DELETION (deleteRecord)
+└── deny.handler.ts         # ✅ Reverts to ACTIVE or hard deletes NEW_RECORD
+```
+
+#### Handler Method Requirements
+
+Every handler MUST have:
+
+1. ✅ `execute()` - Main entry point
+2. ✅ `validateRecordExists()` - Check record existence
+3. ✅ `validateUserAuthorization()` - Role-based permission check
+4. ✅ `hasApprovalPermission()` - Check if user is ADMIN/SUPER_ADMIN
+5. ✅ `updateRecordStatus()` - Status transition logic
+6. ✅ `handleError()` - Centralized error handling
+7. ✅ `extractErrorMessage()` - Error message extraction
+
+---
+
+### Frontend Components
+
+**Purpose**: React components that provide user interface.
+
+#### Required Component Files
+
+**Page Structure**:
+
+```
+app/{module}/
+├── page.tsx                           # ✅ List/Table view with search & pagination
+├── create/page.tsx                    # ✅ Create new record
+├── [id]/edit/page.tsx                 # ✅ Edit existing record
+└── components/
+    ├── {Entity}Form.tsx               # ✅ Shared form component (create/edit)
+    ├── {Entity}FormWrapper.tsx        # ✅ Tab interface wrapper (edit mode)
+    ├── {Entity}Table.tsx              # ✅ Data grid with pagination
+    ├── {Entity}Header.tsx             # ✅ Search, filters, create button
+    ├── DeleteConfirmationModal.tsx    # ✅ Delete confirmation dialog
+    ├── DenyReasonDialog.tsx           # ✅ Denial reason input
+    └── index.ts                       # ✅ Export barrel file
+```
+
+#### Component Requirements
+
+**Form Component** (`{Entity}Form.tsx`):
+
+-   ✅ Handles both create and edit modes (`isCreateMode` prop)
+-   ✅ Tab navigation (Details/Approval/Logs) for edit mode
+-   ✅ Status-based field editing (read-only for non-ACTIVE records)
+-   ✅ Approval/Deny buttons for pending records (admin only)
+-   ✅ Delete button (ACTIVE records only OR with confirmation modal)
+-   ✅ Form validation (frontend + backend)
+-   ✅ Change reason field (required for USER updates)
+
+**Table Component** (`{Entity}Table.tsx`):
+
+-   ✅ Desktop and mobile responsive views
+-   ✅ Pagination with page size selector
+-   ✅ Status badges with color coding
+-   ✅ Latest activity display
+-   ✅ Row click navigation to edit page
+-   ✅ Loading and empty states
+
+**List Page** (`page.tsx`):
+
+-   ✅ Search functionality with debounce
+-   ✅ Pagination state management
+-   ✅ Filter by status (optional)
+-   ✅ Create button navigation
+-   ✅ Flash notification handling
+
+---
+
+### API Layer
+
+**Purpose**: RESTful endpoints connecting frontend to backend.
+
+#### Required API Methods
+
+```typescript
+// Frontend API (libs/frontend/data-access/src/api/{entity}.api.ts)
+class EntityApi extends AxiosConfig {
+    // ✅ CREATE
+    createEntity(dto: CreateEntityDto, userRole?: string): Promise<EntityDto>
+
+    // ✅ READ
+    getEntityById(id: string, userRole?: string): Promise<EntityDto>
+    getEntitiesPagination(limit: number, direction?: string, cursor?: string): Promise<PaginatedResponse<EntityDto>>
+    getEntitiesContaining{Field}(limit: number, searchTerm: string, direction?: string, cursor?: string): Promise<PaginatedResponse<EntityDto>>
+
+    // ✅ UPDATE
+    updateEntity(id: string, dto: Partial<EntityDto>, userRole?: string): Promise<EntityDto>
+
+    // ✅ DELETE
+    deleteEntity(dto: EntityDto, userRole?: string): Promise<void>
+
+    // ✅ APPROVE/DENY
+    approveEntity(id: string, userRole?: string): Promise<EntityDto>
+    denyEntity(id: string, approverMessage: string, userRole?: string): Promise<EntityDto>
+}
+```
+
+#### Backend Controller
+
+```typescript
+// Backend Controller (apps/{module}/{entity}-api-service/src/{entity}.controller.ts)
+@Controller('entities')
+export class EntityController {
+    @Post()                                    // ✅ CREATE
+    @Put(':id')                                // ✅ UPDATE
+    @Delete(':id')                             // ✅ DELETE
+    @Post(':id/approve')                       // ✅ APPROVE
+    @Post(':id/deny')                          // ✅ DENY
+    @Get()                                     // ✅ LIST (paginated)
+    @Get(':id')                                // ✅ GET BY ID
+    @Get('search/:field/:value')               // ✅ SEARCH
+}
+```
+
+---
+
+## Backend Implementation - Master Data (Accounts Pattern)
+
+**Module Type**: Master Data / Lookup Entities  
+**Delete Strategy**: SOFT DELETE (INACTIVE status)  
+**Example**: Accounts, Customers, Products, Suppliers  
+**Statuses Used**: ACTIVE, NEW_RECORD, FOR_APPROVAL, INACTIVE, FOR_DEACTIVATION
+
+---
 
 ### CREATE Operation
 
@@ -816,6 +3462,140 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
 -   Customer, Product, Account, Supplier records
 -   Any entity referenced by other transactions
 -   Any master/lookup data
+
+---
+
+### REACTIVATE Operation
+
+**File**: `apps/accounting/accounts-api-service/src/accounts/commands/handlers/update.handler.ts`
+
+**Purpose**: Allow ADMIN/SUPER_ADMIN to reactivate INACTIVE accounts by changing status back to ACTIVE
+
+**⚠️ IMPORTANT**: This uses the UPDATE endpoint with special status handling, not a separate endpoint.
+
+**Flow**:
+
+```
+INACTIVE record (Admin only):
+  ADMIN updates with status=ACTIVE → Status: ACTIVE (immediate reactivation)
+  No approval workflow needed
+  Only INACTIVE → ACTIVE transition allowed for reactivation
+```
+
+**Backend Implementation Pattern**:
+
+**Key Changes in UpdateAccountHandler**:
+
+1. **Allow status from DTO in admin updates**:
+
+```typescript
+private applyAdminUpdates(command: UpdateAccountsCommand, existingRecord: AccountsDto): AccountsDto {
+    const updatedRecord: AccountsDto = {
+        ...existingRecord,
+        ...command.accountsDto,
+    };
+
+    // Allow admin to set status from DTO (for reactivation) or default to ACTIVE
+    const newStatus = command.accountsDto.status || StatusEnum.ACTIVE;
+    updatedRecord.status = newStatus;
+
+    updatedRecord.activityLogs = updatedRecord.activityLogs || [];
+
+    // Create specific log message for reactivation
+    let activityMessage;
+    if (existingRecord.status === StatusEnum.INACTIVE && newStatus === StatusEnum.ACTIVE) {
+        activityMessage = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Account reactivated from INACTIVE to ACTIVE by ${command.user.username}`;
+    } else {
+        activityMessage = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, Account updated by ${command.user.username}, status set to ${newStatus}`;
+    }
+
+    updatedRecord.activityLogs.push(activityMessage);
+    // ... rest of update logic
+}
+```
+
+2. **Add status transition validation**:
+
+```typescript
+private validateStatusTransition(existingStatus: StatusEnum, newStatus: StatusEnum | undefined): void {
+    if (!newStatus || newStatus === existingStatus) {
+        return;
+    }
+
+    // Only allow INACTIVE → ACTIVE transition for reactivation
+    if (existingStatus === StatusEnum.INACTIVE && newStatus !== StatusEnum.ACTIVE) {
+        this.logger.warn(`Invalid status transition from ${existingStatus} to ${newStatus}`);
+        throw new BadRequestException(`Can only reactivate INACTIVE accounts to ACTIVE status`);
+    }
+}
+```
+
+3. **Publish reactivation event**:
+
+```typescript
+// In execute method, after update
+if (hasApprovalPermission &&
+    existingRecord.status === StatusEnum.INACTIVE &&
+    updatedRecord.status === StatusEnum.ACTIVE) {
+    await this.publishAccountReactivatedEvent(updatedRecord.accountingId);
+}
+
+private async publishAccountReactivatedEvent(accountingId: string): Promise<void> {
+    try {
+        const event: AccountEventDto = {
+            eventType: AccountEventEnum.ACCOUNT_REACTIVATED,
+            accountingId,
+            timestamp: new Date().toISOString(),
+        };
+        await this.messageQueueService.sendMessageToSQS(accountEventSqsUrl, JSON.stringify(event));
+    } catch (error) {
+        this.logger.error(`Failed to publish account reactivated event: ${error.message}`);
+    }
+}
+```
+
+**Event DTO Update**:
+
+```typescript
+export enum AccountEventEnum {
+    ACCOUNT_UPDATED = 'ACCOUNT_UPDATED',
+    ACCOUNT_REACTIVATED = 'ACCOUNT_REACTIVATED', // ← New event type
+}
+
+export interface AccountEventDto {
+    eventType: AccountEventEnum;
+    accountingId: string;
+    newAccountName?: string; // ← Made optional for reactivation events
+    timestamp: string;
+}
+```
+
+**Key Patterns**:
+
+-   ✅ Uses existing UPDATE endpoint (no new route needed)
+-   ✅ Admin-only operation (validated in handler)
+-   ✅ Status transition validation (only INACTIVE → ACTIVE)
+-   ✅ Specific activity log message for reactivation
+-   ✅ Event publishing for downstream systems
+-   ✅ No approval workflow (immediate reactivation)
+-   ✅ No change reason required
+
+**Frontend Implementation**:
+
+See [ReactivateConfirmationModal](#reactivateconfirmationmodal) for UI component details.
+
+**Critical Logic**:
+
+-   Only ADMIN/SUPER_ADMIN can reactivate
+-   Only INACTIVE records can be reactivated
+-   Only INACTIVE → ACTIVE transition allowed (validated)
+-   Reactivation is immediate (no approval needed)
+-   Publishes ACCOUNT_REACTIVATED event for downstream processing
+-   Form includes status selector visible only for admins viewing INACTIVE records
 
 ---
 
@@ -1840,10 +4620,49 @@ export default function AccountForm({
 **Critical Patterns**:
 
 -   ✅ **useEffect dependency fix**: Only `[isCreateMode, selectedAccount]` - removing `userHasInteracted` fixes input lag
--   ✅ **canEditFields logic**: `!isReadOnly && (isCreateMode || status === ACTIVE)` - prevents editing non-active records
+-   ✅ **canEditFields logic**: `!isReadOnly && (isCreateMode || status === ACTIVE)` - INACTIVE records cannot have fields edited (only reactivation allowed)
+-   ✅ **canSave logic**: `isCreateMode || status === ACTIVE` - Save button disabled for INACTIVE records
+-   ✅ **canReactivate logic**: `hasApprovalPermission && status === INACTIVE` - REACTIVATE button enabled for admins viewing INACTIVE records
 -   ✅ **Field-level validation**: Validates on blur and submit
 -   ✅ **Disabled field styling**: Gray background + cursor-not-allowed for read-only fields
 -   ✅ **Error display**: Red border + error message below field
+-   ✅ **Conditional button rendering**: REACTIVATE button (green) for INACTIVE records, DELETE button for others
+
+**Button Rendering Logic**:
+
+```typescript
+{
+    /* REACTIVATE Button - Shows for INACTIVE records (Admin only) */
+}
+{
+    mode === 'edit' && hasApprovalPermission && accountData?.status === StatusEnum.INACTIVE && (
+        <button
+            type="button"
+            onClick={onReactivate}
+            className="rounded-lg bg-green-600 px-6 py-2.5 text-base font-semibold text-white hover:bg-green-700"
+        >
+            <ArrowPathIcon className="mr-2 inline-block h-5 w-5" />
+            REACTIVATE
+        </button>
+    );
+}
+
+{
+    /* DELETE Button - Shows for non-INACTIVE records only */
+}
+{
+    mode === 'edit' && accountData?.status !== StatusEnum.INACTIVE && (
+        <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-lg bg-red-600 px-6 py-2.5 text-base font-semibold text-white hover:bg-red-700"
+        >
+            <TrashIcon className="mr-2 inline-block h-5 w-5" />
+            DELETE
+        </button>
+    );
+}
+```
 
 ---
 
@@ -2288,6 +5107,84 @@ export default function AccountFormWrapper({
 
 ### Modal Components
 
+**ReactivateConfirmationModal**: Confirm account reactivation
+
+```typescript
+interface ReactivateConfirmationModalProps {
+    show: boolean;
+    account: AccountsDto | null;
+    onConfirm: () => void;
+    onCancel: () => void;
+}
+
+export default function ReactivateConfirmationModal({
+    show,
+    account,
+    onConfirm,
+    onCancel,
+}: ReactivateConfirmationModalProps) {
+    useEffect(() => {
+        const handler = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && show) {
+                onCancel();
+            }
+        };
+        if (show) {
+            document.addEventListener('keydown', handler);
+        }
+        return () => document.removeEventListener('keydown', handler);
+    }, [show, onCancel]);
+
+    if (!show || !account) return null;
+
+    return (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black bg-opacity-50 p-4">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
+                <div className="mb-4 flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-50 text-xl text-green-600">
+                        ✓
+                    </div>
+                    <div>
+                        <p className="text-lg font-semibold text-gray-900">Reactivate Account</p>
+                        <p className="text-sm text-gray-500">Confirm account reactivation</p>
+                    </div>
+                </div>
+                <p className="mb-6 text-sm text-gray-600 leading-relaxed">
+                    Are you sure you want to reactivate <strong className="text-gray-900">{account.accountName}</strong>?
+                    This will change the status from <span className="font-semibold text-gray-500">Inactive</span> to <span className="font-semibold text-green-600">
+                        Active
+                    </span>.
+                </p>
+                <div className="flex gap-3 justify-end">
+                    <button
+                        onClick={onCancel}
+                        className="px-6 py-3 rounded-xl border-2 border-gray-300 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                        No
+                    </button>
+                    <button
+                        onClick={onConfirm}
+                        className="px-6 py-3 rounded-xl bg-green-600 text-sm font-semibold text-white hover:bg-green-700"
+                    >
+                        Yes, Reactivate
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+```
+
+**Key Features**:
+
+-   ✅ Green theme (vs red for delete) for positive action
+-   ✅ Clear status change messaging (Inactive → Active)
+-   ✅ Simple Yes/No buttons (not "Confirm/Cancel")
+-   ✅ Keyboard support (Escape to close)
+-   ✅ Consistent with modal patterns
+
+---
+
 **DeleteConfirmationModal**: Confirm soft delete action
 
 ```typescript
@@ -2472,11 +5369,38 @@ DENY:
 | Status           | USER Can Edit       | ADMIN Can Edit | Notes                             |
 | ---------------- | ------------------- | -------------- | --------------------------------- |
 | ACTIVE           | ✅ (→ FOR_APPROVAL) | ✅ (Direct)    | Normal edit flow                  |
-| INACTIVE         | ❌                  | ❌             | Soft deleted, cannot edit         |
+| INACTIVE         | ❌                  | ❌             | Soft deleted, cannot edit fields  |
 | FOR_APPROVAL     | ✅ (Update pending) | ✅ (Direct)    | Can modify pending changes        |
 | FOR_DELETION     | ❌                  | ❌             | Pending deletion, cannot edit     |
 | FOR_DEACTIVATION | ❌                  | ❌             | Pending deactivation, cannot edit |
 | NEW_RECORD       | ❌                  | ✅ (Direct)    | Pending approval, admin can edit  |
+
+### Form Field State for INACTIVE Records
+
+**CRITICAL GUIDELINE**: When a record has status INACTIVE (soft deleted), the form should have the following state:
+
+-   ✅ **All form fields DISABLED** - No field editing allowed (prevents accidental modifications)
+-   ✅ **REACTIVATE button ENABLED** - Only for ADMIN/SUPER_ADMIN (changes status to ACTIVE)
+-   ❌ **Save Changes button DISABLED** - Cannot save changes to soft-deleted record
+-   ✅ **Cancel button ENABLED** - User can navigate away
+
+**Implementation Pattern**:
+
+```typescript
+// In form component
+const canEditFields = !isReadOnly && (isCreateMode || status === StatusEnum.ACTIVE);
+const canSave = isCreateMode || status === StatusEnum.ACTIVE;
+const canReactivate = hasApprovalPermission && status === StatusEnum.INACTIVE;
+
+// Field rendering
+<input disabled={!canEditFields} />
+
+// Button rendering
+<button disabled={!canSave}>Save Changes</button>
+{canReactivate && <button onClick={handleReactivate}>Reactivate</button>}
+```
+
+**Rationale**: INACTIVE records are soft-deleted and should be treated as read-only. The only allowed operation is reactivation (status change to ACTIVE), which restores the record to active use. Editing fields of a soft-deleted record would be inconsistent with the soft-delete pattern.
 
 ---
 
@@ -2930,14 +5854,17 @@ const canEdit = !isReadOnly && (isCreateMode || status === AccountStatus.ACTIVE)
 ### ✅ UPDATE Operation Checklist
 
 -   [ ] Fetch existing record and validate existence
--   [ ] Reject updates for INACTIVE, FOR_DELETION, FOR_DEACTIVATION statuses
+-   [ ] Reject updates for INACTIVE, FOR_DELETION, FOR_DEACTIVATION statuses (except INACTIVE → ACTIVE for admins)
 -   [ ] Implement field-level change detection
 -   [ ] Return early if no changes detected
 -   [ ] For USER: Store changes in forApprovalVersion, set status to FOR_APPROVAL
 -   [ ] For ADMIN: Apply changes directly
--   [ ] Add detailed change description to activityLog
+-   [ ] For ADMIN reactivating INACTIVE: Accept status from DTO, validate INACTIVE → ACTIVE transition only
+-   [ ] Add detailed change description to activityLog (specific message for reactivation)
+-   [ ] Publish ACCOUNT_REACTIVATED event when status changes from INACTIVE to ACTIVE
 -   [ ] Test with USER and ADMIN roles
 -   [ ] Test with no changes (should return early)
+-   [ ] Test INACTIVE → ACTIVE reactivation (admin only)
 
 ### ✅ DELETE Operation Checklist
 
@@ -3032,19 +5959,30 @@ const canEdit = !isReadOnly && (isCreateMode || status === AccountStatus.ACTIVE)
 ### ✅ Frontend Form Checklist
 
 -   [ ] Implement useEffect with ONLY [isCreateMode, selectedRecord] dependencies
--   [ ] Implement canEditFields = !isReadOnly && (isCreateMode || status === ACTIVE)
+-   [ ] Implement canEditFields = !isReadOnly && (isCreateMode || status === ACTIVE || (hasApprovalPermission && status === INACTIVE))
 -   [ ] Add field-level validation
 -   [ ] Display error messages below fields
 -   [ ] Disable fields when canEditFields is false
 -   [ ] Style disabled fields (gray background + cursor-not-allowed)
+-   [ ] Add status selector field (visible for admins viewing INACTIVE records)
+-   [ ] Implement conditional button rendering (REACTIVATE vs DELETE)
 -   [ ] Test typing in create mode (should not lag)
 -   [ ] Test editing ACTIVE record (should work)
--   [ ] Test editing non-ACTIVE record (should be disabled)
+-   [ ] Test editing INACTIVE record as admin (should allow status change to ACTIVE)
+-   [ ] Test editing non-ACTIVE record as user (should be disabled)
 
 ### ✅ Frontend Edit Page Checklist
 
 -   [ ] Implement tab-based interface (Details/Approval/Logs)
 -   [ ] Auto-select approval tab for admins viewing pending records
+-   [ ] Integrate DeleteConfirmationModal for soft delete
+-   [ ] Integrate ReactivateConfirmationModal for reactivation (INACTIVE records only)
+-   [ ] Handle reactivate action (update status to ACTIVE, redirect with success message)
+-   [ ] Implement approval/denial handlers for admin users
+-   [ ] Display activity logs with timestamps and user info
+-   [ ] Test tab switching functionality
+-   [ ] Test modal confirmation workflows (delete and reactivate)
+-   [ ] Test approval/denial for pending records
 -   [ ] Include all 6 status badge colors
 -   [ ] Implement status-specific tab labels (e.g., "Deletion Request")
 -   [ ] Show current vs. proposed comparison for FOR_APPROVAL
@@ -3096,6 +6034,131 @@ This Accounts module demonstrates the complete implementation pattern for:
 -   Always clear forApprovalVersion after approval/denial
 -   Role-based logic should be centralized in handlers
 -   Activity log should capture WHO did WHAT and WHEN with details
+
+---
+
+## 📊 Feature Comparison Matrix
+
+This table compares implementation details between Master Data (Accounts) and Transactional (Vouchers) patterns:
+
+| Feature                                | Master Data (Accounts)                                       | Transactional (Vouchers)                       | Notes                                              |
+| -------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------- | -------------------------------------------------- | --- |
+| **DELETE STRATEGY**                    |                                                              |                                                |                                                    |     |
+| Status after USER delete               | FOR_DEACTIVATION                                             | FOR_DELETION                                   | Different status enums                             |
+| Status after ADMIN delete              | INACTIVE                                                     | N/A (hard delete)                              | Admin removes immediately                          |
+| Final result after approval            | INACTIVE (soft delete)                                       | Hard delete (record removed)                   | Key difference                                     |
+| Statuses used                          | INACTIVE, FOR_DEACTIVATION                                   | FOR_DELETION only                              | No INACTIVE for transactional                      |
+| Database operation                     | Update status field                                          | `deleteRecord()` call                          | Transactional physically removes                   |
+| Record visibility after delete         | Hidden via GSI1 filter                                       | Completely removed                             | Master data preserved                              |
+| **HANDLERS**                           |                                                              |                                                |                                                    |     |
+| Create handler                         | ✅ Yes                                                       | ✅ Yes                                         | USER→NEW_RECORD, ADMIN→ACTIVE                      |
+| Update handler                         | ✅ Yes                                                       | ✅ Yes                                         | USER→FOR_APPROVAL, ADMIN→direct                    |
+| Delete handler                         | ✅ Yes                                                       | ✅ Yes                                         | Different implementations                          |
+| Approve handler                        | ✅ Yes                                                       | ✅ Yes                                         | Handles all pending states                         |
+| Deny handler                           | ✅ Yes                                                       | ✅ Yes                                         | Reverts to ACTIVE                                  |
+| Delete handler sets status             | Yes (INACTIVE/FOR_DEACTIVATION)                              | USER only (FOR_DELETION)                       | Admin uses deleteRecord()                          |
+| Delete handler calls deleteRecord()    | ❌ Never                                                     | ✅ Admin only                                  | Critical difference                                |
+| Approve handler hard deletes           | ❌ No                                                        | ✅ Yes (FOR_DELETION)                          | Removes record from DB                             |
+| detectChanges optimization             | ✅ Yes                                                       | ✅ Yes                                         | Both prevent unnecessary writes                    |
+| **FRONTEND COMPONENTS**                |                                                              |                                                |                                                    |     |
+| DeleteConfirmationModal                | ✅ Yes                                                       | ✅ Yes                                         | Both require modal                                 |
+| DenyReasonDialog                       | ✅ Yes                                                       | ✅ Yes                                         | Both require dialog                                |
+| Delete button visibility               | status === ACTIVE                                            | status === ACTIVE                              | Same logic                                         |
+| Delete reason field                    | ✅ Required                                                  | ✅ Required                                    | Both capture deletionReason                        |
+| Tab navigation (Details/Approval/Logs) | ✅ Yes                                                       | ✅ Yes                                         | Edit page tabs                                     |
+| Approval buttons (ADMIN only)          | ✅ Yes                                                       | ✅ Yes                                         | FOR_APPROVAL/FOR_DEACTIVATION/FOR_DELETION         |
+| **DTO/SCHEMA**                         |                                                              |                                                |                                                    |     |
+| accountId/voucherId                    | ✅ accountId                                                 | ✅ voucherId                                   | Primary key field name                             |
+| deletionReason property                | ✅ Optional                                                  | ✅ Optional                                    | Both have this field                               |
+| changeReason property                  | ✅ Required (USER)                                           | ✅ Required (USER)                             | Required for approval workflow                     |
+| approverMessage property               | ✅ Optional                                                  | ✅ Optional                                    | For denials                                        |
+| activityLogs array                     | ✅ Required                                                  | ✅ Required                                    | Audit trail                                        |
+| forApprovalVersion object              | ✅ Required                                                  | ✅ Required                                    | Pending changes storage                            |
+| StatusEnum values used                 | ACTIVE, NEW_RECORD, FOR_APPROVAL, INACTIVE, FOR_DEACTIVATION | ACTIVE, NEW_RECORD, FOR_APPROVAL, FOR_DELETION | Different delete statuses                          |
+| GSI1SK pattern                         | `${status}#${accountId}`                                     | `${status}#${voucherId}`                       | Status-based filtering                             |
+| **API ENDPOINTS**                      |                                                              |                                                |                                                    |     |
+| POST /entities                         | ✅ Create                                                    | ✅ Create                                      | Same                                               |
+| PUT /entities/:id                      | ✅ Update                                                    | ✅ Update                                      | Same                                               |
+| DELETE /entities/:id                   | ✅ Delete                                                    | ✅ Delete                                      | Different backend logic                            |
+| POST /entities/:id/approve             | ✅ Approve                                                   | ✅ Approve                                     | Different approval logic                           |
+| POST /entities/:id/deny                | ✅ Deny                                                      | ✅ Deny                                        | Same revert logic                                  |
+| GET /entities                          | ✅ List (paginated)                                          | ✅ List (paginated)                            | Same                                               |
+| GET /entities/:id                      | ✅ Get by ID                                                 | ✅ Get by ID                                   | Same                                               |
+| GET /entities/search/:field/:value     | ✅ Search                                                    | ✅ Search                                      | Same                                               |
+| **VALIDATION**                         |                                                              |                                                |                                                    |     |
+| Prevent delete if status ≠ ACTIVE      | ✅ Yes                                                       | ✅ Yes                                         | Both enforce                                       |
+| Require changeReason for USER          | ✅ Yes                                                       | ✅ Yes                                         | Both enforce                                       |
+| Require deletionReason                 | ✅ Yes (modal)                                               | ✅ Yes (modal)                                 | Both enforce via modal                             |
+| Require approverMessage for denial     | ✅ Yes                                                       | ✅ Yes                                         | Both enforce                                       |
+| Role-based authorization               | ✅ Yes                                                       | ✅ Yes                                         | USER vs ADMIN/SUPER_ADMIN                          |
+| **QUERYING**                           |                                                              |                                                |                                                    |     |
+| Filter by status via GSI1              | ✅ Yes                                                       | ✅ Yes                                         | Excludes soft-deleted/pending                      |
+| Search by entity number                | ✅ accountNumber                                             | ✅ voucherNumber                               | GSI2 pattern                                       |
+| Pagination support                     | ✅ Yes                                                       | ✅ Yes                                         | Cursor-based                                       |
+| Default query excludes deleted         | ✅ Yes (INACTIVE hidden)                                     | ✅ N/A (record removed)                        | Different mechanisms                               |
+| **ACTIVITY LOGGING**                   |                                                              |                                                |                                                    |     |
+| Log creation                           | ✅ Yes                                                       | ✅ Yes                                         | "Created by {user}"                                |
+| Log updates                            | ✅ Yes                                                       | ✅ Yes                                         | "Updated by {user}: {reason}"                      |
+| Log deletions                          | ✅ Yes                                                       | ✅ Yes                                         | "Marked for deactivation" vs "Marked for deletion" |
+| Log approvals                          | ✅ Yes                                                       | ✅ Yes                                         | "Approved by {user}"                               |
+| Log denials                            | ✅ Yes                                                       | ✅ Yes                                         | "Denied by {user}: {message}"                      |
+| Log deletion reason                    | ✅ Yes                                                       | ✅ Yes                                         | Both append deletionReason                         |
+| **ERROR HANDLING**                     |                                                              |                                                |                                                    |     |
+| Record not found                       | ✅ NotFoundException                                         | ✅ NotFoundException                           | Same                                               |
+| Unauthorized                           | ✅ UnauthorizedException                                     | ✅ UnauthorizedException                       | Same                                               |
+| Invalid status transition              | ✅ BadRequestException                                       | ✅ BadRequestException                         | Same                                               |
+| Missing required fields                | ✅ BadRequestException                                       | ✅ BadRequestException                         | Same                                               |
+| **MOBILE RESPONSIVENESS**              |                                                              |                                                |                                                    |     |
+| Responsive table/cards                 | ✅ Yes                                                       | ✅ Yes                                         | Desktop table, mobile cards                        |
+| Touch-optimized buttons                | ✅ Yes                                                       | ✅ Yes                                         | Both mobile-friendly                               |
+| Responsive forms                       | ✅ Yes                                                       | ✅ Yes                                         | Both adaptive                                      |
+
+### Key Takeaways from Matrix
+
+**Identical Implementation** (✅ Same across both):
+
+-   Create/Update approval workflow
+-   Role-based authorization
+-   Change reason requirement for USER
+-   Denial workflow with approverMessage
+-   Frontend form validation
+-   API endpoint structure
+-   Activity logging patterns
+-   Search and pagination
+-   Mobile responsiveness
+
+**Critical Differences** (⚠️ Must implement differently):
+
+1. **Delete Status**: FOR_DEACTIVATION (master) vs FOR_DELETION (transactional)
+2. **Final Delete State**: INACTIVE (soft) vs Hard delete (removed)
+3. **Admin Delete Method**: Set status (master) vs deleteRecord() (transactional)
+4. **Approve Delete Action**: Set INACTIVE (master) vs deleteRecord() (transactional)
+5. **StatusEnum Values**: Includes INACTIVE/FOR_DEACTIVATION (master) vs FOR_DELETION only (transactional)
+
+### Implementation Decision Tree
+
+```
+When implementing DELETE for a new module:
+
+1. Is this Master Data or Transactional?
+   ├─ Master Data
+   │  ├─ USER delete → status = FOR_DEACTIVATION
+   │  ├─ ADMIN delete → status = INACTIVE
+   │  └─ Approve → status = INACTIVE
+   │
+   └─ Transactional
+      ├─ USER delete → status = FOR_DELETION
+      ├─ ADMIN delete → databaseService.deleteRecord()
+      └─ Approve → databaseService.deleteRecord()
+
+2. Update StatusEnum to include:
+   ├─ Master: INACTIVE, FOR_DEACTIVATION
+   └─ Transactional: FOR_DELETION
+
+3. Update GSI1 queries to:
+   ├─ Master: Filter out INACTIVE and FOR_DEACTIVATION
+   └─ Transactional: No filter needed (record removed)
+```
 
 ---
 
@@ -3158,6 +6221,542 @@ When implementing DELETE operation, ask:
     - [ ] Don't use INACTIVE for transactional records
     - [ ] Don't use FOR_DELETION for master data
     - [ ] Don't use FOR_DEACTIVATION for transactional records
+
+---
+
+## 🎨 Shared Frontend Components Library
+
+**Location**: `libs/frontend/components-web/src/`  
+**Purpose**: Eliminate code duplication across modules (70-85% reduction achieved)  
+**Last Updated**: February 2026  
+**Status**: ✅ Production Ready
+
+### Mandatory Component Usage
+
+**RULE 1: Use Shared Components - NOT Module-Specific Copies**
+
+All account modules MUST use components from `@components-web` instead of creating module-specific versions.
+
+```typescript
+// ✅ CORRECT - Use shared components
+import { DeleteConfirmationModal, DenyReasonDialog, StatusBadge, ListHeader } from '@components-web';
+
+// ❌ WRONG - Don't create module-specific components
+import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
+```
+
+### Available Shared Components
+
+#### 1. DeleteConfirmationModal
+
+**Purpose**: Standardized delete confirmation with deletionReason capture (master data soft delete)
+
+```typescript
+import { DeleteConfirmationModal } from '@components-web';
+
+<DeleteConfirmationModal
+    show={showDeleteConfirm}
+    record={selectedRecord}
+    recordDisplayName={record.name}
+    onConfirm={(deletionReason: string) => handleDeleteConfirm(deletionReason)}
+    onCancel={() => setShowDeleteConfirm(false)}
+/>;
+```
+
+**Features**:
+
+-   Red trash icon theme
+-   Mandatory deletionReason textarea (minimum 3 characters)
+-   ESC key handler
+-   Responsive design
+-   Validation error display
+
+**Backend Integration**:
+
+```typescript
+// DELETE command must accept deletionReason
+export class DeleteCommand {
+    constructor(
+        public readonly id: string,
+        public readonly dto: EntityDto,
+        public readonly user: UserDto,
+        public readonly deletionReason?: string // <-- Required
+    ) {}
+}
+
+// Handler stores deletionReason in DTO
+await this.databaseService.updateRecord({
+    ...existingRecord,
+    status: hasApprovalPermission ? StatusEnum.INACTIVE : StatusEnum.FOR_DEACTIVATION,
+    deletionReason: command.deletionReason || 'No reason provided',
+    activityLogs: [...logs],
+});
+```
+
+#### 2. ConfirmationModal (Generic)
+
+**Purpose**: Flexible confirmation modal with multiple variants
+
+```typescript
+import { ConfirmationModal, ConfirmationModalVariant } from '@components-web';
+
+<ConfirmationModal
+    show={showReactivateConfirm}
+    record={selectedRecord}
+    variant="reactivate" // 'delete' | 'reactivate' | 'warning' | 'info'
+    recordDisplayName={record.name}
+    customTitle="Custom Title"
+    customMessage="Custom message text"
+    customConfirmText="Custom Button Text"
+    onConfirm={() => handleConfirm()}
+    onCancel={() => setShowConfirm(false)}
+/>;
+```
+
+**Variants**:
+
+-   `delete`: Red theme, trash icon
+-   `reactivate`: Green theme, checkmark icon
+-   `warning`: Yellow theme, warning icon
+-   `info`: Blue theme, info icon
+
+#### 3. DenyReasonDialog
+
+**Purpose**: Standardized denial with approverMessage capture
+
+```typescript
+import { DenyReasonDialog } from '@components-web';
+
+<DenyReasonDialog
+    show={showDenyDialog}
+    record={selectedRecord}
+    recordDisplayName={record.name}
+    onConfirm={(approverMessage: string) => handleDenyConfirm(approverMessage)}
+    onCancel={() => setShowDenyDialog(false)}
+/>;
+```
+
+**Features**:
+
+-   Yellow warning theme
+-   Mandatory approverMessage textarea (minimum 3 characters)
+-   ESC key handler
+-   Validation error display
+
+#### 4. StatusBadge
+
+**Purpose**: Centralized status display with consistent colors
+
+```typescript
+import { StatusBadge } from '@components-web';
+
+<StatusBadge status={record.status} />;
+```
+
+**Supported Statuses**:
+
+-   `ACTIVE`: Green background
+-   `INACTIVE`: Gray background
+-   `FOR_APPROVAL`: Yellow background
+-   `FOR_DEACTIVATION`: Orange background
+-   `NEW_RECORD`: Blue background
+-   `FOR_DELETION`: Red background
+-   `DRAFT`: Purple background
+
+#### 5. ListHeader
+
+**Purpose**: Standardized list page header with search, filter, create, refresh
+
+```typescript
+import { ListHeader } from '@components-web';
+
+<ListHeader
+    title="Customers"
+    searchValue={searchTerm}
+    searchPlaceholder="Search customers..."
+    statusFilter={statusFilter}
+    statusOptions={[
+        { value: 'ALL', label: 'All Statuses' },
+        { value: 'ACTIVE', label: 'Active' },
+        { value: 'INACTIVE', label: 'Inactive' },
+    ]}
+    showCreateButton={canCreate}
+    createButtonText="Create Customer"
+    showRefreshButton={true}
+    onSearchChange={setSearchTerm}
+    onStatusFilterChange={setStatusFilter}
+    onCreateClick={() => router.push('/customers/customer/create')}
+    onRefreshClick={() => fetchRecords()}
+/>;
+```
+
+**Features**:
+
+-   Search input with icon
+-   Status dropdown filter
+-   Create button (optional)
+-   Refresh button (optional)
+-   Fully responsive
+
+### Migration Checklist
+
+When migrating a module to shared components:
+
+-   [ ] Replace module-specific `DeleteConfirmationModal` with `@components-web`
+-   [ ] Replace module-specific `DenyReasonDialog` with `@components-web`
+-   [ ] Replace module-specific `Header` component with `ListHeader`
+-   [ ] Replace inline status badges with `StatusBadge`
+-   [ ] Update delete handler to accept `deletionReason` parameter
+-   [ ] Update DELETE API endpoint to accept `deletionReason` query parameter
+-   [ ] Add `deletionReason?: string` to backend DTO
+-   [ ] Add `deletionReason?: string` to frontend TypeScript interface
+-   [ ] Update frontend delete handler signature: `handleDeleteConfirm(deletionReason: string)`
+-   [ ] Delete old module-specific component files
+
+---
+
+## 🔄 Reactivation Pattern (Master Data Only)
+
+**Purpose**: Restore INACTIVE records to ACTIVE status  
+**Applies To**: Master Data modules only (Customer, Product, Account, Territory Manager, etc.)  
+**Status**: ✅ Implemented in Territory Manager
+
+### Backend Implementation
+
+#### 1. Add REACTIVATED Event to Enum
+
+```typescript
+// libs/dto/src/lib/enums/{entity}.event.enum.ts
+export enum TerritoryManagerEventEnum {
+    TERRITORY_MANAGER_UPDATED = 'TERRITORY_MANAGER_UPDATED',
+    TERRITORY_MANAGER_REACTIVATED = 'TERRITORY_MANAGER_REACTIVATED', // <-- Add this
+}
+```
+
+#### 2. Detect Reactivation in Update Handler
+
+```typescript
+// apps/{module}/{service}/src/app/{entity}/command/update/update.handler.ts
+
+async execute(command: UpdateCommand): Promise<EntityDto> {
+  const existingRecord = await this.databaseService.getRecord(command.id);
+
+  // Capture old status BEFORE update
+  const oldStatus = existingRecord.status;
+
+  const hasApprovalPermission = /* check user role */;
+
+  // ... perform update logic ...
+
+  const updatedRecord = await this.databaseService.updateRecord({
+    ...existingRecord,
+    ...command.dto,
+    status: hasApprovalPermission ? StatusEnum.ACTIVE : StatusEnum.FOR_APPROVAL
+  });
+
+  // Detect reactivation: INACTIVE → ACTIVE
+  if (hasApprovalPermission &&
+      oldStatus === StatusEnum.INACTIVE &&
+      updatedRecord.status === StatusEnum.ACTIVE) {
+    await this.publishReactivatedEvent(command.id);
+  }
+
+  return updatedRecord;
+}
+
+private async publishReactivatedEvent(entityId: string): Promise<void> {
+  const eventDto: EntityEventDto = {
+    eventType: EntityEventEnum.ENTITY_REACTIVATED,
+    entityId: entityId,
+    timestamp: new Date().toISOString()
+  };
+
+  // Publish to all relevant event queues
+  await this.messageQueueService.publishMessage(
+    this.configService.get('CUSTOMER_EVENT_SQS'),
+    JSON.stringify(eventDto)
+  );
+
+  await this.messageQueueService.publishMessage(
+    this.configService.get('INVOICE_EVENT_SQS'),
+    JSON.stringify(eventDto)
+  );
+}
+```
+
+#### 3. Update Event Handlers
+
+Event handlers for related modules should handle `ENTITY_REACTIVATED` events:
+
+```typescript
+// apps/customer/customer-event-handler-service/src/handlers/entity.handler.ts
+
+switch (event.eventType) {
+    case EntityEventEnum.ENTITY_UPDATED:
+        // Handle update
+        break;
+    case EntityEventEnum.ENTITY_REACTIVATED:
+        // Handle reactivation - typically no action needed
+        // Name hasn't changed, so no updates required to referencing entities
+        console.log(`Entity ${event.entityId} reactivated - no action required`);
+        break;
+}
+```
+
+### Frontend Implementation
+
+#### 1. Add Reactivate Button to Form
+
+```typescript
+// apps/web-app/src/app/(authenticated-routes)/{module}/{entity}/components/EntityForm.tsx
+
+interface EntityFormProps {
+    onReactivate?: () => void; // <-- Add this prop
+    // ... other props
+}
+
+// In button area
+{
+    !isCreateMode && isAdminUser && selectedRecord?.status === StatusEnum.INACTIVE && onReactivate ? (
+        <button type="button" onClick={onReactivate} className="... bg-green-600 hover:bg-green-700 ...">
+            <svg>{/* checkmark icon */}</svg>
+            Reactivate
+        </button>
+    ) : (
+        <div className="hidden sm:block" />
+    );
+}
+```
+
+#### 2. Add Handlers to Edit Page
+
+```typescript
+// apps/web-app/src/app/(authenticated-routes)/{module}/{entity}/[id]/edit/page.tsx
+
+const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
+
+const handleReactivateClick = () => {
+    setShowReactivateConfirm(true);
+};
+
+const handleReactivateConfirm = async () => {
+    if (!selectedRecord) return;
+
+    try {
+        setIsLoading(true);
+        setShowReactivateConfirm(false);
+
+        const reactivatedRecord = await EntityApi.updateEntity(
+            selectedRecord.id,
+            {
+                ...selectedRecord,
+                status: StatusEnum.ACTIVE,
+            },
+            userRole
+        );
+
+        setSelectedRecord(reactivatedRecord);
+        setFlashNotification({
+            title: 'Success!',
+            message: 'Record reactivated successfully!',
+            alertType: 'success',
+        });
+        router.replace('/{module}/{entity}');
+    } catch (err) {
+        // Handle error
+    } finally {
+        setIsLoading(false);
+    }
+};
+
+// Render modal
+<ConfirmationModal
+    show={showReactivateConfirm}
+    record={selectedRecord}
+    variant="reactivate"
+    recordDisplayName={selectedRecord?.name}
+    onConfirm={handleReactivateConfirm}
+    onCancel={() => setShowReactivateConfirm(false)}
+/>;
+```
+
+### Reactivation Checklist
+
+When adding reactivation to a master data module:
+
+-   [ ] Add `ENTITY_REACTIVATED` to event enum
+-   [ ] Capture `oldStatus` before update in update handler
+-   [ ] Add reactivation detection conditional
+-   [ ] Implement `publishReactivatedEvent()` method
+-   [ ] Update related event handlers to handle `ENTITY_REACTIVATED`
+-   [ ] Add `onReactivate?: () => void` prop to form component
+-   [ ] Add reactivate button (green, visible when INACTIVE + isAdminUser)
+-   [ ] Add `showReactivateConfirm` state to edit page
+-   [ ] Add `handleReactivateClick` and `handleReactivateConfirm` handlers
+-   [ ] Render `ConfirmationModal` with `variant="reactivate"`
+
+---
+
+## 🔍 Backend Status Filtering (GSI2 Queries)
+
+**RULE 2: Use Backend Status Filtering - NOT Client-Side .filter()**
+
+**Problem**: Many modules incorrectly fetch all records then filter by status client-side.
+
+```typescript
+// ❌ WRONG - Client-side filtering (inefficient)
+const response = await EntityApi.getRecords(pageSize, direction, cursor, userRole);
+const filteredData =
+    statusFilter === 'ALL' ? response.data : response.data.filter((record) => record.status === statusFilter);
+setRecords(filteredData);
+```
+
+**Solution**: Use backend GSI2 queries for status filtering.
+
+```typescript
+// ✅ CORRECT - Backend status filtering (efficient)
+let response;
+if (statusFilter !== 'ALL') {
+    response = await EntityApi.getRecordsByStatus(statusFilter, pageSize, direction, cursor, userRole);
+} else {
+    response = await EntityApi.getRecords(pageSize, direction, cursor, userRole);
+}
+setRecords(response.data); // No client-side filtering needed
+```
+
+### Backend API Implementation
+
+All master data modules should have `getRecordsByStatus` endpoint:
+
+```typescript
+// apps/{module}/{service}/src/app/{entity}/{entity}.controller.ts
+
+@Get('/by-status/:status')
+@ApiOperation({ summary: 'Get entities by status' })
+@ApiParam({ name: 'status', enum: StatusEnum })
+async getRecordsByStatus(
+  @Param('status') status: StatusEnum,
+  @Query('limit') limit: number,
+  @Query('direction') direction: 'next' | 'prev',
+  @Query('cursor') cursor: string,
+  @Query('userRole') userRole?: RoleEnum
+): Promise<GetRecordsResponseDto<EntityDto>> {
+  const query = new GetRecordsByStatusQuery(status, limit, direction, cursor, userRole);
+  return this.queryBus.execute(query);
+}
+```
+
+### Query Handler Implementation
+
+```typescript
+// apps/{module}/{service}/src/app/{entity}/query/get-by-status/get-by-status.handler.ts
+
+@QueryHandler(GetRecordsByStatusQuery)
+export class GetRecordsByStatusHandler implements IQueryHandler<GetRecordsByStatusQuery> {
+    constructor(
+        @Inject(EntityDatabaseServiceAbstract)
+        private readonly databaseService: EntityDatabaseServiceAbstract
+    ) {}
+
+    async execute(query: GetRecordsByStatusQuery): Promise<GetRecordsResponseDto<EntityDto>> {
+        // Use GSI2 for efficient status-based queries
+        return this.databaseService.getRecordsByStatus(query.status, query.limit, query.direction, query.cursor);
+    }
+}
+```
+
+### Frontend API Client
+
+```typescript
+// libs/frontend/data-access/src/api/{entity}.api.ts
+
+class EntityApi extends AxiosConfig {
+    public getRecordsByStatus = async (
+        status: StatusEnum,
+        limit: number,
+        direction?: 'next' | 'prev',
+        cursor?: any,
+        userRole?: RoleEnum
+    ): Promise<GetRecordsResponseDto<EntityDto>> => {
+        const params = new URLSearchParams();
+        params.append('limit', limit.toString());
+        if (direction) params.append('direction', direction);
+        if (cursor) params.append('cursor', typeof cursor === 'object' ? JSON.stringify(cursor) : cursor);
+        if (userRole) params.append('userRole', userRole);
+
+        const response = await this.axiosInstance.get(`/entity/by-status/${status}?${params.toString()}`);
+        return response.data;
+    };
+}
+```
+
+### Status Filtering Migration Checklist
+
+When fixing client-side filtering in a module:
+
+-   [ ] Verify backend has `getRecordsByStatus` endpoint
+-   [ ] Verify database service has `getRecordsByStatus` method using GSI2
+-   [ ] Add `getRecordsByStatus` to frontend API client
+-   [ ] Update list page fetch logic to use backend filtering
+-   [ ] Remove all `.filter(record => record.status === ...)` client-side code
+-   [ ] Remove `filteredData`, `filteredCustomers`, `filteredRecords` variables
+-   [ ] Test pagination works correctly with status filtering
+-   [ ] Verify performance improvement (fewer records transferred)
+
+---
+
+## 📝 Territory Manager Module - Reference Implementation
+
+**Status**: ✅ Fully Refactored (February 2026)  
+**Module Type**: Master Data  
+**Delete Pattern**: Soft Delete (INACTIVE/FOR_DEACTIVATION)
+
+### Changes Implemented
+
+1. **Fixed Hybrid Delete Pattern**: Removed incorrect FOR_DELETION usage
+2. **Added deletionReason Field**: Captures audit trail for deletions
+3. **Implemented Reactivation Feature**: ADMIN can restore INACTIVE records to ACTIVE
+4. **Backend Status Filtering**: Replaced client-side filtering with GSI2 queries
+5. **Shared Components**: Using ConfirmationModal, DeleteConfirmationModal, DenyReasonDialog
+
+### Key Files Modified
+
+**Backend**:
+
+-   `delete.handler.ts`: Changed to always use `updateRecord()` with INACTIVE/FOR_DEACTIVATION
+-   `approve.handler.ts`: Removed FOR_DELETION case, deleted `approveDeletion()` method
+-   `update.handler.ts`: Added reactivation detection and event publishing
+-   `territory.manager.dto.ts`: Added `deletionReason?: string`
+-   `territory-manager.event.enum.ts`: Added `TERRITORY_MANAGER_REACTIVATED`
+
+**Frontend**:
+
+-   `page.tsx` (list): Removed client-side filtering, using `getTerritoryManagersByStatus()`
+-   `edit/page.tsx`: Added reactivate handlers and ConfirmationModal
+-   `TerritoryManagerForm.tsx`: Added `onReactivate` prop and reactivate button
+-   `DeleteConfirmationModal.tsx`: Now using shared `DeleteConfirmationModal` from `@components-web`
+
+### Territory Manager as Template
+
+Use Territory Manager as the reference template when refactoring other master data modules:
+
+```bash
+# Modules needing similar refactoring:
+- Customer (main + areas/terms/types/classifications)
+- Product (main + categories)
+- Supplier
+- Employee
+```
+
+For each module, follow this migration pattern:
+
+1. Check if it uses FOR_DELETION (transactional pattern) incorrectly
+2. Fix DELETE handler to use INACTIVE/FOR_DEACTIVATION
+3. Fix APPROVE handler to remove FOR_DELETION support
+4. Add deletionReason field and capture
+5. Implement reactivation feature
+6. Fix client-side filtering
+7. Migrate to shared components
 
 ---
 

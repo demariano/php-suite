@@ -30,11 +30,15 @@ export class DeleteCustomerClassificationHandler implements ICommandHandler<Dele
             // Check user authorization
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
-            // Update status and activity logs based on permissions
-            this.updateCustomerClassificationStatus(command, existingRecord, hasApprovalPermission);
+            // Build the updated DTO with proper status and activity logs
+            const customerClassificationDto = this.buildCustomerClassificationDto(
+                existingRecord,
+                command,
+                hasApprovalPermission
+            );
 
-            // Delete or mark for deletion based on permissions
-            const deletedRecord = await this.performDeletion(command, hasApprovalPermission);
+            // Perform deletion based on permissions and status
+            const deletedRecord = await this.performDeletion(customerClassificationDto, hasApprovalPermission);
 
             this.logger.log(`Customer classification deleted successfully: ${deletedRecord.customerClassificationId}`);
             return new ResponseDto<CustomerClassificationDto>(deletedRecord, HTTP_STATUS_OK);
@@ -69,59 +73,63 @@ export class DeleteCustomerClassificationHandler implements ICommandHandler<Dele
     }
 
     /**
-     * Updates customer classification status and activity logs based on user permissions
+     * Builds the customer classification DTO with updated status and activity logs
+     * Uses spread operator to preserve all existing fields and prevent undefined errors
      */
-    private updateCustomerClassificationStatus(
-        command: DeleteCustomerClassificationCommand,
+    private buildCustomerClassificationDto(
         existingRecord: CustomerClassificationDto,
+        command: DeleteCustomerClassificationCommand,
         hasApprovalPermission: boolean
-    ): void {
-        // Set the ID
-        command.customerClassificationDto.customerClassificationId = command.recordId;
+    ): CustomerClassificationDto {
+        let status: StatusEnum;
+        let activityLog: string;
+        const timestamp = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' });
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DEACTIVATION for hard delete
-            command.customerClassificationDto.status = StatusEnum.FOR_DEACTIVATION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Customer classification deleted by ${command.user.username}`;
-            command.customerClassificationDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-
-            // Limit activity logs to last 10 entries
-            command.customerClassificationDto.activityLogs = reduceArrayContents(
-                command.customerClassificationDto.activityLogs,
-                ACTIVITY_LOGS_LIMIT
-            );
+            // Admin can deactivate directly
+            status = StatusEnum.INACTIVE;
+            activityLog = `Date: ${timestamp}, Customer classification marked for deactivation by ${
+                command.user.username
+            }. Reason: ${command.deletionReason || 'No reason provided'}`;
         } else {
-            // User needs approval - set to FOR_DEACTIVATION for soft delete
-            command.customerClassificationDto.status = StatusEnum.FOR_DEACTIVATION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Customer classification marked for deletion by ${command.user.username}`;
-            command.customerClassificationDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-
-            // Limit activity logs to last 10 entries
-            command.customerClassificationDto.activityLogs = reduceArrayContents(
-                command.customerClassificationDto.activityLogs,
-                ACTIVITY_LOGS_LIMIT
-            );
+            // Regular user marks for deactivation (requires approval)
+            status = StatusEnum.FOR_DEACTIVATION;
+            activityLog = `Date: ${timestamp}, Customer classification marked for deactivation by ${
+                command.user.username
+            }. Reason: ${command.deletionReason || 'No reason provided'}`;
         }
+
+        const activityLogs = reduceArrayContents(
+            [...(existingRecord.activityLogs || []), activityLog],
+            ACTIVITY_LOGS_LIMIT
+        );
+
+        // Use spread operator to preserve all existing fields
+        const dto: CustomerClassificationDto = {
+            ...existingRecord,
+            status,
+            deletionReason: command.deletionReason,
+            activityLogs,
+        };
+
+        return dto;
     }
 
     /**
      * Performs the actual deletion based on user permissions
+     * Master data uses soft delete only - hard delete only for NEW_RECORD cleanup
      */
     private async performDeletion(
-        command: DeleteCustomerClassificationCommand,
+        customerClassificationDto: CustomerClassificationDto,
         hasApprovalPermission: boolean
     ): Promise<CustomerClassificationDto> {
-        if (hasApprovalPermission) {
-            // Hard delete
-            return await this.customerClassificationDatabaseService.deleteRecord(command.customerClassificationDto);
-        } else {
-            // Soft delete (mark for deletion)
-            return await this.customerClassificationDatabaseService.updateRecord(command.customerClassificationDto);
+        // Clean up NEW_RECORD before processing
+        if (customerClassificationDto.status === StatusEnum.NEW_RECORD) {
+            await this.customerClassificationDatabaseService.deleteRecord(customerClassificationDto);
         }
+
+        // Always use updateRecord for master data (soft delete)
+        return await this.customerClassificationDatabaseService.updateRecord(customerClassificationDto);
     }
 
     /**

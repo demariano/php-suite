@@ -48,6 +48,11 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
+            // Validate status transitions for admins
+            if (hasApprovalPermission && command.accountsDto.status) {
+                this.validateStatusTransition(existingRecord.status, command.accountsDto.status);
+            }
+
             // Update status and activity logs based on permissions
             const recordToPersist = hasApprovalPermission
                 ? this.applyAdminUpdates(command, existingRecord)
@@ -59,6 +64,15 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
             // Publish account updated event if name changed and approved
             if (hasApprovalPermission && existingRecord.accountName !== command.accountsDto.accountName) {
                 await this.publishAccountUpdatedEvent(updatedRecord.accountingId, command.accountsDto.accountName);
+            }
+
+            // Publish reactivation event if status changed from INACTIVE to ACTIVE
+            if (
+                hasApprovalPermission &&
+                existingRecord.status === StatusEnum.INACTIVE &&
+                updatedRecord.status === StatusEnum.ACTIVE
+            ) {
+                await this.publishAccountReactivatedEvent(updatedRecord.accountingId);
             }
 
             this.logger.log(`Account updated successfully: ${updatedRecord.accountingId}`);
@@ -124,13 +138,25 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
             ...command.accountsDto,
         };
 
-        updatedRecord.status = StatusEnum.ACTIVE;
+        // Allow admin to set status from DTO (for reactivation) or default to ACTIVE
+        const newStatus = command.accountsDto.status || StatusEnum.ACTIVE;
+        updatedRecord.status = newStatus;
+
         updatedRecord.activityLogs = updatedRecord.activityLogs || [];
-        updatedRecord.activityLogs.push(
-            `Date: ${new Date().toLocaleString('en-US', {
+
+        // Create specific log message for reactivation
+        let activityMessage;
+        if (existingRecord.status === StatusEnum.INACTIVE && newStatus === StatusEnum.ACTIVE) {
+            activityMessage = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-            })}, Account updated by ${command.user.username}, status set to ${StatusEnum.ACTIVE}`
-        );
+            })}, Account reactivated from INACTIVE to ACTIVE by ${command.user.username}`;
+        } else {
+            activityMessage = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Account updated by ${command.user.username}, status set to ${newStatus}`;
+        }
+
+        updatedRecord.activityLogs.push(activityMessage);
         updatedRecord.activityLogs = reduceArrayContents(updatedRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         updatedRecord.changeReason = undefined;
         updatedRecord.forApprovalVersion = {};
@@ -174,6 +200,46 @@ export class UpdateAccountsHandler implements ICommandHandler<UpdateAccountsComm
         };
 
         return updatedRecord;
+    }
+
+    /**
+     * Validates status transitions for admin users
+     */
+    private validateStatusTransition(existingStatus: StatusEnum, newStatus: StatusEnum | undefined): void {
+        // If no status change requested, skip validation
+        if (!newStatus || newStatus === existingStatus) {
+            return;
+        }
+
+        // Only allow INACTIVE -> ACTIVE transition for reactivation
+        if (existingStatus === StatusEnum.INACTIVE && newStatus !== StatusEnum.ACTIVE) {
+            this.logger.warn(`Invalid status transition from ${existingStatus} to ${newStatus}`);
+            throw new BadRequestException(`Can only reactivate INACTIVE accounts to ACTIVE status`);
+        }
+    }
+
+    /**
+     * Publishes account reactivated event to SQS
+     */
+    private async publishAccountReactivatedEvent(accountingId: string): Promise<void> {
+        try {
+            const accountEventSqsUrl = this.configService.get<string>('ACCOUNTING_EVENT_SQS');
+            if (!accountEventSqsUrl) {
+                this.logger.warn('ACCOUNTING_EVENT_SQS URL not configured');
+                return;
+            }
+
+            const event: AccountEventDto = {
+                eventType: AccountEventEnum.ACCOUNT_REACTIVATED,
+                accountingId,
+                timestamp: new Date().toISOString(),
+            };
+
+            await this.messageQueueService.sendMessageToSQS(accountEventSqsUrl, JSON.stringify(event));
+            this.logger.log(`Account reactivated event published for accountingId: ${accountingId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish account reactivated event: ${error.message}`, error.stack);
+        }
     }
 
     /**

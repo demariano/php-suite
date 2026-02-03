@@ -68,6 +68,12 @@ export class CustomerDto {
     changeReason?: string;
 
     @ApiProperty()
+    deletionReason?: string;
+
+    @ApiProperty()
+    reactivationReason?: string;
+
+    @ApiProperty()
     activityLogs?: string[];
 
     @ApiProperty()

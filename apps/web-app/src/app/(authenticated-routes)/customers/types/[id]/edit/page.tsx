@@ -1,622 +1,749 @@
 'use client';
 
-import { CustomerTypeApi, CustomerTypeDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { DeleteConfirmationModal, DenyReasonDialog } from '@components-web';
+import {
+    CustomerTypeApi,
+    CustomerTypeDto,
+    extractErrorMessage,
+    StatusEnum,
+    useEnv,
+    useLocalStore,
+    useSessionStore,
+} from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import CustomerTypeForm from '../../components/CustomerTypeForm';
-import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
-import DenyReasonDialog from '../../components/DenyReasonDialog';
 
 interface EditCustomerTypePageProps {
-  params: {
-    id: string;
-  };
+    params: {
+        id: string;
+    };
 }
 
 export default function EditCustomerTypePage({ params }: EditCustomerTypePageProps) {
-  const [isLoading, setIsLoading] = useState(false);
-  const [selectedCustomerType, setSelectedCustomerType] = useState<CustomerTypeDto | null>(null);
-  const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showDenyDialog, setShowDenyDialog] = useState(false);
-  const { env } = useEnv();
-  const { authedUser } = useLocalStore();
-  const { setFlashNotification } = useSessionStore();
-  const router = useRouter();
-  
-  const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+    const [isLoading, setIsLoading] = useState(false);
+    const [selectedCustomerType, setSelectedCustomerType] = useState<CustomerTypeDto | null>(null);
+    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showDenyDialog, setShowDenyDialog] = useState(false);
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const { setFlashNotification } = useSessionStore();
+    const router = useRouter();
 
-  useEffect(() => {
-    const fetchCustomerType = async () => {
-      try {
-        setIsLoading(true);
-        
-        const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-        
-        const customerType = await CustomerTypeApi.getCustomerTypeById(params.id, userRole);
-        setSelectedCustomerType(customerType);
-        
-        if ((customerType.status === StatusEnum.FOR_APPROVAL || customerType.status === StatusEnum.NEW_RECORD || customerType.status === StatusEnum.FOR_DELETION) && isAdminUser) {
-          setActiveTab('approval');
-        } else {
-          setActiveTab('details');
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
+    useEffect(() => {
+        const fetchCustomerType = async () => {
+            try {
+                setIsLoading(true);
+
+                const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
+                const customerType = await CustomerTypeApi.getCustomerTypeById(params.id, userRole);
+                setSelectedCustomerType(customerType);
+
+                if (
+                    (customerType.status === StatusEnum.FOR_APPROVAL ||
+                        customerType.status === StatusEnum.NEW_RECORD ||
+                        customerType.status === StatusEnum.FOR_DEACTIVATION) &&
+                    isAdminUser
+                ) {
+                    setActiveTab('approval');
+                } else {
+                    setActiveTab('details');
+                }
+            } catch (err) {
+                console.error('Error fetching customer type:', err);
+                const errorMessage = extractErrorMessage(
+                    err,
+                    'Failed to load customer type details. Please try again.'
+                );
+                setFlashNotification({
+                    title: 'Error',
+                    message: errorMessage,
+                    alertType: 'error',
+                });
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        if (params.id) {
+            fetchCustomerType();
         }
-        
-      } catch (err) {
-        console.error('Error fetching customer type:', err);
-        const errorMessage = extractErrorMessage(err, 'Failed to load customer type details. Please try again.');
-        setFlashNotification({
-          title: 'Error',
-          message: errorMessage,
-          alertType: 'error'
-        });
-      } finally {
-        setIsLoading(false);
-      }
+    }, [params.id, env.BYPASS_AUTH, authedUser?.userRole, isAdminUser]);
+
+    const handleSave = async (customerType: CustomerTypeDto) => {
+        try {
+            setIsLoading(true);
+
+            const userRole =
+                env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
+                    ? authedUser?.userRole
+                    : undefined;
+
+            const updatedCustomerType = await CustomerTypeApi.updateCustomerType(
+                params.id,
+                {
+                    customerTypeId: customerType.customerTypeId,
+                    customerTypeName: customerType.customerTypeName,
+                    status: customerType.status,
+                    changeReason: customerType.changeReason,
+                },
+                userRole
+            );
+
+            setSelectedCustomerType(updatedCustomerType);
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Customer Type updated successfully!',
+                alertType: 'success',
+            });
+            router.push('/customers/types');
+        } catch (error) {
+            console.error('Error updating customer type:', error);
+            const errorMessage = extractErrorMessage(error, 'Failed to update customer type. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    if (params.id) {
-      fetchCustomerType();
-    }
-  }, [params.id, env.BYPASS_AUTH, authedUser?.userRole, isAdminUser]);
-
-  const handleSave = async (customerType: CustomerTypeDto) => {
-    try {
-      setIsLoading(true);
-      
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      const updatedCustomerType = await CustomerTypeApi.updateCustomerType(params.id, {
-        customerTypeId: customerType.customerTypeId,
-        customerTypeName: customerType.customerTypeName,
-        status: customerType.status,
-        changeReason: customerType.changeReason
-      }, userRole);
-      
-      setSelectedCustomerType(updatedCustomerType);
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Customer Type updated successfully!',
-        alertType: 'success'
-      });
-      
-      setTimeout(() => {
-        router.push('/customers/types');
-      }, 1500);
-      
-    } catch (error) {
-      console.error('Error updating customer type:', error);
-      const errorMessage = extractErrorMessage(error, 'Failed to update customer type. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDelete = () => {
-    if (!selectedCustomerType) {
-      return;
-    }
-    setShowDeleteModal(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!selectedCustomerType) {
-      return;
-    }
-    
-    try {
-      setIsLoading(true);
-      setShowDeleteModal(false);
-      
-      const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development') 
-          ? authedUser?.userRole 
-          : undefined;
-      
-      await CustomerTypeApi.deleteCustomerType(selectedCustomerType, userRole);
-      
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Customer Type deleted successfully!',
-        alertType: 'success'
-      });
-      
-      setTimeout(() => {
-        router.push('/customers/types');
-      }, 1500);
-      
-    } catch (error) {
-      console.error('Error deleting customer type:', error);
-      const errorMessage = extractErrorMessage(error, 'Failed to delete customer type. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleApprove = async () => {
-    if (!selectedCustomerType) return;
-    
-    try {
-      setIsLoading(true);
-      
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      const approvedCustomerType = await CustomerTypeApi.approveCustomerType(selectedCustomerType.customerTypeId, userRole);
-      setSelectedCustomerType(approvedCustomerType);
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Customer Type approved successfully!',
-        alertType: 'success'
-      });
-      
-      setTimeout(() => {
-        router.push('/customers/types');
-      }, 1500);
-      
-    } catch (err) {
-      console.error('Error approving customer type:', err);
-      const errorMessage = extractErrorMessage(err, 'Failed to approve customer type. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-  const handleDeny = () => {
-    setShowDenyDialog(true);
-  };
-
-  const handleDenyConfirm = async (approverMessage: string) => {
-    if (!selectedCustomerType) return;
-    
-    try {
-      setIsLoading(true);
-      setShowDenyDialog(false);
-      
-      const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      const deniedCustomerType = await CustomerTypeApi.denyCustomerType(selectedCustomerType.customerTypeId, approverMessage, userRole);
-      setSelectedCustomerType(deniedCustomerType);
-      setFlashNotification({
-        title: 'Success!',
-        message: 'Customer Type changes denied successfully!',
-        alertType: 'success'
-      });
-      
-      setTimeout(() => {
-        router.push('/customers/types');
-      }, 1500);
-      
-    } catch (err) {
-      console.error('Error denying customer type:', err);
-      const errorMessage = extractErrorMessage(err, 'Failed to deny customer type. Please try again.');
-      setFlashNotification({
-        title: 'Error',
-        message: errorMessage,
-        alertType: 'error'
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDenyCancel = () => {
-    setShowDenyDialog(false);
-  };
-
-  const handleCancel = () => {
-    router.push('/customers/types');
-  };
-
-  const getStatusText = (status: StatusEnum): string => {
-    switch (status) {
-      case StatusEnum.ACTIVE:
-        return 'Active';
-      case StatusEnum.FOR_APPROVAL:
-        return 'For Approval';
-      case StatusEnum.FOR_DELETION:
-        return 'For Deletion';
-      case StatusEnum.NEW_RECORD:
-        return 'New Record';
-      default:
-        return status;
-    }
-  };
-
-  const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
-    if (!isActive) {
-      return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
-    }
-    
-    switch (status) {
-      case StatusEnum.ACTIVE:
-        return 'bg-green-600 text-white shadow-sm';
-      case StatusEnum.FOR_APPROVAL:
-        return 'bg-yellow-500 text-white shadow-sm';
-      case StatusEnum.FOR_DELETION:
-        return 'bg-red-600 text-white shadow-sm';
-      case StatusEnum.NEW_RECORD:
-        return 'bg-blue-600 text-white shadow-sm';
-      default:
-        return 'bg-gray-500 text-white shadow-sm';
-    }
-  };
-
-  if (!selectedCustomerType && !isLoading) {
-    return (
-      <div className="p-4 sm:p-6 space-y-6">
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
-          <span>Customer Type not found</span>
-        </div>
-      </div>
-    );
-  }
-
-  const renderApprovalTab = () => {
-    if (!selectedCustomerType) return null;
-
-    if (selectedCustomerType.status === StatusEnum.FOR_DELETION) {
-      return (
-        <div className="space-y-6 animate-fadeIn">
-          <div className="rounded-xl border-2 border-red-300 bg-red-50 p-6 shadow-sm sm:p-8">
-            <div className="mb-4 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600">
-                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-red-800">Record Marked for Deletion</h3>
-                <p className="mt-1 text-sm text-red-700">This record has been marked for deletion and is awaiting approval.</p>
-              </div>
-            </div>
-            {selectedCustomerType.changeReason && (
-              <div className="mt-6 rounded-lg border-2 border-red-200 bg-white p-4">
-                <p className="mb-2 text-sm font-semibold text-gray-700">Deletion Reason:</p>
-                <p className="mt-2 whitespace-pre-wrap font-mono text-sm text-gray-600 leading-relaxed">{selectedCustomerType.changeReason}</p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-            {isAdminUser ? (
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <button
-                  type="button"
-                  onClick={handleDeny}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  {isLoading ? 'Processing...' : 'Deny Deletion'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleApprove}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {isLoading ? 'Processing...' : 'Approve Deletion'}
-                </button>
-              </div>
-            ) : (
-              <div className="hidden sm:block" />
-            )}
-
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Cancel
-            </button>
-          </div>
-        </div>
-      );
-    }
-
-    if (!selectedCustomerType.forApprovalVersion) return null;
-
-    const approvalData = selectedCustomerType.forApprovalVersion;
-
-    // Use shared field change detection utility
-    const isFieldChanged = createFieldChangeDetector(
-      selectedCustomerType as Record<string, unknown>,
-      selectedCustomerType.forApprovalVersion as Record<string, unknown> | undefined
-    );
-
-    const formatValue = (value: unknown): string => {
-      if (value === null || value === undefined) return '-';
-      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-      if (typeof value === 'number') return value.toString();
-      if (typeof value === 'object') return JSON.stringify(value);
-      return String(value);
+    const handleDelete = () => {
+        if (!selectedCustomerType) {
+            return;
+        }
+        setShowDeleteModal(true);
     };
 
-    const renderReadOnlyField = (label: string, value: unknown, colorClass: string, fieldName?: string) => {
-      const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+    const handleConfirmDelete = async (deletionReason: string) => {
+        if (!selectedCustomerType) {
+            return;
+        }
 
-      return (
-        <div className="group">
-          <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-            <span className={`h-1.5 w-1.5 rounded-full ${colorClass}`}></span>
-            {label}
-          </label>
-          <div className={`w-full cursor-not-allowed rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm ${
-            fieldChanged
-              ? 'border-blue-500 bg-blue-50 text-gray-700'
-              : 'border-gray-200 bg-gray-50 text-gray-500'
-          }`}>
-            {formatValue(value)}
-          </div>
-        </div>
-      );
+        try {
+            setIsLoading(true);
+            setShowDeleteModal(false);
+
+            const userRole =
+                env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
+                    ? authedUser?.userRole
+                    : undefined;
+
+            await CustomerTypeApi.deleteCustomerType(selectedCustomerType.customerTypeId, deletionReason, userRole);
+
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Customer Type deleted successfully!',
+                alertType: 'success',
+            });
+            router.push('/customers/types');
+        } catch (error) {
+            console.error('Error deleting customer type:', error);
+            const errorMessage = extractErrorMessage(error, 'Failed to delete customer type. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
-    return (
-      <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
-        {selectedCustomerType?.changeReason && (
-          <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </div>
-              <h4 className="m-0 text-base font-bold text-blue-600">
-                Change Reason and Modification Made
-              </h4>
+    const handleApprove = async () => {
+        if (!selectedCustomerType) return;
+
+        try {
+            setIsLoading(true);
+
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
+            const approvedCustomerType = await CustomerTypeApi.approveCustomerType(
+                selectedCustomerType.customerTypeId,
+                userRole
+            );
+            setSelectedCustomerType(approvedCustomerType);
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Customer Type approved successfully!',
+                alertType: 'success',
+            });
+            router.push('/customers/types');
+        } catch (err) {
+            console.error('Error approving customer type:', err);
+            const errorMessage = extractErrorMessage(err, 'Failed to approve customer type. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeny = () => {
+        setShowDenyDialog(true);
+    };
+
+    const handleDenyConfirm = async (approverMessage: string) => {
+        if (!selectedCustomerType) return;
+
+        try {
+            setIsLoading(true);
+            setShowDenyDialog(false);
+
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
+            const deniedCustomerType = await CustomerTypeApi.denyCustomerType(
+                selectedCustomerType.customerTypeId,
+                approverMessage,
+                userRole
+            );
+            setSelectedCustomerType(deniedCustomerType);
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Customer Type changes denied successfully!',
+                alertType: 'success',
+            });
+            router.push('/customers/types');
+        } catch (err) {
+            console.error('Error denying customer type:', err);
+            const errorMessage = extractErrorMessage(err, 'Failed to deny customer type. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDenyCancel = () => {
+        setShowDenyDialog(false);
+    };
+
+    const handleCancel = () => {
+        router.push('/customers/types');
+    };
+
+    const getStatusText = (status: StatusEnum): string => {
+        switch (status) {
+            case StatusEnum.ACTIVE:
+                return 'Active';
+            case StatusEnum.FOR_APPROVAL:
+                return 'For Approval';
+            case StatusEnum.FOR_DEACTIVATION:
+                return 'For Deactivation';
+            case StatusEnum.INACTIVE:
+                return 'Inactive';
+            case StatusEnum.NEW_RECORD:
+                return 'New Record';
+            default:
+                return status;
+        }
+    };
+
+    const getTabColorClasses = (status: StatusEnum, isActive: boolean): string => {
+        if (!isActive) {
+            return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
+        }
+
+        switch (status) {
+            case StatusEnum.ACTIVE:
+                return 'bg-green-600 text-white shadow-sm';
+            case StatusEnum.FOR_APPROVAL:
+                return 'bg-yellow-500 text-white shadow-sm';
+            case StatusEnum.FOR_DEACTIVATION:
+                return 'bg-orange-600 text-white shadow-sm';
+            case StatusEnum.INACTIVE:
+                return 'bg-gray-600 text-white shadow-sm';
+            case StatusEnum.NEW_RECORD:
+                return 'bg-blue-600 text-white shadow-sm';
+            default:
+                return 'bg-gray-500 text-white shadow-sm';
+        }
+    };
+
+    if (!selectedCustomerType && !isLoading) {
+        return (
+            <div className="p-4 sm:p-6 space-y-6">
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
+                    <span>Customer Type not found</span>
+                </div>
             </div>
-            <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
-              {selectedCustomerType.changeReason}
-            </div>
-          </div>
-        )}
+        );
+    }
 
-        <div className="space-y-4">
-          <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-lg bg-blue-600 p-2 shadow-md">
-                <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                </svg>
-              </div>
-              <h3 className="text-base font-bold text-blue-600">
-                Type Information
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 gap-6">
-              {renderReadOnlyField('Customer Type Name', approvalData.customerTypeName, 'bg-blue-500', 'customerTypeName')}
-            </div>
-          </div>
-        </div>
+    const renderApprovalTab = () => {
+        if (!selectedCustomerType) return null;
 
-        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          {isAdminUser && selectedCustomerType && ([StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(selectedCustomerType.status as StatusEnum)) ? (
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <button
-                type="button"
-                onClick={handleDeny}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                {isLoading ? 'Processing...' : 'Deny Changes'}
-              </button>
-              <button
-                type="button"
-                onClick={handleApprove}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                {isLoading ? 'Processing...' : 'Approve Changes'}
-              </button>
-            </div>
-          ) : (
-            <div className="hidden sm:block" />
-          )}
+        if (selectedCustomerType.status === StatusEnum.FOR_DEACTIVATION) {
+            return (
+                <div className="space-y-6 animate-fadeIn">
+                    <div className="rounded-xl border-2 border-orange-300 bg-orange-50 p-6 shadow-sm sm:p-8">
+                        <div className="mb-4 flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-600">
+                                <svg
+                                    className="h-6 w-6 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                                    />
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-orange-800">Record Marked for Deactivation</h3>
+                                <p className="mt-1 text-sm text-orange-700">
+                                    This record has been marked for deactivation and is awaiting approval.
+                                </p>
+                            </div>
+                        </div>
+                        {selectedCustomerType.deletionReason && (
+                            <div className="mt-6 rounded-lg border-2 border-orange-200 bg-white p-4">
+                                <p className="mb-2 text-sm font-semibold text-gray-700">Deactivation Reason:</p>
+                                <p className="mt-2 whitespace-pre-wrap font-mono text-sm text-gray-600 leading-relaxed">
+                                    {selectedCustomerType.deletionReason}
+                                </p>
+                            </div>
+                        )}
+                    </div>
 
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  };
+                    <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                        {isAdminUser ? (
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                <button
+                                    type="button"
+                                    onClick={handleDeny}
+                                    disabled={isLoading}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                    {isLoading ? 'Processing...' : 'Deny Deactivation'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleApprove}
+                                    disabled={isLoading}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                    {isLoading ? 'Processing...' : 'Approve Deactivation'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="hidden sm:block" />
+                        )}
 
-  const renderLogsTab = () => {
-    if (!selectedCustomerType) return null;
+                        <button
+                            type="button"
+                            onClick={handleCancel}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                        >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            );
+        }
 
-    return (
-      <div className="space-y-6 animate-fadeIn">
-        <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="m-0 text-base font-bold text-blue-600">
-              Activity Logs
-            </h3>
-          </div>
+        if (!selectedCustomerType.forApprovalVersion) return null;
 
-          {renderActivityLogsTable(selectedCustomerType?.activityLogs)}
-        </div>
+        const approvalData = selectedCustomerType.forApprovalVersion;
 
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  };
+        // Use shared field change detection utility
+        const isFieldChanged = createFieldChangeDetector(
+            selectedCustomerType as Record<string, unknown>,
+            selectedCustomerType.forApprovalVersion as Record<string, unknown> | undefined
+        );
 
-  return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <DeleteConfirmationModal
-        show={showDeleteModal}
-        customerType={selectedCustomerType}
-        onConfirm={handleConfirmDelete}
-        onCancel={() => setShowDeleteModal(false)}
-      />
+        const formatValue = (value: unknown): string => {
+            if (value === null || value === undefined) return '-';
+            if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+            if (typeof value === 'number') return value.toString();
+            if (typeof value === 'object') return JSON.stringify(value);
+            return String(value);
+        };
 
-      <DenyReasonDialog
-        show={showDenyDialog}
-        customerType={selectedCustomerType}
-        onConfirm={handleDenyConfirm}
-        onCancel={handleDenyCancel}
-      />
-      <div>
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Home
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/customers" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Customers
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/customers/types" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Types
-          </a>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Edit</span>
-        </nav>
-      </div>
+        const renderReadOnlyField = (label: string, value: unknown, colorClass: string, fieldName?: string) => {
+            const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
 
-      {isLoading && !selectedCustomerType && (
-        <div className="flex min-h-96 items-center justify-center">
-          <div className="text-gray-600">Loading customer type details...</div>
-        </div>
-      )}
+            return (
+                <div className="group">
+                    <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                        <span className={`h-1.5 w-1.5 rounded-full ${colorClass}`}></span>
+                        {label}
+                    </label>
+                    <div
+                        className={`w-full cursor-not-allowed rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm ${
+                            fieldChanged
+                                ? 'border-blue-500 bg-blue-50 text-gray-700'
+                                : 'border-gray-200 bg-gray-50 text-gray-500'
+                        }`}
+                    >
+                        {formatValue(value)}
+                    </div>
+                </div>
+            );
+        };
 
-      {selectedCustomerType && (
-        <div className="flex justify-center">
-          <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
-            <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
-              <div className="flex flex-nowrap gap-2">
-                <button
-                  onClick={() => setActiveTab('details')}
-                  className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
-                    getTabColorClasses(selectedCustomerType.status || StatusEnum.ACTIVE, activeTab === 'details')
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Type Information
-                    {selectedCustomerType && (
-                      <>
-                        <span className="mx-1">-</span>
-                        <span>{getStatusText(selectedCustomerType.status || StatusEnum.ACTIVE)}</span>
-                      </>
-                    )}
-                  </span>
-                </button>
-
-                {selectedCustomerType.status !== StatusEnum.ACTIVE && (
-                  <button
-                    onClick={() => setActiveTab('approval')}
-                    className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
-                      activeTab === 'approval'
-                        ? 'bg-blue-600 text-white shadow-sm'
-                        : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Pending Changes
-                    </span>
-                  </button>
+        return (
+            <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
+                {selectedCustomerType?.changeReason && (
+                    <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                    />
+                                </svg>
+                            </div>
+                            <h4 className="m-0 text-base font-bold text-blue-600">
+                                Change Reason and Modification Made
+                            </h4>
+                        </div>
+                        <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
+                            {selectedCustomerType.changeReason}
+                        </div>
+                    </div>
                 )}
 
-                <button
-                  onClick={() => setActiveTab('logs')}
-                  className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
-                    activeTab === 'logs'
-                      ? 'bg-blue-600 text-white shadow-sm'
-                      : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Activity Logs
-                  </span>
-                </button>
-              </div>
+                <div className="space-y-4">
+                    <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
+                        <div className="mb-4 flex items-center gap-3">
+                            <div className="rounded-lg bg-blue-600 p-2 shadow-md">
+                                <svg
+                                    className="h-5 w-5 text-white"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
+                                    />
+                                </svg>
+                            </div>
+                            <h3 className="text-base font-bold text-blue-600">Type Information</h3>
+                        </div>
+                        <div className="grid grid-cols-1 gap-6">
+                            {renderReadOnlyField(
+                                'Customer Type Name',
+                                approvalData.customerTypeName,
+                                'bg-blue-500',
+                                'customerTypeName'
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                    {isAdminUser &&
+                    selectedCustomerType &&
+                    [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(
+                        selectedCustomerType.status as StatusEnum
+                    ) ? (
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                            <button
+                                type="button"
+                                onClick={handleDeny}
+                                disabled={isLoading}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                {isLoading ? 'Processing...' : 'Deny Changes'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleApprove}
+                                disabled={isLoading}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                                {isLoading ? 'Processing...' : 'Approve Changes'}
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="hidden sm:block" />
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                    >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    const renderLogsTab = () => {
+        if (!selectedCustomerType) return null;
+
+        return (
+            <div className="space-y-6 animate-fadeIn">
+                <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+                    <div className="mb-4 flex items-center gap-3">
+                        <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                            </svg>
+                        </div>
+                        <h3 className="m-0 text-base font-bold text-blue-600">Activity Logs</h3>
+                    </div>
+
+                    {renderActivityLogsTable(selectedCustomerType?.activityLogs)}
+                </div>
+
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                    >
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            <div>
+                <nav className="flex items-center gap-2">
+                    <a
+                        href="/dashboard"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Home
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <a
+                        href="/customers"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Customers
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <a
+                        href="/customers/types"
+                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
+                    >
+                        Types
+                    </a>
+                    <span className="text-gray-400">/</span>
+                    <span className="text-gray-800 text-sm font-medium">Edit</span>
+                </nav>
             </div>
 
-            <div className="bg-white p-4 sm:p-6">
-              {activeTab === 'details' && (
-                <CustomerTypeForm
-                  isCreateMode={false}
-                  selectedCustomerType={selectedCustomerType}
-                  successMessage={null}
-                  onSave={handleSave}
-                  onDelete={handleDelete}
-                  onCancel={handleCancel}
-                  isAdminUser={isAdminUser}
-                />
-              )}
+            {isLoading && !selectedCustomerType && (
+                <div className="flex min-h-96 items-center justify-center">
+                    <div className="text-gray-600">Loading customer type details...</div>
+                </div>
+            )}
 
-              {activeTab === 'approval' && renderApprovalTab()}
+            {selectedCustomerType && (
+                <div className="flex justify-center">
+                    <div className="w-full max-w-4xl overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl">
+                        <div className="overflow-x-auto rounded-t-xl border-b-2 border-blue-200 bg-gray-50 p-2">
+                            <div className="flex flex-nowrap gap-2">
+                                <button
+                                    onClick={() => setActiveTab('details')}
+                                    className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${getTabColorClasses(
+                                        selectedCustomerType.status || StatusEnum.ACTIVE,
+                                        activeTab === 'details'
+                                    )}`}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                            />
+                                        </svg>
+                                        Type Information
+                                        {selectedCustomerType && (
+                                            <>
+                                                <span className="mx-1">-</span>
+                                                <span>
+                                                    {getStatusText(selectedCustomerType.status || StatusEnum.ACTIVE)}
+                                                </span>
+                                            </>
+                                        )}
+                                    </span>
+                                </button>
 
-              {activeTab === 'logs' && renderLogsTab()}
-            </div>
-          </div>
+                                {selectedCustomerType.status !== StatusEnum.ACTIVE && (
+                                    <button
+                                        onClick={() => setActiveTab('approval')}
+                                        className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
+                                            activeTab === 'approval'
+                                                ? 'bg-blue-600 text-white shadow-sm'
+                                                : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        <span className="flex items-center gap-2">
+                                            <svg
+                                                className="h-4 w-4"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                />
+                                            </svg>
+                                            Pending Changes
+                                        </span>
+                                    </button>
+                                )}
+
+                                <button
+                                    onClick={() => setActiveTab('logs')}
+                                    className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
+                                        activeTab === 'logs'
+                                            ? 'bg-blue-600 text-white shadow-sm'
+                                            : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                            />
+                                        </svg>
+                                        Activity Logs
+                                    </span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="bg-white p-4 sm:p-6">
+                            {activeTab === 'details' && (
+                                <CustomerTypeForm
+                                    isCreateMode={false}
+                                    selectedCustomerType={selectedCustomerType}
+                                    successMessage={null}
+                                    onSave={handleSave}
+                                    onDelete={handleDelete}
+                                    onCancel={handleCancel}
+                                    isAdminUser={isAdminUser}
+                                />
+                            )}
+
+                            {activeTab === 'approval' && renderApprovalTab()}
+
+                            {activeTab === 'logs' && renderLogsTab()}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modals */}
+            <DeleteConfirmationModal
+                show={showDeleteModal}
+                record={selectedCustomerType}
+                recordDisplayName={selectedCustomerType?.customerTypeName || ''}
+                onConfirm={handleConfirmDelete}
+                onCancel={() => setShowDeleteModal(false)}
+            />
+
+            <DenyReasonDialog
+                show={showDenyDialog}
+                record={selectedCustomerType}
+                recordDisplayName={selectedCustomerType?.customerTypeName || ''}
+                onConfirm={handleDenyConfirm}
+                onCancel={handleDenyCancel}
+            />
         </div>
-      )}
-    </div>
-  );
+    );
 }

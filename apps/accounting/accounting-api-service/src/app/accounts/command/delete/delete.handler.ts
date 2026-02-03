@@ -87,8 +87,8 @@ export class DeleteAccountsHandler implements ICommandHandler<DeleteAccountsComm
         if (hasApprovalPermission) {
             record.changeReason = null;
         } else {
-            const deletionReason = command.accountsDto.changeReason?.trim();
-            record.changeReason = deletionReason || record.changeReason || undefined;
+            const deletionReason = command.accountsDto.deletionReason?.trim();
+            record.deletionReason = deletionReason || record.deletionReason || undefined;
         }
 
         return record;

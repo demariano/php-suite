@@ -1,4 +1,4 @@
-import { CollectionReceiptRangeDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import { CollectionReceiptRangeDto, ErrorResponseDto, RangeStatusEnum, ResponseDto, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { CollectionReceiptRangeDatabaseServiceAbstract } from '@invoicing-database-service';
 import { BadRequestException, Inject, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common';
@@ -80,15 +80,15 @@ export class DeleteCollectionReceiptRangeHandler implements ICommandHandler<Dele
         command.rangeDto.collectionReceiptRangeId = command.id;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DEACTIVATION
-            command.rangeDto.status = StatusEnum.FOR_DEACTIVATION;
+            // User can delete directly - set to CANCELLED
+            command.rangeDto.rangeStatus = RangeStatusEnum.CANCELLED;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Collection receipt range deleted by ${command.user.username}`;
             command.rangeDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
         } else {
-            // User needs approval - set to FOR_DEACTIVATION
-            command.rangeDto.status = StatusEnum.FOR_DEACTIVATION;
+            // User needs approval - set to CANCELLED
+            command.rangeDto.rangeStatus = RangeStatusEnum.CANCELLED;
             const activityLog = `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
             })}, Collection receipt range marked for deletion by ${command.user.username}`;

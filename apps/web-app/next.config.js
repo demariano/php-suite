@@ -1,6 +1,5 @@
 //@ts-check
 
-
 const { composePlugins, withNx } = require('@nx/next');
 
 /**
@@ -17,17 +16,17 @@ const nextConfig = {
             {
                 source: '/',
                 destination: '/auth/login',
-                permanent: true
-            }
-        ]
+                permanent: true,
+            },
+        ];
     },
     webpack(config) {
         config.module.rules.push({
             test: /\.svg$/,
-            use: ['@svgr/webpack']
+            use: ['@svgr/webpack'],
         });
         return config;
-    }
+    },
 };
 
 const plugins = [

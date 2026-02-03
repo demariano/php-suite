@@ -26,11 +26,11 @@ export class DeleteTermsHandler implements ICommandHandler<DeleteTermsCommand> {
             // Check user authorization
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
-            // Update status and activity logs based on permissions
-            this.updateTermsStatus(command, existingRecord, hasApprovalPermission);
+            // Build the terms DTO with updated status and activity logs
+            const updatedTerms = this.buildTermsDto(existingRecord, command, hasApprovalPermission);
 
-            // Delete or mark for deletion based on permissions
-            const deletedRecord = await this.performDeletion(command, hasApprovalPermission);
+            // Perform soft delete (always update, never hard delete)
+            const deletedRecord = await this.performDeletion(updatedTerms);
 
             this.logger.log(`Terms deleted successfully: ${deletedRecord.termsId}`);
             return new ResponseDto<TermsDto>(deletedRecord, HTTP_STATUS_OK);
@@ -65,44 +65,38 @@ export class DeleteTermsHandler implements ICommandHandler<DeleteTermsCommand> {
     }
 
     /**
-     * Updates terms status and activity logs based on user permissions
+     * Builds the updated terms DTO with proper status and activity logs
+     * MASTER DATA PATTERN: Soft delete only - NEVER hard delete
      */
-    private updateTermsStatus(
-        command: DeleteTermsCommand,
+    private buildTermsDto(
         existingRecord: TermsDto,
+        command: DeleteTermsCommand,
         hasApprovalPermission: boolean
-    ): void {
-        // Set the ID
-        command.termsDto.termsId = command.recordId;
+    ): TermsDto {
+        // Determine status based on user permissions
+        // ADMIN/SUPER_ADMIN: ACTIVE → INACTIVE (immediate soft delete)
+        // Regular user: ACTIVE → FOR_DEACTIVATION (requires approval)
+        const status = hasApprovalPermission ? StatusEnum.INACTIVE : StatusEnum.FOR_DEACTIVATION;
 
-        if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DEACTIVATION for hard delete
-            command.termsDto.status = StatusEnum.FOR_DEACTIVATION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Terms deleted by ${command.user.username}`;
-            command.termsDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-        } else {
-            // User needs approval - set to FOR_DEACTIVATION for soft delete
-            command.termsDto.status = StatusEnum.FOR_DEACTIVATION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Terms marked for deletion by ${command.user.username}`;
-            command.termsDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
-        }
+        const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+            timeZone: 'Asia/Manila',
+        })}, ${hasApprovalPermission ? 'Terms deleted' : 'Terms marked for deactivation'} by ${command.user.username}`;
+
+        // Use spread operator to maintain all existing fields
+        return {
+            ...existingRecord,
+            status,
+            deletionReason: command.deletionReason,
+            activityLogs: [...(existingRecord.activityLogs || []), activityLog],
+        };
     }
 
     /**
-     * Performs the actual deletion based on user permissions
+     * Performs soft deletion by updating the record
+     * MASTER DATA PATTERN: ALWAYS update, NEVER hard delete
      */
-    private async performDeletion(command: DeleteTermsCommand, hasApprovalPermission: boolean): Promise<TermsDto> {
-        if (hasApprovalPermission) {
-            // Hard delete
-            return await this.termsDatabaseService.deleteRecord(command.termsDto);
-        } else {
-            // Soft delete (mark for deletion)
-            return await this.termsDatabaseService.updateRecord(command.termsDto);
-        }
+    private async performDeletion(updatedTerms: TermsDto): Promise<TermsDto> {
+        return await this.termsDatabaseService.updateRecord(updatedTerms);
     }
 
     /**

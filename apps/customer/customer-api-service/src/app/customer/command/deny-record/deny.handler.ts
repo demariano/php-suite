@@ -86,19 +86,26 @@ export class DenyCustomerHandler implements ICommandHandler<DenyCustomerCommand>
 
         // Update status based on current status
         if (existingCustomer.status === StatusEnum.NEW_RECORD) {
+            // NEW_RECORD → Hard delete (reject creation entirely)
             return await this.customerDatabaseService.deleteRecord(updatedCustomer);
         } else if (existingCustomer.status === StatusEnum.FOR_APPROVAL) {
-            // Revert to previous status or set to a denied status
+            // FOR_APPROVAL → ACTIVE (revert to original state, discard pending changes)
             updatedCustomer.status = StatusEnum.ACTIVE;
             // Clear forApprovalVersion
             updatedCustomer.forApprovalVersion = undefined;
             // Reset changeReason
             updatedCustomer.changeReason = null;
             updatedCustomer.approverMessage = null;
-        } else if (existingCustomer.status === StatusEnum.FOR_DELETION) {
-            // Revert deletion request
+        } else if (existingCustomer.status === StatusEnum.FOR_DEACTIVATION) {
+            // FOR_DEACTIVATION → ACTIVE (restore to live state)
             updatedCustomer.status = StatusEnum.ACTIVE;
+            updatedCustomer.changeReason = null;
             updatedCustomer.approverMessage = null;
+            updatedCustomer.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer deactivation denied, restored to ${StatusEnum.ACTIVE}`
+            );
         }
 
         // Update record in database

@@ -1,3 +1,4 @@
 export enum AccountEventEnum {
     ACCOUNT_UPDATED = 'ACCOUNT_UPDATED',
+    ACCOUNT_REACTIVATED = 'ACCOUNT_REACTIVATED',
 }

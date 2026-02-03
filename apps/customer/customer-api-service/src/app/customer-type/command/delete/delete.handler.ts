@@ -26,11 +26,11 @@ export class DeleteCustomerTypeHandler implements ICommandHandler<DeleteCustomer
             // Check user authorization
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
-            // Update status and activity logs based on permissions
-            this.updateCustomerTypeStatus(command, existingRecord, hasApprovalPermission);
+            // Build the customer type DTO with updated status and activity logs
+            const updatedCustomerType = this.buildCustomerTypeDto(existingRecord, command, hasApprovalPermission);
 
-            // Delete or mark for deletion based on permissions
-            const deletedRecord = await this.performDeletion(command, hasApprovalPermission);
+            // Perform soft delete (always update, never hard delete)
+            const deletedRecord = await this.performDeletion(updatedCustomerType);
 
             this.logger.log(`Customer type deleted successfully: ${deletedRecord.customerTypeId}`);
             return new ResponseDto<CustomerTypeDto>(deletedRecord, HTTP_STATUS_OK);
@@ -65,47 +65,58 @@ export class DeleteCustomerTypeHandler implements ICommandHandler<DeleteCustomer
     }
 
     /**
-     * Updates customer type status and activity logs based on user permissions
+     * Builds the customer type DTO with updated status and activity logs
+     * Uses spread operator pattern to preserve existing data
+     * MASTER DATA SOFT DELETE PATTERN:
+     * - ADMIN/SUPER_ADMIN: Immediate soft delete (status → INACTIVE)
+     * - USER: Request approval (status → FOR_DEACTIVATION)
      */
-    private updateCustomerTypeStatus(
-        command: DeleteCustomerTypeCommand,
+    private buildCustomerTypeDto(
         existingRecord: CustomerTypeDto,
+        command: DeleteCustomerTypeCommand,
         hasApprovalPermission: boolean
-    ): void {
-        // Set the ID
-        command.customerTypeDto.customerTypeId = command.recordId;
+    ): CustomerTypeDto {
+        // Use spread operator to preserve all existing fields
+        const updatedCustomerType: CustomerTypeDto = {
+            ...existingRecord,
+            activityLogs: existingRecord.activityLogs || [],
+        };
+
+        // Set deletionReason if provided
+        const deletionReason = command.deletionReason?.trim();
+        updatedCustomerType.deletionReason = deletionReason || undefined;
 
         if (hasApprovalPermission) {
-            // User can delete directly - set to FOR_DEACTIVATION for hard delete
-            command.customerTypeDto.status = StatusEnum.FOR_DEACTIVATION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Customer type deleted by ${command.user.username}`;
-            command.customerTypeDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            // ADMIN/SUPER_ADMIN: Immediate soft delete - set to INACTIVE
+            updatedCustomerType.status = StatusEnum.INACTIVE;
+            updatedCustomerType.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer type deactivated by ${command.user.username}${
+                    deletionReason ? `, reason: ${deletionReason}` : ''
+                }`
+            );
         } else {
-            // User needs approval - set to FOR_DEACTIVATION for soft delete
-            command.customerTypeDto.status = StatusEnum.FOR_DEACTIVATION;
-            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Customer type marked for deletion by ${command.user.username}`;
-            command.customerTypeDto.activityLogs = [...(existingRecord.activityLogs || []), activityLog];
+            // USER: Mark for deactivation - requires approval
+            updatedCustomerType.status = StatusEnum.FOR_DEACTIVATION;
+            updatedCustomerType.activityLogs.push(
+                `Date: ${new Date().toLocaleString('en-US', {
+                    timeZone: 'Asia/Manila',
+                })}, Customer type marked for deactivation by ${command.user.username}${
+                    deletionReason ? `, reason: ${deletionReason}` : ''
+                }`
+            );
         }
+
+        return updatedCustomerType;
     }
 
     /**
-     * Performs the actual deletion based on user permissions
+     * Performs the soft deletion by updating the record
+     * MASTER DATA PATTERN: Always use updateRecord (never deleteRecord/hard delete)
      */
-    private async performDeletion(
-        command: DeleteCustomerTypeCommand,
-        hasApprovalPermission: boolean
-    ): Promise<CustomerTypeDto> {
-        if (hasApprovalPermission) {
-            // Hard delete
-            return await this.customerTypeDatabaseService.deleteRecord(command.customerTypeDto);
-        } else {
-            // Soft delete (mark for deletion)
-            return await this.customerTypeDatabaseService.updateRecord(command.customerTypeDto);
-        }
+    private async performDeletion(customerType: CustomerTypeDto): Promise<CustomerTypeDto> {
+        return await this.customerTypeDatabaseService.updateRecord(customerType);
     }
 
     /**

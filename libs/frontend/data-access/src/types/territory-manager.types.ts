@@ -11,6 +11,7 @@ export interface TerritoryManagerDto {
     activityLogs?: string[];
     forApprovalVersion?: Record<string, unknown>;
     changeReason?: string;
+    deletionReason?: string;
     approverMessage?: string;
 }
 
