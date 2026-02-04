@@ -1,183 +1,163 @@
 'use client';
 
+import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } from '@components-web';
 import { ProductPriceTypeDto } from '@data-access/index';
+import { ReactNode } from 'react';
+
+type ProductPriceTypeTableRow = Omit<ProductPriceTypeDto, 'status'> & {
+    priceTypeName: string;
+    status: ReactNode;
+    latestActivity: string;
+};
 
 interface ProductPriceTypeTableProps {
-  isLoading: boolean;
-  tableData: any[];
-  headers: { key: string; label: string }[];
-  searchQuery: string;
-  onRowClick: (productPriceType: ProductPriceTypeDto) => void;
-  pageSize: number;
-  onPageSizeChange: (size: number) => void;
-  prevCursor: string | undefined;
-  nextCursor: string | undefined;
-  onPrevious: () => void;
-  onNext: () => void;
+    isLoading: boolean;
+    tableData: ProductPriceTypeTableRow[];
+    headers: { key: string; label: string }[];
+    searchQuery: string;
+    onRowClick: (productPriceType: ProductPriceTypeDto) => void;
+    pageSize: number;
+    onPageSizeChange: (size: number) => void;
+    prevCursor: string | undefined;
+    nextCursor: string | undefined;
+    onPrevious: () => void;
+    onNext: () => void;
 }
 
 export default function ProductPriceTypeTable({
-  isLoading,
-  tableData,
-  headers,
-  searchQuery,
-  onRowClick,
-  pageSize,
-  onPageSizeChange,
-  prevCursor,
-  nextCursor,
-  onPrevious,
-  onNext
+    isLoading,
+    tableData,
+    headers,
+    searchQuery,
+    onRowClick,
+    pageSize,
+    onPageSizeChange,
+    prevCursor,
+    nextCursor,
+    onPrevious,
+    onNext,
 }: ProductPriceTypeTableProps) {
-  return (
-    <>
-      {/* Table */}
-      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
-        {isLoading ? (
-          <div className="p-10 text-center text-base text-gray-500">
-            Loading product price types...
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead className="border-b border-blue-700 bg-blue-600">
-                <tr>
-                  {headers.map((header) => (
-                    <th key={header.key} className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white">
-                      {header.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {tableData.length > 0 ? (
-                  tableData.map((productPriceType) => (
-                    <tr
-                      key={productPriceType.productPriceTypeId}
-                      onClick={() => onRowClick(productPriceType)}
-                      className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-5 text-sm font-medium text-gray-900">
-                        {productPriceType.productPriceTypeName || '-'}
-                      </td>
-                      <td className="px-6 py-5">{productPriceType.status}</td>
-                      <td className="px-6 py-5 text-sm">
-                        {productPriceType.latestActivity ? (
-                          <span 
-                            className={`px-2 py-1 rounded ${productPriceType.latestActivity.style.bgColor} ${productPriceType.latestActivity.style.textColor}`}
-                            title={productPriceType.latestActivity.text}
-                          >
-                            {productPriceType.latestActivity.text.length > 50 
-                              ? `${productPriceType.latestActivity.text.substring(0, 50)}...` 
-                              : productPriceType.latestActivity.text}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+    return (
+        <>
+            {/* Desktop Table */}
+            <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                {isLoading ? (
+                    <TableSkeleton columns={3} rows={pageSize} />
                 ) : (
-                  <tr>
-                    <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                      {searchQuery ? `No product price types found matching "${searchQuery}"` : 'No product price types found'}
-                    </td>
-                  </tr>
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead className="border-b border-blue-700 bg-blue-600">
+                                <tr>
+                                    {headers.map((header) => (
+                                        <th
+                                            key={header.key}
+                                            className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white"
+                                        >
+                                            {header.label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 bg-white">
+                                {tableData.length > 0 ? (
+                                    tableData.map((productPriceType) => (
+                                        <tr
+                                            key={productPriceType.productPriceTypeId}
+                                            onClick={() =>
+                                                onRowClick(productPriceType as unknown as ProductPriceTypeDto)
+                                            }
+                                            className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
+                                        >
+                                            <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                                {productPriceType.priceTypeName || '-'}
+                                            </td>
+                                            <td className="px-6 py-5">{productPriceType.status}</td>
+                                            <td className="px-6 py-5 text-sm text-gray-600">
+                                                {productPriceType.latestActivity || '-'}
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={headers.length}>
+                                            <EmptyTableState
+                                                message={
+                                                    searchQuery
+                                                        ? `No product price types found matching "${searchQuery}"`
+                                                        : 'No product price types found'
+                                                }
+                                            />
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile Cards */}
-      {!isLoading && (
-        <div className="space-y-4 sm:hidden">
-          {tableData.length > 0 ? (
-            tableData.map((productPriceType) => (
-              <button
-                key={productPriceType.productPriceTypeId}
-                type="button"
-                onClick={() => onRowClick(productPriceType)}
-                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-base font-semibold text-gray-900">
-                      {productPriceType.productPriceTypeName || '-'}
-                    </h3>
-                    {productPriceType.latestActivity && (
-                      <p className="mt-2 text-xs">
-                        <span className="font-medium text-gray-700">Latest Activity: </span>
-                        <span 
-                          className={`px-2 py-1 rounded ${productPriceType.latestActivity.style.bgColor} ${productPriceType.latestActivity.style.textColor}`}
-                        >
-                          {productPriceType.latestActivity.text.length > 60 
-                            ? `${productPriceType.latestActivity.text.substring(0, 60)}...` 
-                            : productPriceType.latestActivity.text}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                  <div>{productPriceType.status}</div>
-                </div>
-              </button>
-            ))
-          ) : (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-              {searchQuery ? `No product price types found matching "${searchQuery}"` : 'No product price types found'}
             </div>
-          )}
-        </div>
-      )}
 
-      {isLoading && (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm sm:hidden">
-          Loading product price types...
-        </div>
-      )}
+            {/* Mobile Cards */}
+            {isLoading ? (
+                <div className="space-y-4 sm:hidden">
+                    {Array.from({ length: 3 }).map((_, idx) => (
+                        <div
+                            key={idx}
+                            className="h-32 w-full animate-pulse rounded-xl border border-gray-200 bg-gray-100"
+                        />
+                    ))}
+                </div>
+            ) : (
+                <div className="space-y-4 sm:hidden">
+                    {tableData.length > 0 ? (
+                        tableData.map((productPriceType) => (
+                            <button
+                                key={productPriceType.productPriceTypeId}
+                                type="button"
+                                onClick={() => onRowClick(productPriceType as unknown as ProductPriceTypeDto)}
+                                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="col-span-2">
+                                        <p className="text-xs font-medium text-gray-500">Price Type Name</p>
+                                        <p className="mt-1 text-sm font-semibold text-gray-900">
+                                            {productPriceType.priceTypeName || '-'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500">Status</p>
+                                        <div className="mt-1">{productPriceType.status}</div>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-medium text-gray-500">Latest Activity</p>
+                                        <p className="mt-1 text-sm text-gray-600">
+                                            {productPriceType.latestActivity || '-'}
+                                        </p>
+                                    </div>
+                                </div>
+                            </button>
+                        ))
+                    ) : (
+                        <EmptyTableState
+                            message={
+                                searchQuery
+                                    ? `No product price types found matching "${searchQuery}"`
+                                    : 'No product price types found'
+                            }
+                        />
+                    )}
+                </div>
+            )}
 
-      {/* Pagination */}
-      <div className="mt-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <span className="text-sm font-medium text-gray-600">Rows per page:</span>
-          <select
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
-          >
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <button
-            onClick={onPrevious}
-            disabled={!prevCursor}
-            className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
-              !prevCursor
-                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-300'
-                : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            Previous
-          </button>
-          <button
-            onClick={onNext}
-            disabled={!nextCursor}
-            className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
-              !nextCursor
-                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-300'
-                : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    </>
-  );
+            {/* Pagination */}
+            <div className="mt-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
+                <PaginationButtons
+                    onPrevious={onPrevious}
+                    onNext={onNext}
+                    hasPrevious={!!prevCursor}
+                    hasNext={!!nextCursor}
+                />
+            </div>
+        </>
+    );
 }
-

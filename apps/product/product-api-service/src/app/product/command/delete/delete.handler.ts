@@ -22,23 +22,20 @@ export class DeleteProductHandler implements ICommandHandler<DeleteProductComman
         this.logger.log(`Processing delete request for product: ${command.productDto.productId}`);
 
         try {
-            command.productDto.productId = command.productId;
-
-            // Validate record exists
+            // Fetch and validate existing product record
             const existingRecord = await this.validateProductExists(command.productId);
 
-            // Check user authorization and determine action
-            const hasDeletePermission = this.hasDeletePermission(command.user.roles);
+            // Check user authorization
+            const hasApprovalPermission = this.hasDeletePermission(command.user.roles);
 
-            if (hasDeletePermission) {
-                return await this.performDirectDelete(existingRecord);
-            } else {
-                return await this.performSoftDelete(
-                    existingRecord,
-                    command.user.username,
-                    command.productDto.changeReason
-                );
-            }
+            // Update status and activity logs based on permissions
+            const productPayload = this.updateProductStatus(command, existingRecord, hasApprovalPermission);
+
+            // Perform soft delete (always updateRecord - master data)
+            const deletedRecord = await this.performDeletion(productPayload);
+
+            this.logger.log(`Product soft deleted successfully: ${deletedRecord.productId}`);
+            return new ResponseDto<ProductDto>(deletedRecord, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, command.productDto.productId);
         }
@@ -70,41 +67,50 @@ export class DeleteProductHandler implements ICommandHandler<DeleteProductComman
     }
 
     /**
-     * Performs direct deletion for authorized users
+     * Updates product status and activity logs based on user permissions
      */
-    private async performDirectDelete(existingRecord: ProductDto): Promise<ResponseDto<ProductDto>> {
-        await this.productDatabaseService.deleteRecord(existingRecord);
+    private updateProductStatus(
+        command: DeleteProductCommand,
+        existingRecord: ProductDto,
+        hasApprovalPermission: boolean
+    ): ProductDto {
+        command.productDto.productId = command.productId;
+        command.productDto.deletionReason = command.productDto.deletionReason || 'No reason provided';
 
-        this.logger.log(`Product deleted successfully: ${existingRecord.productId}`);
-        return new ResponseDto<ProductDto>(existingRecord, HTTP_STATUS_OK);
+        if (hasApprovalPermission) {
+            // ADMIN: Immediate soft delete to INACTIVE
+            command.productDto.status = StatusEnum.INACTIVE;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product soft deleted by ${command.user.username}`;
+            command.productDto.activityLogs = reduceArrayContents(
+                [...(existingRecord.activityLogs || []), activityLog],
+                ACTIVITY_LOGS_LIMIT
+            );
+        } else {
+            // USER: Mark for deactivation, requires approval
+            command.productDto.status = StatusEnum.FOR_DEACTIVATION;
+            command.productDto.changeReason = command.productDto.changeReason || 'Pending deactivation approval';
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product marked for deactivation by ${command.user.username}`;
+            command.productDto.activityLogs = reduceArrayContents(
+                [...(existingRecord.activityLogs || []), activityLog],
+                ACTIVITY_LOGS_LIMIT
+            );
+        }
+
+        return command.productDto;
     }
 
     /**
-     * Performs soft deletion by marking for deletion
+     * Performs the actual deletion - ALWAYS uses soft delete (updateRecord)
+     * Products are master data - no hard delete allowed
      */
-    private async performSoftDelete(
-        existingRecord: ProductDto,
-        username: string,
-        changeReason?: string
-    ): Promise<ResponseDto<ProductDto>> {
-        // Update status and add activity log
-        existingRecord.status = StatusEnum.FOR_DEACTIVATION;
-        existingRecord.activityLogs = existingRecord.activityLogs ?? [];
-        existingRecord.changeReason = changeReason ?? existingRecord.changeReason;
-        existingRecord.activityLogs.push(
-            `Date: ${new Date().toLocaleString('en-US', {
-                timeZone: 'Asia/Manila',
-            })}, Product marked for deletion by ${username}`
-        );
-
-        // Optimize activity logs
-        existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
-
-        // Update record in database
-        const updatedRecord = await this.productDatabaseService.updateRecord(existingRecord);
-
-        this.logger.log(`Product marked for deletion: ${existingRecord.productId}`);
-        return new ResponseDto<ProductDto>(updatedRecord, HTTP_STATUS_OK);
+    private async performDeletion(productPayload: ProductDto): Promise<ProductDto> {
+        // Both ADMIN and USER use updateRecord for soft delete
+        // Products are master data - no hard delete allowed
+        return await this.productDatabaseService.updateRecord(productPayload);
     }
 
     /**

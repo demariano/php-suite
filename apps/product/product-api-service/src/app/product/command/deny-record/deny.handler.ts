@@ -67,11 +67,15 @@ export class DenyProductHandler implements ICommandHandler<DenyProductCommand> {
     /**
      * Processes the denial based on the current status of the record
      */
-    private async processDeny(existingRecord: ProductDto, command: DenyProductCommand): Promise<ResponseDto<ProductDto>> {
+    private async processDeny(
+        existingRecord: ProductDto,
+        command: DenyProductCommand
+    ): Promise<ResponseDto<ProductDto>> {
         switch (existingRecord.status) {
             case StatusEnum.FOR_APPROVAL:
                 return await this.denyProduct(existingRecord, command);
             case StatusEnum.FOR_DELETION:
+            case StatusEnum.FOR_DEACTIVATION:
                 return await this.denyDeletion(existingRecord, command);
             case StatusEnum.NEW_RECORD:
                 return await this.deleteRecord(existingRecord);
@@ -83,7 +87,10 @@ export class DenyProductHandler implements ICommandHandler<DenyProductCommand> {
     /**
      * Denies a product for approval
      */
-    private async denyProduct(existingRecord: ProductDto, command: DenyProductCommand): Promise<ResponseDto<ProductDto>> {
+    private async denyProduct(
+        existingRecord: ProductDto,
+        command: DenyProductCommand
+    ): Promise<ResponseDto<ProductDto>> {
         // Update status and add activity log
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs = existingRecord.activityLogs ?? [];
@@ -125,7 +132,10 @@ export class DenyProductHandler implements ICommandHandler<DenyProductCommand> {
     /**
      * Denies deletion of a product
      */
-    private async denyDeletion(existingRecord: ProductDto, command: DenyProductCommand): Promise<ResponseDto<ProductDto>> {
+    private async denyDeletion(
+        existingRecord: ProductDto,
+        command: DenyProductCommand
+    ): Promise<ResponseDto<ProductDto>> {
         this.logger.log(`Product deletion denied: ${existingRecord.productId}`);
         existingRecord.status = StatusEnum.ACTIVE;
         existingRecord.activityLogs = existingRecord.activityLogs ?? [];

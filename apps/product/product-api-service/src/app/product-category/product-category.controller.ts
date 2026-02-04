@@ -8,6 +8,7 @@ import { CreateProductCategoryCommand } from './command/create/create.command';
 import { DeleteProductCategoryCommand } from './command/delete/delete.command';
 import { DenyProductCategoryCommand } from './command/deny-record/deny.command';
 import { DenyProductCategoryDto } from './command/deny-record/deny.dto';
+import { ReactivateProductCategoryCommand } from './command/reactivate/reactivate.command';
 import { UpdateProductCategoryCommand } from './command/update/update.command';
 import { GetProductCategoryByIdQuery } from './queries/get.by.id/get.product.category.by.id.query';
 import { GetProductCategoryByNameQuery } from './queries/get.by.name/get.product.category.by.name.query';
@@ -214,6 +215,7 @@ export class ProductCategoryController {
     deleteRecord(
         @Param('id') id: string,
         @Body() productCategoryDto: ProductCategoryDto,
+        @Query('deletionReason') deletionReason: string,
         @Query('userRole') userRole: string,
         @CurrentUser() user: UserCognito
     ) {
@@ -222,7 +224,7 @@ export class ProductCategoryController {
             user.roles = [userRole];
         }
 
-        const command = new DeleteProductCategoryCommand(id, productCategoryDto, user);
+        const command = new DeleteProductCategoryCommand(id, productCategoryDto, user, deletionReason);
         return this.commandBus.execute(command);
     }
 
@@ -373,6 +375,51 @@ export class ProductCategoryController {
         }
 
         const command = new DenyProductCategoryCommand(id, user, denyDto.approverMessage);
+        return this.commandBus.execute(command);
+    }
+
+    @Post(':id/reactivate')
+    @ApiOperation({
+        summary: 'Reactivate product category',
+        description: 'Reactivates an INACTIVE product category back to ACTIVE status. Requires admin privileges.',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Unique product category identifier',
+        example: 'cat_123456789',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Product category successfully reactivated',
+        type: ProductCategoryDto,
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Product category not found',
+    })
+    @ApiResponse({
+        status: 403,
+        description: 'Forbidden - Insufficient permissions',
+    })
+    async reactivateRecord(
+        @Param('id') id: string,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        const command = new ReactivateProductCategoryCommand(id, user);
         return this.commandBus.execute(command);
     }
 

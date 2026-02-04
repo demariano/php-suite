@@ -74,45 +74,43 @@ export class DeleteContractHandler implements ICommandHandler<DeleteContractComm
         existingRecord: ContractDto,
         hasApprovalPermission: boolean
     ): ContractDto {
-        const activityLogs = existingRecord.activityLogs || [];
-        const timestamp = new Date().toLocaleString('en-US', {
-            timeZone: 'Asia/Manila',
-        });
+        command.contractDto.contractId = command.id;
+        command.contractDto.deletionReason = command.contractDto.deletionReason || 'No reason provided';
 
         if (hasApprovalPermission) {
-            const activityLog = `Date: ${timestamp}, Contract deleted by ${command.user.username}`;
-            const updatedLogs = reduceArrayContents([...activityLogs, activityLog], ACTIVITY_LOGS_LIMIT);
-
-            return {
-                ...existingRecord,
-                status: StatusEnum.FOR_DEACTIVATION,
-                changeReason: null,
-                activityLogs: updatedLogs,
-            };
+            // ADMIN: Immediate soft delete to INACTIVE
+            command.contractDto.status = StatusEnum.INACTIVE;
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Contract soft deleted by ${command.user.username}`;
+            command.contractDto.activityLogs = reduceArrayContents(
+                [...(existingRecord.activityLogs || []), activityLog],
+                ACTIVITY_LOGS_LIMIT
+            );
+        } else {
+            // USER: Mark for deactivation, requires approval
+            command.contractDto.status = StatusEnum.FOR_DEACTIVATION;
+            command.contractDto.changeReason = command.contractDto.changeReason || 'Pending deactivation approval';
+            const activityLog = `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Contract marked for deactivation by ${command.user.username}`;
+            command.contractDto.activityLogs = reduceArrayContents(
+                [...(existingRecord.activityLogs || []), activityLog],
+                ACTIVITY_LOGS_LIMIT
+            );
         }
 
-        const pendingDeletionLog = `Date: ${timestamp}, Contract marked for deletion by ${command.user.username}`;
-        const logsWithDeletionRequest = reduceArrayContents([...activityLogs, pendingDeletionLog], ACTIVITY_LOGS_LIMIT);
-
-        return {
-            ...existingRecord,
-            status: StatusEnum.FOR_DEACTIVATION,
-            changeReason: command.contractDto.changeReason ?? existingRecord.changeReason,
-            activityLogs: logsWithDeletionRequest,
-        };
+        return command.contractDto;
     }
 
     /**
      * Performs the actual deletion based on user permissions
+     * ALWAYS uses soft delete (updateRecord) - contracts are master data
      */
     private async performDeletion(contractPayload: ContractDto, hasApprovalPermission: boolean): Promise<ContractDto> {
-        if (hasApprovalPermission) {
-            // Hard delete
-            return await this.contractDatabaseService.deleteRecord(contractPayload);
-        } else {
-            // Soft delete (mark for deletion)
-            return await this.contractDatabaseService.updateRecord(contractPayload);
-        }
+        // Both ADMIN and USER use updateRecord for soft delete
+        // Contracts are master data - no hard delete allowed
+        return await this.contractDatabaseService.updateRecord(contractPayload);
     }
 
     /**

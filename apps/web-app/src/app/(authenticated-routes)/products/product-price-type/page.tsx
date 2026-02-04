@@ -1,86 +1,79 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { ProductPriceTypeApi, ProductPriceTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
-import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ProductPriceTypeHeader, ProductPriceTypeTable } from './components';
 
-export default function ProductPriceTypePage() {
+export default function ProductPriceTypesMainPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [productPriceTypes, setProductPriceTypes] = useState<ProductPriceTypeDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
+    const router = useRouter();
 
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-    const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
     const [pageSize, setPageSize] = useState<number>(10);
-
-    // Track if initial fetch has been made to prevent duplicate calls
     const hasFetchedRef = useRef(false);
 
-    // Fetch product price types from API
     const fetchProductPriceTypes = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
         try {
             setIsLoading(true);
             setError(null);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            // This prevents role parameter leakage when bypass auth is disabled
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
-            const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
-
-            let response;
-
-            // Use custom page size if provided, otherwise use state page size
             const currentPageSize = customPageSize ?? pageSize;
 
-            // If search query exists, use search API, otherwise use regular pagination API
-            if (searchQuery && searchQuery.trim() !== '') {
-                response = await ProductPriceTypeApi.getProductPriceTypesByName(
-                    searchQuery.trim(),
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && cursor ? direction : undefined;
+            const paginationCursor = direction && cursor ? cursor : undefined;
+
+            const trimmedQuery = searchQuery.trim();
+            let response;
+
+            // Always use getProductPriceTypesByStatus for filtering, optionally with name search
+            if (statusFilter !== 'ALL') {
+                response = await ProductPriceTypeApi.getProductPriceTypesByStatus(
                     currentPageSize,
-                    direction,
-                    serializedCursor,
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor,
+                    userRole,
+                    trimmedQuery.length > 0 ? trimmedQuery : undefined
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Search by name only (no status filter)
+                response = await ProductPriceTypeApi.getProductPriceTypesByName(
+                    trimmedQuery,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor,
                     userRole
                 );
             } else {
+                // No filter, no search - get all
                 response = await ProductPriceTypeApi.getProductPriceTypes(
                     currentPageSize,
-                    undefined, // No status filter - show all records
-                    direction,
-                    serializedCursor,
+                    undefined,
+                    paginationDirection,
+                    paginationCursor,
                     userRole
                 );
             }
 
-            if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of product price types
-                if (Array.isArray(response.data)) {
-                    setProductPriceTypes(response.data);
-
-                    // Set pagination cursors from response
-                    setNextCursor(response.nextCursorPointer || undefined);
-                    setPrevCursor(response.prevCursorPointer || undefined);
-                } else {
-                    setProductPriceTypes([]);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                }
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setProductPriceTypes(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setProductPriceTypes([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
-            }
-
-            if (direction && cursor) {
-                setCurrentCursor(cursor);
-            } else {
-                setCurrentCursor(undefined);
             }
         } catch {
             setError('Failed to load product price types. Please try again.');
@@ -89,146 +82,81 @@ export default function ProductPriceTypePage() {
         }
     };
 
-    // Fetch on initial load and when these dependencies change
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
-        if (hasFetchedRef.current) return;
-        hasFetchedRef.current = true;
-
-        fetchProductPriceTypes();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
-
-    // Debounce search query changes (but not on initial mount with empty search)
-    useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
+        if (hasFetchedRef.current) {
+            return;
         }
 
-        const delayDebounceFn = setTimeout(() => {
-            fetchProductPriceTypes();
-        }, 500); // 500ms delay
+        hasFetchedRef.current = true;
+        fetchProductPriceTypes();
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
-        return () => clearTimeout(delayDebounceFn);
+    useEffect(() => {
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0) {
+            fetchProductPriceTypes();
+            return;
+        }
+
+        // Reset pagination when search query changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+
+        const timer = setTimeout(() => {
+            fetchProductPriceTypes(undefined, undefined);
+        }, 500);
+
+        return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const headers = [
-        { key: 'productPriceTypeName', label: 'NAME' },
-        { key: 'status', label: 'STATUS' },
-        { key: 'latestActivity', label: 'LATEST ACTIVITY' },
-    ];
+    useEffect(() => {
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchProductPriceTypes(undefined, undefined);
+    }, [statusFilter]);
 
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
+    const headers = useMemo(
+        () => [
+            { key: 'priceTypeName', label: 'PRICE TYPE NAME' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+        ],
+        []
+    );
 
     const handleRowClick = async (productPriceType: ProductPriceTypeDto) => {
-        // Navigate to edit product price type page
-        window.location.href = `/products/product-price-type/${productPriceType.productPriceTypeId}/edit`;
+        router.push(`/products/product-price-type/${productPriceType.productPriceTypeId}/edit`);
     };
 
     const handleCreateClick = () => {
-        // Navigate to create product price type page
-        window.location.href = '/products/product-price-type/create';
+        router.push('/products/product-price-type/create');
     };
 
-    // Handle page size change - reset pagination and fetch fresh data
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        setCurrentCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
         fetchProductPriceTypes(undefined, undefined, newPageSize);
     };
 
-    // Transform data for table display
-    const tableData =
-        productPriceTypes?.map((productPriceType) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (productPriceType.activityLogs && productPriceType.activityLogs.length > 0) {
-                const lastLog = productPriceType.activityLogs[productPriceType.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
+    const tableData = useMemo(
+        () =>
+            productPriceTypes?.map((productPriceType) => {
+                const latestActivity =
+                    productPriceType.activityLogs && productPriceType.activityLogs.length > 0
+                        ? productPriceType.activityLogs[productPriceType.activityLogs.length - 1]
+                        : 'No activity';
 
-            return {
-                ...productPriceType,
-                status: getStatusBadge(productPriceType.status || StatusEnum.ACTIVE),
-                latestActivity,
-            };
-        }) || [];
+                return {
+                    ...productPriceType,
+                    priceTypeName: productPriceType.productPriceTypeName,
+                    status: <StatusBadge status={productPriceType.status || StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }) || [],
+        [productPriceTypes]
+    );
 
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const canCreate = isAdminUser;
@@ -263,21 +191,26 @@ export default function ProductPriceTypePage() {
                         Products
                     </a>
                     <span className="text-gray-400">/</span>
-                    <span className="text-gray-800 text-sm font-medium">Product Price Type</span>
+                    <span className="text-gray-800 text-sm font-medium">Product Price Types</span>
                 </nav>
             </div>
 
             <ProductPriceTypeHeader
                 searchQuery={searchQuery}
+                statusFilter={statusFilter}
                 onSearchChange={(value: string) => {
                     setSearchQuery(value);
-                    setCurrentCursor(undefined);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
+                onStatusFilterChange={(value: string) => {
+                    setStatusFilter(value);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
                 onRefresh={() => {
                     setSearchQuery('');
-                    setCurrentCursor(undefined);
+                    setStatusFilter('ALL');
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                     fetchProductPriceTypes();
@@ -285,6 +218,7 @@ export default function ProductPriceTypePage() {
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 canCreate={canCreate}
+                isAdminUser={isAdminUser}
             />
 
             <ProductPriceTypeTable

@@ -91,8 +91,6 @@ export class ApproveContractHandler implements ICommandHandler<ApproveContractCo
             case StatusEnum.FOR_APPROVAL:
             case StatusEnum.NEW_RECORD:
                 return await this.approveContract(existingRecord, user);
-            case StatusEnum.FOR_DELETION:
-                return await this.approveDeletion(existingRecord);
             case StatusEnum.FOR_DEACTIVATION:
                 return await this.approveDeactivation(existingRecord);
             default:
@@ -185,19 +183,9 @@ export class ApproveContractHandler implements ICommandHandler<ApproveContractCo
     }
 
     /**
-     * Approves deletion of a contract
-     */
-    private async approveDeletion(existingRecord: ContractDto): Promise<ResponseDto<ContractDto>> {
-        existingRecord.changeReason = null;
-        await this.contractDatabaseService.deleteRecord(existingRecord);
-
-        this.logger.log(`Contract deletion approved: ${existingRecord.contractId}`);
-        return new ResponseDto<ContractDto>(existingRecord, HTTP_STATUS_OK);
-    }
-
-    /**
      * Approves deactivation of a contract (soft delete)
      */
+
     private async approveDeactivation(existingRecord: ContractDto): Promise<ResponseDto<ContractDto>> {
         existingRecord.changeReason = null;
         existingRecord.status = StatusEnum.INACTIVE;

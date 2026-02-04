@@ -13,6 +13,7 @@ import { UpdateProductUnitRawMaterialHandler } from './command/update/update.han
 import { ProductUnitRawMaterialController } from './product-unit-raw-material.controller';
 import { GetProductUnitRawMaterialByIdHandler } from './queries/get.by.id/get.product.unit.raw.material.by.id.handler';
 import { GetProductUnitRawMaterialByProductIdHandler } from './queries/get.by.product.id/get.product.unit.raw.material.by.product.id.handler';
+import { GetProductUnitRawMaterialRecordsByProductNamePaginationHandler } from './queries/get.records.by.product.name.pagination/get.records.by.product.name.pagination.handler';
 import { GetProductUnitRawMaterialRecordsByProductPaginationHandler } from './queries/get.records.by.product.pagination/get.records.by.product.pagination.handler';
 import { GetProductUnitRawMaterialRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetProductUnitRawMaterialRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
@@ -39,6 +40,7 @@ import { GetProductUnitRawMaterialRecordsPaginationHandler } from './queries/get
         CreateProductUnitRawMaterialHandler,
         GetProductUnitRawMaterialByIdHandler,
         GetProductUnitRawMaterialByProductIdHandler,
+        GetProductUnitRawMaterialRecordsByProductNamePaginationHandler,
         GetProductUnitRawMaterialRecordsByProductPaginationHandler,
         GetProductUnitRawMaterialRecordsByStatusPaginationHandler,
         GetProductUnitRawMaterialRecordsPaginationHandler,

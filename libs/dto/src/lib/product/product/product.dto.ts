@@ -48,6 +48,9 @@ export class ProductDto {
     @ApiProperty()
     changeReason?: string;
 
+    @ApiProperty({ required: false })
+    deletionReason?: string;
+
     @ApiProperty()
     approverMessage?: string;
 }

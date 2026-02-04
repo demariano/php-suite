@@ -1,86 +1,81 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { ProductClassApi, ProductClassDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
-import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ProductClassHeader, ProductClassTable } from './components';
 
-export default function ProductClassPage() {
+const DEFAULT_PAGE_SIZE = 10;
+
+export default function ProductClassesMainPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [productClasses, setProductClasses] = useState<ProductClassDto[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const { env } = useEnv();
-    const { authedUser } = useLocalStore();
-
-    const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
-    const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-    const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
-
-    // Track if initial fetch has been made to prevent duplicate calls
+    const [nextCursor, setNextCursor] = useState<string | undefined>();
+    const [prevCursor, setPrevCursor] = useState<string | undefined>();
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
     const hasFetchedRef = useRef(false);
 
-    // Fetch product classes from API
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const router = useRouter();
+
     const fetchProductClasses = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
         try {
             setIsLoading(true);
             setError(null);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            // This prevents role parameter leakage when bypass auth is disabled
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
-            const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
-
-            let response;
-
-            // Use custom page size if provided, otherwise use state page size
             const currentPageSize = customPageSize ?? pageSize;
 
-            // If search query exists, use search API, otherwise use regular pagination API
-            if (searchQuery && searchQuery.trim() !== '') {
-                response = await ProductClassApi.getProductClassesByName(
-                    searchQuery.trim(),
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && cursor ? direction : undefined;
+            const paginationCursor = direction && cursor ? cursor : undefined;
+
+            const trimmedQuery = searchQuery.trim();
+            let response;
+
+            // Always use getProductClassesByStatus for filtering, optionally with name search
+            if (statusFilter !== 'ALL') {
+                response = await ProductClassApi.getProductClassesByStatus(
                     currentPageSize,
-                    direction,
-                    serializedCursor,
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor,
+                    userRole,
+                    trimmedQuery.length > 0 ? trimmedQuery : undefined // Include name if searching
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Search by name only (no status filter)
+                response = await ProductClassApi.getProductClassesByName(
+                    trimmedQuery,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor,
                     userRole
                 );
             } else {
+                // No filter, no search - get all
                 response = await ProductClassApi.getProductClasses(
                     currentPageSize,
-                    undefined, // No status filter - show all records
-                    direction,
-                    serializedCursor,
+                    undefined,
+                    paginationDirection,
+                    paginationCursor,
                     userRole
                 );
             }
 
-            if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of product classes
-                if (Array.isArray(response.data)) {
-                    setProductClasses(response.data);
-
-                    // Set pagination cursors from response
-                    setNextCursor(response.nextCursorPointer || undefined);
-                    setPrevCursor(response.prevCursorPointer || undefined);
-                } else {
-                    setProductClasses([]);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                }
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setProductClasses(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setProductClasses([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
-            }
-
-            if (direction && cursor) {
-                setCurrentCursor(cursor);
-            } else {
-                setCurrentCursor(undefined);
             }
         } catch {
             setError('Failed to load product classes. Please try again.');
@@ -89,157 +84,84 @@ export default function ProductClassPage() {
         }
     };
 
-    // Fetch on initial load and when these dependencies change
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
-        if (hasFetchedRef.current) return;
+        if (hasFetchedRef.current) {
+            return;
+        }
+
         hasFetchedRef.current = true;
-
         fetchProductClasses();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
-    // Debounce search query changes (but not on initial mount with empty search)
     useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
-        }
+        const trimmedQuery = searchQuery.trim();
 
-        const delayDebounceFn = setTimeout(() => {
+        if (trimmedQuery.length === 0) {
             fetchProductClasses();
-        }, 500); // 500ms delay
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery]);
-
-    const headers = [
-        { key: 'productClassName', label: 'NAME' },
-        { key: 'status', label: 'STATUS' },
-        { key: 'latestActivity', label: 'LATEST ACTIVITY' },
-    ];
-
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
+            return;
         }
 
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.INACTIVE
-                            ? '#e5e7eb'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.FOR_DEACTIVATION
-                            ? '#ffedd5'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.INACTIVE
-                            ? '#6b7280'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.FOR_DEACTIVATION
-                            ? '#9a3412'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
-
-    const handleRowClick = async (productClass: ProductClassDto) => {
-        // Navigate to edit product class page
-        window.location.href = `/products/product-class/${productClass.productClassId}/edit`;
-    };
-
-    const handleCreateClick = () => {
-        // Navigate to create product class page
-        window.location.href = '/products/product-class/create';
-    };
-
-    // Handle page size change - reset pagination and fetch fresh data
-    const handlePageSizeChange = (newPageSize: number) => {
-        setPageSize(newPageSize);
+        // Reset pagination when search query changes
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        setCurrentCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
-        fetchProductClasses(undefined, undefined, newPageSize);
+
+        const timer = setTimeout(() => {
+            fetchProductClasses(undefined, undefined); // Reset direction and cursor for new search
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Refetch when status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchProductClasses(undefined, undefined);
+    }, [statusFilter]);
+
+    const headers = useMemo(
+        () => [
+            { key: 'className', label: 'CLASS NAME' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+        ],
+        []
+    );
+
+    const tableData = useMemo(
+        () =>
+            productClasses.map((productClass) => {
+                const latestActivity =
+                    productClass.activityLogs && productClass.activityLogs.length > 0
+                        ? productClass.activityLogs[productClass.activityLogs.length - 1]
+                        : '-';
+
+                return {
+                    ...productClass,
+                    className: productClass.productClassName || '-',
+                    latestActivity: latestActivity,
+                    status: <StatusBadge status={productClass.status ?? StatusEnum.ACTIVE} />,
+                };
+            }),
+        [productClasses]
+    );
+
+    const handleCreateClick = () => {
+        router.push('/products/product-class/create');
     };
 
-    // Transform data for table display
-    const tableData =
-        productClasses?.map((productClass) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (productClass.activityLogs && productClass.activityLogs.length > 0) {
-                const lastLog = productClass.activityLogs[productClass.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
+    const handleRowClick = (productClass: ProductClassDto) => {
+        router.push(`/products/product-class/${productClass.productClassId}/edit`);
+    };
 
-            return {
-                ...productClass,
-                status: getStatusBadge(productClass.status || StatusEnum.ACTIVE),
-                latestActivity,
-            };
-        }) || [];
-
-    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
-    const canCreate = isAdminUser;
+    const handlePageSizeChange = (size: number) => {
+        setPageSize(size);
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchProductClasses(undefined, undefined, size);
+    };
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -247,8 +169,9 @@ export default function ProductClassPage() {
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
                     <span>{error}</span>
                     <button
+                        type="button"
                         onClick={() => setError(null)}
-                        className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 font-bold"
                     >
                         ×
                     </button>
@@ -256,43 +179,41 @@ export default function ProductClassPage() {
             )}
 
             <div>
-                <nav className="flex items-center gap-2">
-                    <a
-                        href="/dashboard"
-                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
-                    >
+                <nav className="flex items-center gap-2 text-sm text-gray-500">
+                    <a href="/dashboard" className="text-blue-600 hover:text-blue-700">
                         Home
                     </a>
-                    <span className="text-gray-400">/</span>
-                    <a
-                        href="/products"
-                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
-                    >
+                    <span>/</span>
+                    <a href="/products" className="text-blue-600 hover:text-blue-700">
                         Products
                     </a>
-                    <span className="text-gray-400">/</span>
-                    <span className="text-gray-800 text-sm font-medium">Product Class</span>
+                    <span>/</span>
+                    <span className="text-gray-800 font-medium">Product Classes</span>
                 </nav>
             </div>
 
             <ProductClassHeader
                 searchQuery={searchQuery}
-                onSearchChange={(value: string) => {
+                statusFilter={statusFilter}
+                onSearchChange={(value) => {
                     setSearchQuery(value);
-                    setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                onStatusFilterChange={(value) => {
+                    setStatusFilter(value);
+                }}
                 onRefresh={() => {
                     setSearchQuery('');
-                    setCurrentCursor(undefined);
+                    setStatusFilter('ALL');
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                     fetchProductClasses();
                 }}
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
-                canCreate={canCreate}
+                canCreate={true}
+                isAdminUser={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
             />
 
             <ProductClassTable

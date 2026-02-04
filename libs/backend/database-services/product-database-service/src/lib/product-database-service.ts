@@ -133,12 +133,16 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         name: string
     ): Promise<PageDto<ProductDto>> {
         limit = Number(limit);
+
+        // Normalize empty string to undefined (NestJS converts missing query params to empty strings)
+        const normalizedName = name && name.trim() !== '' ? name.trim() : undefined;
+
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
 
         const productRecords = await this.productTable.find(
             {
                 GSI1PK: `PRODUCT`,
-                ...(name != null && name.trim() !== '' ? { GSI1SK: { begins: name.trim() } } : {}),
+                ...(normalizedName ? { GSI1SK: { begins: normalizedName } } : {}),
             },
             dynamoDbOption
         );
@@ -170,12 +174,16 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         name: string
     ): Promise<PageDto<ProductDto>> {
         limit = Number(limit);
+
+        // Normalize empty string to undefined (NestJS converts missing query params to empty strings)
+        const normalizedName = name && name.trim() !== '' ? name.trim() : undefined;
+
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
 
         const productRecords = await this.productTable.find(
             {
                 GSI2PK: `PRODUCT#${status}`,
-                ...(name != null && name.trim() !== '' ? { GSI2SK: { begins: name.trim() } } : {}),
+                ...(normalizedName ? { GSI2SK: { begins: normalizedName } } : {}),
             },
             dynamoDbOption
         );
@@ -308,6 +316,15 @@ export class ProductDatabaseService implements ProductDatabaseServiceAbstract {
         );
     }
 
+    /**
+     * Hard deletes a product record from the database.
+     *
+     * ⚠️ WARNING: This method should NOT be used for products.
+     * Products are MASTER DATA and must use soft delete only (status: INACTIVE).
+     * This method is kept for interface compatibility but is deprecated for product operations.
+     *
+     * Use updateRecord() with status=INACTIVE instead.
+     */
     async deleteRecord(productDto: ProductDto): Promise<ProductDto> {
         const productRecord: ProductDataType = await this.convertToDataType(productDto);
 

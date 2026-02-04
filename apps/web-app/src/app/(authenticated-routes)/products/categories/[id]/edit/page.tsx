@@ -1,5 +1,6 @@
 'use client';
 
+import { ConfirmationModal } from '@components-web';
 import {
     extractErrorMessage,
     ProductApi,
@@ -29,6 +30,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
+    const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
     const { setFlashNotification } = useSessionStore();
@@ -50,11 +52,11 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                 const category = await ProductApi.getProductCategoryById(params.id, userRole);
                 setSelectedCategory(category);
 
-                // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
+                // If the record is in FOR_APPROVAL, FOR_DEACTIVATION, or NEW_RECORD status and user is admin, open the approval tab
                 if (
                     (category.status === StatusEnum.FOR_APPROVAL ||
-                        category.status === StatusEnum.NEW_RECORD ||
-                        category.status === StatusEnum.FOR_DELETION) &&
+                        category.status === StatusEnum.FOR_DEACTIVATION ||
+                        category.status === StatusEnum.NEW_RECORD) &&
                     isAdminUser
                 ) {
                     setActiveTab('approval');
@@ -134,7 +136,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
         setShowDeleteModal(true);
     };
 
-    const handleConfirmDelete = async () => {
+    const handleConfirmDelete = async (deletionReason: string) => {
         if (!selectedCategory) {
             return;
         }
@@ -143,14 +145,11 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
             setIsLoading(true);
             setShowDeleteModal(false);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled AND in development mode
+            // SECURITY: Only get user role if BYPASS_AUTH is enabled
             // This prevents role parameter leakage in production
-            const userRole =
-                env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
-                    ? authedUser?.userRole
-                    : undefined;
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-            await ProductApi.deleteProductCategory(selectedCategory, userRole);
+            await ProductApi.deleteProductCategory(selectedCategory, deletionReason, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -257,6 +256,49 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
         setShowDenyDialog(false);
     };
 
+    const handleReactivateClick = () => {
+        setShowReactivateConfirm(true);
+    };
+
+    const handleReactivateConfirm = async () => {
+        if (!selectedCategory) return;
+
+        try {
+            setIsLoading(true);
+            setShowReactivateConfirm(false);
+
+            // SECURITY: Only get user role if BYPASS_AUTH is enabled
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
+            const reactivatedCategory = await ProductApi.reactivateProductCategory(
+                selectedCategory.productCategoryId,
+                userRole
+            );
+            setSelectedCategory(reactivatedCategory);
+            setFlashNotification({
+                title: 'Success!',
+                message: 'Product Category reactivated successfully!',
+                alertType: 'success',
+            });
+
+            router.push('/products/categories');
+        } catch (err) {
+            console.error('Error reactivating category:', err);
+            const errorMessage = extractErrorMessage(err, 'Failed to reactivate category. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleReactivateCancel = () => {
+        setShowReactivateConfirm(false);
+    };
+
     const handleCancel = () => {
         router.push('/products/categories');
     };
@@ -266,8 +308,12 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
         switch (status) {
             case StatusEnum.ACTIVE:
                 return 'Active';
+            case StatusEnum.INACTIVE:
+                return 'Inactive';
             case StatusEnum.FOR_APPROVAL:
                 return 'For Approval';
+            case StatusEnum.FOR_DEACTIVATION:
+                return 'For Deactivation';
             case StatusEnum.FOR_DELETION:
                 return 'For Deletion';
             case StatusEnum.NEW_RECORD:
@@ -286,8 +332,12 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
         switch (status) {
             case StatusEnum.ACTIVE:
                 return 'bg-green-600 text-white shadow-sm';
+            case StatusEnum.INACTIVE:
+                return 'bg-gray-500 text-white shadow-sm';
             case StatusEnum.FOR_APPROVAL:
                 return 'bg-yellow-500 text-white shadow-sm';
+            case StatusEnum.FOR_DEACTIVATION:
+                return 'bg-orange-600 text-white shadow-sm';
             case StatusEnum.FOR_DELETION:
                 return 'bg-red-600 text-white shadow-sm';
             case StatusEnum.NEW_RECORD:
@@ -311,8 +361,8 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
     const renderApprovalTab = () => {
         if (!selectedCategory) return null;
 
-        // If status is FOR_DELETION, show deletion message instead of approval version
-        if (selectedCategory.status === StatusEnum.FOR_DELETION) {
+        // If status is FOR_DEACTIVATION, show deletion message instead of approval version
+        if (selectedCategory.status === StatusEnum.FOR_DEACTIVATION) {
             return (
                 <div className="space-y-6 animate-fadeIn">
                     <div className="rounded-xl border-2 border-red-300 bg-red-50 p-6 shadow-sm sm:p-8">
@@ -627,10 +677,22 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
 
             <DeleteConfirmationModal
                 show={showDeleteModal}
-                category={selectedCategory}
+                record={selectedCategory}
+                recordDisplayName={selectedCategory?.productCategoryName}
                 onConfirm={handleConfirmDelete}
                 onCancel={() => setShowDeleteModal(false)}
             />
+
+            <ConfirmationModal
+                show={showReactivateConfirm}
+                record={selectedCategory}
+                variant="reactivate"
+                recordDisplayName={selectedCategory?.productCategoryName}
+                customMessage="This will change the status from INACTIVE to ACTIVE."
+                onConfirm={handleReactivateConfirm}
+                onCancel={handleReactivateCancel}
+            />
+
             {/* Breadcrumbs */}
             <div>
                 <nav className="flex items-center gap-2">
@@ -761,6 +823,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                                     successMessage={null}
                                     onSave={handleSave}
                                     onDelete={handleDelete}
+                                    onReactivate={handleReactivateClick}
                                     onCancel={handleCancel}
                                     isAdminUser={isAdminUser}
                                 />

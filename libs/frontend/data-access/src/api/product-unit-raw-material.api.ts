@@ -42,6 +42,34 @@ class ProductUnitRawMaterialApi extends AxiosConfig {
         return await this.axiosInstance.get(`/product-unit-raw-materials?${params.toString()}`);
     };
 
+    public getProductUnitRawMaterialsByProductName = async (
+        productName: string,
+        limit = 10,
+        direction?: string,
+        cursorPointer?: string,
+        userRole?: string
+    ): Promise<ProductUnitRawMaterialsResponse> => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+        });
+
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        return await this.axiosInstance.get(
+            `/product-unit-raw-materials/name/${encodeURIComponent(productName)}?${params.toString()}`
+        );
+    };
+
     public getProductUnitRawMaterials = async (
         productId: string,
         limit = 10,

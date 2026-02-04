@@ -1,8 +1,16 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ResponseDto, StatusEnum, StockTypeDto, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    StockTypeDto,
+    StockTypeEventDto,
+    StockTypeEventEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { StockTypeDatabaseServiceAbstract } from '@inventory-database-service';
-import { MessageQueueServiceAbstract } from '@message-queue-aws-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';

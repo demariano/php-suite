@@ -1,78 +1,80 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { ProductUnitApi, ProductUnitDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
-import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ProductUnitHeader, ProductUnitTable } from './components';
 
-export default function ProductUnitPage() {
+export default function ProductUnitsMainPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [productUnits, setProductUnits] = useState<ProductUnitDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
+    const router = useRouter();
 
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
     const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
     const [pageSize, setPageSize] = useState<number>(10);
-
-    // Track if initial fetch has been made to prevent duplicate calls
     const hasFetchedRef = useRef(false);
 
-    // Fetch product units from API
     const fetchProductUnits = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
         try {
             setIsLoading(true);
             setError(null);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
-
-            let response;
-
             const currentPageSize = customPageSize ?? pageSize;
 
-            if (searchQuery && searchQuery.trim() !== '') {
-                response = await ProductUnitApi.getProductUnitsByName(
-                    searchQuery.trim(),
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && cursor ? direction : undefined;
+            const paginationCursor = direction && cursor ? cursor : undefined;
+
+            const trimmedQuery = searchQuery.trim();
+            let response;
+
+            // Always use getProductUnitsByStatus for filtering, optionally with name search
+            if (statusFilter !== 'ALL') {
+                response = await ProductUnitApi.getProductUnitsByStatus(
                     currentPageSize,
-                    direction,
-                    serializedCursor,
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor,
+                    userRole,
+                    trimmedQuery.length > 0 ? trimmedQuery : undefined
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Search by name only (no status filter)
+                response = await ProductUnitApi.getProductUnitsByName(
+                    trimmedQuery,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor,
                     userRole
                 );
             } else {
+                // No filter, no search - get all
                 response = await ProductUnitApi.getProductUnits(
                     currentPageSize,
                     undefined,
-                    direction,
-                    serializedCursor,
+                    paginationDirection,
+                    paginationCursor,
                     userRole
                 );
             }
 
-            if (response && response.statusCode === 200 && response.data) {
-                if (Array.isArray(response.data)) {
-                    setProductUnits(response.data);
-                    setNextCursor(response.nextCursorPointer || undefined);
-                    setPrevCursor(response.prevCursorPointer || undefined);
-                } else {
-                    setProductUnits([]);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                }
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setProductUnits(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setProductUnits([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
-            }
-
-            if (direction && cursor) {
-                setCurrentCursor(cursor);
-            } else {
-                setCurrentCursor(undefined);
             }
         } catch {
             setError('Failed to load product units. Please try again.');
@@ -82,111 +84,54 @@ export default function ProductUnitPage() {
     };
 
     useEffect(() => {
-        if (hasFetchedRef.current) return;
-        hasFetchedRef.current = true;
-        fetchProductUnits();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
-
-    useEffect(() => {
-        if (searchQuery === '') {
+        if (hasFetchedRef.current) {
             return;
         }
-        const delayDebounceFn = setTimeout(() => {
+
+        hasFetchedRef.current = true;
+        fetchProductUnits();
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
+
+    useEffect(() => {
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0) {
             fetchProductUnits();
+            return;
+        }
+
+        // Reset pagination when search query changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+
+        const timer = setTimeout(() => {
+            fetchProductUnits(undefined, undefined);
         }, 500);
-        return () => clearTimeout(delayDebounceFn);
+
+        return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const headers = [
-        { key: 'productUnitName', label: 'NAME' },
-        { key: 'status', label: 'STATUS' },
-        { key: 'latestActivity', label: 'LATEST ACTIVITY' },
-    ];
+    useEffect(() => {
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchProductUnits(undefined, undefined);
+    }, [statusFilter]);
 
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.INACTIVE
-                            ? '#e5e7eb'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.FOR_DEACTIVATION
-                            ? '#ffedd5'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.INACTIVE
-                            ? '#6b7280'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.FOR_DEACTIVATION
-                            ? '#9a3412'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
+    const headers = useMemo(
+        () => [
+            { key: 'unitName', label: 'UNIT NAME' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+        ],
+        []
+    );
 
     const handleRowClick = async (productUnit: ProductUnitDto) => {
-        window.location.href = `/products/product-unit/${productUnit.productUnitId}/edit`;
+        router.push(`/products/product-unit/${productUnit.productUnitId}/edit`);
     };
 
     const handleCreateClick = () => {
-        window.location.href = '/products/product-unit/create';
+        router.push('/products/product-unit/create');
     };
 
     const handlePageSizeChange = (newPageSize: number) => {
@@ -197,26 +142,23 @@ export default function ProductUnitPage() {
         fetchProductUnits(undefined, undefined, newPageSize);
     };
 
-    const tableData =
-        productUnits?.map((productUnit) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (productUnit.activityLogs && productUnit.activityLogs.length > 0) {
-                const lastLog = productUnit.activityLogs[productUnit.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
+    const tableData = useMemo(
+        () =>
+            productUnits?.map((productUnit) => {
+                const latestActivity =
+                    productUnit.activityLogs && productUnit.activityLogs.length > 0
+                        ? productUnit.activityLogs[productUnit.activityLogs.length - 1]
+                        : 'No activity';
 
-            return {
-                ...productUnit,
-                status: getStatusBadge(productUnit.status || StatusEnum.ACTIVE),
-                latestActivity,
-            };
-        }) || [];
+                return {
+                    ...productUnit,
+                    unitName: productUnit.productUnitName,
+                    status: <StatusBadge status={productUnit.status || StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }) || [],
+        [productUnits]
+    );
 
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const canCreate = isAdminUser;
@@ -251,20 +193,28 @@ export default function ProductUnitPage() {
                         Products
                     </a>
                     <span className="text-gray-400">/</span>
-                    <span className="text-gray-800 text-sm font-medium">Product Unit</span>
+                    <span className="text-gray-800 text-sm font-medium">Product Units</span>
                 </nav>
             </div>
 
             <ProductUnitHeader
                 searchQuery={searchQuery}
+                statusFilter={statusFilter}
                 onSearchChange={(value: string) => {
                     setSearchQuery(value);
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                onStatusFilterChange={(value: string) => {
+                    setStatusFilter(value);
+                    setCurrentCursor(undefined);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
                 onRefresh={() => {
                     setSearchQuery('');
+                    setStatusFilter('');
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
@@ -273,6 +223,7 @@ export default function ProductUnitPage() {
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 canCreate={canCreate}
+                isAdminUser={isAdminUser}
             />
 
             <ProductUnitTable

@@ -6,6 +6,7 @@ import {
     StockDatabaseService,
     StockPurchaseOrderDatabaseService,
 } from '@inventory-database-service';
+import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue-lib';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ApproveStockPurchaseOrderHandler } from './command/approve-record/approve.handler';
@@ -42,6 +43,7 @@ const handlers = [
         ConfigurationLibModule,
         AuthGuardLibModule,
         InventoryDatabaseServiceModule,
+        MessageQueueLibModule,
     ],
     controllers: [StockPurchaseOrderController],
     providers: [
@@ -52,6 +54,10 @@ const handlers = [
         {
             provide: 'StockDatabaseService',
             useClass: StockDatabaseService,
+        },
+        {
+            provide: 'MessageQueueAwsLibService',
+            useClass: MessageQueueAwsLibService,
         },
         ...handlers,
     ],

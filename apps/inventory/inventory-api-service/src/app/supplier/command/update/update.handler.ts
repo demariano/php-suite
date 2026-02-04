@@ -1,4 +1,12 @@
-import { ErrorResponseDto, ResponseDto, StatusEnum, SupplierDto, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    ResponseDto,
+    StatusEnum,
+    SupplierDto,
+    SupplierEventDto,
+    SupplierEventEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import { SupplierDatabaseServiceAbstract } from '@inventory-database-service';
@@ -175,6 +183,31 @@ export class UpdateSupplierHandler implements ICommandHandler<UpdateSupplierComm
                 supplierEmail: command.supplierDto.supplierEmail,
                 supplierContactPerson: command.supplierDto.supplierContactPerson,
             };
+        }
+    }
+
+    /**
+     * Publish SUPPLIER_UPDATED event to INVENTORY_EVENT_SQS
+     */
+    private async publishSupplierUpdatedEvent(supplierId: string, newSupplierName: string): Promise<void> {
+        try {
+            const eventDto: SupplierEventDto = {
+                supplierId,
+                newSupplierName,
+                eventType: SupplierEventEnum.SUPPLIER_UPDATED,
+                timestamp: new Date().toISOString(),
+            };
+
+            const inventoryQueueUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+            if (!inventoryQueueUrl) {
+                this.logger.error('INVENTORY_EVENT_SQS queue URL not configured');
+                return;
+            }
+
+            await this.messageQueueService.sendMessageToSQS(inventoryQueueUrl, JSON.stringify(eventDto));
+            this.logger.log(`Published SUPPLIER_UPDATED event to INVENTORY_EVENT_SQS for supplierId: ${supplierId}`);
+        } catch (error) {
+            this.logger.error(`Failed to publish SUPPLIER_UPDATED event for supplierId: ${supplierId}`, error);
         }
     }
 

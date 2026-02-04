@@ -164,8 +164,16 @@ class ProductCategoryApi extends AxiosConfig {
         return await this.axiosInstance.put(url, category);
     };
 
-    public deleteProductCategory = async (category: ProductCategoryDto, userRole?: string): Promise<void> => {
+    public deleteProductCategory = async (
+        category: ProductCategoryDto,
+        deletionReason?: string,
+        userRole?: string
+    ): Promise<void> => {
         const params = new URLSearchParams();
+
+        if (deletionReason) {
+            params.append('deletionReason', deletionReason);
+        }
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
         // This prevents role parameter leakage when bypass auth is disabled
@@ -199,7 +207,11 @@ class ProductCategoryApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public denyProductCategory = async (id: string, approverMessage: string, userRole?: string): Promise<ProductCategoryDto> => {
+    public denyProductCategory = async (
+        id: string,
+        approverMessage: string,
+        userRole?: string
+    ): Promise<ProductCategoryDto> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -212,6 +224,22 @@ class ProductCategoryApi extends AxiosConfig {
         const url = queryString ? `/product-categories/${id}/deny?${queryString}` : `/product-categories/${id}/deny`;
 
         return await this.axiosInstance.post(url, { approverMessage });
+    };
+
+    public reactivateProductCategory = async (id: string, userRole?: string): Promise<ProductCategoryDto> => {
+        const params = new URLSearchParams();
+
+        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString
+            ? `/product-categories/${id}/reactivate?${queryString}`
+            : `/product-categories/${id}/reactivate`;
+
+        return await this.axiosInstance.post(url);
     };
 }
 

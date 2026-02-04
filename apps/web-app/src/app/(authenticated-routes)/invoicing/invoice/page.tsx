@@ -1,287 +1,228 @@
 'use client';
 
-import { InvoiceApi, InvoiceDto, PaymentStatusEnum, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
-import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { StatusBadge } from '@components-web';
+import { InvoiceApi, InvoiceDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { formatCurrency, formatDate } from '@web-app/utils/formatters';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { InvoiceHeader, InvoiceTable } from './components';
 
-export default function InvoicePage() {
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [invoices, setInvoices] = useState<InvoiceDto[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const { env } = useEnv();
-  const { authedUser } = useLocalStore();
-  const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
-  const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-  const [pageSize, setPageSize] = useState<number>(10);
+const DEFAULT_PAGE_SIZE = 10;
 
-  // Track if initial fetch has been made to prevent duplicate calls
-  const hasFetchedRef = useRef(false);
+export default function InvoicesMainPage() {
+    const [isLoading, setIsLoading] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [invoices, setInvoices] = useState<InvoiceDto[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [nextCursor, setNextCursor] = useState<any>();
+    const [prevCursor, setPrevCursor] = useState<any>();
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+    const hasFetchedRef = useRef(false);
 
-  // Fetch invoices from API
-  const fetchInvoices = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // SECURITY: Only get user role if BYPASS_AUTH is enabled
-      // This prevents role parameter leakage when bypass auth is disabled
-      // const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-      
-      // Serialize cursor object to JSON string if it's an object
-      const serializedCursor = cursor && typeof cursor === 'object' 
-        ? JSON.stringify(cursor) 
-        : cursor;
-      
-      let response;
-      
-      // Use custom page size if provided, otherwise use state page size
-      const currentPageSize = customPageSize ?? pageSize;
-      
-      // If search query exists, use search API, otherwise use regular pagination API
-      if (searchQuery && searchQuery.trim() !== '') {
-        response = await InvoiceApi.getInvoicesByDocno(
-          searchQuery.trim(),
-          currentPageSize,
-          direction,
-          serializedCursor
-        );
-      } else {
-        response = await InvoiceApi.getInvoices(
-          currentPageSize, 
-          direction,
-          serializedCursor
-        );
-      }
-      
-      if (response && response.statusCode === 200 && response.data) {
-        // The response.data contains the array of invoices
-        if (Array.isArray(response.data)) {
-          setInvoices(response.data);
-          
-          // Set pagination cursors from response
-          setNextCursor(response.nextCursorPointer || undefined);
-          setPrevCursor(response.prevCursorPointer || undefined);
-        } else {
-          setInvoices([]);
-          setNextCursor(undefined);
-          setPrevCursor(undefined);
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const router = useRouter();
+
+    const fetchInvoices = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
+        try {
+            setIsLoading(true);
+            setError(null);
+
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+            const currentPageSize = customPageSize ?? pageSize;
+            const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
+
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && serializedCursor ? direction : undefined;
+            const paginationCursor = direction && serializedCursor ? serializedCursor : undefined;
+
+            const trimmedQuery = searchQuery.trim();
+            let response;
+
+            // Always use getInvoicesByStatus for filtering, optionally with docno search
+            if (statusFilter !== 'ALL') {
+                response = await InvoiceApi.getInvoicesByStatus(
+                    currentPageSize,
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor,
+                    trimmedQuery.length > 0 ? trimmedQuery : undefined // Include docno if searching
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Search by docno only (no status filter)
+                response = await InvoiceApi.getInvoicesByDocno(
+                    trimmedQuery,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor
+                );
+            } else {
+                // No filter, no search - get all
+                response = await InvoiceApi.getInvoices(currentPageSize, paginationDirection, paginationCursor);
+            }
+
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setInvoices(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
+            } else {
+                setInvoices([]);
+                setNextCursor(undefined);
+                setPrevCursor(undefined);
+            }
+        } catch {
+            setError('Failed to load invoices. Please try again.');
+        } finally {
+            setIsLoading(false);
         }
-      } else {
-        setInvoices([]);
+    };
+
+    useEffect(() => {
+        if (hasFetchedRef.current) {
+            return;
+        }
+
+        hasFetchedRef.current = true;
+        fetchInvoices();
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
+
+    useEffect(() => {
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0) {
+            fetchInvoices();
+            return;
+        }
+
+        // Reset pagination when search query changes
         setNextCursor(undefined);
         setPrevCursor(undefined);
-      }
-      
-      // Note: currentCursor tracking removed as it's not used in this implementation
-    } catch {
-      setError('Failed to load invoices. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  // Fetch on initial load and when these dependencies change
-  useEffect(() => {
-    // Prevent duplicate calls in React Strict Mode
-    if (hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
-    
-    fetchInvoices();
-  }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+        const timer = setTimeout(() => {
+            fetchInvoices(undefined, undefined); // Reset direction and cursor for new search
+        }, 500);
 
-  // Debounce search query changes (but not on initial mount with empty search)
-  useEffect(() => {
-    // Only debounce if there's actually a search query
-    if (searchQuery === '') {
-      return; // Skip - initial load is handled by the other useEffect
-    }
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
-    const delayDebounceFn = setTimeout(() => {
-      fetchInvoices();
-    }, 500); // 500ms delay
+    // Refetch when status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchInvoices(undefined, undefined);
+    }, [statusFilter]);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchQuery]);
-
-  const headers = [
-    { key: 'docno', label: 'DOC NO' },
-    { key: 'invoiceDate', label: 'INVOICE DATE' },
-    { key: 'customerName', label: 'CUSTOMER NAME' },
-    { key: 'status', label: 'STATUS' },
-    { key: 'paymentStatus', label: 'PAID STATUS' },
-    { key: 'latestActivity', label: 'LATEST ACTIVITY' }
-  ];
-
-  // Helper function to get status text
-  const getStatusText = (status: StatusEnum): string => {
-    switch (status) {
-      case StatusEnum.ACTIVE:
-        return 'Active';
-      case StatusEnum.FOR_APPROVAL:
-        return 'For Approval';
-      case StatusEnum.FOR_DELETION:
-        return 'For Deletion';
-      case StatusEnum.NEW_RECORD:
-        return 'New Record';
-      default:
-        return status;
-    }
-  };
-
-  const getStatusBadge = (status: StatusEnum) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
-    
-    let colorClasses = "";
-    if (status === StatusEnum.ACTIVE) {
-      colorClasses = "!bg-green-100 !text-green-800";
-    } else if (status === StatusEnum.FOR_APPROVAL) {
-      colorClasses = "!bg-yellow-100 !text-yellow-800";
-    } else if (status === StatusEnum.FOR_DELETION) {
-      colorClasses = "!bg-red-100 !text-red-800";
-    } else if (status === StatusEnum.NEW_RECORD) {
-      colorClasses = "!bg-blue-100 !text-blue-800";
-    } else {
-      colorClasses = "!bg-gray-100 !text-gray-600";
-    }
-    
-    return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === StatusEnum.ACTIVE ? '#dcfce7' : status === StatusEnum.FOR_APPROVAL ? '#fef3c7' : status === StatusEnum.FOR_DELETION ? '#fef2f2' : status === StatusEnum.NEW_RECORD ? '#dbeafe' : '#f3f4f6', color: status === StatusEnum.ACTIVE ? '#166534' : status === StatusEnum.FOR_APPROVAL ? '#92400e' : status === StatusEnum.FOR_DELETION ? '#dc2626' : status === StatusEnum.NEW_RECORD ? '#1e40af' : '#6b7280' }}>
-        {getStatusText(status)}
-      </span>
+    const headers = useMemo(
+        () => [
+            { key: 'invoiceNumber', label: 'INVOICE #' },
+            { key: 'customerName', label: 'CUSTOMER' },
+            { key: 'totalAmount', label: 'TOTAL AMOUNT' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'invoiceDate', label: 'INVOICE DATE' },
+            { key: 'dueDate', label: 'DUE DATE' },
+        ],
+        []
     );
-  };
 
-
-  const getPaymentStatusBadge = (status: PaymentStatusEnum) => {
-    const baseClasses = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase";
-    
-    let colorClasses = "";
-    if (status === PaymentStatusEnum.PENDING) {
-      colorClasses = "!bg-yellow-100 !text-yellow-800";
-    } else if (status === PaymentStatusEnum.PARTIAL) {
-      colorClasses = "!bg-orange-100 !text-orange-800";
-    } else if (status === PaymentStatusEnum.PAID) {
-      colorClasses = "!bg-green-100 !text-green-800";
-    } else {
-      colorClasses = "!bg-gray-100 !text-gray-600";
-    }
-    
-    return (
-      <span className={`${baseClasses} ${colorClasses}`} style={{ backgroundColor: status === PaymentStatusEnum.PENDING ? '#fef3c7' : status === PaymentStatusEnum.PARTIAL ? '#fed7aa' : status === PaymentStatusEnum.PAID ? '#dcfce7' : '#f3f4f6', color: status === PaymentStatusEnum.PENDING ? '#92400e' : status === PaymentStatusEnum.PARTIAL ? '#c2410c' : status === PaymentStatusEnum.PAID ? '#166534' : '#6b7280' }}>
-        {status}
-      </span>
+    const tableData = useMemo(
+        () =>
+            invoices.map((invoice) => {
+                return {
+                    ...invoice,
+                    invoiceNumber: invoice.docno || '-',
+                    totalAmount: invoice.finalAmount ? formatCurrency(invoice.finalAmount) : '-',
+                    invoiceDate: invoice.invoiceDate ? formatDate(invoice.invoiceDate) : '-',
+                    dueDate: invoice.termsName || '-', // Using terms as due date placeholder
+                    status: <StatusBadge status={invoice.status ?? StatusEnum.ACTIVE} />,
+                };
+            }),
+        [invoices]
     );
-  };
 
-  const handleRowClick = async (invoice: InvoiceDto) => {
-    // Navigate to edit invoice page
-    window.location.href = `/invoicing/invoice/${invoice.invoiceId}/edit`;
-  };
-
-  const handleCreateClick = () => {
-    // Navigate to create invoice page
-    window.location.href = '/invoicing/invoice/create';
-  };
-
-  // Handle page size change - reset pagination and fetch fresh data
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize);
-    setNextCursor(undefined);
-    setPrevCursor(undefined);
-    // Fetch with new page size and no cursor (like initial load)
-    fetchInvoices(undefined, undefined, newPageSize);
-  };
-
-  // Transform data for table display
-  const tableData = invoices?.map(invoice => {
-    // Get the latest activity log entry
-    let latestActivity = null;
-    if (invoice.activityLogs && invoice.activityLogs.length > 0) {
-      const lastLog = invoice.activityLogs[invoice.activityLogs.length - 1];
-      const parsed = parseActivityLog(lastLog);
-      const activityStyle = getActivityStyle(parsed.activity);
-      latestActivity = {
-        text: parsed.activity,
-        style: activityStyle
-      };
-    }
-
-    return {
-      ...invoice,
-      status: getStatusBadge(invoice.status || StatusEnum.ACTIVE),
-      paymentStatus: getPaymentStatusBadge(invoice.paymentStatus || PaymentStatusEnum.PENDING),
-      latestActivity
+    const handleCreateClick = () => {
+        router.push('/invoicing/invoice/create');
     };
-  }) || [];
 
-  return (
-    <div className="p-4 sm:p-6 space-y-6">
-      {/* Error Message */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
-          <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
-          >
-            ×
-          </button>
+    const handleRowClick = (invoice: InvoiceDto) => {
+        router.push(`/invoicing/invoice/${invoice.invoiceId}/edit`);
+    };
+
+    const handlePageSizeChange = (size: number) => {
+        setPageSize(size);
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchInvoices(undefined, undefined, size);
+    };
+
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
+                    <span>{error}</span>
+                    <button
+                        type="button"
+                        onClick={() => setError(null)}
+                        className="text-red-600 hover:text-red-800 font-bold"
+                    >
+                        ×
+                    </button>
+                </div>
+            )}
+
+            <div>
+                <nav className="flex items-center gap-2 text-sm text-gray-500">
+                    <a href="/dashboard" className="text-blue-600 hover:text-blue-700">
+                        Home
+                    </a>
+                    <span>/</span>
+                    <a href="/invoicing" className="text-blue-600 hover:text-blue-700">
+                        Invoicing
+                    </a>
+                    <span>/</span>
+                    <span className="text-gray-800 font-medium">Invoices</span>
+                </nav>
+            </div>
+
+            <InvoiceHeader
+                searchQuery={searchQuery}
+                statusFilter={statusFilter}
+                onSearchChange={(value) => {
+                    setSearchQuery(value);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
+                onStatusFilterChange={(value) => {
+                    setStatusFilter(value);
+                }}
+                onRefresh={() => {
+                    setSearchQuery('');
+                    setStatusFilter('ALL');
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                    fetchInvoices();
+                }}
+                onCreateClick={handleCreateClick}
+                isLoading={isLoading}
+                canCreate={true}
+                isAdminUser={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
+            />
+
+            <InvoiceTable
+                isLoading={isLoading}
+                tableData={tableData}
+                headers={headers}
+                searchQuery={searchQuery}
+                onRowClick={handleRowClick}
+                pageSize={pageSize}
+                onPageSizeChange={handlePageSizeChange}
+                prevCursor={prevCursor}
+                nextCursor={nextCursor}
+                onPrevious={() => fetchInvoices('prev', prevCursor)}
+                onNext={() => fetchInvoices('next', nextCursor)}
+            />
         </div>
-      )}
-
-      {/* Breadcrumbs */}
-      <div className="mb-6">
-        <nav className="flex items-center gap-2">
-          <a href="/dashboard" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Home
-          </a>
-          <span className="text-gray-400">/</span>
-          <a href="/invoicing" className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200">
-            Invoicing
-          </a>
-          <span className="text-gray-400">/</span>
-          <span className="text-gray-800 text-sm font-medium">Invoice</span>
-        </nav>
-      </div>
-
-      {/* Header */}
-      <div>
-        <InvoiceHeader
-          searchQuery={searchQuery}
-          onSearchChange={(value: string) => {
-            setSearchQuery(value);
-            // Reset pagination when search query changes
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-          }}
-          onRefresh={() => {
-            setSearchQuery('');
-            setNextCursor(undefined);
-            setPrevCursor(undefined);
-            fetchInvoices();
-          }}
-          onCreateClick={handleCreateClick}
-        />
-      </div>
-
-      {/* Table */}
-      <div>
-        <InvoiceTable
-          isLoading={isLoading}
-          tableData={tableData}
-          headers={headers}
-          searchQuery={searchQuery}
-          onRowClick={handleRowClick}
-          pageSize={pageSize}
-          onPageSizeChange={handlePageSizeChange}
-          prevCursor={prevCursor}
-          nextCursor={nextCursor}
-          onPrevious={() => fetchInvoices('prev', prevCursor)}
-          onNext={() => fetchInvoices('next', nextCursor)}
-        />
-      </div>
-    </div>
-  );
+    );
 }

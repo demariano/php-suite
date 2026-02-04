@@ -20,5 +20,8 @@ export class ProductCategoryDto {
     changeReason?: string;
 
     @ApiProperty()
+    deletionReason?: string;
+
+    @ApiProperty()
     approverMessage?: string;
 }

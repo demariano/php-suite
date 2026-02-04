@@ -29,6 +29,9 @@ export class DeleteProductCategoryHandler implements ICommandHandler<DeleteProdu
 
             // Check user authorization and determine action
             const hasDeletePermission = this.hasDeletePermission(command.user.roles);
+            this.logger.log(
+                `User roles: ${JSON.stringify(command.user.roles)}, hasDeletePermission: ${hasDeletePermission}`
+            );
 
             if (hasDeletePermission) {
                 return await this.performDirectDelete(command);
@@ -64,13 +67,32 @@ export class DeleteProductCategoryHandler implements ICommandHandler<DeleteProdu
     }
 
     /**
-     * Performs direct deletion for authorized users
+     * Performs direct deletion for authorized users (soft delete to INACTIVE)
      */
     private async performDirectDelete(command: DeleteProductCategoryCommand): Promise<ResponseDto<ProductCategoryDto>> {
-        await this.productCategoryDatabaseService.deleteRecord(command.productCategoryDto);
+        // Soft delete: Set status to INACTIVE instead of hard delete
+        command.productCategoryDto.status = StatusEnum.INACTIVE;
 
-        this.logger.log(`Product category deleted successfully: ${command.productCategoryDto.productCategoryId}`);
-        return new ResponseDto<ProductCategoryDto>(command.productCategoryDto, HTTP_STATUS_OK);
+        // Store deletion reason
+        command.productCategoryDto.deletionReason = command.deletionReason || 'No reason provided';
+
+        command.productCategoryDto.activityLogs.push(
+            `Date: ${new Date().toLocaleString('en-US', {
+                timeZone: 'Asia/Manila',
+            })}, Product category soft deleted by ${command.user.username}`
+        );
+
+        // Optimize activity logs
+        command.productCategoryDto.activityLogs = reduceArrayContents(
+            command.productCategoryDto.activityLogs,
+            ACTIVITY_LOGS_LIMIT
+        );
+
+        // Update record in database with INACTIVE status
+        const updatedRecord = await this.productCategoryDatabaseService.updateRecord(command.productCategoryDto);
+
+        this.logger.log(`Product category marked as INACTIVE: ${command.productCategoryDto.productCategoryId}`);
+        return new ResponseDto<ProductCategoryDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
     /**
@@ -79,6 +101,10 @@ export class DeleteProductCategoryHandler implements ICommandHandler<DeleteProdu
     private async performSoftDelete(command: DeleteProductCategoryCommand): Promise<ResponseDto<ProductCategoryDto>> {
         // Update status and add activity log
         command.productCategoryDto.status = StatusEnum.FOR_DEACTIVATION;
+
+        // Store deletion reason
+        command.productCategoryDto.deletionReason = command.deletionReason || 'No reason provided';
+
         command.productCategoryDto.activityLogs.push(
             `Date: ${new Date().toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',

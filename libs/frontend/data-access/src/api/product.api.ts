@@ -19,6 +19,7 @@ const ProductApi = {
     deleteProductCategory: ProductCategoryApi.deleteProductCategory.bind(ProductCategoryApi),
     approveProductCategory: ProductCategoryApi.approveProductCategory.bind(ProductCategoryApi),
     denyProductCategory: ProductCategoryApi.denyProductCategory.bind(ProductCategoryApi),
+    reactivateProductCategory: ProductCategoryApi.reactivateProductCategory.bind(ProductCategoryApi),
 
     // Product Class methods
     getProductClasses: ProductClassApi.getProductClasses.bind(ProductClassApi),

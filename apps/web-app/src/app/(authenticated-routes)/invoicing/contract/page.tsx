@@ -8,6 +8,7 @@ import { ContractHeader, ContractTable } from './components';
 export default function ContractsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [contracts, setContracts] = useState<ContractDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
@@ -47,7 +48,18 @@ export default function ContractsPage() {
                     serializedCursor
                 );
             } else {
-                response = await ContractApi.getContracts(currentPageSize, direction, serializedCursor);
+                // Use backend status filtering via GSI2 for efficiency
+                if (statusFilter !== 'ALL') {
+                    response = await ContractApi.getContractsByStatus(
+                        currentPageSize,
+                        statusFilter,
+                        direction,
+                        serializedCursor,
+                        undefined // customerId not needed for general status filter
+                    );
+                } else {
+                    response = await ContractApi.getContracts(currentPageSize, direction, serializedCursor);
+                }
             }
 
             if (response && response.statusCode === 200 && response.data) {
@@ -104,6 +116,14 @@ export default function ContractsPage() {
 
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
+
+    // Refetch when status filter changes
+    useEffect(() => {
+        setCurrentCursor(undefined);
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchContracts();
+    }, [statusFilter]);
 
     const headers = [
         { key: 'contractNo', label: 'CONTRACT NO' },
@@ -274,6 +294,7 @@ export default function ContractsPage() {
             <div>
                 <ContractHeader
                     searchQuery={searchQuery}
+                    statusFilter={statusFilter}
                     onSearchChange={(value: string) => {
                         setSearchQuery(value);
                         // Reset pagination when search query changes
@@ -281,14 +302,21 @@ export default function ContractsPage() {
                         setNextCursor(undefined);
                         setPrevCursor(undefined);
                     }}
+                    onStatusFilterChange={(value: string) => {
+                        setStatusFilter(value);
+                    }}
                     onRefresh={() => {
                         setSearchQuery('');
+                        setStatusFilter('ALL');
                         setCurrentCursor(undefined);
                         setNextCursor(undefined);
                         setPrevCursor(undefined);
                         fetchContracts();
                     }}
                     onCreateClick={handleCreateClick}
+                    isLoading={isLoading}
+                    canCreate={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
+                    isAdminUser={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
                 />
             </div>
 

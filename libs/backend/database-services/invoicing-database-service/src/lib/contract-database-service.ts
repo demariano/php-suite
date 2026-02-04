@@ -387,6 +387,15 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         );
     }
 
+    /**
+     * Hard deletes a contract record from the database.
+     *
+     * ⚠️ WARNING: This method should NOT be used for contracts.
+     * Contracts are MASTER DATA and must use soft delete only (status: INACTIVE).
+     * This method is kept for interface compatibility but is deprecated for contract operations.
+     *
+     * Use updateRecord() with status=INACTIVE instead.
+     */
     async deleteRecord(dto: ContractDto): Promise<ContractDto> {
         const contractRecord: ContractDataType = await this.convertToDataType(dto);
 

@@ -2,6 +2,7 @@ import { AuthGuardLibModule } from '@auth-guard-lib';
 import { ConfigurationLibModule } from '@configuration-lib';
 import { DynamoDbLibModule } from '@dynamo-db-lib';
 import { InventoryDatabaseServiceModule, RawMaterialsLocationDatabaseService } from '@inventory-database-service';
+import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue-lib';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ApproveRawMaterialsLocationHandler } from './command/approve-record/approve.handler';
@@ -36,12 +37,17 @@ const handlers = [
         ConfigurationLibModule,
         AuthGuardLibModule,
         InventoryDatabaseServiceModule,
+        MessageQueueLibModule,
     ],
     controllers: [RawMaterialsLocationController],
     providers: [
         {
             provide: 'RawMaterialsLocationDatabaseService',
             useClass: RawMaterialsLocationDatabaseService,
+        },
+        {
+            provide: 'MessageQueueAwsLibService',
+            useClass: MessageQueueAwsLibService,
         },
         ...handlers,
     ],

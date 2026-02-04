@@ -22,6 +22,7 @@ export class GetProductByNameHandler implements IQueryHandler<GetProductByNameQu
     ) {}
 
     async execute(query: GetProductByNameQuery): Promise<ResponseDto<PageDto<ProductDto>>> {
+        console.log(query);
         this.logger.log(`Processing get product request for name: ${query.name}`);
 
         try {

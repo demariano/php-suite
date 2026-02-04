@@ -10,7 +10,7 @@ import {
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { RawMaterialDatabaseServiceAbstract } from '@inventory-database-service';
-import { MessageQueueServiceAbstract } from '@message-queue-aws-lib';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';

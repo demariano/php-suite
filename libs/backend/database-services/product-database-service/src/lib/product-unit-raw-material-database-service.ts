@@ -38,6 +38,8 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
             forApprovalVersion: productUnitRawMaterialDto.forApprovalVersion,
             GSI1PK: `PRODUCT_UNIT_RAW_MATERIAL#${productUnitRawMaterialDto.productId}`,
             GSI2PK: `PRODUCT_UNIT_RAW_MATERIAL#${productUnitRawMaterialDto.productId}#${productUnitRawMaterialDto.status}`,
+            GSI3PK: 'PRODUCT_UNIT_RAW_MATERIAL',
+            GSI3SK: productUnitRawMaterialDto.productName,
         };
 
         const productRecord: ProductUnitRawMaterialDataType = await this.productUnitRawMaterialTable.create(
@@ -64,6 +66,8 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
         productRecord.GSI1SK = record.productUnitRawMaterialId;
         productRecord.GSI2PK = `PRODUCT_UNIT_RAW_MATERIAL#${record.productId}#${record.status}`;
         productRecord.GSI2SK = record.productUnitRawMaterialId;
+        productRecord.GSI3PK = 'PRODUCT_UNIT_RAW_MATERIAL';
+        productRecord.GSI3SK = record.productName;
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
         productRecord.changeReason = record.changeReason;
@@ -199,6 +203,44 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
         return await this.convertToDto(productRecord);
     }
 
+    async findRecordsByProductNamePagination(
+        limit: number,
+        productName: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ProductUnitRawMaterialDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+        const records = await this.productUnitRawMaterialTable.find(
+            {
+                GSI3PK: 'PRODUCT_UNIT_RAW_MATERIAL',
+            },
+            {
+                ...dynamoDbOption,
+                where: `\${GSI3SK} >= {${productName}}`,
+            }
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI3PK',
+            'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
     async deleteAllRecords(): Promise<void> {
         // Get all the records
         const records = await this.productUnitRawMaterialTable.find({
@@ -249,6 +291,8 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
             GSI1SK: dto.productUnitRawMaterialId,
             GSI2PK: `PRODUCT_UNIT_RAW_MATERIAL#${dto.productId}#${dto.status}`,
             GSI2SK: dto.productUnitRawMaterialId,
+            GSI3PK: 'PRODUCT_UNIT_RAW_MATERIAL',
+            GSI3SK: dto.productName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

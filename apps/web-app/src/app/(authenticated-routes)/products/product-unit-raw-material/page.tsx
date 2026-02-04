@@ -1,101 +1,64 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import ProductUnitRawMaterialApi from '@data-access/api/product-unit-raw-material.api';
-import { ProductUnitRawMaterialDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
-import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
+import { ProductUnitRawMaterialDto, useEnv, useLocalStore } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ProductUnitRawMaterialHeader, ProductUnitRawMaterialTable } from './components';
 
-const DEFAULT_PAGE_SIZE = 10;
-
-const getStatusText = (status: StatusEnum): string => {
-    switch (status) {
-        case StatusEnum.ACTIVE:
-            return 'Active';
-        case StatusEnum.FOR_APPROVAL:
-            return 'For Approval';
-        case StatusEnum.FOR_DELETION:
-            return 'For Deletion';
-        case StatusEnum.FOR_DEACTIVATION:
-            return 'For Deactivation';
-        case StatusEnum.INACTIVE:
-            return 'Inactive';
-        case StatusEnum.NEW_RECORD:
-            return 'New Record';
-        default:
-            return status;
-    }
-};
-
-const getStatusBadge = (status?: StatusEnum) => {
-    const resolvedStatus = status ?? StatusEnum.ACTIVE;
-
-    const badgeStyles: Record<StatusEnum, string> = {
-        [StatusEnum.ACTIVE]: 'bg-green-100 text-green-800',
-        [StatusEnum.FOR_APPROVAL]: 'bg-yellow-100 text-yellow-800',
-        [StatusEnum.FOR_DELETION]: 'bg-red-100 text-red-800',
-        [StatusEnum.FOR_DEACTIVATION]: 'bg-orange-100 text-orange-800',
-        [StatusEnum.INACTIVE]: 'bg-gray-200 text-gray-500',
-        [StatusEnum.NEW_RECORD]: 'bg-blue-100 text-blue-800',
-        [StatusEnum.DRAFT]: 'bg-gray-100 text-gray-700',
-    };
-
-    return (
-        <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                badgeStyles[resolvedStatus] ?? 'bg-gray-100 text-gray-700'
-            }`}
-        >
-            {getStatusText(resolvedStatus)}
-        </span>
-    );
-};
-
 export default function ProductUnitRawMaterialsMainPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [productUnitRawMaterials, setProductUnitRawMaterials] = useState<ProductUnitRawMaterialDto[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [nextCursor, setNextCursor] = useState<any>();
-    const [prevCursor, setPrevCursor] = useState<any>();
-    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
-    const hasFetchedRef = useRef(false);
-
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
     const router = useRouter();
 
-    const fetchProductUnitRawMaterials = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
-        console.log('fetchProductUnitRawMaterials called', { direction, cursor, customPageSize });
+    const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+    const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
+    const [pageSize, setPageSize] = useState<number>(10);
+    const hasFetchedRef = useRef(false);
+
+    const fetchProductUnitRawMaterials = async (direction?: 'next' | 'prev', cursor?: string) => {
         setIsLoading(true);
         setError(null);
 
         try {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            const limit = customPageSize ?? pageSize;
+            const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
-            console.log('Calling API with params:', { limit, direction, cursor, userRole });
+            const validDirection = direction && serializedCursor ? direction : undefined;
+            const validCursor = direction && serializedCursor ? serializedCursor : undefined;
 
-            const response = await ProductUnitRawMaterialApi.getAllProductUnitRawMaterials(
-                limit,
-                direction,
-                cursor,
-                userRole
-            );
+            let response;
 
-            console.log('API response:', response);
+            // Branch 1: Search query is active (takes priority)
+            if (searchQuery && searchQuery.trim() !== '') {
+                response = await ProductUnitRawMaterialApi.getProductUnitRawMaterialsByProductName(
+                    searchQuery.trim(),
+                    pageSize,
+                    validDirection,
+                    validCursor,
+                    userRole
+                );
+            }
+            // Branch 2: Show all records
+            else {
+                response = await ProductUnitRawMaterialApi.getAllProductUnitRawMaterials(
+                    pageSize,
+                    validDirection,
+                    validCursor,
+                    userRole
+                );
+            }
 
             setProductUnitRawMaterials(response.data || []);
             setNextCursor(response.nextCursorPointer);
             setPrevCursor(response.prevCursorPointer);
         } catch (err: any) {
-            console.error('Error fetching product unit raw materials:', err);
-            console.error('Error details:', {
-                message: err?.message,
-                response: err?.response,
-                responseData: err?.response?.data,
-            });
             setError(err?.response?.data?.message || 'Failed to fetch product unit raw materials');
             setProductUnitRawMaterials([]);
         } finally {
@@ -103,20 +66,30 @@ export default function ProductUnitRawMaterialsMainPage() {
         }
     };
 
+    // Initial fetch on mount
     useEffect(() => {
-        if (hasFetchedRef.current) {
-            return;
-        }
-
+        if (hasFetchedRef.current) return;
         hasFetchedRef.current = true;
-        console.log('Calling fetchProductUnitRawMaterials from useEffect', { env, authedUser });
         fetchProductUnitRawMaterials();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Debounced search
+    useEffect(() => {
+        if (searchQuery === '') return;
+
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+
+        const delayDebounceFn = setTimeout(() => {
+            fetchProductUnitRawMaterials();
+        }, 500);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchQuery]);
 
     const headers = useMemo(
         () => [
-            { key: 'productName', label: 'PRODUCT' },
+            { key: 'productName', label: 'PRODUCT NAME' },
             { key: 'status', label: 'STATUS' },
             { key: 'latestActivity', label: 'LATEST ACTIVITY' },
         ],
@@ -125,25 +98,14 @@ export default function ProductUnitRawMaterialsMainPage() {
 
     const tableData = useMemo(
         () =>
-            productUnitRawMaterials.map((item) => {
-                // Get the latest activity log entry
-                let latestActivity = null;
-                if (item.activityLogs && item.activityLogs.length > 0) {
-                    const lastLog = item.activityLogs[item.activityLogs.length - 1];
-                    const parsed = parseActivityLog(lastLog);
-                    const activityStyle = getActivityStyle(parsed.activity);
-                    latestActivity = {
-                        text: parsed.activity,
-                        style: activityStyle,
-                    };
-                }
-
-                return {
-                    ...item,
-                    status: getStatusBadge(item.status),
-                    latestActivity,
-                };
-            }),
+            productUnitRawMaterials.map((item) => ({
+                ...item,
+                status: <StatusBadge status={item.status} />,
+                latestActivity:
+                    item.activityLogs && item.activityLogs.length > 0
+                        ? item.activityLogs[item.activityLogs.length - 1]
+                        : '-',
+            })),
         [productUnitRawMaterials]
     );
 
@@ -159,8 +121,11 @@ export default function ProductUnitRawMaterialsMainPage() {
         setPageSize(size);
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        fetchProductUnitRawMaterials(undefined, undefined, size);
+        fetchProductUnitRawMaterials();
     };
+
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+    const canCreate = isAdminUser;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -198,6 +163,13 @@ export default function ProductUnitRawMaterialsMainPage() {
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                statusFilter={statusFilter}
+                onStatusFilterChange={(status) => {
+                    setStatusFilter(status);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                    fetchProductUnitRawMaterials();
+                }}
                 onRefresh={() => {
                     setSearchQuery('');
                     setNextCursor(undefined);
@@ -205,6 +177,8 @@ export default function ProductUnitRawMaterialsMainPage() {
                     fetchProductUnitRawMaterials();
                 }}
                 onCreateClick={handleCreateClick}
+                canCreate={canCreate}
+                isAdminUser={isAdminUser}
                 isLoading={isLoading}
             />
 

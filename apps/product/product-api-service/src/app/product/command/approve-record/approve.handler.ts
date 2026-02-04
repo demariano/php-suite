@@ -89,7 +89,7 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
             case StatusEnum.NEW_RECORD:
                 return await this.approveProduct(existingRecord, user);
             case StatusEnum.FOR_DEACTIVATION:
-                return await this.approveDeletion(existingRecord);
+                return await this.approveDeactivation(existingRecord);
             default:
                 throw new BadRequestException(`Cannot approve product with status: ${existingRecord.status}`);
         }
@@ -145,9 +145,9 @@ export class ApproveProductHandler implements ICommandHandler<ApproveProductComm
     }
 
     /**
-     * Approves deletion of a product
+     * Approves deactivation of a product (soft delete)
      */
-    private async approveDeletion(existingRecord: ProductDto): Promise<ResponseDto<ProductDto>> {
+    private async approveDeactivation(existingRecord: ProductDto): Promise<ResponseDto<ProductDto>> {
         existingRecord.changeReason = null;
         existingRecord.status = StatusEnum.INACTIVE;
         existingRecord.activityLogs = existingRecord.activityLogs ?? [];

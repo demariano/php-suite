@@ -67,6 +67,9 @@ export class ContractDto {
     @ApiProperty()
     changeReason?: string;
 
+    @ApiProperty()
+    deletionReason?: string;
+
     @ApiProperty({ enum: StatusEnum })
     status?: StatusEnum;
 

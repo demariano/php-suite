@@ -7,6 +7,10 @@ export function createDynamoDbOptionWithPKSKIndex(
     cursorPointer: string,
     reverse = false
 ) {
+    // Normalize empty strings to undefined (NestJS converts missing query params to empty strings)
+    const normalizedDirection = direction && direction.trim() !== '' ? direction : undefined;
+    const normalizedCursor = cursorPointer && cursorPointer.trim() !== '' ? cursorPointer : undefined;
+
     if (!limit || limit == 0) {
         limit = 0;
     }
@@ -21,19 +25,14 @@ export function createDynamoDbOptionWithPKSKIndex(
     dbOptions['follow'] = true;
     dbOptions['reverse'] = reverse;
 
-    if (cursorPointer != null && cursorPointer.trim() !== '') {
-        const sanitizedCursorPointer = decodeURIComponent(cursorPointer);
-        dbOptions[cursorPointer] = JSON.parse(sanitizedCursorPointer);
-    }
+    if (normalizedDirection != null) {
+        dbOptions[normalizedDirection] = {};
 
-    if (direction != null) {
-        dbOptions[direction] = {};
-
-        if (cursorPointer == null || cursorPointer.trim() === '') {
+        if (normalizedCursor == null) {
             throw new BadRequestException("Cursor Pointer Can't be null or empty if direction is not null");
         }
 
-        dbOptions[direction] = JSON.parse(cursorPointer);
+        dbOptions[normalizedDirection] = JSON.parse(normalizedCursor);
     }
 
     if (indexName != null) {

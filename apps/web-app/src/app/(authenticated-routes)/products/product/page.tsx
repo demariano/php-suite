@@ -1,5 +1,6 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { ProductApi, ProductDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
@@ -8,52 +9,10 @@ import { ProductHeader, ProductTable } from './components';
 
 const DEFAULT_PAGE_SIZE = 10;
 
-const getStatusText = (status: StatusEnum): string => {
-    switch (status) {
-        case StatusEnum.ACTIVE:
-            return 'Active';
-        case StatusEnum.INACTIVE:
-            return 'Inactive';
-        case StatusEnum.FOR_APPROVAL:
-            return 'For Approval';
-        case StatusEnum.FOR_DELETION:
-            return 'For Deletion';
-        case StatusEnum.FOR_DEACTIVATION:
-            return 'For Deactivation';
-        case StatusEnum.NEW_RECORD:
-            return 'New Record';
-        default:
-            return status;
-    }
-};
-
-const getStatusBadge = (status?: StatusEnum) => {
-    const resolvedStatus = status ?? StatusEnum.ACTIVE;
-
-    const badgeStyles: Record<StatusEnum, string> = {
-        [StatusEnum.ACTIVE]: 'bg-green-100 text-green-800',
-        [StatusEnum.INACTIVE]: 'bg-gray-200 text-gray-500',
-        [StatusEnum.FOR_APPROVAL]: 'bg-yellow-100 text-yellow-800',
-        [StatusEnum.FOR_DELETION]: 'bg-red-100 text-red-800',
-        [StatusEnum.FOR_DEACTIVATION]: 'bg-orange-100 text-orange-800',
-        [StatusEnum.NEW_RECORD]: 'bg-blue-100 text-blue-800',
-        [StatusEnum.DRAFT]: 'bg-gray-100 text-gray-700',
-    };
-
-    return (
-        <span
-            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                badgeStyles[resolvedStatus] ?? 'bg-gray-100 text-gray-700'
-            }`}
-        >
-            {getStatusText(resolvedStatus)}
-        </span>
-    );
-};
-
 export default function ProductsMainPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [products, setProducts] = useState<ProductDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [nextCursor, setNextCursor] = useState<any>();
@@ -74,17 +33,42 @@ export default function ProductsMainPage() {
             const currentPageSize = customPageSize ?? pageSize;
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && serializedCursor ? direction : undefined;
+            const paginationCursor = direction && serializedCursor ? serializedCursor : undefined;
+
             const trimmedQuery = searchQuery.trim();
-            const response =
-                trimmedQuery.length > 0
-                    ? await ProductApi.getProductsByName(
-                          trimmedQuery,
-                          currentPageSize,
-                          direction,
-                          serializedCursor,
-                          userRole
-                      )
-                    : await ProductApi.getProducts(currentPageSize, undefined, direction, serializedCursor, userRole);
+            let response;
+
+            // Always use getProductsByStatus for filtering, optionally with name search
+            if (statusFilter !== 'ALL') {
+                response = await ProductApi.getProductsByStatus(
+                    currentPageSize,
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor,
+                    userRole,
+                    trimmedQuery.length > 0 ? trimmedQuery : undefined // Include name if searching
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Search by name only (no status filter)
+                response = await ProductApi.getProductsByName(
+                    trimmedQuery,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor,
+                    userRole
+                );
+            } else {
+                // No filter, no search - get all
+                response = await ProductApi.getProducts(
+                    currentPageSize,
+                    undefined,
+                    paginationDirection,
+                    paginationCursor,
+                    userRole
+                );
+            }
 
             if (response?.statusCode === 200 && Array.isArray(response.data)) {
                 setProducts(response.data);
@@ -119,12 +103,25 @@ export default function ProductsMainPage() {
             return;
         }
 
+        // Reset pagination when search query changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+
         const timer = setTimeout(() => {
-            fetchProducts();
+            fetchProducts(undefined, undefined); // Reset direction and cursor for new search
         }, 500);
 
         return () => clearTimeout(timer);
     }, [searchQuery]);
+
+    // Refetch when status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchProducts(undefined, undefined);
+    }, [statusFilter]);
 
     const headers = useMemo(
         () => [
@@ -155,7 +152,7 @@ export default function ProductsMainPage() {
 
                 return {
                     ...product,
-                    status: getStatusBadge(product.status),
+                    status: <StatusBadge status={product.status ?? StatusEnum.ACTIVE} />,
                     latestActivity,
                 };
             }),
@@ -208,19 +205,26 @@ export default function ProductsMainPage() {
 
             <ProductHeader
                 searchQuery={searchQuery}
+                statusFilter={statusFilter}
                 onSearchChange={(value) => {
                     setSearchQuery(value);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                onStatusFilterChange={(value) => {
+                    setStatusFilter(value);
+                }}
                 onRefresh={() => {
                     setSearchQuery('');
+                    setStatusFilter('ALL');
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                     fetchProducts();
                 }}
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
+                canCreate={true}
+                isAdminUser={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
             />
 
             <ProductTable

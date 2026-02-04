@@ -9,6 +9,7 @@ import { ApproveProductCategoryHandler } from './command/approve-record/approve.
 import { CreateProductCategoryHandler } from './command/create/create.handler';
 import { DeleteProductCategoryHandler } from './command/delete/delete.handler';
 import { DenyProductCategoryHandler } from './command/deny-record/deny.handler';
+import { ReactivateProductCategoryHandler } from './command/reactivate/reactivate.handler';
 import { UpdateProductCategoryHandler } from './command/update/update.handler';
 import { ProductCategoryController } from './product-category.controller';
 import { GetProductCategoryByIdHandler } from './queries/get.by.id/get.product.category.by.id.handler';
@@ -43,6 +44,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         DeleteProductCategoryHandler,
         ApproveProductCategoryHandler,
         DenyProductCategoryHandler,
+        ReactivateProductCategoryHandler,
         GetRecordsByStatusPaginationHandler,
     ],
 })

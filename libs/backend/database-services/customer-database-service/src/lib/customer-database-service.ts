@@ -54,17 +54,17 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             customerTerms: customerDto.customerTerms,
             customerProductDeals: customerDto.customerProductDeals,
             GSI1PK: `CUSTOMER`,
-            GSI1SK: customerDto.customerName,
+            GSI1SK: customerDto.customerName?.toLowerCase(),
             GSI2PK: `CUSTOMER#${customerDto.status}`,
-            GSI2SK: customerDto.customerName,
+            GSI2SK: customerDto.customerName?.toLowerCase(),
             GSI3PK: `CUSTOMER#${customerDto.customerClassificationId}`,
-            GSI3SK: customerDto.customerName,
+            GSI3SK: customerDto.customerName?.toLowerCase(),
             GSI4PK: `CUSTOMER#${customerDto.customerTypeId}`,
-            GSI4SK: customerDto.customerName,
+            GSI4SK: customerDto.customerName?.toLowerCase(),
             GSI5PK: `CUSTOMER#${customerDto.areaId}`,
-            GSI5SK: customerDto.customerName,
+            GSI5SK: customerDto.customerName?.toLowerCase(),
             GSI6PK: `CUSTOMER#${customerDto.townName}`,
-            GSI6SK: customerDto.customerName,
+            GSI6SK: customerDto.customerName?.toLowerCase(),
         };
 
         const customerRecord: CustomerDataType = await this.customerTable.create(customerData);
@@ -155,12 +155,13 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         name: string
     ): Promise<PageDto<CustomerDto>> {
         limit = Number(limit);
+
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
 
         const records = await this.customerTable.find(
             {
                 GSI2PK: `CUSTOMER#${status}`,
-                ...(name != null ? { GSI2SK: { begins: name } } : {}),
+                ...(name ? { GSI2SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );
@@ -191,12 +192,13 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         name: string
     ): Promise<PageDto<CustomerDto>> {
         limit = Number(limit);
+
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
 
         const records = await this.customerTable.find(
             {
                 GSI1PK: `CUSTOMER`,
-                ...(name != null && name.trim() !== '' ? { GSI1SK: { begins: name.trim() } } : {}),
+                ...(name ? { GSI1SK: { begins: name } } : {}),
             },
             dynamoDbOption
         );
@@ -571,15 +573,15 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
             customerTerms: dto.customerTerms,
             customerProductDeals: dto.customerProductDeals,
             GSI1PK: `CUSTOMER`,
-            GSI1SK: dto.customerName,
+            GSI1SK: dto.customerName?.toLowerCase(),
             GSI2PK: `CUSTOMER#${dto.status}`,
-            GSI2SK: dto.customerName,
+            GSI2SK: dto.customerName?.toLowerCase(),
             GSI3PK: `CUSTOMER#${dto.customerClassificationId}`,
-            GSI3SK: dto.customerName,
+            GSI3SK: dto.customerName?.toLowerCase(),
             GSI4PK: `CUSTOMER#${dto.customerTypeId}`,
-            GSI4SK: dto.customerName,
+            GSI4SK: dto.customerName?.toLowerCase(),
             GSI5PK: `CUSTOMER#${dto.areaId}`,
-            GSI5SK: dto.customerName,
+            GSI5SK: dto.customerName?.toLowerCase(),
             GSI6PK: `CUSTOMER#${dto.townName}`,
             GSI6SK: dto.customerName,
             approverMessage: dto.approverMessage,

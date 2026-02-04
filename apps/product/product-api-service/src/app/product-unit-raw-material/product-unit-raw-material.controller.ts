@@ -11,6 +11,7 @@ import { DenyProductUnitRawMaterialDto } from './command/deny-record/deny.dto';
 import { UpdateProductUnitRawMaterialCommand } from './command/update/update.command';
 import { GetProductUnitRawMaterialByIdQuery } from './queries/get.by.id/get.product.unit.raw.material.by.id.query';
 import { GetProductUnitRawMaterialByProductIdQuery } from './queries/get.by.product.id/get.product.unit.raw.material.by.product.id.query';
+import { GetProductUnitRawMaterialRecordsByProductNamePaginationQuery } from './queries/get.records.by.product.name.pagination/get.records.by.product.name.pagination.query';
 import { GetProductUnitRawMaterialRecordsByProductPaginationQuery } from './queries/get.records.by.product.pagination/get.records.by.product.pagination.query';
 import { GetProductUnitRawMaterialRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetProductUnitRawMaterialRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
@@ -107,6 +108,67 @@ export class ProductUnitRawMaterialController {
         const query = new GetProductUnitRawMaterialRecordsPaginationQuery(limit, direction, cursorPointer);
         return this.queryBus.execute(query);
     }
+
+    @Get('name/:productName')
+    @ApiOperation({
+        summary: 'Get product unit raw materials by product name with pagination',
+        description: 'Search and retrieve product unit raw materials by product name with pagination support.',
+    })
+    @ApiParam({
+        name: 'productName',
+        type: String,
+        required: true,
+        description: 'Product name to search for',
+        example: 'Widget',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records per page (1-100)',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Pagination direction',
+        example: 'next',
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'USER',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Product unit raw materials successfully retrieved',
+    })
+    getRecordsByProductName(
+        @Param('productName') productName: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('userRole') userRole: string
+    ) {
+        const query = new GetProductUnitRawMaterialRecordsByProductNamePaginationQuery(
+            limit,
+            productName,
+            direction,
+            cursorPointer
+        );
+        return this.queryBus.execute(query);
+    }
+
     @Get(':id')
     @ApiOperation({
         summary: 'Get product unit raw material by ID',

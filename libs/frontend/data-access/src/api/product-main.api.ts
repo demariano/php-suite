@@ -53,7 +53,8 @@ class ProductMainApi extends AxiosConfig {
         status: string,
         direction?: string,
         cursorPointer?: string,
-        userRole?: string
+        userRole?: string,
+        name?: string
     ): Promise<ProductsResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -66,6 +67,10 @@ class ProductMainApi extends AxiosConfig {
 
         if (cursorPointer) {
             params.append('cursorPointer', cursorPointer);
+        }
+
+        if (name) {
+            params.append('name', name);
         }
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -150,7 +155,7 @@ class ProductMainApi extends AxiosConfig {
         return await this.axiosInstance.put(url, product);
     };
 
-    public deleteProduct = async (product: ProductDto, userRole?: string): Promise<void> => {
+    public deleteProduct = async (product: ProductDto, deletionReason: string, userRole?: string): Promise<void> => {
         const params = new URLSearchParams();
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
@@ -162,8 +167,13 @@ class ProductMainApi extends AxiosConfig {
         const queryString = params.toString();
         const url = queryString ? `/products/${product.productId}?${queryString}` : `/products/${product.productId}`;
 
-        // Send the entire product object in the request body
-        return await this.axiosInstance.delete(url, { data: product });
+        // Send the entire product object with deletion reason in the request body
+        return await this.axiosInstance.delete(url, {
+            data: {
+                ...product,
+                deletionReason,
+            },
+        });
     };
 
     public approveProduct = async (id: string, userRole?: string): Promise<ProductDto> => {
