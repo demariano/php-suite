@@ -215,11 +215,9 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
         const records = await this.productUnitRawMaterialTable.find(
             {
                 GSI3PK: 'PRODUCT_UNIT_RAW_MATERIAL',
+                GSI3SK: { begins: productName },
             },
-            {
-                ...dynamoDbOption,
-                where: `\${GSI3SK} >= {${productName}}`,
-            }
+            dynamoDbOption
         );
 
         const pageRecordCursorPointers = pageRecordHandler(

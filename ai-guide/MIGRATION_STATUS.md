@@ -11,8 +11,8 @@ This document tracks which modules have been migrated to use the new reusable co
 ## 📊 Migration Overview
 
 **Total Modules**: 32  
-**✅ Migrated**: 8 (25%)  
-**⏸️ Pending**: 24 (75%)
+**✅ Migrated**: 9 (28.125%)  
+**⏸️ Pending**: 23 (71.875%)
 
 **Components Created**: 8/8 (100%)  
 **Documentation Complete**: Yes (3,400+ lines)
@@ -269,9 +269,42 @@ This document tracks which modules have been migrated to use the new reusable co
 -   ✅ Empty string normalization (backend global fix)
 -   ✅ Proper API parameter order (5 params: limit, status, direction, cursor, name)
 
+| Module                        | Path                                  | Status      | Uses All Components | Notes                                  |
+| ----------------------------- | ------------------------------------- | ----------- | ------------------- | -------------------------------------- |
+| **Product Unit Raw Material** | `products/product-unit-raw-material/` | ✅ Complete | Yes (8/8)           | GSI3 for productName search, 3 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in ProductUnitRawMaterialHeader)
+-   ✅ RefreshButton (in ProductUnitRawMaterialHeader)
+-   ✅ Input (search in ProductUnitRawMaterialHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx (201 lines)
+-   ✅ ProductUnitRawMaterialHeader.tsx (65 lines)
+-   ✅ ProductUnitRawMaterialTable.tsx (131 lines)
+
+**Code Reduction**: ~50% (removed custom status badges, activity log formatting, pagination, loading states, empty states)
+
+**Special Features**:
+
+-   ✅ GSI3 backend implementation for productName search across all products
+-   ✅ Search by product name (not filtered by productId)
+-   ✅ 2-branch API logic (search → show all)
+-   ✅ Custom columns: productName, status, latestActivity
+-   ✅ Backend query handler with validation
+-   ✅ Frontend API method: getProductUnitRawMaterialsByProductName
+-   ✅ Proper API parameter order (5 params: limit, productName, direction, cursor, userRole)
+
 ---
 
-## ⏸️ Pending Migrations (24)
+## ⏸️ Pending Migrations (23)
 
 ### Priority 1: High-Traffic Modules (Migrate First)
 
@@ -284,8 +317,6 @@ This document tracks which modules have been migrated to use the new reusable co
 
 | Module | Path | Type | Has Activity Logs | Est. Column Count | Priority |
 | ------ | ---- | ---- | ----------------- | ----------------- | -------- |
-
-| **Product Unit Raw Material** | `products/product-unit-raw-material/` | Hierarchical | No | 5 | 🟡 Medium |
 
 ### Priority 3: Customer Sub-Modules
 

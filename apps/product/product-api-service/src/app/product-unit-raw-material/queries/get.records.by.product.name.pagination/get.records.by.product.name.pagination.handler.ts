@@ -56,12 +56,9 @@ export class GetProductUnitRawMaterialRecordsByProductNamePaginationHandler
     private handleError(error: any): ResponseDto<PageDto<ProductUnitRawMaterialDto>> {
         this.logger.error('Error retrieving product unit raw materials by product name', error.stack);
 
-        const errorMessage = error instanceof BadRequestException ? error.message : 'Failed to fetch records';
-
         return new ResponseDto<PageDto<ProductUnitRawMaterialDto>>(
             new PageDto<ProductUnitRawMaterialDto>([], undefined, undefined),
-            error instanceof BadRequestException ? 400 : 500,
-            errorMessage
+            error instanceof BadRequestException ? 400 : 500
         );
     }
 }

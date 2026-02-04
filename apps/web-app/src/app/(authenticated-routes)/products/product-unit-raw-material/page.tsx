@@ -38,8 +38,8 @@ export default function ProductUnitRawMaterialsMainPage() {
             // Branch 1: Search query is active (takes priority)
             if (searchQuery && searchQuery.trim() !== '') {
                 response = await ProductUnitRawMaterialApi.getProductUnitRawMaterialsByProductName(
-                    searchQuery.trim(),
                     pageSize,
+                    searchQuery.trim(),
                     validDirection,
                     validCursor,
                     userRole
@@ -87,6 +87,15 @@ export default function ProductUnitRawMaterialsMainPage() {
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
 
+    // Status filter change
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery('');
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchProductUnitRawMaterials();
+    }, [statusFilter]);
+
     const headers = useMemo(
         () => [
             { key: 'productName', label: 'PRODUCT NAME' },
@@ -98,15 +107,17 @@ export default function ProductUnitRawMaterialsMainPage() {
 
     const tableData = useMemo(
         () =>
-            productUnitRawMaterials.map((item) => ({
-                ...item,
-                status: <StatusBadge status={item.status} />,
-                latestActivity:
-                    item.activityLogs && item.activityLogs.length > 0
-                        ? item.activityLogs[item.activityLogs.length - 1]
-                        : '-',
-            })),
-        [productUnitRawMaterials]
+            productUnitRawMaterials
+                .filter((item) => statusFilter === 'ALL' || item.status === statusFilter)
+                .map((item) => ({
+                    ...item,
+                    status: <StatusBadge status={item.status} />,
+                    latestActivity:
+                        item.activityLogs && item.activityLogs.length > 0
+                            ? item.activityLogs[item.activityLogs.length - 1]
+                            : '-',
+                })),
+        [productUnitRawMaterials, statusFilter]
     );
 
     const handleCreateClick = () => {

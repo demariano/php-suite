@@ -1,11 +1,6 @@
 'use client';
 
-import {
-    EmptyTableState,
-    PageSizeSelector,
-    PaginationButtons,
-    TableSkeleton,
-} from '@components-web';
+import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } from '@components-web';
 import { ProductUnitRawMaterialDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
@@ -45,89 +40,84 @@ export default function ProductUnitRawMaterialTable({
         return <TableSkeleton />;
     }
 
-    if (tableData.length === 0) {
-        return (
-            <EmptyTableState
-                searchQuery={searchQuery}
-                entityName="product unit raw materials"
-            />
-        );
-    }
-
     return (
         <>
-            {/* Desktop Table */}
-            <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
-                <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead className="bg-blue-600 border-b border-blue-700">
-                            <tr>
-                                {headers.map((header) => (
-                                    <th
-                                        key={header.key}
-                                        className="px-6 py-4 text-left text-white font-semibold text-xs uppercase tracking-wider"
-                                    >
-                                        {header.label}
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {tableData.map((item) => (
-                                <tr
-                                    key={item.productUnitRawMaterialId}
-                                    onClick={() => onRowClick(item)}
-                                    className="cursor-pointer transition-all duration-200 bg-white hover:bg-gray-50"
-                                >
-                                    {headers.map((header) => (
-                                        <td key={header.key} className="px-6 py-5 text-sm">
-                                            {header.key === 'productName' && (
-                                                <span className="font-medium text-gray-900">
-                                                    {item.productName || '-'}
-                                                </span>
-                                            )}
-                                            {header.key === 'status' && item.status}
-                                            {header.key === 'latestActivity' && (
-                                                <span className="text-gray-700">
-                                                    {item.latestActivity}
-                                                </span>
-                                            )}
-                                        </td>
-                                    ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {tableData.length === 0 ? (
+                <div className="bg-white border border-gray-200 rounded-xl p-8 shadow-sm">
+                    <EmptyTableState message="No product unit raw materials found. Try adjusting your search or filters." />
                 </div>
-            </div>
-
-            {/* Mobile Cards */}
-            <div className="sm:hidden space-y-4">
-                {tableData.map((item) => (
-                    <button
-                        key={item.productUnitRawMaterialId}
-                        onClick={() => onRowClick(item)}
-                        className="w-full bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-left hover:bg-gray-50 transition-colors"
-                    >
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <div className="text-xs text-gray-500 mb-1">PRODUCT NAME</div>
-                                <div className="font-medium text-gray-900">
-                                    {item.productName || '-'}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="text-xs text-gray-500 mb-1">STATUS</div>
-                                <div>{item.status}</div>
-                            </div>
-                            <div className="col-span-2">
-                                <div className="text-xs text-gray-500 mb-1">LATEST ACTIVITY</div>
-                                <div className="text-sm text-gray-700">{item.latestActivity}</div>
-                            </div>
+            ) : (
+                <>
+                    {/* Desktop Table */}
+                    <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-collapse">
+                                <thead className="bg-blue-600 border-b border-blue-700">
+                                    <tr>
+                                        {headers.map((header) => (
+                                            <th
+                                                key={header.key}
+                                                className="px-6 py-4 text-left text-white font-semibold text-xs uppercase tracking-wider"
+                                            >
+                                                {header.label}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {tableData.map((item) => (
+                                        <tr
+                                            key={item.productUnitRawMaterialId}
+                                            onClick={() => onRowClick(item)}
+                                            className="cursor-pointer transition-all duration-200 bg-white hover:bg-gray-50"
+                                        >
+                                            {headers.map((header) => (
+                                                <td key={header.key} className="px-6 py-5 text-sm">
+                                                    {header.key === 'productName' && (
+                                                        <span className="font-medium text-gray-900">
+                                                            {item.productName || '-'}
+                                                        </span>
+                                                    )}
+                                                    {header.key === 'status' && item.status}
+                                                    {header.key === 'latestActivity' && (
+                                                        <span className="text-gray-700">{item.latestActivity}</span>
+                                                    )}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
-                    </button>
-                ))}
-            </div>
+                    </div>
+
+                    {/* Mobile Cards */}
+                    <div className="sm:hidden space-y-4">
+                        {tableData.map((item) => (
+                            <button
+                                key={item.productUnitRawMaterialId}
+                                onClick={() => onRowClick(item)}
+                                className="w-full bg-white border border-gray-200 rounded-xl p-4 shadow-sm text-left hover:bg-gray-50 transition-colors"
+                            >
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">PRODUCT NAME</div>
+                                        <div className="font-medium text-gray-900">{item.productName || '-'}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">STATUS</div>
+                                        <div>{item.status}</div>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <div className="text-xs text-gray-500 mb-1">LATEST ACTIVITY</div>
+                                        <div className="text-sm text-gray-700">{item.latestActivity}</div>
+                                    </div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                </>
+            )}
 
             {/* Pagination Controls */}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">

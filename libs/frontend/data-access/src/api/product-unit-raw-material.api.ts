@@ -43,8 +43,8 @@ class ProductUnitRawMaterialApi extends AxiosConfig {
     };
 
     public getProductUnitRawMaterialsByProductName = async (
-        productName: string,
         limit = 10,
+        productName: string,
         direction?: string,
         cursorPointer?: string,
         userRole?: string
