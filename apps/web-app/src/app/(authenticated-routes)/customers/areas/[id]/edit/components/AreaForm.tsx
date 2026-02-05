@@ -4,8 +4,8 @@ import { AreaDto, StatusEnum, TerritoryManagerDto } from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useEffect, useMemo, useState } from 'react';
 import { ChangeReasonField, ChangeReasonReadOnly } from '../../../../../components';
-import { createFieldChangeDetector } from '../../../../../utils/fieldChangeDetection';
 import TerritoryManagerSearchableSelectionModal from '../../../../../search-modals/TerritoryManagerSearchableSelectionModal';
+import { createFieldChangeDetector } from '../../../../../utils/fieldChangeDetection';
 import SelectionField from '../../../../customer/components/SelectionField';
 
 interface AreaFormProps {
@@ -394,12 +394,7 @@ export default function AreaForm({
                 >
                     <div className="flex items-center gap-3 mb-4">
                         <div className="p-2 bg-blue-600 rounded-lg shadow-md">
-                            <svg
-                                className="w-5 h-5 text-white"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -559,9 +554,13 @@ export default function AreaForm({
                         {showApprovalUI ? (
                             <div className="space-y-2">
                                 <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                    Towns ({(pendingVersion.towns as string[] || selectedArea?.towns || []).length})
+                                    Towns ({((pendingVersion.towns as string[]) || selectedArea?.towns || []).length})
                                 </h4>
-                                {((currentStatus === StatusEnum.NEW_RECORD ? selectedArea?.towns : pendingVersion.towns as string[]) || []).length === 0 ? (
+                                {(
+                                    (currentStatus === StatusEnum.NEW_RECORD
+                                        ? selectedArea?.towns
+                                        : (pendingVersion.towns as string[])) || []
+                                ).length === 0 ? (
                                     <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-8 text-center">
                                         <div className="mb-3 text-4xl">🏘️</div>
                                         <p className="font-medium text-gray-600">No towns added</p>
@@ -569,7 +568,11 @@ export default function AreaForm({
                                 ) : (
                                     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                                         <div className="divide-y divide-gray-200">
-                                            {((currentStatus === StatusEnum.NEW_RECORD ? selectedArea?.towns : pendingVersion.towns as string[]) || []).map((town: string, index: number) => (
+                                            {(
+                                                (currentStatus === StatusEnum.NEW_RECORD
+                                                    ? selectedArea?.towns
+                                                    : (pendingVersion.towns as string[])) || []
+                                            ).map((town: string, index: number) => (
                                                 <div
                                                     key={index}
                                                     className="px-4 py-3 flex items-center justify-between"
@@ -627,7 +630,9 @@ export default function AreaForm({
                                     </div>
                                 ) : (
                                     <div className="space-y-2">
-                                        <h4 className="text-sm font-semibold text-gray-700 mb-2">Towns ({towns.length})</h4>
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                                            Towns ({towns.length})
+                                        </h4>
                                         <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
                                             <div className="divide-y divide-gray-200">
                                                 {towns.map((town, index) => (
@@ -635,7 +640,9 @@ export default function AreaForm({
                                                         key={index}
                                                         className="px-4 py-3 flex items-center justify-between hover:bg-gray-50"
                                                     >
-                                                        <span className="text-sm font-medium text-gray-900">{town}</span>
+                                                        <span className="text-sm font-medium text-gray-900">
+                                                            {town}
+                                                        </span>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemoveTown(index)}
@@ -824,7 +831,12 @@ export default function AreaForm({
                                             disabled={!canEditDetails || isLoading}
                                             className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
                                         >
-                                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg
+                                                className="h-5 w-5"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
                                                 <path
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"

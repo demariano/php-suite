@@ -1,11 +1,15 @@
 import { UserCognito } from '@auth-guard-lib';
 import {
     ContractInvoiceEventEnum,
+    CustomerBalanceEventDto,
+    CustomerBalanceEventEnum,
     ErrorResponseDto,
     InventoryEventDto,
     InventoryEventEnum,
+    InvoiceAmountChangedDto,
     InvoiceDetailsDto,
     InvoiceDto,
+    InvoicePaymentEventEnum,
     ResponseDto,
     StatusEnum,
     UserRole,
@@ -432,6 +436,75 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
                 `Current: ${currentInvoicedAmount}, New invoice: ${newInvoiceAmount}, ` +
                 `Projected: ${projectedInvoicedAmount}`
         );
+    }
+
+    /**
+     * Sends INVOICE_AMOUNT_CHANGED event to invoicing SQS
+     * This triggers the invoice payment handler to recalculate payment status
+     */
+    private async sendInvoiceAmountChangedEvent(
+        invoice: InvoiceDto,
+        oldFinalAmount: number,
+        newFinalAmount: number,
+        totalAmountPaid: number
+    ): Promise<void> {
+        const invoiceAmountChangedDto: InvoiceAmountChangedDto = {
+            invoiceId: invoice.invoiceId,
+            docno: invoice.docno,
+            customerId: invoice.customerId,
+            customerName: invoice.customerName,
+            oldFinalAmount,
+            newFinalAmount,
+            totalAmountPaid,
+        };
+
+        const eventPayload = {
+            eventType: InvoicePaymentEventEnum.INVOICE_AMOUNT_CHANGED,
+            invoiceData: invoiceAmountChangedDto,
+        };
+
+        try {
+            const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+            this.logger.log(
+                `INVOICE_AMOUNT_CHANGED event sent for invoice: ${invoice.invoiceId}, ` +
+                    `old: ${oldFinalAmount}, new: ${newFinalAmount}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send INVOICE_AMOUNT_CHANGED event for invoice ${invoice.invoiceId}:`, error);
+        }
+    }
+
+    /**
+     * Sends OVERPAYMENT_CREDIT event to customer SQS
+     * This adds the overpayment amount to customer's credit
+     */
+    private async sendOverpaymentCreditEvent(invoice: InvoiceDto, creditAmount: number): Promise<void> {
+        if (!invoice.customerId) {
+            this.logger.warn(`No customerId found for invoice ${invoice.invoiceId}, skipping overpayment credit event`);
+            return;
+        }
+
+        const customerBalanceEvent: CustomerBalanceEventDto = {
+            eventType: CustomerBalanceEventEnum.OVERPAYMENT_CREDIT,
+            customerId: invoice.customerId,
+            customerName: invoice.customerName,
+            amount: creditAmount, // Also adjust balance to offset negative from invoice reduction
+            creditAmount, // Amount to add to customerCredit
+            referenceId: invoice.invoiceId,
+            referenceNo: invoice.docno,
+        };
+
+        try {
+            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
+            this.logger.log(
+                `OVERPAYMENT_CREDIT event sent for invoice: ${invoice.invoiceId}, ` +
+                    `customer: ${invoice.customerId}, creditAmount: ${creditAmount}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send OVERPAYMENT_CREDIT event for invoice ${invoice.invoiceId}:`, error);
+        }
     }
 
     /**

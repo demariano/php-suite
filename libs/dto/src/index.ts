@@ -81,6 +81,7 @@ export * from './lib/customer/customer.classification/customer.classification.dt
 export * from './lib/customer/customer.type/create.customer.type.dto';
 export * from './lib/customer/customer.type/customer.type.dto';
 export * from './lib/customer/customer/create.customer.dto';
+export * from './lib/customer/customer/customer.balance.event.dto';
 export * from './lib/customer/customer/customer.dto';
 export * from './lib/customer/customer/customer.event.dto';
 export * from './lib/customer/customer/customer.filter.dto';
@@ -90,6 +91,7 @@ export * from './lib/customer/terms/create.terms.dto';
 export * from './lib/customer/terms/terms.dto';
 export * from './lib/enums/customer-classification.event.enum';
 export * from './lib/enums/customer-type.event.enum';
+export * from './lib/enums/customer.balance.event.enum';
 
 //StockSchema
 export * from './lib/enums/inventory.event.enum';
@@ -129,6 +131,7 @@ export * from './lib/inventory/stock.purchase-order/stock.purchase-order.detail.
 export * from './lib/inventory/stock.purchase-order/stock.purchase-order.dto';
 export * from './lib/inventory/stock.type/create.stock.type.dto';
 export * from './lib/inventory/stock.type/stock.type.dto';
+export * from './lib/inventory/stock/convert.stock.dto';
 export * from './lib/inventory/stock/create.stock.dto';
 export * from './lib/inventory/stock/inventory.event.dto';
 export * from './lib/inventory/stock/stock.dto';
@@ -144,6 +147,7 @@ export * from './lib/enums/invoice.detail.type.enum';
 export * from './lib/enums/payment.status.enum';
 export * from './lib/enums/print.status.enum';
 export * from './lib/invoicing/invoice/create.invoice.dto';
+export * from './lib/invoicing/invoice/invoice.amount.changed.dto';
 export * from './lib/invoicing/invoice/invoice.details.dto';
 export * from './lib/invoicing/invoice/invoice.dto';
 export * from './lib/invoicing/invoice/invoice.payment.dto';

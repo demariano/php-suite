@@ -499,6 +499,33 @@ export class StockDatabaseService implements StockDatabaseServiceAbstract {
         await Promise.all(records.map((record) => this.updateRecord(record)));
     }
 
+    /**
+     * Find a stock record by product ID, product unit ID, and lot number
+     * Uses GSI4 index: GSI4PK = STOCK#${status}#${productUnitId}#${productId}, GSI4SK = lotNo
+     */
+    async findStockByProductUnitAndLot(
+        status: string,
+        productId: string,
+        productUnitId: string,
+        lotNo: string
+    ): Promise<StockDto | null> {
+        const records = await this.stockTable.find(
+            {
+                GSI4PK: `STOCK#${status}#${productUnitId}#${productId}`,
+                GSI4SK: lotNo,
+            },
+            {
+                index: 'GSI4',
+            }
+        );
+
+        if (records && records.length > 0) {
+            return await this.convertToDto(records[0]);
+        }
+
+        return null;
+    }
+
     async convertToDataType(dto: StockDto): Promise<StockDataType> {
         // Sanitize empty strings to undefined for fields used in GSI keys
         const sanitize = (value: string | undefined) => (value === '' ? undefined : value);

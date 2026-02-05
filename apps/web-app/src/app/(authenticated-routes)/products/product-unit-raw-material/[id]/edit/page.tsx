@@ -49,8 +49,6 @@ export default function EditProductUnitRawMaterialPage({ params }: EditProductUn
                 setSelectedRecord(record);
                 // Always default to details tab
                 setActiveTab('details');
-                    setActiveTab('details');
-                }
             } catch (err) {
                 console.error('Error fetching record:', err);
                 const errorMessage = extractErrorMessage(err, 'Failed to load record details. Please try again.');

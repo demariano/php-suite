@@ -1,6 +1,13 @@
-import { AreaEventEnum, CustomerClassificationEventEnum, CustomerTypeEventEnum, TerritoryManagerEventEnum } from '@dto';
+import {
+    AreaEventEnum,
+    CustomerBalanceEventEnum,
+    CustomerClassificationEventEnum,
+    CustomerTypeEventEnum,
+    TerritoryManagerEventEnum,
+} from '@dto';
 import { Injectable, Logger } from '@nestjs/common';
 import { AreaSyncHandlerService } from './area-sync-handler/area-sync-handler.service';
+import { CustomerBalanceHandlerService } from './customer-balance-handler/customer-balance-handler.service';
 import { CustomerClassificationSyncHandlerService } from './customer-classification-sync-handler/customer-classification-sync-handler.service';
 import { CustomerTypeSyncHandlerService } from './customer-type-sync-handler/customer-type-sync-handler.service';
 import { TerritoryManagerSyncHandlerService } from './territory-manager-sync-handler/territory-manager-sync-handler.service';
@@ -13,7 +20,8 @@ export class MessageHandlerService {
         private readonly customerClassificationSyncHandler: CustomerClassificationSyncHandlerService,
         private readonly customerTypeSyncHandler: CustomerTypeSyncHandlerService,
         private readonly areaSyncHandler: AreaSyncHandlerService,
-        private readonly territoryManagerSyncHandler: TerritoryManagerSyncHandlerService
+        private readonly territoryManagerSyncHandler: TerritoryManagerSyncHandlerService,
+        private readonly customerBalanceHandler: CustomerBalanceHandlerService
     ) {}
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -21,23 +29,33 @@ export class MessageHandlerService {
         this.logger.log(`Received message: ${JSON.stringify(message)}`);
 
         try {
-            const eventType = message.eventType;
+            // Parse message if it's a string (from SQS Body)
+            const parsedMessage = typeof message === 'string' ? JSON.parse(message) : message;
+            const eventType = parsedMessage.eventType;
 
             switch (eventType) {
                 case CustomerClassificationEventEnum.CUSTOMER_CLASSIFICATION_UPDATED:
-                    await this.customerClassificationSyncHandler.handleCustomerClassificationUpdatedEvent(message);
+                    await this.customerClassificationSyncHandler.handleCustomerClassificationUpdatedEvent(
+                        parsedMessage
+                    );
                     break;
                 case CustomerTypeEventEnum.CUSTOMER_TYPE_UPDATED:
-                    await this.customerTypeSyncHandler.handleCustomerTypeUpdatedEvent(message);
+                    await this.customerTypeSyncHandler.handleCustomerTypeUpdatedEvent(parsedMessage);
                     break;
                 case AreaEventEnum.AREA_UPDATED:
-                    await this.areaSyncHandler.handleAreaUpdatedEvent(message);
+                    await this.areaSyncHandler.handleAreaUpdatedEvent(parsedMessage);
                     break;
                 case TerritoryManagerEventEnum.TERRITORY_MANAGER_UPDATED:
-                    await this.territoryManagerSyncHandler.handleTerritoryManagerUpdatedEvent(message);
+                    await this.territoryManagerSyncHandler.handleTerritoryManagerUpdatedEvent(parsedMessage);
                     break;
                 case TerritoryManagerEventEnum.TERRITORY_MANAGER_REACTIVATED:
-                    await this.territoryManagerSyncHandler.handleTerritoryManagerReactivatedEvent(message);
+                    await this.territoryManagerSyncHandler.handleTerritoryManagerReactivatedEvent(parsedMessage);
+                    break;
+                case CustomerBalanceEventEnum.INVOICE_CREATED:
+                case CustomerBalanceEventEnum.INVOICE_DELETED:
+                case CustomerBalanceEventEnum.PAYMENT_CREATED:
+                case CustomerBalanceEventEnum.PAYMENT_DELETED:
+                    await this.customerBalanceHandler.handleBalanceEvent(parsedMessage);
                     break;
                 default:
                     this.logger.warn(`Unknown event type: ${eventType}`);

@@ -1,4 +1,4 @@
-import { InvoicePaymentDto, InvoicePaymentEventEnum, PaymentStatusEnum } from '@dto';
+import { InvoiceAmountChangedDto, InvoicePaymentDto, InvoicePaymentEventEnum, PaymentStatusEnum } from '@dto';
 import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
@@ -63,6 +63,37 @@ export class InvoicePaymentHandlerService {
         }
     }
 
+    /**
+     * Handle invoice amount changed event - recalculates payment status
+     * This is triggered when an invoice's finalAmount is modified
+     */
+    async handleInvoiceAmountChanged(invoiceAmountChangedDto: InvoiceAmountChangedDto): Promise<void> {
+        try {
+            this.logger.log(
+                `Processing INVOICE_AMOUNT_CHANGED for invoice: ${invoiceAmountChangedDto.invoiceId}, ` +
+                    `oldAmount: ${invoiceAmountChangedDto.oldFinalAmount}, newAmount: ${invoiceAmountChangedDto.newFinalAmount}`
+            );
+
+            // Fetch the existing invoice record
+            const invoice = await this.invoiceDatabaseService.findRecordById(invoiceAmountChangedDto.invoiceId);
+
+            if (!invoice) {
+                this.logger.error(`Invoice not found for ID: ${invoiceAmountChangedDto.invoiceId}`);
+                return;
+            }
+
+            // Recalculate payment status based on the new finalAmount
+            await this.recalculateTotalAmountPaid(invoice);
+
+            this.logger.log(
+                `Successfully processed INVOICE_AMOUNT_CHANGED for invoice: ${invoiceAmountChangedDto.invoiceId}`
+            );
+        } catch (error) {
+            this.logger.error(`Error processing invoice amount changed: ${error.message}`, error.stack);
+            throw error;
+        }
+    }
+
     private async addPayment(invoiceId: string, paymentDto: InvoicePaymentDto): Promise<void> {
         this.logger.log(`Adding payment ${paymentDto.paymentId} to invoice ${invoiceId}`);
         await this.invoiceDatabaseService.addPaymentToInvoice(invoiceId, paymentDto);
@@ -89,7 +120,13 @@ export class InvoicePaymentHandlerService {
         const finalAmount = invoice.finalAmount || 0;
         if (totalAmountPaid === 0) {
             invoice.paymentStatus = PaymentStatusEnum.PENDING;
-        } else if (totalAmountPaid >= finalAmount) {
+        } else if (totalAmountPaid > finalAmount) {
+            // Overpayment detected - totalAmountPaid exceeds the finalAmount
+            invoice.paymentStatus = PaymentStatusEnum.OVERPAID;
+            this.logger.log(
+                `⚠️ OVERPAID detected for invoice ${invoice.invoiceId}: totalAmountPaid=${totalAmountPaid}, finalAmount=${finalAmount}, overpayment=${totalAmountPaid - finalAmount}`
+            );
+        } else if (totalAmountPaid === finalAmount) {
             invoice.paymentStatus = PaymentStatusEnum.PAID;
         } else {
             invoice.paymentStatus = PaymentStatusEnum.PARTIAL;

@@ -55,4 +55,8 @@ export abstract class CustomerDatabaseServiceAbstract {
     abstract convertToDtoList(records: CustomerDto[]): Promise<CustomerDto[]>;
 
     abstract deleteAllRecords(): Promise<void>;
+
+    abstract updateBalance(customerId: string, amountChange: number): Promise<CustomerDto | null>;
+
+    abstract updateCustomerCredit(customerId: string, creditAmount: number): Promise<CustomerDto | null>;
 }

@@ -64,4 +64,11 @@ export abstract class StockDatabaseServiceAbstract {
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<StockDto>>;
+
+    abstract findStockByProductUnitAndLot(
+        status: string,
+        productId: string,
+        productUnitId: string,
+        lotNo: string
+    ): Promise<StockDto | null>;
 }

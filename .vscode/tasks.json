@@ -1,299 +1,289 @@
 {
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "Docker",
-      "type": "shell",
-      "command": "docker-compose up",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Run Local Stack",
-      "type": "shell",
-      "command": "bash run-local-stack-scripts.sh",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "User API Service",
-      "type": "shell",
-      "command": "npx nx serve user-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "User Event Handler Service",
-      "type": "shell",
-      "command": "npx nx serve user-event-handler-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Connect Service",
-      "type": "shell",
-      "command": "npx nx serve connect-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Client Message Processor Service",
-      "type": "shell",
-      "command": "npx nx serve client-message-processor-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Broadcast Message Service",
-      "type": "shell",
-      "command": "npx nx serve broadcast-message-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Environment Initializer API Service",
-      "type": "shell",
-      "command": "npx nx serve environment-initializer-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Email API Service",
-      "type": "shell",
-      "command": "npx nx serve email-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Email Template API Service",
-      "type": "shell",
-      "command": "npx nx serve email-template-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Configuration API Service",
-      "type": "shell",
-      "command": "npx nx serve configuration-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "All Services",
-      "dependsOn": [
-        "User API Service",
-        "User Event Handler Service",
-        "Connect Service",
-        "Client Message Processor Service",
-        "Broadcast Message Service",
-        "Environment Initializer API Service",
-        "Email API Service",
-        "Email Template API Service",
-        "Configuration API Service",
-        "Disconnect Service",
-        "Product Api Service",
-        "Customer Api Service",
-        "Invoicing Api Service",
-        "Accounts Api Service",
-        "Accounting Api Service",
-        "Inventory Api Service",
-        "Local Test Service",
-        "Report Api Service",
-        "Customer Event Handler Service",
-        "Inventory Event Handler Service",
-        "Inventory Event Handler Service",
-        "Invoicing Event Handler Service",
-        "Accounting Event Handler Service",
-        "Product Event Handler Service"
-      ],
-      "group": {
-        "kind": "build",
-        "isDefault": true
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Disconnect Service",
-      "type": "shell",
-      "command": "npx nx serve disconnect-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Product Api Service",
-      "type": "shell",
-      "command": "npx nx serve product-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Customer Api Service",
-      "type": "shell",
-      "command": "npx nx serve customer-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Web App",
-      "type": "shell",
-      "command": "npx nx serve web-app",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Invoicing Api Service",
-      "type": "shell",
-      "command": "npx nx serve invoicing-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Accounting Api Service",
-      "type": "shell",
-      "command": "npx nx serve accounting-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Inventory Api Service",
-      "type": "shell",
-      "command": "npx nx serve inventory-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Local Test Service",
-      "type": "shell",
-      "command": "npx nx serve local-test-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Report Api Service",
-      "type": "shell",
-      "command": "npx nx serve report-api-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Customer Event Handler Service",
-      "type": "shell",
-      "command": "npx nx serve customer-event-handler-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Inventory Event Handler Service",
-      "type": "shell",
-      "command": "npx nx serve inventory-event-handler-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Inventory Event Handler Service",
-      "type": "shell",
-      "command": "npx nx serve inventory-event-handler-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Invoicing Event Handler Service",
-      "type": "shell",
-      "command": "npx nx serve invoicing-event-handler-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Accounting Event Handler Service",
-      "type": "shell",
-      "command": "npx nx serve accounting-event-handler-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    },
-    {
-      "label": "Product Event Handler Service",
-      "type": "shell",
-      "command": "npx nx serve product-event-handler-service",
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      },
-      "problemMatcher": []
-    }
-  ]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Docker",
+            "type": "shell",
+            "command": "docker-compose up",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Run Local Stack",
+            "type": "shell",
+            "command": "bash run-local-stack-scripts.sh",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "User API Service",
+            "type": "shell",
+            "command": "npx nx serve user-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "User Event Handler Service",
+            "type": "shell",
+            "command": "npx nx serve user-event-handler-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Connect Service",
+            "type": "shell",
+            "command": "npx nx serve connect-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Client Message Processor Service",
+            "type": "shell",
+            "command": "npx nx serve client-message-processor-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Broadcast Message Service",
+            "type": "shell",
+            "command": "npx nx serve broadcast-message-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Environment Initializer API Service",
+            "type": "shell",
+            "command": "npx nx serve environment-initializer-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Email API Service",
+            "type": "shell",
+            "command": "npx nx serve email-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Email Template API Service",
+            "type": "shell",
+            "command": "npx nx serve email-template-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Configuration API Service",
+            "type": "shell",
+            "command": "npx nx serve configuration-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "All Services",
+            "dependsOn": [
+                "User API Service",
+                "User Event Handler Service",
+                "Connect Service",
+                "Client Message Processor Service",
+                "Broadcast Message Service",
+                "Environment Initializer API Service",
+                "Email API Service",
+                "Email Template API Service",
+                "Configuration API Service",
+                "Disconnect Service",
+                "Product Api Service",
+                "Customer Api Service",
+                "Invoicing Api Service",
+                "Accounts Api Service",
+                "Accounting Api Service",
+                "Inventory Api Service",
+                "Local Test Service",
+                "Report Api Service",
+                "Customer Event Handler Service",
+                "Inventory Event Handler Service",
+                "Inventory Event Handler Service",
+                "Invoicing Event Handler Service",
+                "Accounting Event Handler Service",
+                "Product Event Handler Service"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Disconnect Service",
+            "type": "shell",
+            "command": "npx nx serve disconnect-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Product Api Service",
+            "type": "shell",
+            "command": "npx nx serve product-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Customer Api Service",
+            "type": "shell",
+            "command": "npx nx serve customer-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Web App",
+            "type": "shell",
+            "command": "npx nx serve web-app --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Invoicing Api Service",
+            "type": "shell",
+            "command": "npx nx serve invoicing-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Accounting Api Service",
+            "type": "shell",
+            "command": "npx nx serve accounting-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Inventory Api Service",
+            "type": "shell",
+            "command": "npx nx serve inventory-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Local Test Service",
+            "type": "shell",
+            "command": "npx nx serve local-test-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Report Api Service",
+            "type": "shell",
+            "command": "npx nx serve report-api-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Customer Event Handler Service",
+            "type": "shell",
+            "command": "npx nx serve customer-event-handler-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Inventory Event Handler Service",
+            "type": "shell",
+            "command": "npx nx serve inventory-event-handler-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Invoicing Event Handler Service",
+            "type": "shell",
+            "command": "npx nx serve invoicing-event-handler-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Accounting Event Handler Service",
+            "type": "shell",
+            "command": "npx nx serve accounting-event-handler-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Product Event Handler Service",
+            "type": "shell",
+            "command": "npx nx serve product-event-handler-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
 }

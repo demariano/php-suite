@@ -8,64 +8,35 @@ import InvoiceDetailsTab from './InvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
 
 interface ReturnGoodSoldFormProps {
-  isCreateMode: boolean;
-  selectedRecord: ReturnGoodSoldDto | null;
-  successMessage: string | null;
-  isAdminUser: boolean;
-  isLoading: boolean;
-  activeTab: 'details' | 'logs';
-  onTabChange: (tab: 'details' | 'logs') => void;
-  onSave: (record: ReturnGoodSoldDto) => void;
-  onDelete: () => void;
-  onApprove: () => void;
-  onDeny: () => void;
-  onCancel: () => void;
+    isCreateMode: boolean;
+    selectedRecord: ReturnGoodSoldDto | null;
+    successMessage: string | null;
+    isAdminUser: boolean;
+    isLoading: boolean;
+    activeTab: 'details' | 'logs';
+    onTabChange: (tab: 'details' | 'logs') => void;
+    onSave: (record: ReturnGoodSoldDto) => void;
+    onDelete: () => void;
+    onApprove: () => void;
+    onDeny: () => void;
+    onCancel: () => void;
 }
 
 export default function ReturnGoodSoldForm({
-  isCreateMode,
-  selectedRecord,
-  successMessage,
-  isAdminUser,
-  isLoading,
-  activeTab,
-  onTabChange,
-  onSave,
-  onDelete,
-  onApprove,
-  onDeny,
-  onCancel
+    isCreateMode,
+    selectedRecord,
+    successMessage,
+    isAdminUser,
+    isLoading,
+    activeTab,
+    onTabChange,
+    onSave,
+    onDelete,
+    onApprove,
+    onDeny,
+    onCancel,
 }: ReturnGoodSoldFormProps) {
-  const [formData, setFormData] = useState<ReturnGoodSoldDto>({
-    returnGoodSoldId: '',
-    invoiceId: '',
-    customerId: '',
-    customerName: '',
-    invoiceDocno: '',
-    rgsDocno: '',
-    dateReturned: new Date().toISOString().split('T')[0],
-    originalInvoiceDetails: [],
-    modifiedInvoiceDetails: [],
-    status: isCreateMode ? StatusEnum.NEW_RECORD : StatusEnum.ACTIVE,
-    activityLogs: [],
-    forApprovalVersion: {},
-    changeReason: ''
-  });
-
-  // Toast notification hook
-  const { setFlashNotification } = useSessionStore();
-
-  // Initialize form data when selectedRecord changes
-  useEffect(() => {
-    if (selectedRecord) {
-      setFormData({
-        ...selectedRecord,
-        originalInvoiceDetails: selectedRecord.originalInvoiceDetails || [],
-        modifiedInvoiceDetails: selectedRecord.modifiedInvoiceDetails || []
-      });
-    } else if (isCreateMode) {
-      // Reset to default values for create mode
-      setFormData({
+    const [formData, setFormData] = useState<ReturnGoodSoldDto>({
         returnGoodSoldId: '',
         invoiceId: '',
         customerId: '',
@@ -75,270 +46,345 @@ export default function ReturnGoodSoldForm({
         dateReturned: new Date().toISOString().split('T')[0],
         originalInvoiceDetails: [],
         modifiedInvoiceDetails: [],
-        status: StatusEnum.NEW_RECORD,
+        status: isCreateMode ? StatusEnum.NEW_RECORD : StatusEnum.ACTIVE,
         activityLogs: [],
         forApprovalVersion: {},
-        changeReason: ''
-      });
-    }
-  }, [selectedRecord, isCreateMode]);
+        changeReason: '',
+    });
 
-  // Determine if form should be read-only
-  const isReadOnly = !isCreateMode && (
-    (!isAdminUser && (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.FOR_DELETION)) ||
-    (isAdminUser && (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.FOR_DELETION || formData.status === StatusEnum.NEW_RECORD))
-  );
+    // Toast notification hook
+    const { setFlashNotification } = useSessionStore();
 
-  const handleFormDataChange = (updates: Partial<ReturnGoodSoldDto>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
-  };
+    // Initialize form data when selectedRecord changes
+    useEffect(() => {
+        if (selectedRecord) {
+            setFormData({
+                ...selectedRecord,
+                originalInvoiceDetails: selectedRecord.originalInvoiceDetails || [],
+                modifiedInvoiceDetails: selectedRecord.modifiedInvoiceDetails || [],
+            });
+        } else if (isCreateMode) {
+            // Reset to default values for create mode
+            setFormData({
+                returnGoodSoldId: '',
+                invoiceId: '',
+                customerId: '',
+                customerName: '',
+                invoiceDocno: '',
+                rgsDocno: '',
+                dateReturned: new Date().toISOString().split('T')[0],
+                originalInvoiceDetails: [],
+                modifiedInvoiceDetails: [],
+                status: StatusEnum.NEW_RECORD,
+                activityLogs: [],
+                forApprovalVersion: {},
+                changeReason: '',
+            });
+        }
+    }, [selectedRecord, isCreateMode]);
 
-  const handleSaveClick = () => {
-    // Validation
-    if (!formData.invoiceId) {
-      setFlashNotification({
-        title: 'Validation Error',
-        message: 'Please select an invoice first',
-        alertType: 'error'
-      });
-      return;
-    }
+    // Determine if form should be read-only
+    const isReadOnly =
+        !isCreateMode &&
+        ((!isAdminUser &&
+            (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.FOR_DELETION)) ||
+            (isAdminUser &&
+                (formData.status === StatusEnum.FOR_APPROVAL ||
+                    formData.status === StatusEnum.FOR_DELETION ||
+                    formData.status === StatusEnum.NEW_RECORD)));
 
-    // RGS Doc No validation removed - it's auto-generated by backend in create mode
+    const handleFormDataChange = (updates: Partial<ReturnGoodSoldDto>) => {
+        setFormData((prev) => ({ ...prev, ...updates }));
+    };
 
-    if (!formData.dateReturned) {
-      setFlashNotification({
-        title: 'Validation Error',
-        message: 'Please select a return date',
-        alertType: 'error'
-      });
-      return;
-    }
+    const handleSaveClick = () => {
+        // Validation
+        if (!formData.invoiceId) {
+            setFlashNotification({
+                title: 'Validation Error',
+                message: 'Please select an invoice first',
+                alertType: 'error',
+            });
+            return;
+        }
 
-    if (formData.modifiedInvoiceDetails.length === 0) {
-      setFlashNotification({
-        title: 'Validation Error',
-        message: 'Please add at least one modified invoice detail',
-        alertType: 'error'
-      });
-      return;
-    }
+        // RGS Doc No validation removed - it's auto-generated by backend in create mode
 
-    // Rule: Change reason required for non-admin users when editing (not creating)
-    if (!isCreateMode && !isAdminUser) {
-      if (!formData.changeReason || formData.changeReason.trim() === '') {
-        setFlashNotification({
-          title: 'Validation Error',
-          message: 'Change reason is required when modifying a return good sold record.',
-          alertType: 'error'
-        });
-        return;
-      }
-      if (formData.changeReason.trim().length < 10) {
-        setFlashNotification({
-          title: 'Validation Error',
-          message: 'Change reason must be at least 10 characters when modifying a return good sold record.',
-          alertType: 'error'
-        });
-        return;
-      }
-    }
+        if (!formData.dateReturned) {
+            setFlashNotification({
+                title: 'Validation Error',
+                message: 'Please select a return date',
+                alertType: 'error',
+            });
+            return;
+        }
 
-    // Call the save handler
-    onSave(formData);
-  };
+        if (formData.modifiedInvoiceDetails.length === 0) {
+            setFlashNotification({
+                title: 'Validation Error',
+                message: 'Please add at least one modified invoice detail',
+                alertType: 'error',
+            });
+            return;
+        }
 
-  // Use shared field change detection utility
-  const isFieldChanged = createFieldChangeDetector(
-    selectedRecord as Record<string, unknown>,
-    selectedRecord?.forApprovalVersion as Record<string, unknown> | undefined
-  );
+        // Rule: Change reason required for non-admin users when editing (not creating)
+        if (!isCreateMode && !isAdminUser) {
+            if (!formData.changeReason || formData.changeReason.trim() === '') {
+                setFlashNotification({
+                    title: 'Validation Error',
+                    message: 'Change reason is required when modifying a return good sold record.',
+                    alertType: 'error',
+                });
+                return;
+            }
+            if (formData.changeReason.trim().length < 10) {
+                setFlashNotification({
+                    title: 'Validation Error',
+                    message: 'Change reason must be at least 10 characters when modifying a return good sold record.',
+                    alertType: 'error',
+                });
+                return;
+            }
+        }
 
-  // Helper function to format display value
-  const formatValue = (value: any): string => {
-    if (value === null || value === undefined) return '-';
-    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-    if (typeof value === 'number') return value.toString();
-    if (typeof value === 'object') return JSON.stringify(value);
-    return String(value);
-  };
+        // Call the save handler
+        onSave(formData);
+    };
 
-  // Helper function to render read-only field with highlighting
-  const renderReadOnlyField = (label: string, value: any, colorClass: string, fieldName?: string) => {
-    const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
-    
-    return (
-      <div className="group">
-        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-          <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
-          {label}
-        </label>
-        <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
-          fieldChanged 
-            ? 'border-blue-500 bg-blue-50 text-gray-700' 
-            : 'border-gray-200 bg-gray-50 text-gray-500'
-        }`}>
-          {formatValue(value)}
-        </div>
-      </div>
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+        selectedRecord as Record<string, unknown>,
+        selectedRecord?.forApprovalVersion as Record<string, unknown> | undefined
     );
-  };
 
-  // renderApprovalTab removed - using inline diff pattern with approve/deny buttons in footer
-  // Render logs tab content
-  const renderLogsTab = () => {
-    // Use formData activityLogs if available, otherwise fall back to selectedRecord
-    const activityLogs = formData?.activityLogs || selectedRecord?.activityLogs || [];
-    
+    // Helper function to format display value
+    const formatValue = (value: any): string => {
+        if (value === null || value === undefined) return '-';
+        if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+        if (typeof value === 'number') return value.toString();
+        if (typeof value === 'object') return JSON.stringify(value);
+        return String(value);
+    };
+
+    // Helper function to render read-only field with highlighting
+    const renderReadOnlyField = (label: string, value: any, colorClass: string, fieldName?: string) => {
+        const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+
+        return (
+            <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                    {label}
+                </label>
+                <div
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+                        fieldChanged
+                            ? 'border-blue-500 bg-blue-50 text-gray-700'
+                            : 'border-gray-200 bg-gray-50 text-gray-500'
+                    }`}
+                >
+                    {formatValue(value)}
+                </div>
+            </div>
+        );
+    };
+
+    // renderApprovalTab removed - using inline diff pattern with approve/deny buttons in footer
+    // Render logs tab content
+    const renderLogsTab = () => {
+        // Use formData activityLogs if available, otherwise fall back to selectedRecord
+        const activityLogs = formData?.activityLogs || selectedRecord?.activityLogs || [];
+
+        return (
+            <div className="space-y-6 animate-fadeIn">
+                <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
+                    <div className="mb-4 flex items-center gap-3">
+                        <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                />
+                            </svg>
+                        </div>
+                        <h3 className="m-0 text-base font-bold text-blue-600">Activity Logs</h3>
+                    </div>
+
+                    {renderActivityLogsTable(activityLogs)}
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        className="rounded-xl border-2 border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    >
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
     return (
-      <div className="space-y-6 animate-fadeIn">
-        <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
-          <div className="mb-4 flex items-center gap-3">
-            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <h3 className="m-0 text-base font-bold text-blue-600">
-              Activity Logs
-            </h3>
-          </div>
-          
-          {renderActivityLogsTable(activityLogs)}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-xl border-2 border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <>
-      {/* Success message */}
-      {successMessage && (
-        <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-green-500 bg-green-50 p-4 text-green-700 shadow-sm">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-sm font-bold text-white">
-            ✓
-          </div>
-          <span className="text-sm font-semibold">{successMessage}</span>
-        </div>
-      )}
-
-      {/* Tab Content */}
-      {activeTab === 'details' && (
-        <div>
-          {/* Show read-only warning when record is pending approval */}
-          {!isCreateMode && formData.status !== StatusEnum.ACTIVE && (
-            <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
-                ⚠
-              </div>
-              <span className="text-sm font-semibold">
-                {formData.status === StatusEnum.FOR_DELETION 
-                  ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-                  : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-              </span>
-            </div>
-          )}
-          
-          <RecordDetailsTab
-            formData={formData}
-            onFormDataChange={handleFormDataChange}
-            isCreateMode={isCreateMode}
-            isAdminUser={isAdminUser}
-            isReadOnly={isReadOnly}
-          />
-
-          <InvoiceDetailsTab
-            formData={formData}
-            onFormDataChange={handleFormDataChange}
-            isCreateMode={isCreateMode}
-            isReadOnly={isReadOnly}
-          />
-
-          {/* Action Buttons for Details Tab */}
-          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-            {/* Left side - Delete button or Approve/Deny buttons */}
-            {!isCreateMode && formData.status === StatusEnum.ACTIVE ? (
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={isLoading || isReadOnly}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                {isLoading ? 'Processing...' : 'Delete'}
-              </button>
-            ) : !isCreateMode && isAdminUser && (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.NEW_RECORD || formData.status === StatusEnum.FOR_DELETION) ? (
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <button
-                  type="button"
-                  onClick={onDeny}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  {isLoading ? 'Processing...' : (formData.status === StatusEnum.FOR_DELETION ? 'Deny Deletion' : 'Deny Changes')}
-                </button>
-                <button
-                  type="button"
-                  onClick={onApprove}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {isLoading ? 'Processing...' : (formData.status === StatusEnum.FOR_DELETION ? 'Approve Deletion' : 'Approve Changes')}
-                </button>
-              </div>
-            ) : (
-              <div className="hidden sm:block" />
+        <>
+            {/* Success message */}
+            {successMessage && (
+                <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-green-500 bg-green-50 p-4 text-green-700 shadow-sm">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-green-500 text-sm font-bold text-white">
+                        ✓
+                    </div>
+                    <span className="text-sm font-semibold">{successMessage}</span>
+                </div>
             )}
-            
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-              {(isCreateMode || formData.status === StatusEnum.ACTIVE) && (
-                <button
-                  type="button"
-                  onClick={handleSaveClick}
-                  disabled={isLoading || isReadOnly}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {isLoading ? 'Saving...' : (isCreateMode ? 'Create Record' : 'Save Changes')}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={onCancel}
-                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
-      {activeTab === 'logs' && !isCreateMode && selectedRecord && renderLogsTab()}
-    </>
-  );
+            {/* Tab Content */}
+            {activeTab === 'details' && (
+                <div>
+                    {/* Show read-only warning when record is pending approval */}
+                    {!isCreateMode && formData.status !== StatusEnum.ACTIVE && (
+                        <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
+                                ⚠
+                            </div>
+                            <span className="text-sm font-semibold">
+                                {formData.status === StatusEnum.FOR_DELETION
+                                    ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
+                                    : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
+                            </span>
+                        </div>
+                    )}
+
+                    <RecordDetailsTab
+                        formData={formData}
+                        onFormDataChange={handleFormDataChange}
+                        isCreateMode={isCreateMode}
+                        isAdminUser={isAdminUser}
+                        isReadOnly={isReadOnly}
+                    />
+
+                    <InvoiceDetailsTab
+                        formData={formData}
+                        onFormDataChange={handleFormDataChange}
+                        isCreateMode={isCreateMode}
+                        isReadOnly={isReadOnly}
+                    />
+
+                    {/* Action Buttons for Details Tab */}
+                    <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                        {/* Left side - Delete button or Approve/Deny buttons */}
+                        {!isCreateMode && formData.status === StatusEnum.ACTIVE ? (
+                            <button
+                                type="button"
+                                onClick={onDelete}
+                                disabled={isLoading || isReadOnly}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                </svg>
+                                {isLoading ? 'Processing...' : 'Delete'}
+                            </button>
+                        ) : !isCreateMode &&
+                          isAdminUser &&
+                          (formData.status === StatusEnum.FOR_APPROVAL ||
+                              formData.status === StatusEnum.NEW_RECORD ||
+                              formData.status === StatusEnum.FOR_DELETION) ? (
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                <button
+                                    type="button"
+                                    onClick={onDeny}
+                                    disabled={isLoading}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                    {isLoading
+                                        ? 'Processing...'
+                                        : formData.status === StatusEnum.FOR_DELETION
+                                        ? 'Deny Deletion'
+                                        : 'Deny Changes'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={onApprove}
+                                    disabled={isLoading}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                    {isLoading
+                                        ? 'Processing...'
+                                        : formData.status === StatusEnum.FOR_DELETION
+                                        ? 'Approve Deletion'
+                                        : 'Approve Changes'}
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="hidden sm:block" />
+                        )}
+
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                            {(isCreateMode || formData.status === StatusEnum.ACTIVE) && (
+                                <button
+                                    type="button"
+                                    onClick={handleSaveClick}
+                                    disabled={isLoading || isReadOnly}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                    {isLoading ? 'Saving...' : isCreateMode ? 'Create Record' : 'Save Changes'}
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'logs' && !isCreateMode && selectedRecord && renderLogsTab()}
+        </>
+    );
 }

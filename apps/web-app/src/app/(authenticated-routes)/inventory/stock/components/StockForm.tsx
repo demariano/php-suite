@@ -91,6 +91,9 @@ interface StockFormProps {
     onCancel: () => void;
     isAdminUser?: boolean;
     activeTab?: 'details' | 'approval';
+    onApprove?: () => void;
+    onDeny?: () => void;
+    onConvert?: () => void;
 }
 
 export default function StockForm({
@@ -102,6 +105,9 @@ export default function StockForm({
     onCancel,
     isAdminUser = false,
     activeTab = 'details',
+    onApprove,
+    onDeny,
+    onConvert,
 }: StockFormProps) {
     const [selectedProduct, setSelectedProduct] = useState<{ id: string; name: string } | null>(null);
     const [selectedProductUnit, setSelectedProductUnit] = useState<{ id: string; name: string } | null>(null);
@@ -535,28 +541,51 @@ export default function StockForm({
                 {activeTab !== 'approval' && (
                     <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
                         {!isCreateMode && selectedStock?.status === StatusEnum.ACTIVE ? (
-                            <button
-                                type="button"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    onDelete();
-                                }}
-                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                </svg>
-                                Delete
-                            </button>
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onDelete();
+                                    }}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                        />
+                                    </svg>
+                                    Delete
+                                </button>
+                                {isAdminUser && onConvert && (
+                                    <button
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            onConvert();
+                                        }}
+                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-purple-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 sm:w-auto"
+                                    >
+                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                                            />
+                                        </svg>
+                                        Convert Unit
+                                    </button>
+                                )}
+                            </div>
                         ) : (
                             <div className="hidden sm:block" />
-                        )}
+                        )}}
 
                         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                             {(isCreateMode || selectedStock?.status === StatusEnum.ACTIVE) && (

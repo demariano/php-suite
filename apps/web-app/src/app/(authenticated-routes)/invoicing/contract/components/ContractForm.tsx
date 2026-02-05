@@ -475,11 +475,10 @@ export default function ContractForm({
 
     // Helper to determine if fields should be disabled
     const isFieldDisabled = (fieldName?: string) => {
-        if (activeTab === 'approval') return true;
         if (!isCreateMode && selectedContract?.status && selectedContract.status !== StatusEnum.ACTIVE) return true;
 
-        // Disable immutable fields in edit mode (details tab only)
-        if (!isCreateMode && activeTab === 'details' && (fieldName === 'contractNo' || fieldName === 'customer')) {
+        // Disable immutable fields in edit mode
+        if (!isCreateMode && (fieldName === 'contractNo' || fieldName === 'customer')) {
             return true;
         }
 
@@ -523,10 +522,9 @@ export default function ContractForm({
                     />
                 )}
 
-                {/* Pending approval or deletion warning - hide on approval tab since changeReason is already shown */}
+                {/* Pending approval or deletion warning */}
                 {!isCreateMode &&
                     selectedContract &&
-                    activeTab !== 'approval' &&
                     (selectedContract.status === StatusEnum.FOR_APPROVAL ||
                         selectedContract.status === StatusEnum.NEW_RECORD ||
                         selectedContract.status === StatusEnum.FOR_DELETION) && (

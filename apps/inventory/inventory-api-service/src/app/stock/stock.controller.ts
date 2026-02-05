@@ -1,9 +1,10 @@
 import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
-import { CreateStockDto, StockDto, StockFilterDto } from '@dto';
+import { ConvertStockDto, CreateStockDto, StockDto, StockFilterDto } from '@dto';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards, ValidationPipe } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApproveStockCommand } from './command/approve-record/approve.command';
+import { ConvertStockCommand } from './command/convert/convert.command';
 import { CreateStockCommand } from './command/create/create.command';
 import { DeleteStockCommand } from './command/delete/delete.command';
 import { DenyStockCommand } from './command/deny-record/deny.command';
@@ -335,6 +336,115 @@ export class StockController {
         }
 
         const command = new DenyStockCommand(id, user);
+        return this.commandBus.execute(command);
+    }
+
+    @Post(':id/convert')
+    @ApiOperation({
+        summary: 'Convert stock between units',
+        description:
+            'Converts stock from one unit to another. Deducts quantity from source stock and adds to destination stock. If destination stock does not exist, creates a new stock record with the same product and lot number but different unit.',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Unique stock identifier of the source stock',
+        example: 'stock_123456789',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Stock successfully converted',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        sourceStock: { type: 'object', description: 'Updated source stock record' },
+                        destinationStock: {
+                            type: 'object',
+                            description: 'Updated or created destination stock record',
+                        },
+                        isNewDestination: { type: 'boolean', description: 'Whether a new stock record was created' },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request - Validation failed or insufficient quantity',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 400 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        errorMessage: {
+                            type: 'string',
+                            example: 'Insufficient quantity. Available: 50, Requested: 100',
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiResponse({
+        status: 403,
+        description: 'Forbidden - Insufficient permissions',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 403 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        errorMessage: {
+                            type: 'string',
+                            example:
+                                'User does not have permission to convert stock. Admin or Super Admin role required.',
+                        },
+                    },
+                },
+            },
+        },
+    })
+    @ApiBody({
+        type: ConvertStockDto,
+        description: 'Stock conversion payload',
+        examples: {
+            example1: {
+                summary: 'Convert boxes to pieces',
+                value: {
+                    deductQuantity: 10,
+                    targetUnitId: 'unit_pcs_123',
+                    targetUnitName: 'PCS',
+                    addQuantity: 1000,
+                },
+            },
+        },
+    })
+    convertStock(
+        @Param('id') id: string,
+        @Body() convertStockDto: ConvertStockDto,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        const command = new ConvertStockCommand(id, convertStockDto, user);
         return this.commandBus.execute(command);
     }
 

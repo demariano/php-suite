@@ -1,6 +1,7 @@
 'use client';
 
 import {
+    ConvertStockDto,
     extractErrorMessage,
     StatusEnum,
     StockApi,
@@ -12,6 +13,7 @@ import {
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import ConvertStockModal from '../../components/ConvertStockModal';
 import DeleteConfirmationModal from '../../components/DeleteConfirmationModal';
 import DenyReasonDialog from '../../components/DenyReasonDialog';
 import StockForm from '../../components/StockForm';
@@ -28,6 +30,8 @@ export default function EditStockPage({ params }: EditStockPageProps) {
     const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
+    const [showConvertModal, setShowConvertModal] = useState(false);
+    const [isConverting, setIsConverting] = useState(false);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
     const { setFlashNotification } = useSessionStore();
@@ -241,6 +245,54 @@ export default function EditStockPage({ params }: EditStockPageProps) {
         setShowDenyDialog(false);
     };
 
+    const handleConvert = () => {
+        if (!selectedStock) return;
+        setShowConvertModal(true);
+    };
+
+    const handleConvertConfirm = async (convertDto: ConvertStockDto) => {
+        if (!selectedStock) return;
+
+        try {
+            setIsConverting(true);
+
+            // SECURITY: Only get user role if BYPASS_AUTH is enabled
+            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
+
+            // Call the API to convert the stock
+            const result = await StockApi.convertStock(selectedStock.stockId!, convertDto, userRole);
+
+            // Update local state with the source stock (which has been updated)
+            setSelectedStock(result.sourceStock);
+
+            setShowConvertModal(false);
+
+            const message = result.isNewDestination
+                ? `Successfully converted ${convertDto.deductQuantity} ${selectedStock.productUnitName} to ${convertDto.addQuantity} ${convertDto.targetUnitName}. A new stock record was created.`
+                : `Successfully converted ${convertDto.deductQuantity} ${selectedStock.productUnitName} to ${convertDto.addQuantity} ${convertDto.targetUnitName}. Existing stock record was updated.`;
+
+            setFlashNotification({
+                title: 'Success!',
+                message: message,
+                alertType: 'success',
+            });
+        } catch (err) {
+            console.error('Error converting stock:', err);
+            const errorMessage = extractErrorMessage(err, 'Failed to convert stock. Please try again.');
+            setFlashNotification({
+                title: 'Error',
+                message: errorMessage,
+                alertType: 'error',
+            });
+        } finally {
+            setIsConverting(false);
+        }
+    };
+
+    const handleConvertCancel = () => {
+        setShowConvertModal(false);
+    };
+
     const handleCancel = () => {
         router.push('/inventory/stock');
     };
@@ -436,6 +488,7 @@ export default function EditStockPage({ params }: EditStockPageProps) {
                                     onCancel={handleCancel}
                                     onApprove={handleApprove}
                                     onDeny={handleDeny}
+                                    onConvert={handleConvert}
                                 />
                             )}
 
@@ -457,6 +510,14 @@ export default function EditStockPage({ params }: EditStockPageProps) {
                 stock={selectedStock}
                 onConfirm={handleDeleteConfirm}
                 onCancel={() => setShowDeleteModal(false)}
+            />
+
+            <ConvertStockModal
+                show={showConvertModal}
+                stock={selectedStock}
+                isLoading={isConverting}
+                onConfirm={handleConvertConfirm}
+                onCancel={handleConvertCancel}
             />
         </div>
     );

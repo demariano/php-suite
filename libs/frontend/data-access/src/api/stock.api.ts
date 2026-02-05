@@ -1,4 +1,4 @@
-import { CreateStockDto, StockDto, StockFilterDto, UpdateAvailableQtyDto } from '../types/stock.types';
+import { ConvertStockDto, ConvertStockResult, CreateStockDto, StockDto, StockFilterDto } from '../types/stock.types';
 import { AxiosConfig } from './axiosConfig';
 
 export interface PaginatedResponse<T> {
@@ -230,6 +230,23 @@ class StockApi extends AxiosConfig {
         const url = queryString ? `/stock/${id}/deny?${queryString}` : `/stock/${id}/deny`;
 
         return await this.axiosInstance.post(url, { approverMessage });
+    };
+
+    public convertStock = async (
+        id: string,
+        convertDto: ConvertStockDto,
+        userRole?: string
+    ): Promise<ConvertStockResult> => {
+        const params = new URLSearchParams();
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/stock/${id}/convert?${queryString}` : `/stock/${id}/convert`;
+
+        return await this.axiosInstance.post(url, convertDto);
     };
 }
 

@@ -10,6 +10,7 @@ export interface StockDto {
     productName?: string;
     quantityOnHand?: number;
     availableQuantity?: number;
+    totalQuantity?: number;
     productUnitId?: string;
     productUnitName?: string;
     expirationDate?: string;
@@ -51,4 +52,17 @@ export interface StockFilterDto {
     lotNo?: string;
     fields?: string[];
     reverse?: boolean;
+}
+
+export interface ConvertStockDto {
+    deductQuantity: number;
+    targetUnitId: string;
+    targetUnitName: string;
+    addQuantity: number;
+}
+
+export interface ConvertStockResult {
+    sourceStock: StockDto;
+    destinationStock: StockDto;
+    isNewDestination: boolean;
 }

@@ -3,6 +3,8 @@ import {
     ChequeClearStatusEnum,
     ContractPaymentDto,
     ContractPaymentEventEnum,
+    CustomerBalanceEventDto,
+    CustomerBalanceEventEnum,
     ErrorResponseDto,
     InvoicePaymentDto,
     InvoicePaymentEventEnum,
@@ -116,6 +118,9 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
         const oldPaymentInvoiceDetails = existingRecord.paymentInvoiceDetails || [];
+        // Store original values for customer balance delta calculation
+        const originalStatus = forApprovalVersion.originalStatus as StatusEnum | undefined;
+        const originalPaymentAmount = forApprovalVersion.originalPaymentAmount as number | undefined;
 
         this.logger.log(
             `DEBUG: Approving payment ${existingRecord.paymentId}, oldPaymentInvoiceDetails length: ${
@@ -167,6 +172,22 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
             await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_ADDED, updatedRecord);
         }
 
+        // Send customer balance event for non-contract payments
+        // Contract payments don't affect customer balance directly
+        if (!updatedRecord.contractPayment && updatedRecord.customerId) {
+            if (originalStatus === StatusEnum.ACTIVE && originalPaymentAmount !== undefined) {
+                // FOR_APPROVAL from ACTIVE: Calculate and send balance delta
+                await this.sendCustomerBalanceDeltaEvent(
+                    originalPaymentAmount,
+                    updatedRecord.paymentAmount,
+                    updatedRecord
+                );
+            } else {
+                // NEW_RECORD approval: Payment is being activated for the first time
+                await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.PAYMENT_CREATED, updatedRecord);
+            }
+        }
+
         this.logger.log(`Payment approved successfully: ${existingRecord.paymentId}`);
         return new ResponseDto<PaymentDto>(updatedRecord, HTTP_STATUS_OK);
     }
@@ -175,29 +196,45 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
      * Approves deletion of a payment
      */
     private async approveDeletion(existingRecord: PaymentDto): Promise<ResponseDto<PaymentDto>> {
-        // Send PAYMENT_DELETED events BEFORE deleting
-        if (existingRecord.paymentInvoiceDetails && existingRecord.paymentInvoiceDetails.length > 0) {
-            for (const detail of existingRecord.paymentInvoiceDetails) {
-                const invoicePaymentDto: InvoicePaymentDto = {
-                    invoiceId: detail.invoiceId,
-                    receiptNo: existingRecord.receiptNo,
-                    paymentDate: existingRecord.paymentDate,
-                    paymentAmount: detail.amountApplied,
-                    contractPayment: existingRecord.contractPayment,
-                    paymentId: existingRecord.paymentId,
-                };
+        // Check original status from forApprovalVersion (stored by delete handler)
+        // Only send events if payment was originally ACTIVE (not NEW_RECORD)
+        const originalStatus = existingRecord.forApprovalVersion?.originalStatus as StatusEnum | undefined;
 
-                await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_DELETED, invoicePaymentDto);
+        if (originalStatus === StatusEnum.ACTIVE) {
+            // Send PAYMENT_DELETED events BEFORE deleting
+            if (existingRecord.paymentInvoiceDetails && existingRecord.paymentInvoiceDetails.length > 0) {
+                for (const detail of existingRecord.paymentInvoiceDetails) {
+                    const invoicePaymentDto: InvoicePaymentDto = {
+                        invoiceId: detail.invoiceId,
+                        receiptNo: existingRecord.receiptNo,
+                        paymentDate: existingRecord.paymentDate,
+                        paymentAmount: detail.amountApplied,
+                        contractPayment: existingRecord.contractPayment,
+                        paymentId: existingRecord.paymentId,
+                    };
+
+                    await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_DELETED, invoicePaymentDto);
+                }
+
+                this.logger.log(
+                    `Sent PAYMENT_DELETED events for ${existingRecord.paymentInvoiceDetails.length} invoices in payment ${existingRecord.paymentId}`
+                );
             }
 
-            this.logger.log(
-                `Sent PAYMENT_DELETED events for ${existingRecord.paymentInvoiceDetails.length} invoices in payment ${existingRecord.paymentId}`
-            );
-        }
+            // Send contract payment deletion event if this is a contract payment
+            if (existingRecord.contractPayment && existingRecord.contractId) {
+                await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, existingRecord);
+            }
 
-        // Send contract payment deletion event if this is a contract payment
-        if (existingRecord.contractPayment && existingRecord.contractId) {
-            await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, existingRecord);
+            // Send customer balance event for non-contract payments
+            // Contract payments don't affect customer balance directly
+            if (!existingRecord.contractPayment && existingRecord.customerId) {
+                await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.PAYMENT_DELETED, existingRecord);
+            }
+        } else {
+            this.logger.log(
+                `Skipping deletion events for payment ${existingRecord.paymentId} - original status was ${originalStatus}, not ACTIVE`
+            );
         }
 
         // Reset changeReason to null before deleting
@@ -356,6 +393,84 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         };
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+    }
+
+    /**
+     * Sends customer balance event to update customer balance
+     */
+    private async sendCustomerBalanceEvent(eventType: CustomerBalanceEventEnum, payment: PaymentDto): Promise<void> {
+        if (!payment.customerId) {
+            this.logger.warn(`No customerId found for payment ${payment.paymentId}, skipping balance event`);
+            return;
+        }
+
+        const customerBalanceEvent: CustomerBalanceEventDto = {
+            eventType,
+            customerId: payment.customerId,
+            customerName: payment.customerName,
+            amount: payment.paymentAmount,
+            referenceId: payment.paymentId,
+            referenceNo: payment.receiptNo,
+        };
+
+        try {
+            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
+            this.logger.log(
+                `${eventType} event sent for payment: ${payment.paymentId}, customer: ${payment.customerId}, amount: ${payment.paymentAmount}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send ${eventType} event for payment ${payment.paymentId}:`, error);
+        }
+    }
+
+    /**
+     * Sends customer balance delta event when payment amount changes
+     * Calculates the difference and sends appropriate event
+     */
+    private async sendCustomerBalanceDeltaEvent(
+        originalAmount: number,
+        newAmount: number,
+        payment: PaymentDto
+    ): Promise<void> {
+        if (!payment.customerId) {
+            this.logger.warn(`No customerId found for payment ${payment.paymentId}, skipping balance delta event`);
+            return;
+        }
+
+        const delta = newAmount - originalAmount;
+
+        if (delta === 0) {
+            this.logger.log(`No amount change for payment ${payment.paymentId}, skipping balance delta event`);
+            return;
+        }
+
+        // For payments, the balance effect is opposite of invoices:
+        // If delta > 0: customer paid more → PAYMENT_CREATED (deduct more from balance)
+        // If delta < 0: customer paid less → PAYMENT_DELETED (add back to balance)
+        const eventType =
+            delta > 0 ? CustomerBalanceEventEnum.PAYMENT_CREATED : CustomerBalanceEventEnum.PAYMENT_DELETED;
+        const amount = Math.abs(delta);
+
+        const customerBalanceEvent: CustomerBalanceEventDto = {
+            eventType,
+            customerId: payment.customerId,
+            customerName: payment.customerName,
+            amount,
+            referenceId: payment.paymentId,
+            referenceNo: payment.receiptNo,
+        };
+
+        try {
+            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
+            this.logger.log(
+                `${eventType} delta event sent for payment: ${payment.paymentId}, customer: ${payment.customerId}, ` +
+                    `original: ${originalAmount}, new: ${newAmount}, delta: ${delta}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send ${eventType} delta event for payment ${payment.paymentId}:`, error);
+        }
     }
 
     /**

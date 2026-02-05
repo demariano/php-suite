@@ -3,6 +3,8 @@ import {
     ContractPaymentDto,
     ContractPaymentEventEnum,
     CreatePaymentDto,
+    CustomerBalanceEventDto,
+    CustomerBalanceEventEnum,
     ErrorResponseDto,
     InvoicePaymentDto,
     InvoicePaymentEventEnum,
@@ -72,6 +74,16 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
                 createdRecord.contractId
             ) {
                 await this.sendContractPaymentEvent(createdRecord);
+            }
+
+            // Send customer balance event for ACTIVE non-contract payments
+            // Contract payments don't affect customer balance directly
+            if (
+                createdRecord.status === StatusEnum.ACTIVE &&
+                !createdRecord.contractPayment &&
+                createdRecord.customerId
+            ) {
+                await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.PAYMENT_CREATED, createdRecord);
             }
 
             // Mark receipt number as used if receipt number is provided
@@ -256,6 +268,35 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
         };
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+    }
+
+    /**
+     * Sends customer balance event to update customer balance
+     */
+    private async sendCustomerBalanceEvent(eventType: CustomerBalanceEventEnum, payment: PaymentDto): Promise<void> {
+        if (!payment.customerId) {
+            this.logger.warn(`No customerId found for payment ${payment.paymentId}, skipping balance event`);
+            return;
+        }
+
+        const customerBalanceEvent: CustomerBalanceEventDto = {
+            eventType,
+            customerId: payment.customerId,
+            customerName: payment.customerName,
+            amount: payment.paymentAmount,
+            referenceId: payment.paymentId,
+            referenceNo: payment.receiptNo,
+        };
+
+        try {
+            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
+            this.logger.log(
+                `${eventType} event sent for payment: ${payment.paymentId}, customer: ${payment.customerId}, amount: ${payment.paymentAmount}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send ${eventType} event for payment ${payment.paymentId}:`, error);
+        }
     }
 
     /**

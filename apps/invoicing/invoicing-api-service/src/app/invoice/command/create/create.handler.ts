@@ -1,6 +1,8 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
 import {
     ContractInvoiceEventEnum,
+    CustomerBalanceEventDto,
+    CustomerBalanceEventEnum,
     ErrorResponseDto,
     InventoryEventDto,
     InventoryEventEnum,
@@ -123,6 +125,9 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
             // Send inventory event to deduct stock if invoice is ACTIVE
             if (createdRecord.status === StatusEnum.ACTIVE) {
                 await this.sendInventoryApprovedEvent(createdRecord);
+
+                // Send customer balance event to add invoice amount to balance
+                await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.INVOICE_CREATED, createdRecord);
 
                 // If invoice has a contractId, trigger recalculation of contract invoiced amount
                 if (createdRecord.contractId) {
@@ -284,6 +289,35 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
             );
         } catch (error) {
             this.logger.error(`Failed to send contract invoice event ${event} for contract ${contractId}:`, error);
+        }
+    }
+
+    /**
+     * Sends customer balance event to update customer balance
+     */
+    private async sendCustomerBalanceEvent(eventType: CustomerBalanceEventEnum, invoice: InvoiceDto): Promise<void> {
+        if (!invoice.customerId) {
+            this.logger.warn(`No customerId found for invoice ${invoice.invoiceId}, skipping balance event`);
+            return;
+        }
+
+        const customerBalanceEvent: CustomerBalanceEventDto = {
+            eventType,
+            customerId: invoice.customerId,
+            customerName: invoice.customerName,
+            amount: invoice.finalAmount,
+            referenceId: invoice.invoiceId,
+            referenceNo: invoice.docno,
+        };
+
+        try {
+            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
+            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
+            this.logger.log(
+                `${eventType} event sent for invoice: ${invoice.invoiceId}, customer: ${invoice.customerId}, amount: ${invoice.finalAmount}`
+            );
+        } catch (error) {
+            this.logger.error(`Failed to send ${eventType} event for invoice ${invoice.invoiceId}:`, error);
         }
     }
 

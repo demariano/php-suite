@@ -6,6 +6,7 @@ import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 import { ApproveStockHandler } from './command/approve-record/approve.handler';
+import { ConvertStockHandler } from './command/convert/convert.handler';
 import { CreateStockHandler } from './command/create/create.handler';
 import { DeleteStockHandler } from './command/delete/delete.handler';
 import { DenyStockHandler } from './command/deny-record/deny.handler';
@@ -35,6 +36,7 @@ import { StockController } from './stock.controller';
             provide: 'StockDatabaseService',
             useClass: StockDatabaseService,
         },
+        ConvertStockHandler,
         CreateStockHandler,
         GetStockByIdHandler,
         GetStockByNameHandler,

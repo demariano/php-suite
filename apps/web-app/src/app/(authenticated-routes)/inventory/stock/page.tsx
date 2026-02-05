@@ -105,6 +105,7 @@ export default function StocksMainPage() {
             { key: 'productName', label: 'PRODUCT NAME' },
             { key: 'lotNo', label: 'LOT NO' },
             { key: 'totalQuantity', label: 'TOTAL QTY' },
+            { key: 'productUnitName', label: 'UNIT' },
             { key: 'stockTypeName', label: 'STOCK TYPE' },
             { key: 'status', label: 'STATUS' },
             { key: 'latestActivity', label: 'LATEST ACTIVITY' },

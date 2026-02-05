@@ -1,3 +1,4 @@
+export { default as ConvertStockModal } from './ConvertStockModal';
 export { default as DeleteConfirmationModal } from './DeleteConfirmationModal';
 export { default as DenyReasonDialog } from './DenyReasonDialog';
 export { default as SelectionField } from './SelectionField';

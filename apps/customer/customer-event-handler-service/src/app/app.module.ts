@@ -5,6 +5,7 @@ import { DynamoDbLibModule } from '@dynamo-db-lib';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AreaSyncHandlerService } from './area-sync-handler/area-sync-handler.service';
+import { CustomerBalanceHandlerService } from './customer-balance-handler/customer-balance-handler.service';
 import { CustomerClassificationSyncHandlerService } from './customer-classification-sync-handler/customer-classification-sync-handler.service';
 import { CustomerTypeSyncHandlerService } from './customer-type-sync-handler/customer-type-sync-handler.service';
 import { MessageHandlerService } from './message.handler.service';
@@ -22,6 +23,7 @@ import { TerritoryManagerSyncHandlerService } from './territory-manager-sync-han
         CustomerTypeSyncHandlerService,
         AreaSyncHandlerService,
         TerritoryManagerSyncHandlerService,
+        CustomerBalanceHandlerService,
     ],
 })
 export class AppModule {}

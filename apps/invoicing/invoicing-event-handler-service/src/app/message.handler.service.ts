@@ -8,6 +8,7 @@ import {
     ContractPaymentEventEnum,
     CustomerEventDto,
     CustomerEventEnum,
+    InvoiceAmountChangedDto,
     InvoicePaymentDto,
     InvoicePaymentEventEnum,
     ProductPriceTypeEventDto,
@@ -237,6 +238,20 @@ export class MessageHandlerService {
                 await this.invoicePaymentHandlerService.handle(
                     invoicePaymentEvent.paymentData,
                     InvoicePaymentEventEnum.PAYMENT_UPDATED
+                );
+                break;
+
+            case InvoicePaymentEventEnum.INVOICE_AMOUNT_CHANGED:
+                // Handle invoice amount changed event - data is in different format
+                const amountChangedData = messageBody as {
+                    eventType: InvoicePaymentEventEnum;
+                    invoiceData: InvoiceAmountChangedDto;
+                };
+                this.logger.log(
+                    `Handling invoice amount changed for Invoice ID: ${amountChangedData.invoiceData.invoiceId}, old: ${amountChangedData.invoiceData.oldFinalAmount}, new: ${amountChangedData.invoiceData.newFinalAmount}`
+                );
+                await this.invoicePaymentHandlerService.handleInvoiceAmountChanged(
+                    amountChangedData.invoiceData
                 );
                 break;
 

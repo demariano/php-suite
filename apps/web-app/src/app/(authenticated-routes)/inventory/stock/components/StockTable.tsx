@@ -84,6 +84,11 @@ export default function StockTable({
                                                     {header.key === 'totalQuantity' && (
                                                         <span className="text-gray-700">{item.totalQuantity || 0}</span>
                                                     )}
+                                                    {header.key === 'productUnitName' && (
+                                                        <span className="text-gray-700">
+                                                            {item.productUnitName || '-'}
+                                                        </span>
+                                                    )}
                                                     {header.key === 'stockTypeName' && (
                                                         <span className="text-gray-700">
                                                             {item.stockTypeName || '-'}
@@ -126,6 +131,10 @@ export default function StockTable({
                                     <div>
                                         <div className="text-xs text-gray-500 mb-1">TOTAL QTY</div>
                                         <div className="text-sm text-gray-700">{item.totalQuantity || 0}</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xs text-gray-500 mb-1">UNIT</div>
+                                        <div className="text-sm text-gray-700">{item.productUnitName || '-'}</div>
                                     </div>
                                     <div>
                                         <div className="text-xs text-gray-500 mb-1">STOCK TYPE</div>

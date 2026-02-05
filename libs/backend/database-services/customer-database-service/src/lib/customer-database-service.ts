@@ -83,6 +83,52 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         return await this.convertToDto(updatedCustomerRecord);
     }
 
+    async updateBalance(customerId: string, amountChange: number): Promise<CustomerDto | null> {
+        const existingRecord = await this.findRecordById(customerId);
+
+        if (!existingRecord) {
+            this.logger.warn(`Customer not found for balance update: ${customerId}`);
+            return null;
+        }
+
+        const currentBalance = existingRecord.balance || 0;
+        const newBalance = currentBalance + amountChange;
+
+        this.logger.log(`Updating customer ${customerId} balance: ${currentBalance} + ${amountChange} = ${newBalance}`);
+
+        const updatedRecord = await this.customerTable.update({
+            PK: 'CUSTOMER',
+            SK: customerId,
+            balance: newBalance,
+        });
+
+        return await this.convertToDto(updatedRecord);
+    }
+
+    async updateCustomerCredit(customerId: string, creditAmount: number): Promise<CustomerDto | null> {
+        const existingRecord = await this.findRecordById(customerId);
+
+        if (!existingRecord) {
+            this.logger.warn(`Customer not found for credit update: ${customerId}`);
+            return null;
+        }
+
+        const currentCredit = existingRecord.customerCredit || 0;
+        const newCredit = currentCredit + creditAmount;
+
+        this.logger.log(
+            `Updating customer ${customerId} credit: ${currentCredit} + ${creditAmount} = ${newCredit}`
+        );
+
+        const updatedRecord = await this.customerTable.update({
+            PK: 'CUSTOMER',
+            SK: customerId,
+            customerCredit: newCredit,
+        });
+
+        return await this.convertToDto(updatedRecord);
+    }
+
     async findRecordById(id: string): Promise<CustomerDto | null> {
         const record = await this.customerTable.get({
             PK: `CUSTOMER`,

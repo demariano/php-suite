@@ -42,9 +42,9 @@ export abstract class InvoiceDatabaseServiceAbstract {
 
     abstract deleteRecord(invoiceDto: InvoiceDto): Promise<InvoiceDto>;
 
-    abstract convertToDto(record: InvoiceDto): Promise<InvoiceDto>;
+    abstract convertToDto(record: InvoiceDataType): Promise<InvoiceDto>;
 
-    abstract convertToDtoList(records: InvoiceDto[]): Promise<InvoiceDto[]>;
+    abstract convertToDtoList(records: InvoiceDataType[]): Promise<InvoiceDto[]>;
 
     abstract convertToDataType(dto: InvoiceDto): Promise<InvoiceDataType>;
 

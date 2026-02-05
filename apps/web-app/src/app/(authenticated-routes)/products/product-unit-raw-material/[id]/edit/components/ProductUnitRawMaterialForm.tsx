@@ -14,7 +14,7 @@ import {
 } from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useEffect, useMemo, useState } from 'react';
-import { ChangeReasonField, ChangeReasonReadOnly } from '../../../../../components';
+import { ChangeReasonField } from '../../../../../components';
 import ProductSearchableSelectionModal from '../../../../../search-modals/ProductSearchableSelectionModal';
 import ProductUnitSearchableSelectionModal from '../../../../../search-modals/ProductUnitSearchableSelectionModal';
 import RawMaterialSearchableSelectionModal from '../../../../../search-modals/RawMaterialSearchableSelectionModal';
@@ -839,7 +839,6 @@ export default function ProductUnitRawMaterialForm({
         </div>
     );
 
-
     const renderLogsTab = () => (
         <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
             <div className="flex items-center gap-3">
@@ -951,7 +950,11 @@ export default function ProductUnitRawMaterialForm({
                                 </svg>
                                 Delete
                             </button>
-                        ) : !isCreateMode && isAdminUser && (currentStatus === StatusEnum.FOR_APPROVAL || currentStatus === StatusEnum.NEW_RECORD || currentStatus === StatusEnum.FOR_DELETION) ? (
+                        ) : !isCreateMode &&
+                          isAdminUser &&
+                          (currentStatus === StatusEnum.FOR_APPROVAL ||
+                              currentStatus === StatusEnum.NEW_RECORD ||
+                              currentStatus === StatusEnum.FOR_DELETION) ? (
                             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                                 <button
                                     type="button"
@@ -960,7 +963,12 @@ export default function ProductUnitRawMaterialForm({
                                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
                                     </svg>
                                     {currentStatus === StatusEnum.FOR_DELETION ? 'Deny Deletion' : 'Deny'}
                                 </button>
@@ -971,7 +979,12 @@ export default function ProductUnitRawMaterialForm({
                                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                        />
                                     </svg>
                                     {currentStatus === StatusEnum.FOR_DELETION ? 'Approve Deletion' : 'Approve'}
                                 </button>
