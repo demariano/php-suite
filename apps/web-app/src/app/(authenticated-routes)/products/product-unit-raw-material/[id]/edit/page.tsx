@@ -24,7 +24,7 @@ interface EditProductUnitRawMaterialPageProps {
 export default function EditProductUnitRawMaterialPage({ params }: EditProductUnitRawMaterialPageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<ProductUnitRawMaterialDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
     const { env } = useEnv();
@@ -47,17 +47,8 @@ export default function EditProductUnitRawMaterialPage({ params }: EditProductUn
 
                 const record = await ProductApi.getProductUnitRawMaterialById(params.id, userRole);
                 setSelectedRecord(record);
-
-                // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-                if (
-                    (record.status === StatusEnum.FOR_APPROVAL ||
-                        record.status === StatusEnum.NEW_RECORD ||
-                        record.status === StatusEnum.FOR_DELETION) &&
-                    isAdminUser
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    // Default to details tab
+                // Always default to details tab
+                setActiveTab('details');
                     setActiveTab('details');
                 }
             } catch (err) {

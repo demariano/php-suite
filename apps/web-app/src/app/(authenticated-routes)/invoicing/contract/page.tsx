@@ -1,9 +1,13 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { ContractApi, ContractDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ContractHeader, ContractTable } from './components';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function ContractsPage() {
     const [isLoading, setIsLoading] = useState(false);
@@ -11,331 +15,234 @@ export default function ContractsPage() {
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [contracts, setContracts] = useState<ContractDto[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const { env } = useEnv();
-    const { authedUser } = useLocalStore();
-
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-    const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
-
-    // Track if initial fetch has been made to prevent duplicate calls
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
     const hasFetchedRef = useRef(false);
 
-    // Fetch contracts from API
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const router = useRouter();
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
     const fetchContracts = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
         try {
             setIsLoading(true);
+            setError(null);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            // This prevents role parameter leakage when bypass auth is disabled
-            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
+            const currentPageSize = customPageSize ?? pageSize;
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && serializedCursor ? direction : undefined;
+            const paginationCursor = direction && serializedCursor ? serializedCursor : undefined;
+
+            const trimmedQuery = searchQuery.trim();
             let response;
 
-            // Use custom page size if provided, otherwise use state page size
-            const currentPageSize = customPageSize ?? pageSize;
-
-            // If search query exists, use search API, otherwise use regular pagination API
-            if (searchQuery && searchQuery.trim() !== '') {
-                response = await ContractApi.getContractsContainingContractNo(
-                    searchQuery.trim(),
+            // 4-branch API logic: search+status → search only → status only → show all
+            if (trimmedQuery.length > 0 && statusFilter !== 'ALL') {
+                // Branch 1: Search with status filter (use status API with contractNo param)
+                response = await ContractApi.getContractsByStatus(
                     currentPageSize,
-                    direction,
-                    serializedCursor
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor,
+                    undefined, // customerId
+                    trimmedQuery
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Branch 2: Search only (no status filter)
+                response = await ContractApi.getContractsContainingContractNo(
+                    trimmedQuery,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor
+                );
+            } else if (statusFilter !== 'ALL') {
+                // Branch 3: Filter by status only
+                response = await ContractApi.getContractsByStatus(
+                    currentPageSize,
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor
                 );
             } else {
-                // Use backend status filtering via GSI2 for efficiency
-                if (statusFilter !== 'ALL') {
-                    response = await ContractApi.getContractsByStatus(
-                        currentPageSize,
-                        statusFilter,
-                        direction,
-                        serializedCursor,
-                        undefined // customerId not needed for general status filter
-                    );
-                } else {
-                    response = await ContractApi.getContracts(currentPageSize, direction, serializedCursor);
-                }
+                // Branch 4: No filter, no search - get all
+                response = await ContractApi.getContracts(currentPageSize, paginationDirection, paginationCursor);
             }
 
-            if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of contracts
-                if (Array.isArray(response.data)) {
-                    setContracts(response.data);
-
-                    // Set pagination cursors from response
-                    setNextCursor(response.nextCursorPointer || undefined);
-                    setPrevCursor(response.prevCursorPointer || undefined);
-                } else {
-                    setContracts([]);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                }
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setContracts(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setContracts([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
             }
-
-            if (direction && cursor) {
-                setCurrentCursor(cursor);
-            } else {
-                setCurrentCursor(undefined);
-            }
-        } catch (error) {
-            const errorMessage = extractErrorMessage(error, 'Failed to load contracts. Please try again.');
+        } catch (err) {
+            const errorMessage = extractErrorMessage(err, 'Failed to load contracts. Please try again.');
             setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Fetch on initial load and when these dependencies change
+    // Initial fetch
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
         if (hasFetchedRef.current) return;
         hasFetchedRef.current = true;
-
         fetchContracts();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
-    // Debounce search query changes (but not on initial mount with empty search)
+    // Debounce search query changes
     useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0 && !hasFetchedRef.current) {
+            return;
         }
 
-        const delayDebounceFn = setTimeout(() => {
-            fetchContracts();
-        }, 500); // 500ms delay
+        // Reset pagination when search query changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
 
-        return () => clearTimeout(delayDebounceFn);
+        const timer = setTimeout(() => {
+            fetchContracts(undefined, undefined);
+        }, 500);
+
+        return () => clearTimeout(timer);
     }, [searchQuery]);
 
     // Refetch when status filter changes
     useEffect(() => {
-        setCurrentCursor(undefined);
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        fetchContracts();
+        fetchContracts(undefined, undefined);
     }, [statusFilter]);
 
-    const headers = [
-        { key: 'contractNo', label: 'CONTRACT NO' },
-        { key: 'contractName', label: 'CONTRACT NAME' },
-        { key: 'customerName', label: 'CUSTOMER' },
-        { key: 'startDate', label: 'START DATE' },
-        { key: 'endDate', label: 'END DATE' },
-        { key: 'status', label: 'STATUS' },
-        { key: 'latestActivity', label: 'LATEST ACTIVITY' },
-    ];
+    const headers = useMemo(
+        () => [
+            { key: 'contractNo', label: 'CONTRACT NO' },
+            { key: 'contractName', label: 'CONTRACT NAME' },
+            { key: 'customerName', label: 'CUSTOMER' },
+            { key: 'startDate', label: 'START DATE' },
+            { key: 'endDate', label: 'END DATE' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+        ],
+        []
+    );
 
-    // Helper function to get status text
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
+    // Transform data for table display using StatusBadge
+    const tableData = useMemo(
+        () =>
+            contracts.map((contract) => {
+                // Get the latest activity log entry
+                let latestActivity = null;
+                if (contract.activityLogs && contract.activityLogs.length > 0) {
+                    const lastLog = contract.activityLogs[contract.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
 
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
+                return {
+                    ...contract,
+                    status: <StatusBadge status={contract.status ?? StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }),
+        [contracts]
+    );
 
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
-
-    // Handle row click - navigate to edit page
-    const handleRowClick = (contract: ContractDto) => {
-        window.location.href = `/invoicing/contract/${contract.contractId}/edit`;
-    };
-
-    // Handle create new contract - navigate to create page
     const handleCreateClick = () => {
-        window.location.href = '/invoicing/contract/create';
+        router.push('/invoicing/contract/create');
     };
 
-    // Handle page size change - reset pagination and fetch fresh data
-    const handlePageSizeChange = (newPageSize: number) => {
-        setPageSize(newPageSize);
+    const handleRowClick = (contract: ContractDto) => {
+        router.push(`/invoicing/contract/${contract.contractId}/edit`);
+    };
+
+    const handlePageSizeChange = (size: number) => {
+        setPageSize(size);
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        setCurrentCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
-        fetchContracts(undefined, undefined, newPageSize);
+        fetchContracts(undefined, undefined, size);
     };
-
-    // Number formatting utility
-    const formatNumberWithCommas = (value: number | undefined): string => {
-        if (!value && value !== 0) return '';
-        return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    };
-
-    // Transform data for table display
-    const tableData =
-        contracts?.map((contract) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (contract.activityLogs && contract.activityLogs.length > 0) {
-                const lastLog = contract.activityLogs[contract.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
-
-            return {
-                ...contract,
-                status: getStatusBadge(contract.status || StatusEnum.ACTIVE),
-                latestActivity,
-            };
-        }) || [];
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            {/* Error Message */}
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
                     <span>{error}</span>
                     <button
+                        type="button"
                         onClick={() => setError(null)}
-                        className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 font-bold"
                     >
                         ×
                     </button>
                 </div>
             )}
 
-            {/* Breadcrumbs */}
-            <div className="mb-6">
-                <nav className="flex items-center gap-2">
-                    <a
-                        href="/dashboard"
-                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
-                    >
+            <div>
+                <nav className="flex items-center gap-2 text-sm text-gray-500">
+                    <a href="/dashboard" className="text-blue-600 hover:text-blue-700">
                         Home
                     </a>
-                    <span className="text-gray-400">/</span>
-                    <a
-                        href="/invoicing"
-                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
-                    >
+                    <span>/</span>
+                    <a href="/invoicing" className="text-blue-600 hover:text-blue-700">
                         Invoicing
                     </a>
-                    <span className="text-gray-400">/</span>
-                    <span className="text-gray-800 text-sm font-medium">Contracts</span>
+                    <span>/</span>
+                    <span className="text-gray-800 font-medium">Contracts</span>
                 </nav>
             </div>
 
-            {/* Header */}
-            <div>
-                <ContractHeader
-                    searchQuery={searchQuery}
-                    statusFilter={statusFilter}
-                    onSearchChange={(value: string) => {
-                        setSearchQuery(value);
-                        // Reset pagination when search query changes
-                        setCurrentCursor(undefined);
-                        setNextCursor(undefined);
-                        setPrevCursor(undefined);
-                    }}
-                    onStatusFilterChange={(value: string) => {
-                        setStatusFilter(value);
-                    }}
-                    onRefresh={() => {
-                        setSearchQuery('');
-                        setStatusFilter('ALL');
-                        setCurrentCursor(undefined);
-                        setNextCursor(undefined);
-                        setPrevCursor(undefined);
-                        fetchContracts();
-                    }}
-                    onCreateClick={handleCreateClick}
-                    isLoading={isLoading}
-                    canCreate={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
-                    isAdminUser={authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN'}
-                />
-            </div>
+            <ContractHeader
+                searchQuery={searchQuery}
+                statusFilter={statusFilter}
+                onSearchChange={(value) => {
+                    setSearchQuery(value);
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                }}
+                onStatusFilterChange={(value) => {
+                    setStatusFilter(value);
+                }}
+                onRefresh={() => {
+                    setSearchQuery('');
+                    setStatusFilter('ALL');
+                    setNextCursor(undefined);
+                    setPrevCursor(undefined);
+                    fetchContracts();
+                }}
+                onCreateClick={handleCreateClick}
+                isLoading={isLoading}
+                canCreate={isAdminUser}
+                isAdminUser={isAdminUser}
+            />
 
-            {/* Table */}
-            <div>
-                <ContractTable
-                    isLoading={isLoading}
-                    tableData={tableData}
-                    headers={headers}
-                    searchQuery={searchQuery}
-                    onRowClick={handleRowClick}
-                    pageSize={pageSize}
-                    onPageSizeChange={handlePageSizeChange}
-                    prevCursor={prevCursor}
-                    nextCursor={nextCursor}
-                    onPrevious={() => fetchContracts('prev', prevCursor)}
-                    onNext={() => fetchContracts('next', nextCursor)}
-                />
-            </div>
+            <ContractTable
+                isLoading={isLoading}
+                tableData={tableData}
+                headers={headers}
+                searchQuery={searchQuery}
+                onRowClick={handleRowClick}
+                pageSize={pageSize}
+                onPageSizeChange={handlePageSizeChange}
+                prevCursor={prevCursor}
+                nextCursor={nextCursor}
+                onPrevious={() => fetchContracts('prev', prevCursor)}
+                onNext={() => fetchContracts('next', nextCursor)}
+            />
         </div>
     );
 }

@@ -6,6 +6,9 @@ export interface StockPurchaseOrderQueryParams {
     search?: string;
     page?: number;
     limit?: number;
+    direction?: string;
+    cursorPointer?: string;
+    docNo?: string;
 }
 
 class StockPurchaseOrderApiClass extends AxiosConfig {
@@ -14,7 +17,55 @@ class StockPurchaseOrderApiClass extends AxiosConfig {
     }
 
     public getStockPurchaseOrders = async (params?: StockPurchaseOrderQueryParams) => {
-        return this.axiosInstance.get('/stock-purchase-order', { params });
+        const queryParams = new URLSearchParams();
+
+        if (params?.limit) {
+            queryParams.append('limit', params.limit.toString());
+        }
+        if (params?.direction) {
+            queryParams.append('direction', params.direction);
+        }
+        if (params?.cursorPointer) {
+            queryParams.append('cursorPointer', params.cursorPointer);
+        }
+        if (params?.docNo) {
+            queryParams.append('docNo', params.docNo);
+        }
+
+        const queryString = queryParams.toString();
+        return this.axiosInstance.get(`/stock-purchase-order${queryString ? `?${queryString}` : ''}`);
+    };
+
+    public getStockPurchaseOrdersByApprovalStatus = async (
+        limit = 10,
+        status: string,
+        direction?: string,
+        cursorPointer?: string,
+        docNo?: string,
+        userRole?: string
+    ) => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+            status,
+        });
+
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
+        if (docNo) {
+            params.append('docNo', docNo);
+        }
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        return await this.axiosInstance.get(`/stock-purchase-order/by-approval-status?${params.toString()}`);
     };
 
     public getStockPurchaseOrder = async (id: string) => {

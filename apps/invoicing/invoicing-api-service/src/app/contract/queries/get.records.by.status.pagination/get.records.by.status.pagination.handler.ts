@@ -27,7 +27,8 @@ export class GetRecordsByStatusPaginationHandler implements IQueryHandler<GetRec
                 query.status,
                 query.direction,
                 query.cursorPointer,
-                query.customerId
+                query.customerId,
+                query.contractNo
             );
 
             this.logger.log(`Contracts retrieved successfully: ${contracts.data.length} records`);

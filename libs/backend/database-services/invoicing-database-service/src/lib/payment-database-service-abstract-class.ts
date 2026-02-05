@@ -35,7 +35,8 @@ export abstract class PaymentDatabaseServiceAbstractClass {
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        receiptNo?: string
     ): Promise<PageDto<PaymentDto>>;
 
     abstract findRecordsByPagination(

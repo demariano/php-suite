@@ -72,7 +72,7 @@ function normalizeValue(val: any): string {
 
 /**
  * Checks if a field has changed between original and new values
- * 
+ *
  * @param fieldName - The name of the field to check
  * @param originalValue - The original value from the main object
  * @param newValue - The new value from forApprovalVersion
@@ -116,19 +116,22 @@ export function isFieldChanged(
 /**
  * Creates a field change detection function for a specific record
  * This is a convenience function that binds the forApprovalVersion object
- * 
- * @param originalRecord - The original record object
+ *
+ * @param originalRecord - The original record object (can be null for create mode)
  * @param forApprovalVersion - The forApprovalVersion object containing changes
  * @returns A function that can be called with a field name to check if it changed
  */
 export function createFieldChangeDetector(
-    originalRecord: Record<string, unknown>,
+    originalRecord: Record<string, unknown> | null | undefined,
     forApprovalVersion?: Record<string, unknown>
 ): (fieldName: string) => boolean {
     return (fieldName: string): boolean => {
+        // Return false (no changes) if originalRecord is null/undefined (create mode)
+        if (!originalRecord) {
+            return false;
+        }
         const originalValue = originalRecord[fieldName];
         const newValue = forApprovalVersion?.[fieldName];
         return isFieldChanged(fieldName, originalValue, newValue, forApprovalVersion);
     };
 }
-

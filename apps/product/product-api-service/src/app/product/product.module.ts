@@ -9,6 +9,7 @@ import { ApproveProductHandler } from './command/approve-record/approve.handler'
 import { CreateProductHandler } from './command/create/create.handler';
 import { DeleteProductHandler } from './command/delete/delete.handler';
 import { DenyProductHandler } from './command/deny-record/deny.handler';
+import { ReactivateProductHandler } from './command/reactivate/reactivate.handler';
 import { UpdateProductHandler } from './command/update/update.handler';
 import { ProductController } from './product.controller';
 import { GetProductByIdHandler } from './queries/get.by.id/get.product.by.id.handler';
@@ -44,6 +45,7 @@ import { GetProductRecordsPaginationHandler } from './queries/get.records.pagina
         DeleteProductHandler,
         ApproveProductHandler,
         DenyProductHandler,
+        ReactivateProductHandler,
     ],
 })
 export class ProductModule {}

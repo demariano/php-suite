@@ -25,7 +25,7 @@ interface EditReturnGoodSoldPageProps {
 export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedRecord, setSelectedRecord] = useState<ReturnGoodSoldDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
     const { env } = useEnv();
@@ -68,18 +68,8 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
                     setSelectedRecord(record);
                 }
 
-                // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-                if (
-                    (record.status === StatusEnum.FOR_APPROVAL ||
-                        record.status === StatusEnum.NEW_RECORD ||
-                        record.status === StatusEnum.FOR_DELETION) &&
-                    isAdminUser
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    // Default to details tab
-                    setActiveTab('details');
-                }
+                // Always default to details tab (inline diff pattern used instead of separate approval tab)
+                setActiveTab('details');
             } catch (err) {
                 console.error('Error fetching return good sold record:', err);
                 const errorMessage = extractErrorMessage(
@@ -413,34 +403,6 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
                                         )}
                                     </span>
                                 </button>
-
-                                {selectedRecord.status !== StatusEnum.ACTIVE && (
-                                    <button
-                                        onClick={() => setActiveTab('approval')}
-                                        className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                                            activeTab === 'approval'
-                                                ? 'bg-blue-600 text-white shadow-sm'
-                                                : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                        }`}
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <svg
-                                                className="w-4 h-4"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                />
-                                            </svg>
-                                            Pending Changes
-                                        </span>
-                                    </button>
-                                )}
 
                                 <button
                                     onClick={() => setActiveTab('logs')}

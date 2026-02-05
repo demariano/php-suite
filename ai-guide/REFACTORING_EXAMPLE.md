@@ -433,7 +433,7 @@ import { PaginationButtons, PageSizeSelector } from '@components-web';
     /* Desktop footer */
 }
 <div className="px-6 py-5 bg-gray-50 border-t border-gray-200 flex flex-row items-center justify-between">
-    <PageSizeSelector pageSize={pageSize} onChange={onPageSizeChange} variant="desktop" />
+    <PageSizeSelector value={pageSize} onChange={onPageSizeChange} variant="desktop" />
     <PaginationButtons
         onPrevious={onPrevious}
         onNext={onNext}
@@ -447,7 +447,7 @@ import { PaginationButtons, PageSizeSelector } from '@components-web';
     /* Mobile footer */
 }
 <div className="sm:hidden space-y-3 bg-gray-50 border-t border-gray-200 px-4 py-5">
-    <PageSizeSelector pageSize={pageSize} onChange={onPageSizeChange} variant="mobile" />
+    <PageSizeSelector value={pageSize} onChange={onPageSizeChange} variant="mobile" />
     <PaginationButtons
         onPrevious={onPrevious}
         onNext={onNext}

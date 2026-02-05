@@ -161,6 +161,9 @@ export const ProductSchema = {
             GSI2SK: { type: String, value: '${productUnitRawMaterialId}', hidden: false },
             GSI3PK: { type: String, value: 'PRODUCT_UNIT_RAW_MATERIAL', hidden: false },
             GSI3SK: { type: String, value: '${productName}', hidden: false },
+            // GSI4: Global status index for filtering all records by status with productName as SK
+            GSI4PK: { type: String, value: 'PRODUCT_UNIT_RAW_MATERIAL#${status}', hidden: false },
+            GSI4SK: { type: String, value: '${productName}', hidden: false },
         },
     } as const,
     params: {

@@ -40,7 +40,8 @@ export abstract class ContractDatabaseServiceAbstract {
         status: string,
         direction: string,
         cursorPointer: string,
-        customerId: string
+        customerId?: string,
+        contractNo?: string
     ): Promise<PageDto<ContractDto>>;
 
     abstract findRecordsByPagination(

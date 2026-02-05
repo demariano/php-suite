@@ -1,7 +1,7 @@
 #!/bin/bash
 aws dynamodb create-table \
     --endpoint-url http://localhost:4566 \
-     --region eu-west-2 \
+     --region us-east-1 \
     --table-name configuration \
     --attribute-definitions AttributeName=PK,AttributeType=S AttributeName=SK,AttributeType=S AttributeName=GSI1PK,AttributeType=S AttributeName=GSI1SK,AttributeType=S \
     --key-schema AttributeName=PK,KeyType=HASH AttributeName=SK,KeyType=RANGE \

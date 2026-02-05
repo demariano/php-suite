@@ -17,6 +17,38 @@ class RawMaterialsPurchaseOrderApiClass extends AxiosConfig {
         return this.axiosInstance.get('/raw-materials-purchase-order', { params });
     };
 
+    public getRawMaterialsPurchaseOrdersByApprovalStatus = async (
+        limit = 10,
+        status: string,
+        direction?: string,
+        cursorPointer?: string,
+        name?: string,
+        userRole?: string
+    ) => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+            status,
+        });
+
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
+        if (name) {
+            params.append('name', name);
+        }
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        return await this.axiosInstance.get(`/raw-materials-purchase-order/by-approval-status?${params.toString()}`);
+    };
+
     public getRawMaterialsPurchaseOrder = async (id: string) => {
         return this.axiosInstance.get(`/raw-materials-purchase-order/${id}`);
     };
@@ -87,6 +119,33 @@ class RawMaterialsPurchaseOrderApiClass extends AxiosConfig {
             ],
         };
         return this.axiosInstance.delete(`/raw-materials-purchase-order/${id}/delivered`, { data: dto });
+    };
+
+    public getRawMaterialsPurchaseOrdersByStatus = async (
+        limit = 10,
+        poStatus: string,
+        direction?: string,
+        cursorPointer?: string,
+        userRole?: string
+    ) => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+            poStatus: poStatus,
+        });
+
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        return await this.axiosInstance.get(`/raw-materials-purchase-order/by-status?${params.toString()}`);
     };
 }
 

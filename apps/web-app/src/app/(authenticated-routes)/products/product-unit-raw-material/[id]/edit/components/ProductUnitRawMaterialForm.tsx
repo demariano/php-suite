@@ -1,6 +1,17 @@
 'use client';
 
-import { ProductApi, ProductDto, ProductUnitDto, ProductUnitRawMaterialDto, RawMaterialDto, RawMaterialUnitDto, RawMaterialsPerUnitDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import {
+    ProductApi,
+    ProductDto,
+    ProductUnitDto,
+    ProductUnitRawMaterialDto,
+    RawMaterialDto,
+    RawMaterialUnitDto,
+    RawMaterialsPerUnitDto,
+    StatusEnum,
+    useEnv,
+    useLocalStore,
+} from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useEffect, useMemo, useState } from 'react';
 import { ChangeReasonField, ChangeReasonReadOnly } from '../../../../../components';
@@ -22,8 +33,8 @@ interface ProductUnitRawMaterialFormProps {
     onDeny?: () => void;
     isAdminUser: boolean;
     isLoading: boolean;
-    activeTab: 'details' | 'approval' | 'logs';
-    onTabChange: (tab: 'details' | 'approval' | 'logs') => void;
+    activeTab: 'details' | 'logs';
+    onTabChange: (tab: 'details' | 'logs') => void;
 }
 
 const STATUS_TAB_CLASSES: Record<StatusEnum, string> = {
@@ -101,9 +112,26 @@ export default function ProductUnitRawMaterialForm({
     const [showProductModal, setShowProductModal] = useState(false);
     const [rawMaterialsPerUnit, setRawMaterialsPerUnit] = useState<RawMaterialsPerUnitDto[]>([]);
     const [unitModalStates, setUnitModalStates] = useState<Record<number, boolean>>({});
-    const [newRawMaterialItem, setNewRawMaterialItem] = useState<Record<number, { rawMaterialId: string; rawMaterialName: string; rawMaterialUnitId: string; rawMaterialUnitName: string; quantity: string }>>({});
-    const [showRawMaterialModal, setShowRawMaterialModal] = useState<{ unitIndex: number | null; show: boolean }>({ unitIndex: null, show: false });
-    const [showRawMaterialUnitModal, setShowRawMaterialUnitModal] = useState<{ unitIndex: number | null; show: boolean }>({ unitIndex: null, show: false });
+    const [newRawMaterialItem, setNewRawMaterialItem] = useState<
+        Record<
+            number,
+            {
+                rawMaterialId: string;
+                rawMaterialName: string;
+                rawMaterialUnitId: string;
+                rawMaterialUnitName: string;
+                quantity: string;
+            }
+        >
+    >({});
+    const [showRawMaterialModal, setShowRawMaterialModal] = useState<{ unitIndex: number | null; show: boolean }>({
+        unitIndex: null,
+        show: false,
+    });
+    const [showRawMaterialUnitModal, setShowRawMaterialUnitModal] = useState<{
+        unitIndex: number | null;
+        show: boolean;
+    }>({ unitIndex: null, show: false });
     const [selectedRawMaterial, setSelectedRawMaterial] = useState<RawMaterialDto | null>(null);
     const [selectedRawMaterialUnit, setSelectedRawMaterialUnit] = useState<RawMaterialUnitDto | null>(null);
     const [changeReason, setChangeReason] = useState('');
@@ -117,7 +145,8 @@ export default function ProductUnitRawMaterialForm({
         () => (selectedRecord?.forApprovalVersion ?? {}) as Record<string, unknown>,
         [selectedRecord?.forApprovalVersion]
     );
-    const showApprovalButtons = isAdminUser && (currentStatus === StatusEnum.FOR_APPROVAL || currentStatus === StatusEnum.FOR_DELETION);
+    const showApprovalButtons =
+        isAdminUser && (currentStatus === StatusEnum.FOR_APPROVAL || currentStatus === StatusEnum.FOR_DELETION);
 
     // Use shared field change detection utility
     const isFieldChanged = createFieldChangeDetector(
@@ -130,24 +159,26 @@ export default function ProductUnitRawMaterialForm({
         if (!selectedRecord?.forApprovalVersion) return false;
         const originalValue = (selectedRecord as any)[fieldName];
         const newValue = (selectedRecord.forApprovalVersion as any)[fieldName];
-        
+
         if (!originalValue && !newValue) return false;
         if (!originalValue || !newValue) return true;
         if (!Array.isArray(originalValue) || !Array.isArray(newValue)) return false;
-        
+
         // Normalize arrays for comparison (exclude metadata fields)
         const normalizeArray = (arr: any[]) => {
-            return arr.map(item => {
-                const normalized: any = {};
-                Object.keys(item).forEach(key => {
-                    if (key !== 'activityLogs' && key !== 'forApprovalVersion') {
-                        normalized[key] = item[key];
-                    }
-                });
-                return normalized;
-            }).sort((a, b) => (a.productUnitId || '').localeCompare(b.productUnitId || ''));
+            return arr
+                .map((item) => {
+                    const normalized: any = {};
+                    Object.keys(item).forEach((key) => {
+                        if (key !== 'activityLogs' && key !== 'forApprovalVersion') {
+                            normalized[key] = item[key];
+                        }
+                    });
+                    return normalized;
+                })
+                .sort((a, b) => (a.productUnitId || '').localeCompare(b.productUnitId || ''));
         };
-        
+
         const normalizedOriginal = normalizeArray(originalValue);
         const normalizedNew = normalizeArray(newValue);
         return JSON.stringify(normalizedOriginal) !== JSON.stringify(normalizedNew);
@@ -156,18 +187,20 @@ export default function ProductUnitRawMaterialForm({
     // Helper function to render read-only field with highlighting
     const renderReadOnlyField = (label: string, value: any, colorClass: string, fieldName?: string) => {
         const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
-        
+
         return (
             <div className="group">
                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
                     <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
                     {label}
                 </label>
-                <div className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
-                    fieldChanged 
-                        ? 'border-blue-500 bg-blue-50 text-gray-700' 
-                        : 'border-gray-200 bg-white text-gray-500'
-                }`}>
+                <div
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+                        fieldChanged
+                            ? 'border-blue-500 bg-blue-50 text-gray-700'
+                            : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                >
                     {formatValue(value)}
                 </div>
             </div>
@@ -183,11 +216,11 @@ export default function ProductUnitRawMaterialForm({
         const fetchData = async () => {
             try {
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-                
+
                 const [productsRes, unitsRes, rawMaterialsRes] = await Promise.all([
                     ProductApi.getProducts(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
                     ProductApi.getProductUnits(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
-                    ProductApi.getProducts(100, StatusEnum.ACTIVE, undefined, undefined, userRole)
+                    ProductApi.getProducts(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
                 ]);
 
                 if (productsRes?.statusCode === 200) setProducts(productsRes.data);
@@ -208,7 +241,7 @@ export default function ProductUnitRawMaterialForm({
             if (selectedRecord.productId && selectedRecord.productName) {
                 setSelectedProduct({
                     id: selectedRecord.productId,
-                    name: selectedRecord.productName
+                    name: selectedRecord.productName,
                 });
             }
             setRawMaterialsPerUnit(selectedRecord.rawMaterialsPerUnit ?? []);
@@ -241,20 +274,26 @@ export default function ProductUnitRawMaterialForm({
                     errors.push(`Product unit ${unitIndex + 1}, Raw material ${rmIndex + 1}: Material is required.`);
                 }
                 if (!rm.quantity || rm.quantity <= 0) {
-                    errors.push(`Product unit ${unitIndex + 1}, Raw material ${rmIndex + 1}: Quantity must be greater than 0.`);
+                    errors.push(
+                        `Product unit ${unitIndex + 1}, Raw material ${rmIndex + 1}: Quantity must be greater than 0.`
+                    );
                 }
             });
         });
 
         // Check for duplicate product units
-        const productUnitIds = rawMaterialsPerUnit.map(unit => unit.productUnitId).filter(id => id);
+        const productUnitIds = rawMaterialsPerUnit.map((unit) => unit.productUnitId).filter((id) => id);
         const duplicateUnits = productUnitIds.filter((id, index) => productUnitIds.indexOf(id) !== index);
         if (duplicateUnits.length > 0) {
-            const duplicateUnitNames = duplicateUnits.map(id => {
-                const unit = productUnits.find(u => u.productUnitId === id);
+            const duplicateUnitNames = duplicateUnits.map((id) => {
+                const unit = productUnits.find((u) => u.productUnitId === id);
                 return unit?.productUnitName || id;
             });
-            errors.push(`Duplicate product units detected: ${duplicateUnitNames.join(', ')}. Each product unit can only be added once.`);
+            errors.push(
+                `Duplicate product units detected: ${duplicateUnitNames.join(
+                    ', '
+                )}. Each product unit can only be added once.`
+            );
         }
 
         if (!isCreateMode && !isAdminUser && !changeReason.trim()) {
@@ -267,32 +306,33 @@ export default function ProductUnitRawMaterialForm({
             return;
         }
 
-        const selectedProduct = products.find(p => p.productId === selectedProductId);
+        const selectedProduct = products.find((p) => p.productId === selectedProductId);
         const productName = selectedProduct?.productName ?? '';
 
         const record: ProductUnitRawMaterialDto = {
             productUnitRawMaterialId: selectedRecord?.productUnitRawMaterialId ?? '',
             productId: selectedProductId,
             productName,
-            rawMaterialsPerUnit: rawMaterialsPerUnit.map(unit => {
-                const selectedUnit = productUnits.find(u => u.productUnitId === unit.productUnitId);
+            rawMaterialsPerUnit: rawMaterialsPerUnit.map((unit) => {
+                const selectedUnit = productUnits.find((u) => u.productUnitId === unit.productUnitId);
                 return {
                     productUnitId: unit.productUnitId,
                     productUnitName: selectedUnit?.productUnitName ?? '',
-                    rawMaterials: unit.rawMaterials?.map(rm => {
-                        const selectedRM = rawMaterials.find(r => r.productId === rm.rawMaterialId);
-                        return {
-                            rawMaterialId: rm.rawMaterialId,
-                            rawMaterialName: rm.rawMaterialName || selectedRM?.productName || '',
-                            rawMaterialUnitId: rm.rawMaterialUnitId,
-                            rawMaterialUnitName: rm.rawMaterialUnitName,
-                            quantity: rm.quantity
-                        };
-                    }) ?? []
+                    rawMaterials:
+                        unit.rawMaterials?.map((rm) => {
+                            const selectedRM = rawMaterials.find((r) => r.productId === rm.rawMaterialId);
+                            return {
+                                rawMaterialId: rm.rawMaterialId,
+                                rawMaterialName: rm.rawMaterialName || selectedRM?.productName || '',
+                                rawMaterialUnitId: rm.rawMaterialUnitId,
+                                rawMaterialUnitName: rm.rawMaterialUnitName,
+                                quantity: rm.quantity,
+                            };
+                        }) ?? [],
                 };
             }),
             changeReason: changeReason.trim(),
-            status: selectedRecord?.status ?? StatusEnum.NEW_RECORD
+            status: selectedRecord?.status ?? StatusEnum.NEW_RECORD,
         };
 
         onSave(record);
@@ -304,8 +344,8 @@ export default function ProductUnitRawMaterialForm({
             {
                 productUnitId: '',
                 productUnitName: '',
-                rawMaterials: []
-            }
+                rawMaterials: [],
+            },
         ]);
     };
 
@@ -314,12 +354,12 @@ export default function ProductUnitRawMaterialForm({
     };
 
     const handleUnitChange = (unitIndex: number, productUnitId: string) => {
-        const selectedUnit = productUnits.find(u => u.productUnitId === productUnitId);
+        const selectedUnit = productUnits.find((u) => u.productUnitId === productUnitId);
         const updated = [...rawMaterialsPerUnit];
         updated[unitIndex] = {
             ...updated[unitIndex],
             productUnitId,
-            productUnitName: selectedUnit?.productUnitName ?? ''
+            productUnitName: selectedUnit?.productUnitName ?? '',
         };
         setRawMaterialsPerUnit(updated);
     };
@@ -333,8 +373,8 @@ export default function ProductUnitRawMaterialForm({
                 rawMaterialName: '',
                 rawMaterialUnitId: '',
                 rawMaterialUnitName: '',
-                quantity: 0
-            }
+                quantity: 0,
+            },
         ];
         setRawMaterialsPerUnit(updated);
     };
@@ -350,28 +390,28 @@ export default function ProductUnitRawMaterialForm({
         if (!updated[unitIndex].rawMaterials) {
             updated[unitIndex].rawMaterials = [];
         }
-        
+
         const rawMaterial = updated[unitIndex].rawMaterials![rmIndex];
-        
+
         if (field === 'rawMaterialId') {
-            const selectedRM = rawMaterials.find(r => r.productId === value);
+            const selectedRM = rawMaterials.find((r) => r.productId === value);
             rawMaterial.rawMaterialId = value;
             rawMaterial.rawMaterialName = selectedRM?.productName ?? '';
         } else if (field === 'rawMaterialUnitId') {
-            const selectedUnit = productUnits.find(u => u.productUnitId === value);
+            const selectedUnit = productUnits.find((u) => u.productUnitId === value);
             rawMaterial.rawMaterialUnitId = value;
             rawMaterial.rawMaterialUnitName = selectedUnit?.productUnitName ?? '';
         } else if (field === 'quantity') {
             rawMaterial.quantity = Number(value);
         }
-        
+
         setRawMaterialsPerUnit(updated);
     };
 
     const handleProductSelect = (product: ProductDto) => {
         setSelectedProduct({
             id: product.productId,
-            name: product.productName ?? ''
+            name: product.productName ?? '',
         });
         setSelectedProductId(product.productId);
         setShowProductModal(false);
@@ -387,7 +427,7 @@ export default function ProductUnitRawMaterialForm({
         updated[unitIndex] = {
             ...updated[unitIndex],
             productUnitId: unit.productUnitId,
-            productUnitName: unit.productUnitName ?? ''
+            productUnitName: unit.productUnitName ?? '',
         };
         setRawMaterialsPerUnit(updated);
         setUnitModalStates({ ...unitModalStates, [unitIndex]: false });
@@ -400,8 +440,8 @@ export default function ProductUnitRawMaterialForm({
             [unitIndex]: {
                 ...newRawMaterialItem[unitIndex],
                 rawMaterialId: rawMaterial.rawMaterialId,
-                rawMaterialName: rawMaterial.rawMaterialName ?? ''
-            }
+                rawMaterialName: rawMaterial.rawMaterialName ?? '',
+            },
         });
         setShowRawMaterialModal({ unitIndex: null, show: false });
     };
@@ -413,8 +453,8 @@ export default function ProductUnitRawMaterialForm({
             [unitIndex]: {
                 ...newRawMaterialItem[unitIndex],
                 rawMaterialUnitId: unit.rawMaterialUnitId,
-                rawMaterialUnitName: unit.rawMaterialUnitName ?? ''
-            }
+                rawMaterialUnitName: unit.rawMaterialUnitName ?? '',
+            },
         });
         setShowRawMaterialUnitModal({ unitIndex: null, show: false });
     };
@@ -433,11 +473,11 @@ export default function ProductUnitRawMaterialForm({
                 rawMaterialName: item.rawMaterialName,
                 rawMaterialUnitId: item.rawMaterialUnitId,
                 rawMaterialUnitName: item.rawMaterialUnitName,
-                quantity: Number(item.quantity)
-            }
+                quantity: Number(item.quantity),
+            },
         ];
         setRawMaterialsPerUnit(updated);
-        
+
         // Clear the form for this unit
         setNewRawMaterialItem({
             ...newRawMaterialItem,
@@ -446,8 +486,8 @@ export default function ProductUnitRawMaterialForm({
                 rawMaterialName: '',
                 rawMaterialUnitId: '',
                 rawMaterialUnitName: '',
-                quantity: ''
-            }
+                quantity: '',
+            },
         });
         setSelectedRawMaterial(null);
         setSelectedRawMaterialUnit(null);
@@ -460,8 +500,8 @@ export default function ProductUnitRawMaterialForm({
             [unitIndex]: {
                 ...newRawMaterialItem[unitIndex],
                 rawMaterialId: '',
-                rawMaterialName: ''
-            }
+                rawMaterialName: '',
+            },
         });
     };
 
@@ -472,8 +512,8 @@ export default function ProductUnitRawMaterialForm({
             [unitIndex]: {
                 ...newRawMaterialItem[unitIndex],
                 rawMaterialUnitId: '',
-                rawMaterialUnitName: ''
-            }
+                rawMaterialUnitName: '',
+            },
         });
     };
 
@@ -493,13 +533,18 @@ export default function ProductUnitRawMaterialForm({
                     disabled={!canEditDetails}
                 />
             )}
-            
+
             {/* Product Information Section */}
             <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                            />
                         </svg>
                     </div>
                     <h3 className="text-base font-bold text-blue-600 m-0">Product Information</h3>
@@ -520,7 +565,12 @@ export default function ProductUnitRawMaterialForm({
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                            />
                         </svg>
                     </div>
                     <h3 className="text-base font-bold text-blue-600 m-0 flex-1">Raw Materials Per Unit</h3>
@@ -561,7 +611,11 @@ export default function ProductUnitRawMaterialForm({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <SelectionField
                                         label="Product Unit *"
-                                        selectedItem={unit.productUnitId ? { id: unit.productUnitId, name: unit.productUnitName || '' } : null}
+                                        selectedItem={
+                                            unit.productUnitId
+                                                ? { id: unit.productUnitId, name: unit.productUnitName || '' }
+                                                : null
+                                        }
                                         onSelect={() => setUnitModalStates({ ...unitModalStates, [unitIndex]: true })}
                                         onClear={() => handleUnitChange(unitIndex, '')}
                                         disabled={!canEditDetails || isLoading}
@@ -569,79 +623,101 @@ export default function ProductUnitRawMaterialForm({
                                 </div>
 
                                 <div className="space-y-3">
-                                    <h4 className="text-sm font-semibold text-gray-700">Raw Materials <span className="text-red-500">*</span></h4>
-                                    
+                                    <h4 className="text-sm font-semibold text-gray-700">
+                                        Raw Materials <span className="text-red-500">*</span>
+                                    </h4>
+
                                     <div className="bg-gray-50 rounded-xl p-6 mb-4">
                                         <h5 className="text-sm font-semibold text-gray-700 mb-4">Add Raw Material</h5>
                                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                                             <div className="md:col-span-1">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">Raw Material</label>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Raw Material
+                                                </label>
                                                 <div className="relative">
                                                     <input
                                                         type="text"
                                                         readOnly
                                                         value={newRawMaterialItem[unitIndex]?.rawMaterialName || ''}
-                                                        onClick={() => canEditDetails && !isLoading && setShowRawMaterialModal({ unitIndex, show: true })}
+                                                        onClick={() =>
+                                                            canEditDetails &&
+                                                            !isLoading &&
+                                                            setShowRawMaterialModal({ unitIndex, show: true })
+                                                        }
                                                         placeholder="Select raw material..."
                                                         disabled={!canEditDetails || isLoading}
                                                         className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none cursor-pointer bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                     />
-                                                    {newRawMaterialItem[unitIndex]?.rawMaterialName && canEditDetails && !isLoading && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                clearRawMaterialSelection(unitIndex);
-                                                            }}
-                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    )}
+                                                    {newRawMaterialItem[unitIndex]?.rawMaterialName &&
+                                                        canEditDetails &&
+                                                        !isLoading && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    clearRawMaterialSelection(unitIndex);
+                                                                }}
+                                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
                                                 </div>
                                             </div>
 
                                             <div className="md:col-span-1">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">Unit</label>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Unit
+                                                </label>
                                                 <div className="relative">
                                                     <input
                                                         type="text"
                                                         readOnly
                                                         value={newRawMaterialItem[unitIndex]?.rawMaterialUnitName || ''}
-                                                        onClick={() => canEditDetails && !isLoading && setShowRawMaterialUnitModal({ unitIndex, show: true })}
+                                                        onClick={() =>
+                                                            canEditDetails &&
+                                                            !isLoading &&
+                                                            setShowRawMaterialUnitModal({ unitIndex, show: true })
+                                                        }
                                                         placeholder="Select unit..."
                                                         disabled={!canEditDetails || isLoading}
                                                         className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none cursor-pointer bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                     />
-                                                    {newRawMaterialItem[unitIndex]?.rawMaterialUnitName && canEditDetails && !isLoading && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                clearRawMaterialUnitSelection(unitIndex);
-                                                            }}
-                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                                                        >
-                                                            ×
-                                                        </button>
-                                                    )}
+                                                    {newRawMaterialItem[unitIndex]?.rawMaterialUnitName &&
+                                                        canEditDetails &&
+                                                        !isLoading && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    clearRawMaterialUnitSelection(unitIndex);
+                                                                }}
+                                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        )}
                                                 </div>
                                             </div>
 
                                             <div className="md:col-span-1">
-                                                <label className="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
+                                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                    Quantity
+                                                </label>
                                                 <input
                                                     type="number"
                                                     step="0.01"
                                                     min="0"
                                                     value={newRawMaterialItem[unitIndex]?.quantity || ''}
-                                                    onChange={(e) => setNewRawMaterialItem({
-                                                        ...newRawMaterialItem,
-                                                        [unitIndex]: {
-                                                            ...newRawMaterialItem[unitIndex],
-                                                            quantity: e.target.value
-                                                        }
-                                                    })}
+                                                    onChange={(e) =>
+                                                        setNewRawMaterialItem({
+                                                            ...newRawMaterialItem,
+                                                            [unitIndex]: {
+                                                                ...newRawMaterialItem[unitIndex],
+                                                                quantity: e.target.value,
+                                                            },
+                                                        })
+                                                    }
                                                     disabled={!canEditDetails || isLoading}
                                                     className="w-full rounded-xl border-2 border-gray-200 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
                                                     placeholder="Enter quantity"
@@ -655,8 +731,18 @@ export default function ProductUnitRawMaterialForm({
                                                     disabled={!canEditDetails || isLoading}
                                                     className="w-full flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
                                                 >
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                    <svg
+                                                        className="w-5 h-5"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M12 4v16m8-8H4"
+                                                        />
                                                     </svg>
                                                     Add to List
                                                 </button>
@@ -664,7 +750,7 @@ export default function ProductUnitRawMaterialForm({
                                         </div>
                                     </div>
 
-                                    {(!unit.rawMaterials || unit.rawMaterials.length === 0) ? (
+                                    {!unit.rawMaterials || unit.rawMaterials.length === 0 ? (
                                         <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 sm:p-6 text-center text-sm text-gray-500">
                                             No raw materials added yet
                                         </div>
@@ -701,36 +787,45 @@ export default function ProductUnitRawMaterialForm({
                                                                     type="number"
                                                                     step="0.01"
                                                                     value={rm.quantity ?? 0}
-                                                                    onChange={(e) => handleRawMaterialChange(unitIndex, rmIndex, 'quantity', e.target.value)}
+                                                                    onChange={(e) =>
+                                                                        handleRawMaterialChange(
+                                                                            unitIndex,
+                                                                            rmIndex,
+                                                                            'quantity',
+                                                                            e.target.value
+                                                                        )
+                                                                    }
                                                                     disabled={!canEditDetails || isLoading}
                                                                     className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
                                                                 />
                                                             </td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRemoveRawMaterial(unitIndex, rmIndex)}
-                                                            disabled={!canEditDetails || isLoading}
-                                                            className="inline-flex items-center justify-center p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            title="Remove raw material"
-                                                        >
-                                                            <svg
-                                                                className="w-5 h-5"
-                                                                fill="none"
-                                                                stroke="currentColor"
-                                                                viewBox="0 0 24 24"
-                                                            >
-                                                                <path
-                                                                    strokeLinecap="round"
-                                                                    strokeLinejoin="round"
-                                                                    strokeWidth={2}
-                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                                />
-                                                            </svg>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                                            <td className="px-4 py-3 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        handleRemoveRawMaterial(unitIndex, rmIndex)
+                                                                    }
+                                                                    disabled={!canEditDetails || isLoading}
+                                                                    className="inline-flex items-center justify-center p-1 text-red-600 hover:bg-red-50 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                    title="Remove raw material"
+                                                                >
+                                                                    <svg
+                                                                        className="w-5 h-5"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        viewBox="0 0 24 24"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={2}
+                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                        />
+                                                                    </svg>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -741,234 +836,25 @@ export default function ProductUnitRawMaterialForm({
                     </div>
                 )}
             </div>
-
         </div>
     );
 
-    const renderApprovalTab = () => {
-        if (!selectedRecord) {
-            return null;
-        }
-
-        if (currentStatus === StatusEnum.FOR_DELETION) {
-            return (
-                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
-                            🗑️
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-red-800 m-0">Record Marked for Deletion</h3>
-                            <p className="text-sm text-red-700">
-                                This record has been marked for deletion and is awaiting approval.
-                            </p>
-                        </div>
-                    </div>
-                    {selectedRecord.changeReason && (
-                        <div className="space-y-2">
-                            <p className="text-sm font-semibold text-red-700">Deletion Reason</p>
-                            <div className="bg-white border-2 border-red-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
-                                {selectedRecord.changeReason}
-                            </div>
-                        </div>
-                    )}
-                    {isAdminUser && (
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-8 pt-6 border-t-2 border-gray-200">
-                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                                <button
-                                    type="button"
-                                    onClick={onDeny}
-                                    disabled={isLoading}
-                                    className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Deny Deletion
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={onApprove}
-                                    disabled={isLoading}
-                                    className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Approve Deletion
-                                </button>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={onCancel}
-                                className="w-full sm:w-auto px-6 py-3 bg-white text-gray-700 font-semibold rounded-xl border-2 border-gray-300 shadow-sm hover:bg-gray-50 hover:border-gray-400 transition-colors flex items-center justify-center gap-2"
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    )}
-                </div>
-            );
-        }
-
-        const pendingData = selectedRecord.forApprovalVersion as ProductUnitRawMaterialDto | undefined;
-        if (!pendingData) {
-            return <div className="text-gray-500 text-sm">No pending changes.</div>;
-        }
-
-        // Check for array changes
-        const rawMaterialsChanged = hasArrayChanges('rawMaterialsPerUnit');
-        const originalUnits = selectedRecord.rawMaterialsPerUnit || [];
-        const newUnits = pendingData.rawMaterialsPerUnit || [];
-        const originalHasUnits = originalUnits.length > 0;
-        const newHasUnits = newUnits.length > 0;
-        const allRemoved = originalHasUnits && !newHasUnits;
-
-        return (
-            <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
-                {selectedRecord.changeReason && (
-                    <ChangeReasonReadOnly value={selectedRecord.changeReason} />
-                )}
-
-                {/* Product Information Section */}
-                <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-blue-600 rounded-lg shadow-md">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                            </svg>
-                        </div>
-                        <h3 className="text-base font-bold text-blue-600 m-0">Product Information</h3>
-                    </div>
-                    <div className="grid grid-cols-1 gap-6">
-                        {renderReadOnlyField('Product', pendingData.productName, 'bg-blue-600', 'productName')}
-                    </div>
-                </div>
-
-                {/* Raw Materials Per Unit Section */}
-                <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                        <div className="p-2 bg-blue-600 rounded-lg shadow-md">
-                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
-                        </div>
-                        <h4 className={`text-base font-bold ${
-                            rawMaterialsChanged 
-                                ? 'px-3 py-1 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700' 
-                                : 'text-blue-600'
-                        }`}>
-                            Raw Materials Per Unit
-                        </h4>
-                    </div>
-
-                    {allRemoved ? (
-                        <div className="bg-amber-50 border-2 border-amber-300 rounded-xl p-6 shadow-sm">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 bg-amber-600 rounded-lg">
-                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                                    </svg>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-semibold text-amber-800">
-                                        All Raw Materials configuration has been removed
-                                    </p>
-                                    <p className="text-xs text-amber-700 mt-1">
-                                        {originalUnits.length} unit{originalUnits.length !== 1 ? 's' : ''} with raw materials will be deleted upon approval
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    ) : newHasUnits ? (
-                        <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                            <div className="overflow-x-auto">
-                                <table className="w-full border-collapse">
-                                    <thead className="bg-gray-50 border-b border-gray-200">
-                                        <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                                Product Unit
-                                            </th>
-                                            <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                                                Raw Materials
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="bg-white divide-y divide-gray-200">
-                                        {newUnits.map((unit, idx) => (
-                                            <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                                                    {unit.productUnitName || '-'}
-                                                </td>
-                                                <td className="px-4 py-3 text-sm text-gray-600">
-                                                    {unit.rawMaterials && unit.rawMaterials.length > 0 ? (
-                                                        <div className="space-y-1">
-                                                            {unit.rawMaterials.map((rm, rmIdx) => (
-                                                                <div key={rmIdx} className="text-xs">
-                                                                    <span className="font-medium">{rm.rawMaterialName}</span>
-                                                                    {' - '}
-                                                                    <span className="text-gray-500">{rm.quantity} {rm.rawMaterialUnitName}</span>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-400">No raw materials</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    ) : (
-                        <div className="text-sm text-gray-500">No raw materials configured</div>
-                    )}
-                </div>
-
-                {selectedRecord.approverMessage && (
-                    <div>
-                        <label className="block text-sm font-medium text-red-600 mb-2">Denial Reason</label>
-                        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-800">
-                            {selectedRecord.approverMessage}
-                        </div>
-                    </div>
-                )}
-
-                {showApprovalButtons && (
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-8 pt-6 border-t-2 border-gray-200">
-                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                            {onDeny && (
-                                <button
-                                    type="button"
-                                    onClick={onDeny}
-                                    disabled={isLoading}
-                                    className="w-full sm:w-auto px-6 py-3 bg-red-600 text-white font-semibold rounded-xl shadow-sm hover:bg-red-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Deny Changes
-                                </button>
-                            )}
-                            {onApprove && (
-                                <button
-                                    type="button"
-                                    onClick={onApprove}
-                                    disabled={isLoading}
-                                    className="w-full sm:w-auto px-6 py-3 bg-green-600 text-white font-semibold rounded-xl shadow-sm hover:bg-green-700 transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    Approve Changes
-                                </button>
-                            )}
-                        </div>
-                        <button
-                            type="button"
-                            onClick={onCancel}
-                            disabled={isLoading}
-                            className="w-full sm:w-auto px-6 py-3 bg-white border-2 border-gray-300 text-gray-700 font-semibold rounded-xl shadow-sm hover:bg-gray-50 transition-colors duration-200 flex items-center justify-center gap-2"
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                )}
-            </div>
-        );
-    };
 
     const renderLogsTab = () => (
-        <div>
+        <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+            <div className="flex items-center gap-3">
+                <div className="rounded-lg bg-gray-600 p-2 text-white shadow-sm">
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+                </div>
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Activity Logs</h3>
+            </div>
             {selectedRecord?.activityLogs && selectedRecord.activityLogs.length > 0 ? (
                 renderActivityLogsTable(selectedRecord.activityLogs)
             ) : (
@@ -1003,100 +889,132 @@ export default function ProductUnitRawMaterialForm({
                             <button
                                 type="button"
                                 onClick={() => onTabChange('details')}
-                                className={`${getTabClassName(currentStatus, activeTab === 'details')} px-5 py-3 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center gap-2 flex-shrink-0`}
+                                className={`${getTabClassName(
+                                    currentStatus,
+                                    activeTab === 'details'
+                                )} px-5 py-3 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center gap-2 flex-shrink-0`}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                    />
                                 </svg>
                                 {detailsTabLabel}
                             </button>
                             {!isCreateMode && (
-                                <>
-                                    {currentStatus !== StatusEnum.ACTIVE && (
-                                        <button
-                                            type="button"
-                                            onClick={() => onTabChange('approval')}
-                                            className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center gap-2 flex-shrink-0 ${
-                                                activeTab === 'approval'
-                                                    ? 'bg-blue-600 text-white shadow-sm'
-                                                    : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                            }`}
-                                        >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            Pending Changes
-                                        </button>
-                                    )}
-                                    <button
-                                        type="button"
-                                        onClick={() => onTabChange('logs')}
-                                        className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center gap-2 flex-shrink-0 ${
-                                            activeTab === 'logs'
-                                                ? 'bg-blue-600 text-white shadow-sm'
-                                                : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                        }`}
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                        </svg>
-                                        Activity Logs
-                                    </button>
-                                </>
+                                <button
+                                    type="button"
+                                    onClick={() => onTabChange('logs')}
+                                    className={`px-5 py-3 rounded-lg font-semibold text-sm transition-colors duration-200 flex items-center gap-2 flex-shrink-0 ${
+                                        activeTab === 'logs'
+                                            ? 'bg-blue-600 text-white shadow-sm'
+                                            : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                                    }`}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    Activity Logs
+                                </button>
                             )}
                         </div>
                     </div>
 
                     <div className="p-4 sm:p-6 bg-white space-y-6">
                         {activeTab === 'details' && renderDetailsTab()}
-                        {!isCreateMode && activeTab === 'approval' && renderApprovalTab()}
                         {!isCreateMode && activeTab === 'logs' && renderLogsTab()}
                     </div>
 
-                    {activeTab !== 'approval' && (
-                        <div className="flex flex-col gap-3 border-t-2 border-gray-200 pt-6 px-4 sm:px-6 pb-4 sm:pb-6 sm:flex-row sm:items-center sm:justify-between">
-                            {!isCreateMode && currentStatus === StatusEnum.ACTIVE ? (
+                    <div className="flex flex-col gap-3 border-t-2 border-gray-200 pt-6 px-4 sm:px-6 pb-4 sm:pb-6 sm:flex-row sm:items-center sm:justify-between">
+                        {!isCreateMode && currentStatus === StatusEnum.ACTIVE ? (
+                            <button
+                                type="button"
+                                onClick={onDelete}
+                                disabled={deleteDisabled || isLoading}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto disabled:bg-red-300 disabled:cursor-not-allowed"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                    />
+                                </svg>
+                                Delete
+                            </button>
+                        ) : !isCreateMode && isAdminUser && (currentStatus === StatusEnum.FOR_APPROVAL || currentStatus === StatusEnum.NEW_RECORD || currentStatus === StatusEnum.FOR_DELETION) ? (
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                                 <button
                                     type="button"
-                                    onClick={onDelete}
-                                    disabled={deleteDisabled || isLoading}
-                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto disabled:bg-red-300 disabled:cursor-not-allowed"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                    Delete
-                                </button>
-                            ) : (
-                                <div className="hidden sm:block" />
-                            )}
-
-                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                                {(isCreateMode || currentStatus === StatusEnum.ACTIVE) && (
-                                    <button
-                                        type="submit"
-                                        disabled={!canEditDetails || isLoading}
-                                        className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
-                                    >
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        {isCreateMode ? 'Create' : 'Save Changes'}
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={onCancel}
-                                    className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                    onClick={onDeny}
+                                    disabled={isLoading}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
-                                    Cancel
+                                    {currentStatus === StatusEnum.FOR_DELETION ? 'Deny Deletion' : 'Deny'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={onApprove}
+                                    disabled={isLoading}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    {currentStatus === StatusEnum.FOR_DELETION ? 'Approve Deletion' : 'Approve'}
                                 </button>
                             </div>
+                        ) : (
+                            <div className="hidden sm:block" />
+                        )}
+
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                            {(isCreateMode || currentStatus === StatusEnum.ACTIVE) && (
+                                <button
+                                    type="submit"
+                                    disabled={!canEditDetails || isLoading}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                    {isCreateMode ? 'Create' : 'Save Changes'}
+                                </button>
+                            )}
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                Cancel
+                            </button>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
@@ -1114,9 +1032,9 @@ export default function ProductUnitRawMaterialForm({
             {rawMaterialsPerUnit.map((unit, unitIndex) => {
                 // Exclude already selected units except the current one being edited
                 const excludeIds = rawMaterialsPerUnit
-                    .map((u, idx) => idx !== unitIndex ? u.productUnitId : null)
+                    .map((u, idx) => (idx !== unitIndex ? u.productUnitId : null))
                     .filter((id): id is string => id !== null && id !== '');
-                
+
                 return (
                     <ProductUnitSearchableSelectionModal
                         key={`unit-modal-${unitIndex}`}
@@ -1135,7 +1053,10 @@ export default function ProductUnitRawMaterialForm({
                 show={showRawMaterialModal.show}
                 title="Select Raw Material"
                 selectedValue={selectedRawMaterial?.rawMaterialId ?? null}
-                onSelect={(rawMaterial) => showRawMaterialModal.unitIndex !== null && handleRawMaterialSelect(rawMaterial, showRawMaterialModal.unitIndex)}
+                onSelect={(rawMaterial) =>
+                    showRawMaterialModal.unitIndex !== null &&
+                    handleRawMaterialSelect(rawMaterial, showRawMaterialModal.unitIndex)
+                }
                 onClose={() => setShowRawMaterialModal({ unitIndex: null, show: false })}
             />
 
@@ -1144,7 +1065,10 @@ export default function ProductUnitRawMaterialForm({
                 show={showRawMaterialUnitModal.show}
                 title="Select Unit"
                 selectedValue={selectedRawMaterialUnit?.rawMaterialUnitId ?? null}
-                onSelect={(unit) => showRawMaterialUnitModal.unitIndex !== null && handleRawMaterialUnitSelect(unit, showRawMaterialUnitModal.unitIndex)}
+                onSelect={(unit) =>
+                    showRawMaterialUnitModal.unitIndex !== null &&
+                    handleRawMaterialUnitSelect(unit, showRawMaterialUnitModal.unitIndex)
+                }
                 onClose={() => setShowRawMaterialUnitModal({ unitIndex: null, show: false })}
             />
         </form>

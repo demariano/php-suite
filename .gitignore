@@ -67,3 +67,5 @@ my-localstack-data/*
 .github\instructions\nx.instructions.md
 
 *.local
+# Playwright MCP
+.playwright-mcp/

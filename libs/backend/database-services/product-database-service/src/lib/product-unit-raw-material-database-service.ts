@@ -40,6 +40,8 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
             GSI2PK: `PRODUCT_UNIT_RAW_MATERIAL#${productUnitRawMaterialDto.productId}#${productUnitRawMaterialDto.status}`,
             GSI3PK: 'PRODUCT_UNIT_RAW_MATERIAL',
             GSI3SK: productUnitRawMaterialDto.productName,
+            GSI4PK: `PRODUCT_UNIT_RAW_MATERIAL#${productUnitRawMaterialDto.status}`,
+            GSI4SK: productUnitRawMaterialDto.productName,
         };
 
         const productRecord: ProductUnitRawMaterialDataType = await this.productUnitRawMaterialTable.create(
@@ -68,6 +70,8 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
         productRecord.GSI2SK = record.productUnitRawMaterialId;
         productRecord.GSI3PK = 'PRODUCT_UNIT_RAW_MATERIAL';
         productRecord.GSI3SK = record.productName;
+        productRecord.GSI4PK = `PRODUCT_UNIT_RAW_MATERIAL#${record.status}`;
+        productRecord.GSI4SK = record.productName;
         productRecord.activityLogs = record.activityLogs;
         productRecord.forApprovalVersion = record.forApprovalVersion;
         productRecord.changeReason = record.changeReason;
@@ -291,6 +295,8 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
             GSI2SK: dto.productUnitRawMaterialId,
             GSI3PK: 'PRODUCT_UNIT_RAW_MATERIAL',
             GSI3SK: dto.productName,
+            GSI4PK: `PRODUCT_UNIT_RAW_MATERIAL#${dto.status}`,
+            GSI4SK: dto.productName,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,
@@ -302,9 +308,44 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
     async findRecordsByPagination(
         limit: number,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        status?: string,
+        productName?: string
     ): Promise<PageDto<ProductUnitRawMaterialDto>> {
         limit = Number(limit);
+
+        // Use GSI3 for productName search (no status) - NO CLIENT SIDE FILTERING
+        if (productName && productName.trim() !== '' && (!status || status.trim() === '')) {
+            const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', direction, cursorPointer);
+
+            const records = await this.productUnitRawMaterialTable.find(
+                {
+                    GSI3PK: 'PRODUCT_UNIT_RAW_MATERIAL',
+                    GSI3SK: { begins: productName },
+                },
+                dynamoDbOption
+            );
+
+            const pageRecordCursorPointers = pageRecordHandler(
+                records,
+                limit,
+                direction,
+                'GSI3PK',
+                'GSI3SK',
+                'PK',
+                'SK',
+                JSON.stringify(records.next),
+                JSON.stringify(records.prev)
+            );
+
+            return new PageDto(
+                await this.convertToDtoList(records),
+                pageRecordCursorPointers.nextCursorPointer,
+                pageRecordCursorPointers.prevCursorPointer
+            );
+        }
+
+        // Default: No filters - use PK scan
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, undefined, direction, cursorPointer);
 
         const productRecords = await this.productUnitRawMaterialTable.find(
@@ -328,6 +369,46 @@ export class ProductUnitRawMaterialDatabaseService implements ProductUnitRawMate
 
         return new PageDto(
             await this.convertToDtoList(productRecords),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByGlobalStatusPagination(
+        limit: number,
+        status: string,
+        direction: string,
+        cursorPointer: string,
+        productName?: string
+    ): Promise<PageDto<ProductUnitRawMaterialDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI4', direction, cursorPointer);
+
+        // Build query - if productName is provided, use begins_with on GSI4SK
+        const queryParams: { GSI4PK: string; GSI4SK?: { begins: string } } = {
+            GSI4PK: `PRODUCT_UNIT_RAW_MATERIAL#${status}`,
+        };
+
+        if (productName && productName.trim() !== '') {
+            queryParams.GSI4SK = { begins: productName };
+        }
+
+        const records = await this.productUnitRawMaterialTable.find(queryParams, dynamoDbOption);
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI4PK',
+            'GSI4SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
             pageRecordCursorPointers.nextCursorPointer,
             pageRecordCursorPointers.prevCursorPointer
         );

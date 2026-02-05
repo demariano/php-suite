@@ -35,7 +35,8 @@ class PaymentApi extends AxiosConfig {
         limit = 10,
         status: string,
         direction?: string,
-        cursorPointer?: string
+        cursorPointer?: string,
+        receiptNo?: string
     ): Promise<PaymentsResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -48,6 +49,10 @@ class PaymentApi extends AxiosConfig {
 
         if (cursorPointer) {
             params.append('cursorPointer', cursorPointer);
+        }
+
+        if (receiptNo) {
+            params.append('receiptNo', receiptNo);
         }
 
         return await this.axiosInstance.get(`/payment/status?${params.toString()}`);

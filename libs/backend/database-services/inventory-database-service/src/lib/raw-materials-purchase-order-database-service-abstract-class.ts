@@ -17,6 +17,14 @@ export abstract class RawMaterialsPurchaseOrderDatabaseServiceAbstract {
         cursorPointer: string
     ): Promise<PageDto<RawMaterialsPurchaseOrderDto>>;
 
+    abstract findRecordsByApprovalStatusPagination(
+        limit: number,
+        status: string,
+        direction: string,
+        cursorPointer: string,
+        name?: string
+    ): Promise<PageDto<RawMaterialsPurchaseOrderDto>>;
+
     abstract findRecordsBySupplierPagination(
         limit: number,
         supplierId: string,

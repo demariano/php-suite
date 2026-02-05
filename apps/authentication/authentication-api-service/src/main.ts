@@ -1,11 +1,11 @@
+import serverlessExpress from '@codegenie/serverless-express';
 import { INestApplication, Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { AppModule } from './app/app.module';
-import serverlessExpress from '@codegenie/serverless-express';
-import express from 'express';
 import { ExpressAdapter } from '@nestjs/platform-express';
-import { APIGatewayEvent, Context, Handler ,Callback} from 'aws-lambda';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { APIGatewayEvent, Callback, Context, Handler } from 'aws-lambda';
+import express from 'express';
+import { AppModule } from './app/app.module';
 
 let cachedServer: Handler;
 
@@ -23,7 +23,7 @@ async function createSwaggerConfig() {
                 description: 'Enter JWT token',
                 in: 'header',
             },
-            'JWT-auth',
+            'JWT-auth'
         )
         .build();
 }
@@ -43,8 +43,7 @@ async function bootstrapServer() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('swagger', app, document, { useGlobalPrefix: true });
 
-
-    const port = process.env.PORT || 4020;
+    const port = process.env.PORT || 4072;
 
     await app.listen(port);
     Logger.log(`🚀 AUTHENTICATION-API-SERVICE is running on: http://localhost:${port}/api`);
@@ -54,12 +53,8 @@ async function bootstrapServer() {
 async function bootstrapLambda() {
     if (!cachedServer) {
         const expressApp = express();
-        const nestApp = await NestFactory.create(
-            AppModule,
-            new ExpressAdapter(expressApp),
-        );
+        const nestApp = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
-      
         await setupGlobalMiddleware(nestApp);
         const config = await createSwaggerConfig();
         const document = SwaggerModule.createDocument(nestApp, config);
@@ -70,16 +65,14 @@ async function bootstrapLambda() {
     return cachedServer;
 }
 
-if (process.env.SERVICE_TRIGGER  && process.env.SERVICE_TRIGGER  === 'LOCALHOST') {
-    Logger.log('Starting local server');    
+if (process.env.SERVICE_TRIGGER && process.env.SERVICE_TRIGGER === 'LOCALHOST') {
+    Logger.log('Starting local server');
     bootstrapServer();
 }
 
 export const handler: Handler = async (event: APIGatewayEvent, context: Context, callback: Callback) => {
-    Logger.log('Starting lambda server');    
+    Logger.log('Starting lambda server');
     cachedServer = cachedServer ?? (await bootstrapLambda());
 
     return cachedServer(event, context, callback);
 };
-
-

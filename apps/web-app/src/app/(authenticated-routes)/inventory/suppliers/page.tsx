@@ -1,86 +1,77 @@
 'use client';
 
+import { StatusBadge } from '@components-web';
 import { StatusEnum, SupplierApi, SupplierDto, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SupplierHeader, SupplierTable } from './components';
 
-export default function SupplierPage() {
+const DEFAULT_PAGE_SIZE = 10;
+
+export default function SuppliersMainPage() {
+    // State management
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const { env } = useEnv();
-    const { authedUser } = useLocalStore();
-
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-    const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
-
-    // Track if initial fetch has been made to prevent duplicate calls
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
     const hasFetchedRef = useRef(false);
 
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const router = useRouter();
+
     // Fetch suppliers from API
-    const fetchSuppliers = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
+    const fetchSuppliers = async (direction?: 'next' | 'prev', cursor?: string) => {
+        setIsLoading(true);
+        setError(null);
+
         try {
-            setIsLoading(true);
-            setError(null);
-
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            // This prevents role parameter leakage when bypass auth is disabled
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
+
+            const validDirection = direction && serializedCursor ? direction : undefined;
+            const validCursor = direction && serializedCursor ? serializedCursor : undefined;
 
             let response;
 
-            // Use custom page size if provided, otherwise use state page size
-            const currentPageSize = customPageSize ?? pageSize;
-
-            // If search query exists, use search API, otherwise use regular pagination API
+            // Branch 1: Search query is active (takes priority)
             if (searchQuery && searchQuery.trim() !== '') {
                 response = await SupplierApi.getSuppliersByName(
                     searchQuery.trim(),
-                    currentPageSize,
-                    direction,
-                    serializedCursor,
-                    userRole
-                );
-            } else {
-                response = await SupplierApi.getSuppliers(
-                    currentPageSize,
-                    undefined, // No status filter - show all records
-                    direction,
-                    serializedCursor,
+                    pageSize,
+                    validDirection,
+                    validCursor,
                     userRole
                 );
             }
+            // Branch 2: Status filter is active
+            else if (statusFilter && statusFilter !== 'ALL') {
+                response = await SupplierApi.getSuppliersByStatus(
+                    pageSize,
+                    statusFilter,
+                    validDirection,
+                    validCursor,
+                    userRole
+                );
+            }
+            // Branch 3: Show all records
+            else {
+                response = await SupplierApi.getSuppliers(pageSize, undefined, validDirection, validCursor, userRole);
+            }
 
-            if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of suppliers
-                if (Array.isArray(response.data)) {
-                    setSuppliers(response.data);
-
-                    // Set pagination cursors from response
-                    setNextCursor(response.nextCursorPointer || undefined);
-                    setPrevCursor(response.prevCursorPointer || undefined);
-                } else {
-                    setSuppliers([]);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                }
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setSuppliers(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setSuppliers([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
-            }
-
-            if (direction && cursor) {
-                setCurrentCursor(cursor);
-            } else {
-                setCurrentCursor(undefined);
             }
         } catch {
             setError('Failed to load suppliers. Please try again.');
@@ -89,128 +80,110 @@ export default function SupplierPage() {
         }
     };
 
-    // Fetch on initial load and when these dependencies change
+    // Initial fetch (once)
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
-        if (hasFetchedRef.current) return;
+        if (hasFetchedRef.current) {
+            return;
+        }
         hasFetchedRef.current = true;
-
         fetchSuppliers();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, []);
 
-    // Debounce search query changes (but not on initial mount with empty search)
+    // Search debounce (500ms)
     useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0) {
+            fetchSuppliers();
+            return;
         }
 
-        const delayDebounceFn = setTimeout(() => {
+        const timer = setTimeout(() => {
             fetchSuppliers();
-        }, 500); // 500ms delay
+        }, 500);
 
-        return () => clearTimeout(delayDebounceFn);
+        return () => clearTimeout(timer);
     }, [searchQuery]);
 
-    const headers = [
-        { key: 'supplierName', label: 'NAME' },
-        { key: 'status', label: 'STATUS' },
-        { key: 'latestActivity', label: 'LATEST ACTIVITY' },
-    ];
-
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium shadow-sm';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = 'bg-green-600 text-white';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = 'bg-yellow-500 text-white';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = 'bg-red-600 text-white';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = 'bg-orange-500 text-white';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = 'bg-gray-400 text-white';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = 'bg-blue-600 text-white';
-        } else {
-            colorClasses = 'bg-gray-600 text-white';
-        }
-
-        return <span className={`${baseClasses} ${colorClasses}`}>{getStatusText(status)}</span>;
-    };
-
-    // Handle row click - navigate to edit page
-    const handleRowClick = (supplier: SupplierDto) => {
-        window.location.href = `/inventory/suppliers/${supplier.supplierId}/edit`;
-    };
-
-    // Handle create new supplier - navigate to create page
-    const handleCreateClick = () => {
-        window.location.href = '/inventory/suppliers/create';
-    };
-
-    // Handle page size change - reset pagination and fetch fresh data
-    const handlePageSizeChange = (newPageSize: number) => {
-        setPageSize(newPageSize);
+    // Refetch when status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery('');
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        setCurrentCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
-        fetchSuppliers(undefined, undefined, newPageSize);
+        fetchSuppliers(undefined, undefined);
+    }, [statusFilter]);
+
+    // Derived state - headers
+    const headers = useMemo(
+        () => [
+            { key: 'supplierName', label: 'SUPPLIER NAME' },
+            { key: 'email', label: 'EMAIL' },
+            { key: 'phone', label: 'PHONE' },
+            { key: 'contactPerson', label: 'CONTACT PERSON' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+        ],
+        []
+    );
+
+    // Derived state - table data
+    const tableData = useMemo(
+        () =>
+            suppliers.map((supplier) => {
+                // Get the latest activity log entry
+                let latestActivity = null;
+                if (supplier.activityLogs && supplier.activityLogs.length > 0) {
+                    const lastLog = supplier.activityLogs[supplier.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
+
+                return {
+                    ...supplier,
+                    email: supplier.supplierEmail,
+                    phone: supplier.supplierPhone,
+                    contactPerson: supplier.supplierContactPerson,
+                    status: <StatusBadge status={supplier.status ?? StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }),
+        [suppliers]
+    );
+
+    // Handlers
+    const handleCreateClick = () => {
+        router.push('/inventory/suppliers/create');
     };
 
-    // Transform data for table display
-    const tableData =
-        suppliers?.map((supplier) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (supplier.activityLogs && supplier.activityLogs.length > 0) {
-                const lastLog = supplier.activityLogs[supplier.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
+    const handleRowClick = (supplier: SupplierDto) => {
+        router.push(`/inventory/suppliers/${supplier.supplierId}/edit`);
+    };
 
-            return {
-                ...supplier,
-                status: getStatusBadge(supplier.status || StatusEnum.ACTIVE),
-                latestActivity,
-            };
-        }) || [];
+    const handlePageSizeChange = (size: number) => {
+        setPageSize(size);
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchSuppliers(undefined, undefined);
+    };
+
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+    const canCreate = isAdminUser;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
             {/* Error Message */}
             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg mb-4 flex justify-between items-center shadow-sm">
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
                     <span>{error}</span>
                     <button
+                        type="button"
                         onClick={() => setError(null)}
-                        className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 font-bold"
                     >
                         ×
                     </button>
@@ -218,64 +191,51 @@ export default function SupplierPage() {
             )}
 
             {/* Breadcrumbs */}
-            <div className="mb-6">
-                <nav className="flex items-center gap-2">
-                    <a
-                        href="/dashboard"
-                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
-                    >
+            <div>
+                <nav className="flex items-center gap-2 text-sm text-gray-500">
+                    <a href="/dashboard" className="text-blue-600 hover:text-blue-700">
                         Home
                     </a>
-                    <span className="text-gray-400">/</span>
-                    <a
-                        href="/inventory"
-                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
-                    >
+                    <span>/</span>
+                    <a href="/inventory" className="text-blue-600 hover:text-blue-700">
                         Inventory
                     </a>
-                    <span className="text-gray-400">/</span>
-                    <span className="text-gray-800 text-sm font-medium">Suppliers</span>
+                    <span>/</span>
+                    <span className="text-gray-800 font-medium">Suppliers</span>
                 </nav>
             </div>
 
-            {/* Header */}
-            <div>
-                <SupplierHeader
-                    searchQuery={searchQuery}
-                    onSearchChange={(value: string) => {
-                        setSearchQuery(value);
-                        // Reset pagination when search query changes
-                        setCurrentCursor(undefined);
-                        setNextCursor(undefined);
-                        setPrevCursor(undefined);
-                    }}
-                    onRefresh={() => {
-                        setSearchQuery('');
-                        setCurrentCursor(undefined);
-                        setNextCursor(undefined);
-                        setPrevCursor(undefined);
-                        fetchSuppliers();
-                    }}
-                    onCreateClick={handleCreateClick}
-                />
-            </div>
+            {/* Header Component */}
+            <SupplierHeader
+                searchQuery={searchQuery}
+                statusFilter={statusFilter}
+                onSearchChange={setSearchQuery}
+                onStatusFilterChange={setStatusFilter}
+                onRefresh={() => {
+                    setSearchQuery('');
+                    setStatusFilter('ALL');
+                    fetchSuppliers();
+                }}
+                onCreateClick={handleCreateClick}
+                isLoading={isLoading}
+                canCreate={canCreate}
+                isAdminUser={isAdminUser}
+            />
 
-            {/* Table */}
-            <div>
-                <SupplierTable
-                    isLoading={isLoading}
-                    tableData={tableData}
-                    headers={headers}
-                    searchQuery={searchQuery}
-                    onRowClick={handleRowClick}
-                    pageSize={pageSize}
-                    onPageSizeChange={handlePageSizeChange}
-                    prevCursor={prevCursor}
-                    nextCursor={nextCursor}
-                    onPrevious={() => fetchSuppliers('prev', prevCursor)}
-                    onNext={() => fetchSuppliers('next', nextCursor)}
-                />
-            </div>
+            {/* Table Component */}
+            <SupplierTable
+                isLoading={isLoading}
+                tableData={tableData}
+                headers={headers}
+                searchQuery={searchQuery}
+                onRowClick={handleRowClick}
+                pageSize={pageSize}
+                onPageSizeChange={handlePageSizeChange}
+                prevCursor={prevCursor}
+                nextCursor={nextCursor}
+                onPrevious={() => fetchSuppliers('prev', prevCursor)}
+                onNext={() => fetchSuppliers('next', nextCursor)}
+            />
         </div>
     );
 }

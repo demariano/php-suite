@@ -62,6 +62,8 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
             GSI5PK: 'STOCK_PURCHASE_ORDER',
             GSI5SK: docNo,
             GSI6PK: `STOCK_PURCHASE_ORDER#${stockPurchaseOrderDto.supplierId}`,
+            GSI7PK: `STOCK_PURCHASE_ORDER#${stockPurchaseOrderDto.status}`,
+            GSI7SK: docNo,
         };
 
         const record: StockPurchaseOrderDataType = await this.stockPurchaseOrderTable.create(stockPurchaseOrderData);
@@ -95,6 +97,8 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
         data.GSI5SK = docNo;
         data.GSI6PK = `STOCK_PURCHASE_ORDER#${record.supplierId}`;
         data.GSI6SK = record.stockPurchaseOrderId;
+        data.GSI7PK = `STOCK_PURCHASE_ORDER#${record.status}`;
+        data.GSI7SK = docNo;
         data.forApprovalVersion = record.forApprovalVersion;
         data.changeReason = record.changeReason;
         data.approverMessage = record.approverMessage;
@@ -167,6 +171,75 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
         );
     }
 
+    async findRecordsByApprovalStatusPagination(
+        limit: number,
+        status: string,
+        direction: string,
+        cursorPointer: string,
+        docNo?: string
+    ): Promise<PageDto<StockPurchaseOrderDto>> {
+        limit = Number(limit);
+
+        // Use GSI7 for combined status + docNo search - NO CLIENT SIDE FILTERING
+        if (docNo && docNo.trim() !== '') {
+            const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI7', direction, cursorPointer);
+
+            const records = await this.stockPurchaseOrderTable.find(
+                {
+                    GSI7PK: `STOCK_PURCHASE_ORDER#${status}`,
+                    GSI7SK: { begins: docNo },
+                },
+                dynamoDbOption
+            );
+
+            const pageRecordCursorPointers = pageRecordHandler(
+                records,
+                limit,
+                direction,
+                'GSI7PK',
+                'GSI7SK',
+                'PK',
+                'SK',
+                JSON.stringify(records.next),
+                JSON.stringify(records.prev)
+            );
+
+            return new PageDto(
+                await this.convertToDtoList(records),
+                pageRecordCursorPointers.nextCursorPointer,
+                pageRecordCursorPointers.prevCursorPointer
+            );
+        }
+
+        // Default: status only - use GSI2 sorted by poDate
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
+
+        const records = await this.stockPurchaseOrderTable.find(
+            {
+                GSI2PK: `STOCK_PURCHASE_ORDER#${status}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI2PK',
+            'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
     async findRecordsBySupplierPagination(
         limit: number,
         supplierId: string,
@@ -205,9 +278,43 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
     async findRecordsByPagination(
         limit: number,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        docNo?: string
     ): Promise<PageDto<StockPurchaseOrderDto>> {
         limit = Number(limit);
+
+        // Use GSI5 for docNo search - NO CLIENT SIDE FILTERING
+        if (docNo && docNo.trim() !== '') {
+            const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', direction, cursorPointer);
+
+            const records = await this.stockPurchaseOrderTable.find(
+                {
+                    GSI5PK: 'STOCK_PURCHASE_ORDER',
+                    GSI5SK: { begins: docNo },
+                },
+                dynamoDbOption
+            );
+
+            const pageRecordCursorPointers = pageRecordHandler(
+                records,
+                limit,
+                direction,
+                'GSI5PK',
+                'GSI5SK',
+                'PK',
+                'SK',
+                JSON.stringify(records.next),
+                JSON.stringify(records.prev)
+            );
+
+            return new PageDto(
+                await this.convertToDtoList(records),
+                pageRecordCursorPointers.nextCursorPointer,
+                pageRecordCursorPointers.prevCursorPointer
+            );
+        }
+
+        // Default: No filters - use GSI1 sorted by poDate
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI1', direction, cursorPointer);
 
         const records = await this.stockPurchaseOrderTable.find(
@@ -353,6 +460,8 @@ export class StockPurchaseOrderDatabaseService implements StockPurchaseOrderData
             GSI5SK: dto.docNo,
             GSI6PK: `STOCK_PURCHASE_ORDER#${dto.supplierId}`,
             GSI6SK: dto.stockPurchaseOrderId,
+            GSI7PK: `STOCK_PURCHASE_ORDER#${dto.status}`,
+            GSI7SK: dto.docNo,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

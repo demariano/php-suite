@@ -56,12 +56,26 @@ export class GetProductUnitRawMaterialRecordsPaginationHandler
     private async fetchPaginatedRecords(
         query: GetProductUnitRawMaterialRecordsPaginationQuery
     ): Promise<PageDto<ProductUnitRawMaterialDto>> {
-        const { limit, direction, cursorPointer } = query;
+        const { limit, direction, cursorPointer, status, productName } = query;
 
+        // If status is provided, use the global status pagination method
+        if (status && status.trim() !== '') {
+            return await this.productUnitRawMaterialDatabaseService.findRecordsByGlobalStatusPagination(
+                limit,
+                status,
+                direction,
+                cursorPointer,
+                productName
+            );
+        }
+
+        // Otherwise, use the standard pagination with optional client-side filtering
         return await this.productUnitRawMaterialDatabaseService.findRecordsByPagination(
             limit,
             direction,
-            cursorPointer
+            cursorPointer,
+            status,
+            productName
         );
     }
 

@@ -40,7 +40,7 @@ async function bootstrapServer() {
     const config = await createSwaggerConfig();
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('swagger', app, document, { useGlobalPrefix: true });
-    const port = process.env.PORT || 4026;
+    const port = process.env.PORT || 4091;
 
     await app.listen(port);
     Logger.log(`🚀 CLIENT-MESSAGE-PROCESSOR-SERVICE is running on: http://localhost:${port}`);

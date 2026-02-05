@@ -13,7 +13,6 @@ import {
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import CustomerTypeForm from '../../components/CustomerTypeForm';
 
 interface EditCustomerTypePageProps {
@@ -25,7 +24,7 @@ interface EditCustomerTypePageProps {
 export default function EditCustomerTypePage({ params }: EditCustomerTypePageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedCustomerType, setSelectedCustomerType] = useState<CustomerTypeDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
     const [showReactivateModal, setShowReactivateModal] = useState(false);
@@ -45,17 +44,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
 
                 const customerType = await CustomerTypeApi.getCustomerTypeById(params.id, userRole);
                 setSelectedCustomerType(customerType);
-
-                if (
-                    (customerType.status === StatusEnum.FOR_APPROVAL ||
-                        customerType.status === StatusEnum.NEW_RECORD ||
-                        customerType.status === StatusEnum.FOR_DEACTIVATION) &&
-                    isAdminUser
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    setActiveTab('details');
-                }
+                setActiveTab('details');
             } catch (err) {
                 console.error('Error fetching customer type:', err);
                 const errorMessage = extractErrorMessage(
@@ -330,266 +319,6 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
         );
     }
 
-    const renderApprovalTab = () => {
-        if (!selectedCustomerType) return null;
-
-        if (selectedCustomerType.status === StatusEnum.FOR_DEACTIVATION) {
-            return (
-                <div className="space-y-6 animate-fadeIn">
-                    <div className="rounded-xl border-2 border-orange-300 bg-orange-50 p-6 shadow-sm sm:p-8">
-                        <div className="mb-4 flex items-center gap-4">
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-600">
-                                <svg
-                                    className="h-6 w-6 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
-                                    />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-orange-800">Record Marked for Deactivation</h3>
-                                <p className="mt-1 text-sm text-orange-700">
-                                    This record has been marked for deactivation and is awaiting approval.
-                                </p>
-                            </div>
-                        </div>
-                        {selectedCustomerType.deletionReason && (
-                            <div className="mt-6 rounded-lg border-2 border-orange-200 bg-white p-4">
-                                <p className="mb-2 text-sm font-semibold text-gray-700">Deactivation Reason:</p>
-                                <p className="mt-2 whitespace-pre-wrap font-mono text-sm text-gray-600 leading-relaxed">
-                                    {selectedCustomerType.deletionReason}
-                                </p>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                        {isAdminUser ? (
-                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                                <button
-                                    type="button"
-                                    onClick={handleDeny}
-                                    disabled={isLoading}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                    {isLoading ? 'Processing...' : 'Deny Deactivation'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleApprove}
-                                    disabled={isLoading}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    {isLoading ? 'Processing...' : 'Approve Deactivation'}
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="hidden sm:block" />
-                        )}
-
-                        <button
-                            type="button"
-                            onClick={handleCancel}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-                        >
-                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
-                                    strokeWidth={2}
-                                    d="M6 18L18 6M6 6l12 12"
-                                />
-                            </svg>
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-            );
-        }
-
-        if (!selectedCustomerType.forApprovalVersion) return null;
-
-        const approvalData = selectedCustomerType.forApprovalVersion;
-
-        // Use shared field change detection utility
-        const isFieldChanged = createFieldChangeDetector(
-            selectedCustomerType as Record<string, unknown>,
-            selectedCustomerType.forApprovalVersion as Record<string, unknown> | undefined
-        );
-
-        const formatValue = (value: unknown): string => {
-            if (value === null || value === undefined) return '-';
-            if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-            if (typeof value === 'number') return value.toString();
-            if (typeof value === 'object') return JSON.stringify(value);
-            return String(value);
-        };
-
-        const renderReadOnlyField = (label: string, value: unknown, colorClass: string, fieldName?: string) => {
-            const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
-
-            return (
-                <div className="group">
-                    <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                        <span className={`h-1.5 w-1.5 rounded-full ${colorClass}`}></span>
-                        {label}
-                    </label>
-                    <div
-                        className={`w-full cursor-not-allowed rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm ${
-                            fieldChanged
-                                ? 'border-blue-500 bg-blue-50 text-gray-700'
-                                : 'border-gray-200 bg-gray-50 text-gray-500'
-                        }`}
-                    >
-                        {formatValue(value)}
-                    </div>
-                </div>
-            );
-        };
-
-        return (
-            <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
-                {selectedCustomerType?.changeReason && (
-                    <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
-                        <div className="mb-4 flex items-center gap-3">
-                            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                </svg>
-                            </div>
-                            <h4 className="m-0 text-base font-bold text-blue-600">
-                                Change Reason and Modification Made
-                            </h4>
-                        </div>
-                        <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
-                            {selectedCustomerType.changeReason}
-                        </div>
-                    </div>
-                )}
-
-                <div className="space-y-4">
-                    <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
-                        <div className="mb-4 flex items-center gap-3">
-                            <div className="rounded-lg bg-blue-600 p-2 shadow-md">
-                                <svg
-                                    className="h-5 w-5 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7"
-                                    />
-                                </svg>
-                            </div>
-                            <h3 className="text-base font-bold text-blue-600">Type Information</h3>
-                        </div>
-                        <div className="grid grid-cols-1 gap-6">
-                            {renderReadOnlyField(
-                                'Customer Type Name',
-                                approvalData.customerTypeName,
-                                'bg-blue-500',
-                                'customerTypeName'
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                    {isAdminUser &&
-                    selectedCustomerType &&
-                    [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(
-                        selectedCustomerType.status as StatusEnum
-                    ) ? (
-                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                            <button
-                                type="button"
-                                onClick={handleDeny}
-                                disabled={isLoading}
-                                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                                {isLoading ? 'Processing...' : 'Deny Changes'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleApprove}
-                                disabled={isLoading}
-                                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                    />
-                                </svg>
-                                {isLoading ? 'Processing...' : 'Approve Changes'}
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="hidden sm:block" />
-                    )}
-
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-                    >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
     const renderLogsTab = () => {
         if (!selectedCustomerType) return null;
 
@@ -597,7 +326,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
             <div className="space-y-6 animate-fadeIn">
                 <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                     <div className="mb-4 flex items-center gap-3">
-                        <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                        <div className="rounded-lg bg-gray-600 p-2 text-white shadow-sm">
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -607,7 +336,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
                                 />
                             </svg>
                         </div>
-                        <h3 className="m-0 text-base font-bold text-blue-600">Activity Logs</h3>
+                        <h3 className="m-0 text-base font-bold text-gray-700">Activity Logs</h3>
                     </div>
 
                     {renderActivityLogsTable(selectedCustomerType?.activityLogs)}
@@ -702,34 +431,6 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
                                     </span>
                                 </button>
 
-                                {selectedCustomerType.status !== StatusEnum.ACTIVE && (
-                                    <button
-                                        onClick={() => setActiveTab('approval')}
-                                        className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
-                                            activeTab === 'approval'
-                                                ? 'bg-blue-600 text-white shadow-sm'
-                                                : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                        }`}
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <svg
-                                                className="h-4 w-4"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                />
-                                            </svg>
-                                            Pending Changes
-                                        </span>
-                                    </button>
-                                )}
-
                                 <button
                                     onClick={() => setActiveTab('logs')}
                                     className={`flex-shrink-0 rounded-lg px-5 py-3 text-sm font-semibold transition-colors ${
@@ -764,10 +465,10 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
                                     onReactivate={handleReactivate}
                                     onCancel={handleCancel}
                                     isAdminUser={isAdminUser}
+                                    onApprove={handleApprove}
+                                    onDeny={handleDeny}
                                 />
                             )}
-
-                            {activeTab === 'approval' && renderApprovalTab()}
 
                             {activeTab === 'logs' && renderLogsTab()}
                         </div>

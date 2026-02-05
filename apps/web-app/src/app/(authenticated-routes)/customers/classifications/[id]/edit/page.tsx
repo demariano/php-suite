@@ -13,7 +13,6 @@ import {
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 import CustomerClassificationForm from '../../components/CustomerClassificationForm';
 
 interface EditCustomerClassificationPageProps {
@@ -26,7 +25,7 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
     const [isLoading, setIsLoading] = useState(false);
     const [selectedCustomerClassification, setSelectedCustomerClassification] =
         useState<CustomerClassificationDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
     const [showReactivateModal, setShowReactivateModal] = useState(false);
@@ -54,18 +53,8 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
                 );
                 setSelectedCustomerClassification(customerClassification);
 
-                // If the record is in FOR_APPROVAL, FOR_DEACTIVATION or NEW_RECORD status and user is admin, open the approval tab
-                if (
-                    (customerClassification.status === StatusEnum.FOR_APPROVAL ||
-                        customerClassification.status === StatusEnum.FOR_DEACTIVATION ||
-                        customerClassification.status === StatusEnum.NEW_RECORD) &&
-                    isAdminUser
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    // Default to details tab
-                    setActiveTab('details');
-                }
+                // Always default to details tab
+                setActiveTab('details');
             } catch (err) {
                 console.error('Error fetching customer classification:', err);
                 const errorMessage = extractErrorMessage(
@@ -351,176 +340,6 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
         );
     }
 
-    // Render approval tab content
-    const renderApprovalTab = () => {
-        if (!selectedCustomerClassification) return null;
-
-        // For FOR_APPROVAL, FOR_DEACTIVATION and NEW_RECORD, show approval version
-        if (!selectedCustomerClassification.forApprovalVersion) return null;
-
-        const approvalData = selectedCustomerClassification.forApprovalVersion;
-
-        // Use shared field change detection utility
-        const isFieldChanged = createFieldChangeDetector(
-            selectedCustomerClassification as Record<string, unknown>,
-            selectedCustomerClassification.forApprovalVersion as Record<string, unknown> | undefined
-        );
-
-        // Helper function to format display value
-        const formatValue = (value: unknown): string => {
-            if (value === null || value === undefined) return '-';
-            if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-            if (typeof value === 'number') return value.toString();
-            if (typeof value === 'object') return JSON.stringify(value);
-            return String(value);
-        };
-
-        // Helper function to render read-only field with highlighting
-        const renderReadOnlyField = (label: string, value: unknown, colorClass: string, fieldName?: string) => {
-            const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
-
-            return (
-                <div className="group">
-                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
-                        {label}
-                    </label>
-                    <div
-                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
-                            fieldChanged
-                                ? 'border-blue-500 bg-blue-50 text-gray-700'
-                                : 'border-gray-200 bg-gray-50 text-gray-500'
-                        }`}
-                    >
-                        {formatValue(value)}
-                    </div>
-                </div>
-            );
-        };
-
-        return (
-            <div className="space-y-6 animate-fadeIn rounded-xl border-2 border-blue-200 bg-white p-4 shadow-sm sm:p-6">
-                {/* Change Reason and Modification Made */}
-                {selectedCustomerClassification?.changeReason && (
-                    <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
-                        <div className="mb-4 flex items-center gap-3">
-                            <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                    />
-                                </svg>
-                            </div>
-                            <h4 className="m-0 text-base font-bold text-blue-600">
-                                Change Reason and Modification Made
-                            </h4>
-                        </div>
-                        <div className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 font-mono text-sm font-medium text-gray-600 shadow-sm">
-                            {selectedCustomerClassification.changeReason}
-                        </div>
-                    </div>
-                )}
-
-                {/* Classification Information Section */}
-                <div className="space-y-4">
-                    <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
-                        <div className="mb-4 flex items-center gap-3">
-                            <div className="p-2 bg-blue-600 rounded-lg shadow-md">
-                                <svg
-                                    className="w-5 h-5 text-white"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"
-                                    />
-                                </svg>
-                            </div>
-                            <h3 className="text-base font-bold text-blue-600">Classification Information</h3>
-                        </div>
-                        <div className="grid grid-cols-1 gap-6">
-                            {renderReadOnlyField(
-                                'Classification Name',
-                                approvalData.customerClassificationName,
-                                'bg-blue-500',
-                                'customerClassificationName'
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                    {isAdminUser &&
-                    selectedCustomerClassification &&
-                    [StatusEnum.FOR_APPROVAL, StatusEnum.FOR_DEACTIVATION, StatusEnum.NEW_RECORD].includes(
-                        selectedCustomerClassification.status as StatusEnum
-                    ) ? (
-                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                            <button
-                                type="button"
-                                onClick={handleDeny}
-                                disabled={isLoading}
-                                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                                {isLoading ? 'Processing...' : 'Deny Changes'}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleApprove}
-                                disabled={isLoading}
-                                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M5 13l4 4L19 7"
-                                    />
-                                </svg>
-                                {isLoading ? 'Processing...' : 'Approve Changes'}
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="hidden sm:block" />
-                    )}
-
-                    <button
-                        type="button"
-                        onClick={handleCancel}
-                        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
-                        Cancel
-                    </button>
-                </div>
-            </div>
-        );
-    };
-
     // Render logs tab content
     const renderLogsTab = () => {
         if (!selectedCustomerClassification) return null;
@@ -529,7 +348,7 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
             <div className="space-y-6 animate-fadeIn">
                 <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                     <div className="mb-4 flex items-center gap-3">
-                        <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                        <div className="rounded-lg bg-gray-600 p-2 text-white shadow-sm">
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path
                                     strokeLinecap="round"
@@ -539,7 +358,7 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
                                 />
                             </svg>
                         </div>
-                        <h3 className="m-0 text-base font-bold text-blue-600">Activity Logs</h3>
+                        <h3 className="m-0 text-base font-bold text-gray-700">Activity Logs</h3>
                     </div>
 
                     {renderActivityLogsTable(selectedCustomerClassification?.activityLogs)}
@@ -658,34 +477,6 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
                                     </span>
                                 </button>
 
-                                {selectedCustomerClassification.status !== StatusEnum.ACTIVE && (
-                                    <button
-                                        onClick={() => setActiveTab('approval')}
-                                        className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                                            activeTab === 'approval'
-                                                ? 'bg-blue-600 text-white shadow-sm'
-                                                : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                                        }`}
-                                    >
-                                        <span className="flex items-center gap-2">
-                                            <svg
-                                                className="w-4 h-4"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth={2}
-                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                />
-                                            </svg>
-                                            Pending Changes
-                                        </span>
-                                    </button>
-                                )}
-
                                 <button
                                     onClick={() => setActiveTab('logs')}
                                     className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
@@ -721,10 +512,10 @@ export default function EditCustomerClassificationPage({ params }: EditCustomerC
                                     onReactivate={handleReactivate}
                                     onCancel={handleCancel}
                                     isAdminUser={isAdminUser}
+                                    onApprove={handleApprove}
+                                    onDeny={handleDeny}
                                 />
                             )}
-
-                            {activeTab === 'approval' && renderApprovalTab()}
 
                             {activeTab === 'logs' && renderLogsTab()}
                         </div>

@@ -13,8 +13,8 @@ interface ReturnGoodSoldFormProps {
   successMessage: string | null;
   isAdminUser: boolean;
   isLoading: boolean;
-  activeTab: 'details' | 'approval' | 'logs';
-  onTabChange: (tab: 'details' | 'approval' | 'logs') => void;
+  activeTab: 'details' | 'logs';
+  onTabChange: (tab: 'details' | 'logs') => void;
   onSave: (record: ReturnGoodSoldDto) => void;
   onDelete: () => void;
   onApprove: () => void;
@@ -184,170 +184,7 @@ export default function ReturnGoodSoldForm({
     );
   };
 
-  // Render approval tab content
-  const renderApprovalTab = () => {
-    if (!selectedRecord) return null;
-    
-    // If status is FOR_DELETION, show deletion message instead of approval version
-    if (selectedRecord.status === StatusEnum.FOR_DELETION) {
-      return (
-        <div className="space-y-6 animate-fadeIn">
-          <div className="rounded-xl border-2 border-red-300 bg-red-50 p-6 shadow-sm sm:p-8">
-            <div className="mb-4 flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-600">
-                <svg className="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-red-800">Record Marked for Deletion</h3>
-                <p className="mt-1 text-sm text-red-700">This record has been marked for deletion and is awaiting approval.</p>
-              </div>
-            </div>
-            {selectedRecord.changeReason && (
-              <div className="mt-6 rounded-lg border-2 border-red-200 bg-white p-4">
-                <p className="text-sm font-semibold text-gray-700">Deletion Reason:</p>
-                <p className="mt-2 whitespace-pre-wrap font-mono text-sm text-gray-600 leading-relaxed">{selectedRecord.changeReason}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-            {isAdminUser ? (
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <button
-                  type="button"
-                  onClick={onDeny}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  {isLoading ? 'Processing...' : 'Deny Deletion'}
-                </button>
-                <button
-                  type="button"
-                  onClick={onApprove}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  {isLoading ? 'Processing...' : 'Approve Deletion'}
-                </button>
-              </div>
-            ) : (
-              <div className="hidden sm:block" />
-            )}
-
-            <button
-              type="button"
-              onClick={onCancel}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              Cancel
-            </button>
-          </div>
-        </div>
-      );
-    }
-    
-    // For FOR_APPROVAL and NEW_RECORD, show approval version
-    if (!selectedRecord.forApprovalVersion) return null;
-    
-    const approvalVersionData: ReturnGoodSoldDto = {
-      ...selectedRecord,
-      ...selectedRecord.forApprovalVersion
-    };
-    
-    return (
-      <div className="space-y-6 animate-fadeIn border-2 border-blue-200 rounded-xl p-4 sm:p-6 bg-white shadow-sm">
-        {/* Change Reason and Modification Made */}
-        {selectedRecord?.changeReason && (
-          <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-              </div>
-              <h4 className="m-0 text-base font-bold text-blue-600">
-                Change Reason and Modification Made
-              </h4>
-            </div>
-            <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed whitespace-pre-wrap font-mono leading-relaxed">
-              {selectedRecord.changeReason}
-            </div>
-          </div>
-        )}
-        
-        {/* Use the same components as Details tab but with merged data and read-only */}
-        <RecordDetailsTab
-          formData={approvalVersionData}
-          onFormDataChange={() => {}} // No-op since read-only
-          isCreateMode={false}
-          isAdminUser={isAdminUser}
-          isReadOnly={true}
-        />
-        <InvoiceDetailsTab
-          formData={approvalVersionData}
-          onFormDataChange={() => {}} // No-op since read-only
-          isCreateMode={false}
-          isReadOnly={true}
-        />
-
-        {/* Action Buttons */}
-        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-          {isAdminUser && (selectedRecord?.status === StatusEnum.FOR_APPROVAL || selectedRecord?.status === StatusEnum.NEW_RECORD || selectedRecord?.status === StatusEnum.FOR_DELETION) ? (
-            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-              <button
-                type="button"
-                onClick={onDeny}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                {isLoading ? 'Processing...' : 'Deny Changes'}
-              </button>
-              <button
-                type="button"
-                onClick={onApprove}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                {isLoading ? 'Processing...' : 'Approve Changes'}
-              </button>
-            </div>
-          ) : (
-            <div className="hidden sm:block" />
-          )}
-
-          <button
-            type="button"
-            onClick={onCancel}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-          >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  };
-
+  // renderApprovalTab removed - using inline diff pattern with approve/deny buttons in footer
   // Render logs tab content
   const renderLogsTab = () => {
     // Use formData activityLogs if available, otherwise fall back to selectedRecord
@@ -430,6 +267,7 @@ export default function ReturnGoodSoldForm({
 
           {/* Action Buttons for Details Tab */}
           <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+            {/* Left side - Delete button or Approve/Deny buttons */}
             {!isCreateMode && formData.status === StatusEnum.ACTIVE ? (
               <button
                 type="button"
@@ -442,6 +280,31 @@ export default function ReturnGoodSoldForm({
                 </svg>
                 {isLoading ? 'Processing...' : 'Delete'}
               </button>
+            ) : !isCreateMode && isAdminUser && (formData.status === StatusEnum.FOR_APPROVAL || formData.status === StatusEnum.NEW_RECORD || formData.status === StatusEnum.FOR_DELETION) ? (
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <button
+                  type="button"
+                  onClick={onDeny}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  {isLoading ? 'Processing...' : (formData.status === StatusEnum.FOR_DELETION ? 'Deny Deletion' : 'Deny Changes')}
+                </button>
+                <button
+                  type="button"
+                  onClick={onApprove}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {isLoading ? 'Processing...' : (formData.status === StatusEnum.FOR_DELETION ? 'Approve Deletion' : 'Approve Changes')}
+                </button>
+              </div>
             ) : (
               <div className="hidden sm:block" />
             )}
@@ -474,8 +337,6 @@ export default function ReturnGoodSoldForm({
           </div>
         </div>
       )}
-
-      {activeTab === 'approval' && !isCreateMode && selectedRecord && renderApprovalTab()}
 
       {activeTab === 'logs' && !isCreateMode && selectedRecord && renderLogsTab()}
     </>

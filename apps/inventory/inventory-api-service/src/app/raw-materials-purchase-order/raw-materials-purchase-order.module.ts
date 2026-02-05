@@ -18,6 +18,7 @@ import { IncomingPurchaseOrderHandler } from './command/incoming-purchase-order/
 import { SystemGeneratedToPendingHandler } from './command/system-generated-to-pending/system-generated-to-pending.handler';
 import { UpdateRawMaterialsPurchaseOrderHandler } from './command/update/update.handler';
 import { GetRawMaterialsPurchaseOrderByIdHandler } from './queries/get.by.id/get.raw.materials.purchase-order.by.id.handler';
+import { GetRawMaterialsPurchaseOrderRecordsByApprovalStatusPaginationHandler } from './queries/get.records.by.approval.status.pagination/get.records.by.approval.status.pagination.handler';
 import { GetRawMaterialsPurchaseOrderRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetRawMaterialsPurchaseOrderRecordsBySupplierPaginationHandler } from './queries/get.records.by.supplier.pagination/get.records.by.supplier.pagination.handler';
 import { GetRawMaterialsPurchaseOrderRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
@@ -34,6 +35,7 @@ const handlers = [
     UpdateRawMaterialsPurchaseOrderHandler,
     GetRawMaterialsPurchaseOrderByIdHandler,
     GetRawMaterialsPurchaseOrderRecordsPaginationHandler,
+    GetRawMaterialsPurchaseOrderRecordsByApprovalStatusPaginationHandler,
     GetRawMaterialsPurchaseOrderRecordsByStatusPaginationHandler,
     GetRawMaterialsPurchaseOrderRecordsBySupplierPaginationHandler,
 ];

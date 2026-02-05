@@ -26,7 +26,8 @@ export class GetRecordsByStatusPaginationHandler implements IQueryHandler<GetRec
                 query.limit,
                 query.status,
                 query.direction,
-                query.cursorPointer
+                query.cursorPointer,
+                query.receiptNo
             );
 
             this.logger.log(`Payments retrieved successfully: ${payments.data.length} records`);

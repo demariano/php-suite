@@ -12,6 +12,8 @@ interface ProductDealFormProps {
   onDelete: () => void;
   onCancel: () => void;
   isAdminUser?: boolean;
+  onApprove?: () => void;
+  onDeny?: () => void;
 }
 
 export default function ProductDealForm({
@@ -21,7 +23,9 @@ export default function ProductDealForm({
   onSave,
   onDelete,
   onCancel,
-  isAdminUser = false
+  isAdminUser = false,
+  onApprove,
+  onDeny
 }: ProductDealFormProps) {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [formData, setFormData] = useState({
@@ -242,6 +246,32 @@ export default function ProductDealForm({
             </svg>
             Delete
           </button>
+        ) : isAdminUser && !isCreateMode && selectedProductDeal && 
+          [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(
+            selectedProductDeal.status as StatusEnum
+          ) ? (
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <button
+              type="button"
+              onClick={onDeny}
+              className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              {selectedProductDeal.status === StatusEnum.FOR_DELETION ? 'Deny Deletion' : 'Deny Changes'}
+            </button>
+            <button
+              type="button"
+              onClick={onApprove}
+              className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            >
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              {selectedProductDeal.status === StatusEnum.FOR_DELETION ? 'Approve Deletion' : 'Approve Changes'}
+            </button>
+          </div>
         ) : (
           <div className="hidden sm:block" />
         )}

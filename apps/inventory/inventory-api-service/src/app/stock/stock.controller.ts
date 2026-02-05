@@ -499,7 +499,7 @@ export class StockController {
         type: String,
         required: false,
         description: 'Filter by stock item status',
-        enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
     })
     @ApiQuery({
         name: 'userRole',
@@ -583,7 +583,7 @@ export class StockController {
         type: String,
         required: false,
         description: 'Filter by stock status',
-        enum: ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'],
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
     })
     @ApiQuery({
         name: 'stockTypeName',

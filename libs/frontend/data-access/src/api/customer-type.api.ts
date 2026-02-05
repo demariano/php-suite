@@ -20,7 +20,8 @@ class CustomerTypeApi extends AxiosConfig {
         status?: string,
         direction?: string,
         cursorPointer?: string,
-        userRole?: string
+        userRole?: string,
+        name?: string
     ): Promise<CustomerTypesResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -28,7 +29,7 @@ class CustomerTypeApi extends AxiosConfig {
 
         if (status) {
             params.append('status', status);
-            return this.getCustomerTypesByStatus(limit, status, direction, cursorPointer, userRole);
+            return this.getCustomerTypesByStatus(limit, status, direction, cursorPointer, userRole, name);
         }
 
         if (direction) {

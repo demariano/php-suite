@@ -1,188 +1,158 @@
 'use client';
 
+import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } from '@components-web';
 import { TermsDto } from '@data-access/index';
 
+interface TableRowData {
+    termsId: string;
+    termsName: string;
+    days: number;
+    status: React.ReactNode;
+    latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
+}
+
 interface TermsTableProps {
-  isLoading: boolean;
-  tableData: any[];
-  headers: { key: string; label: string }[];
-  searchQuery: string;
-  onRowClick: (terms: TermsDto) => void;
-  pageSize: number;
-  onPageSizeChange: (size: number) => void;
-  prevCursor: string | undefined;
-  nextCursor: string | undefined;
-  onPrevious: () => void;
-  onNext: () => void;
+    isLoading: boolean;
+    tableData: TableRowData[];
+    headers: { key: string; label: string }[];
+    searchQuery: string;
+    onRowClick: (terms: TermsDto) => void;
+    pageSize: number;
+    onPageSizeChange: (size: number) => void;
+    prevCursor: string | undefined;
+    nextCursor: string | undefined;
+    onPrevious: () => void;
+    onNext: () => void;
 }
 
 export default function TermsTable({
-  isLoading,
-  tableData,
-  headers,
-  searchQuery,
-  onRowClick,
-  pageSize,
-  onPageSizeChange,
-  prevCursor,
-  nextCursor,
-  onPrevious,
-  onNext
+    isLoading,
+    tableData,
+    headers,
+    searchQuery,
+    onRowClick,
+    pageSize,
+    onPageSizeChange,
+    prevCursor,
+    nextCursor,
+    onPrevious,
+    onNext,
 }: TermsTableProps) {
-  return (
-    <>
-      {/* Table */}
-      <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
-        {isLoading ? (
-          <div className="p-10 text-center text-base text-gray-500">
-            Loading terms...
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead className="border-b border-blue-700 bg-blue-600">
-                <tr>
-                  {headers.map((header) => (
-                    <th key={header.key} className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white">
-                      {header.label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
-                {tableData.length > 0 ? (
-                  tableData.map((terms) => (
-                    <tr
-                      key={terms.termsId}
-                      onClick={() => onRowClick(terms)}
-                      className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
-                    >
-                      <td className="px-6 py-5 text-sm font-medium text-gray-900">
-                        {terms.termsName || '-'}
-                      </td>
-                      <td className="px-6 py-5 text-sm text-gray-900">
-                        {terms.days || '-'}
-                      </td>
-                      <td className="px-6 py-5">{terms.status}</td>
-                      <td className="px-6 py-5 text-sm">
-                        {terms.latestActivity ? (
-                          <span 
-                            className={`px-2 py-1 rounded ${terms.latestActivity.style.bgColor} ${terms.latestActivity.style.textColor}`}
-                            title={terms.latestActivity.text}
-                          >
-                            {terms.latestActivity.text.length > 50 
-                              ? `${terms.latestActivity.text.substring(0, 50)}...` 
-                              : terms.latestActivity.text}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+    return (
+        <>
+            {/* Desktop Table */}
+            <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                {isLoading ? (
+                    <TableSkeleton rows={pageSize} columns={headers.length} />
+                ) : tableData.length > 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-collapse">
+                            <thead className="border-b border-blue-700 bg-blue-600">
+                                <tr>
+                                    {headers.map((header) => (
+                                        <th
+                                            key={header.key}
+                                            className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white"
+                                        >
+                                            {header.label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 bg-white">
+                                {tableData.map((terms) => (
+                                    <tr
+                                        key={terms.termsId}
+                                        onClick={() => onRowClick(terms as unknown as TermsDto)}
+                                        className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
+                                    >
+                                        <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                            {terms.termsName || '-'}
+                                        </td>
+                                        <td className="px-6 py-5 text-sm text-gray-900">{terms.days || '-'}</td>
+                                        <td className="px-6 py-5">{terms.status}</td>
+                                        <td className="px-6 py-5 text-sm">
+                                            {terms.latestActivity ? (
+                                                <span
+                                                    className={`px-2 py-1 rounded ${terms.latestActivity.style.bgColor} ${terms.latestActivity.style.textColor}`}
+                                                    title={terms.latestActivity.text}
+                                                >
+                                                    {terms.latestActivity.text.length > 50
+                                                        ? `${terms.latestActivity.text.substring(0, 50)}...`
+                                                        : terms.latestActivity.text}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 ) : (
-                  <tr>
-                    <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                      {searchQuery ? `No terms found matching "${searchQuery}"` : 'No terms found'}
-                    </td>
-                  </tr>
+                    <EmptyTableState
+                        message={searchQuery ? `No terms found matching "${searchQuery}"` : 'No terms found'}
+                    />
                 )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile Cards */}
-      {!isLoading && (
-        <div className="space-y-4 sm:hidden">
-          {tableData.length > 0 ? (
-            tableData.map((terms) => (
-              <button
-                key={terms.termsId}
-                type="button"
-                onClick={() => onRowClick(terms)}
-                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-base font-semibold text-gray-900">
-                      {terms.termsName || '-'}
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Days: {terms.days || '-'}
-                    </p>
-                    {terms.latestActivity && (
-                      <p className="mt-2 text-xs">
-                        <span className="font-medium text-gray-700">Latest Activity: </span>
-                        <span 
-                          className={`px-2 py-1 rounded ${terms.latestActivity.style.bgColor} ${terms.latestActivity.style.textColor}`}
-                        >
-                          {terms.latestActivity.text.length > 60 
-                            ? `${terms.latestActivity.text.substring(0, 60)}...` 
-                            : terms.latestActivity.text}
-                        </span>
-                      </p>
-                    )}
-                  </div>
-                  <div>{terms.status}</div>
-                </div>
-              </button>
-            ))
-          ) : (
-            <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-              {searchQuery ? `No terms found matching "${searchQuery}"` : 'No terms found'}
             </div>
-          )}
-        </div>
-      )}
 
-      {isLoading && (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm sm:hidden">
-          Loading terms...
-        </div>
-      )}
+            {/* Mobile Cards */}
+            <div className="sm:hidden">
+                {isLoading ? (
+                    <TableSkeleton rows={pageSize} columns={1} variant="mobile" />
+                ) : tableData.length > 0 ? (
+                    <div className="space-y-4">
+                        {tableData.map((terms) => (
+                            <button
+                                key={terms.termsId}
+                                type="button"
+                                onClick={() => onRowClick(terms as unknown as TermsDto)}
+                                className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            >
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="flex-1">
+                                        <h3 className="text-base font-semibold text-gray-900">
+                                            {terms.termsName || '-'}
+                                        </h3>
+                                        <p className="mt-1 text-sm text-gray-600">Days: {terms.days || '-'}</p>
+                                        {terms.latestActivity && (
+                                            <p className="mt-2 text-xs">
+                                                <span className="font-medium text-gray-700">Latest Activity: </span>
+                                                <span
+                                                    className={`px-2 py-1 rounded ${terms.latestActivity.style.bgColor} ${terms.latestActivity.style.textColor}`}
+                                                >
+                                                    {terms.latestActivity.text.length > 60
+                                                        ? `${terms.latestActivity.text.substring(0, 60)}...`
+                                                        : terms.latestActivity.text}
+                                                </span>
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div>{terms.status}</div>
+                                </div>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <EmptyTableState
+                        message={searchQuery ? `No terms found matching "${searchQuery}"` : 'No terms found'}
+                        variant="mobile"
+                    />
+                )}
+            </div>
 
-      {/* Pagination */}
-      <div className="mt-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
-          <span className="text-sm font-medium text-gray-600">Rows per page:</span>
-          <select
-            value={pageSize}
-            onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:w-auto"
-          >
-            <option value="10">10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
-        </div>
-        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-          <button
-            onClick={onPrevious}
-            disabled={!prevCursor}
-            className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
-              !prevCursor
-                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-300'
-                : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            Previous
-          </button>
-          <button
-            onClick={onNext}
-            disabled={!nextCursor}
-            className={`w-full rounded-md border px-4 py-2 text-sm font-medium transition-all duration-200 sm:w-auto ${
-              !nextCursor
-                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-300'
-                : 'border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50'
-            }`}
-          >
-            Next
-          </button>
-        </div>
-      </div>
-    </>
-  );
+            {/* Pagination */}
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <PageSizeSelector pageSize={pageSize} onPageSizeChange={onPageSizeChange} variant="desktop" />
+                <PaginationButtons
+                    onPrevious={onPrevious}
+                    onNext={onNext}
+                    hasPrevious={!!prevCursor}
+                    hasNext={!!nextCursor}
+                    variant="desktop"
+                />
+            </div>
+        </>
+    );
 }

@@ -110,7 +110,10 @@ export default function ProductPriceTypesMainPage() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    // Refetch when status filter changes
     useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
         setNextCursor(undefined);
         setPrevCursor(undefined);
         fetchProductPriceTypes(undefined, undefined);

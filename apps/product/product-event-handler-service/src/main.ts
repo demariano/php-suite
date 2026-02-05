@@ -8,7 +8,6 @@ import { AppModule } from './app/app.module';
 import { AppService } from './app/app.service';
 import { SqsLocalService } from './app/sqs.local.service';
 
-
 async function createSwaggerConfig() {
     return new DocumentBuilder()
         .setTitle('PRODUCT-EVENT-HANDLER-SERVICE')
@@ -23,7 +22,7 @@ async function createSwaggerConfig() {
                 description: 'Enter JWT token',
                 in: 'header',
             },
-            'JWT-auth',
+            'JWT-auth'
         )
         .build();
 }
@@ -49,34 +48,23 @@ async function bootstrapServer() {
         const sqsService = appContext.get(SqsLocalService);
         sqsService.pollQueue();
     } else {
-
-        const port = process.env.PORT || 4058;
+        const port = process.env.PORT || 4087;
 
         await app.listen(port);
         Logger.log(`🚀 PRODUCT-EVENT-HANDLER-SERVICE is running on: http://localhost:${port}/api`);
         Logger.log(`🚀 PRODUCT-EVENT-HANDLER-SERVICE Swagger Endpoint : http://localhost:${port}/api/swagger`);
     }
-
-
-
 }
-
 
 if (process.env.SERVICE_TRIGGER && process.env.SERVICE_TRIGGER === 'LOCALHOST') {
     Logger.log('Starting local server');
     bootstrapServer();
 }
 
-
-export const handler: Handler = async (
-    event: any,
-    context: Context,
-    callback: Callback
-) => {
-
+export const handler: Handler = async (event: any, context: Context, callback: Callback) => {
     Logger.log('Starting Lambda event handler');
 
-    //read the version.dat file 
+    //read the version.dat file
     let version = '0.0.0';
     try {
         const versionPath = path.join(__dirname, 'assets', 'version.dat');
@@ -86,7 +74,7 @@ export const handler: Handler = async (
         version = '0.0.0';
     }
     Logger.log(`Version: ${version}`);
-    
+
     const appContext = await NestFactory.createApplicationContext(AppModule);
     const service = appContext.get(AppService);
 

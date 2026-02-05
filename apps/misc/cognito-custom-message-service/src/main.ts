@@ -5,7 +5,6 @@ import { Callback, Context, Handler } from 'aws-lambda';
 import { AppModule } from './app/app.module';
 import { AppService } from './app/app.service';
 
-
 async function createSwaggerConfig() {
     return new DocumentBuilder()
         .setTitle('COGNITO-CUSTOM-MESSAGE-SERVICE')
@@ -20,7 +19,7 @@ async function createSwaggerConfig() {
                 description: 'Enter JWT token',
                 in: 'header',
             },
-            'JWT-auth',
+            'JWT-auth'
         )
         .build();
 }
@@ -40,26 +39,19 @@ async function bootstrapServer() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('swagger', app, document, { useGlobalPrefix: true });
 
-
-    const port = process.env.PORT || 4011;
+    const port = process.env.PORT || 4081;
 
     await app.listen(port);
     Logger.log(`🚀 COGNITO-CUSTOM-MESSAGE-SERVICE is running on: http://localhost:${port}/api`);
     Logger.log(`🚀 COGNITO-CUSTOM-MESSAGE-SERVICE Swagger Endpoint : http://localhost:${port}/api/swagger`);
 }
 
-
-if (process.env.SERVICE_TRIGGER  && process.env.SERVICE_TRIGGER  === 'LOCALHOST') {
-    Logger.log('Starting local server');    
+if (process.env.SERVICE_TRIGGER && process.env.SERVICE_TRIGGER === 'LOCALHOST') {
+    Logger.log('Starting local server');
     bootstrapServer();
 }
 
-
-export const handler: Handler = async (
-    event: unknown,
-    context: Context,
-    callback: Callback
-) => {
+export const handler: Handler = async (event: unknown, context: Context, callback: Callback) => {
     const appContext = await NestFactory.createApplicationContext(AppModule);
     const service = appContext.get(AppService);
 

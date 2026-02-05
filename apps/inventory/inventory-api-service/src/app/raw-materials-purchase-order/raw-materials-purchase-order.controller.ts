@@ -13,6 +13,7 @@ import { IncomingPurchaseOrderCommand } from './command/incoming-purchase-order/
 import { SystemGeneratedToPendingCommand } from './command/system-generated-to-pending/system-generated-to-pending.command';
 import { UpdateRawMaterialsPurchaseOrderCommand } from './command/update/update.command';
 import { GetRawMaterialsPurchaseOrderByIdQuery } from './queries/get.by.id/get.raw.materials.purchase-order.by.id.query';
+import { GetRawMaterialsPurchaseOrderRecordsByApprovalStatusPaginationQuery } from './queries/get.records.by.approval.status.pagination/get.records.by.approval.status.pagination.query';
 import { GetRawMaterialsPurchaseOrderRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetRawMaterialsPurchaseOrderRecordsBySupplierPaginationQuery } from './queries/get.records.by.supplier.pagination/get.records.by.supplier.pagination.query';
 import { GetRawMaterialsPurchaseOrderRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
@@ -195,6 +196,31 @@ export class RawMaterialsPurchaseOrderController {
         }
 
         return this.commandBus.execute(new DeleteRawMaterialsPurchaseOrderCommand(id, dto, user));
+    }
+
+    @Get('by-approval-status')
+    @ApiOperation({ summary: 'List raw materials purchase orders by approval status with pagination' })
+    @ApiQuery({ name: 'status', required: true })
+    @ApiQuery({ name: 'limit', required: true })
+    @ApiQuery({ name: 'direction', required: false })
+    @ApiQuery({ name: 'cursorPointer', required: false })
+    @ApiQuery({ name: 'name', required: false })
+    findByApprovalStatus(
+        @Query('limit') limit: number,
+        @Query('status') status: string,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('name') name: string
+    ) {
+        return this.queryBus.execute(
+            new GetRawMaterialsPurchaseOrderRecordsByApprovalStatusPaginationQuery(
+                limit,
+                status,
+                direction,
+                cursorPointer,
+                name
+            )
+        );
     }
 
     @Get('by-status')

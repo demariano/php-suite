@@ -3,13 +3,17 @@
 import {
     CollectionReceiptRangeApi,
     CollectionReceiptRangeDto,
+    extractErrorMessage,
     RangeStatusEnum,
     useEnv,
     useLocalStore,
 } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CollectionReceiptRangeHeader, CollectionReceiptRangeTable } from './components';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function CollectionReceiptRangePage() {
     const [isLoading, setIsLoading] = useState(false);
@@ -20,10 +24,11 @@ export default function CollectionReceiptRangePage() {
     const { authedUser } = useLocalStore();
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
-    // Track if initial fetch has been made to prevent duplicate calls
+    const router = useRouter();
     const hasFetchedRef = useRef(false);
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
     // Fetch ranges from API
     const fetchRanges = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -31,74 +36,76 @@ export default function CollectionReceiptRangePage() {
             setIsLoading(true);
             setError(null);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
+            const currentPageSize = customPageSize ?? pageSize;
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
-            // Use custom page size if provided, otherwise use state page size
-            const currentPageSize = customPageSize ?? pageSize;
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && serializedCursor ? direction : undefined;
+            const paginationCursor = direction && serializedCursor ? serializedCursor : undefined;
 
             const response = await CollectionReceiptRangeApi.getCollectionReceiptRanges(
                 currentPageSize,
-                direction,
-                serializedCursor,
-                userRole
+                paginationDirection,
+                paginationCursor
             );
 
-            if (response && response.statusCode === 200 && response.data) {
-                // Filter by search query if provided
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                // Filter by search query if provided (client-side filtering)
                 let filteredData = response.data;
-                if (searchQuery && searchQuery.trim() !== '') {
-                    const query = searchQuery.toLowerCase();
+                const trimmedQuery = searchQuery.trim().toLowerCase();
+                if (trimmedQuery.length > 0) {
                     filteredData = response.data.filter(
                         (range) =>
-                            range.areaName?.toLowerCase().includes(query) ||
-                            range.areaId?.toLowerCase().includes(query) ||
-                            range.startNumber?.toString().includes(query) ||
-                            range.endNumber?.toString().includes(query)
+                            range.areaName?.toLowerCase().includes(trimmedQuery) ||
+                            range.areaId?.toLowerCase().includes(trimmedQuery) ||
+                            range.startNumber?.toString().includes(trimmedQuery) ||
+                            range.endNumber?.toString().includes(trimmedQuery)
                     );
                 }
 
                 setRanges(filteredData);
-
-                // Set pagination cursors from response
-                setNextCursor(response.nextCursorPointer || undefined);
-                setPrevCursor(response.prevCursorPointer || undefined);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setRanges([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
             }
-        } catch {
-            setError('Failed to load collection receipt ranges. Please try again.');
+        } catch (err) {
+            const errorMessage = extractErrorMessage(
+                err,
+                'Failed to load collection receipt ranges. Please try again.'
+            );
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Fetch on initial load and when these dependencies change
+    // Initial fetch
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
         if (hasFetchedRef.current) return;
         hasFetchedRef.current = true;
-
         fetchRanges();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
-    // Debounce search query changes (but not on initial mount with empty search)
+    // Debounce search query changes
     useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0 && !hasFetchedRef.current) {
+            return;
         }
 
-        const delayDebounceFn = setTimeout(() => {
-            fetchRanges();
-        }, 500); // 500ms delay
+        // Reset pagination when search query changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
 
-        return () => clearTimeout(delayDebounceFn);
+        const timer = setTimeout(() => {
+            fetchRanges(undefined, undefined);
+        }, 500);
+
+        return () => clearTimeout(timer);
     }, [searchQuery]);
 
     const headers = [
@@ -109,69 +116,29 @@ export default function CollectionReceiptRangePage() {
         { key: 'latestActivity', label: 'LATEST ACTIVITY' },
     ];
 
-    // Helper function to get status text
-    const getStatusText = (status?: RangeStatusEnum): string => {
-        switch (status) {
-            case RangeStatusEnum.AVAILABLE:
-                return 'Available';
-            case RangeStatusEnum.ALL_USED_UP:
-                return 'All Used Up';
-            case RangeStatusEnum.CANCELLED:
-                return 'Cancelled';
-            default:
-                return 'Unknown';
-        }
-    };
-
-    const getStatusBadge = (status?: RangeStatusEnum) => {
+    // Helper function to render range status badge
+    const getRangeStatusBadge = (status?: RangeStatusEnum) => {
         const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
 
-        let colorClasses = '';
-        if (status === RangeStatusEnum.AVAILABLE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === RangeStatusEnum.ALL_USED_UP) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === RangeStatusEnum.CANCELLED) {
-            colorClasses = '!bg-gray-100 !text-gray-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
+        const statusConfig: Record<RangeStatusEnum, { bg: string; text: string; label: string }> = {
+            [RangeStatusEnum.AVAILABLE]: { bg: 'bg-green-100', text: 'text-green-800', label: 'Available' },
+            [RangeStatusEnum.ALL_USED_UP]: { bg: 'bg-red-100', text: 'text-red-800', label: 'All Used Up' },
+            [RangeStatusEnum.CANCELLED]: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Cancelled' },
+        };
 
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === RangeStatusEnum.AVAILABLE
-                            ? '#dcfce7'
-                            : status === RangeStatusEnum.ALL_USED_UP
-                              ? '#fee2e2'
-                              : status === RangeStatusEnum.CANCELLED
-                                ? '#f3f4f6'
-                                : '#f3f4f6',
-                    color:
-                        status === RangeStatusEnum.AVAILABLE
-                            ? '#166534'
-                            : status === RangeStatusEnum.ALL_USED_UP
-                              ? '#dc2626'
-                              : status === RangeStatusEnum.CANCELLED
-                                ? '#374151'
-                                : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
+        const config = status ? statusConfig[status] : { bg: 'bg-gray-100', text: 'text-gray-600', label: 'Unknown' };
+
+        return <span className={`${baseClasses} ${config.bg} ${config.text}`}>{config.label}</span>;
     };
 
     // Handle row click - navigate to edit page
     const handleRowClick = (range: CollectionReceiptRangeDto) => {
-        window.location.href = `/invoicing/collection-receipt-range/${range.collectionReceiptRangeId}/edit`;
+        router.push(`/invoicing/collection-receipt-range/${range.collectionReceiptRangeId}/edit`);
     };
 
     // Handle create new range - navigate to create page
     const handleCreateClick = () => {
-        window.location.href = '/invoicing/collection-receipt-range/create';
+        router.push('/invoicing/collection-receipt-range/create');
     };
 
     // Handle page size change - reset pagination and fetch fresh data
@@ -179,30 +146,32 @@ export default function CollectionReceiptRangePage() {
         setPageSize(newPageSize);
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
         fetchRanges(undefined, undefined, newPageSize);
     };
 
-    // Transform data for table display
-    const tableData = ranges?.map((range) => {
-        // Get the latest activity log entry
-        let latestActivity = null;
-        if (range.activityLogs && range.activityLogs.length > 0) {
-            const lastLog = range.activityLogs[range.activityLogs.length - 1];
-            const parsed = parseActivityLog(lastLog);
-            const activityStyle = getActivityStyle(parsed.activity);
-            latestActivity = {
-                text: parsed.activity,
-                style: activityStyle,
-            };
-        }
+    // Transform data for table display using useMemo
+    const tableData = useMemo(() => {
+        return (
+            ranges?.map((range) => {
+                let latestActivity = null;
+                if (range.activityLogs && range.activityLogs.length > 0) {
+                    const lastLog = range.activityLogs[range.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
 
-        return {
-            ...range,
-            status: getStatusBadge(range.rangeStatus),
-            latestActivity,
-        };
-    }) || [];
+                return {
+                    ...range,
+                    status: getRangeStatusBadge(range.rangeStatus),
+                    latestActivity,
+                };
+            }) || []
+        );
+    }, [ranges]);
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -244,12 +213,7 @@ export default function CollectionReceiptRangePage() {
             <div>
                 <CollectionReceiptRangeHeader
                     searchQuery={searchQuery}
-                    onSearchChange={(value: string) => {
-                        setSearchQuery(value);
-                        // Reset pagination when search query changes
-                        setNextCursor(undefined);
-                        setPrevCursor(undefined);
-                    }}
+                    onSearchChange={setSearchQuery}
                     onRefresh={() => {
                         setSearchQuery('');
                         setNextCursor(undefined);
@@ -257,6 +221,8 @@ export default function CollectionReceiptRangePage() {
                         fetchRanges();
                     }}
                     onCreateClick={handleCreateClick}
+                    isLoading={isLoading}
+                    canCreate={isAdminUser}
                 />
             </div>
 
@@ -279,4 +245,3 @@ export default function CollectionReceiptRangePage() {
         </div>
     );
 }
-

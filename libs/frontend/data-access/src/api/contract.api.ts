@@ -40,7 +40,8 @@ class ContractApi extends AxiosConfig {
         status: string,
         direction?: string,
         cursorPointer?: string,
-        customerId?: string
+        customerId?: string,
+        contractNo?: string
     ): Promise<ContractsResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -57,6 +58,10 @@ class ContractApi extends AxiosConfig {
 
         if (customerId) {
             params.append('customerId', customerId);
+        }
+
+        if (contractNo) {
+            params.append('contractNo', contractNo);
         }
 
         return await this.axiosInstance.get(`/contracts/status?${params.toString()}`);

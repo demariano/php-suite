@@ -20,7 +20,8 @@ class TermsApi extends AxiosConfig {
         status?: string,
         direction?: string,
         cursorPointer?: string,
-        userRole?: string
+        userRole?: string,
+        name?: string
     ): Promise<TermsResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -28,7 +29,7 @@ class TermsApi extends AxiosConfig {
 
         if (status) {
             params.append('status', status);
-            return this.getTermsByStatus(limit, status, direction, cursorPointer, userRole);
+            return this.getTermsByStatus(limit, status, direction, cursorPointer, userRole, name);
         }
 
         if (direction) {

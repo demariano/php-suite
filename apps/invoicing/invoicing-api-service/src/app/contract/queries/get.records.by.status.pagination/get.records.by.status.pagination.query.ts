@@ -4,6 +4,7 @@ export class GetRecordsByStatusPaginationQuery {
         public readonly limit: number,
         public readonly direction: string,
         public readonly cursorPointer: string,
-        public readonly customerId: string
+        public readonly customerId?: string,
+        public readonly contractNo?: string
     ) {}
 }

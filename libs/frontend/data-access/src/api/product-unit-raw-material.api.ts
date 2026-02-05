@@ -19,7 +19,9 @@ class ProductUnitRawMaterialApi extends AxiosConfig {
         limit = 10,
         direction?: string,
         cursorPointer?: string,
-        userRole?: string
+        userRole?: string,
+        status?: string,
+        productName?: string
     ): Promise<ProductUnitRawMaterialsResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -31,6 +33,14 @@ class ProductUnitRawMaterialApi extends AxiosConfig {
 
         if (cursorPointer) {
             params.append('cursorPointer', cursorPointer);
+        }
+
+        if (status) {
+            params.append('status', status);
+        }
+
+        if (productName) {
+            params.append('productName', productName);
         }
 
         // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled

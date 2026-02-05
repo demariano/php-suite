@@ -322,24 +322,38 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
         status: string,
         direction: string,
         cursorPointer: string,
-        customerId: string
+        customerId?: string,
+        contractNo?: string
     ): Promise<PageDto<ContractDto>> {
         limit = Number(limit);
-        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI4', direction, cursorPointer);
 
-        const records = await this.contractTable.find(
-            {
-                GSI4PK: `CONTRACT#${customerId}#${status}`,
-            },
-            dynamoDbOption
-        );
+        // Use GSI4 when customerId is provided (CONTRACT#customerId#status)
+        // Use GSI2 when no customerId (CONTRACT#status) for general status filtering
+        // Both GSI2SK and GSI4SK are contractNo, so we can use begins_with directly
+        const gsiIndex = customerId ? 'GSI4' : 'GSI2';
+        const gsiPK = customerId ? `CONTRACT#${customerId}#${status}` : `CONTRACT#${status}`;
+        const gsiPKKey = customerId ? 'GSI4PK' : 'GSI2PK';
+        const gsiSKKey = customerId ? 'GSI4SK' : 'GSI2SK';
+
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, gsiIndex, direction, cursorPointer);
+
+        // Build query params - use begins_with for contractNo - NO CLIENT SIDE FILTERING
+        const queryParams: Record<string, any> = {
+            [gsiPKKey]: gsiPK,
+        };
+
+        if (contractNo && contractNo.trim() !== '') {
+            queryParams[gsiSKKey] = { begins: contractNo };
+        }
+
+        const records = await this.contractTable.find(queryParams, dynamoDbOption);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,
             limit,
             direction,
-            'GSI4PK',
-            'GSI4SK',
+            gsiPKKey,
+            gsiSKKey,
             'PK',
             'SK',
             JSON.stringify(records.next),

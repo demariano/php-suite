@@ -75,6 +75,7 @@ const ProductApi = {
     deleteProduct: ProductMainApi.deleteProduct.bind(ProductMainApi),
     approveProduct: ProductMainApi.approveProduct.bind(ProductMainApi),
     denyProduct: ProductMainApi.denyProduct.bind(ProductMainApi),
+    reactivateProduct: ProductMainApi.reactivateProduct.bind(ProductMainApi),
 
     // Product Unit Raw Material methods
     getProductUnitRawMaterials: ProductUnitRawMaterialApi.getProductUnitRawMaterials.bind(ProductUnitRawMaterialApi),

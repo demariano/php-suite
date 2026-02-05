@@ -1,275 +1,223 @@
 'use client';
 
-import { PaymentApi, PaymentDto, StatusEnum, useEnv, useLocalStore, useSessionStore } from '@data-access/index';
+import { StatusBadge } from '@components-web';
+import { PaymentApi, PaymentDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PaymentHeader, PaymentTable } from './components';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function PaymentPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [payments, setPayments] = useState<PaymentDto[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const { env } = useEnv();
-    const { authedUser } = useLocalStore();
-    const { setFlashNotification } = useSessionStore();
-    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-    const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
-
-    // Track if initial fetch has been made to prevent duplicate calls
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
     const hasFetchedRef = useRef(false);
 
-    // Fetch payments from API
+    const { env } = useEnv();
+    const { authedUser } = useLocalStore();
+    const router = useRouter();
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
     const fetchPayments = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
         try {
             setIsLoading(true);
             setError(null);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            // This prevents role parameter leakage when bypass auth is disabled
-            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
+            const currentPageSize = customPageSize ?? pageSize;
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && serializedCursor ? direction : undefined;
+            const paginationCursor = direction && serializedCursor ? serializedCursor : undefined;
+
+            const trimmedQuery = searchQuery.trim();
             let response;
 
-            // Use custom page size if provided, otherwise use state page size
-            const currentPageSize = customPageSize ?? pageSize;
-
-            // If search query exists, use search API, otherwise use regular pagination API
-            if (searchQuery && searchQuery.trim() !== '') {
-                response = await PaymentApi.getPaymentsContainingReceiptNo(
-                    searchQuery.trim(),
+            // 4-branch API logic: search+status → status only → search only → show all
+            if (statusFilter !== 'ALL' && trimmedQuery.length > 0) {
+                // Branch 1: Filter by status with search (use status API with receiptNo param)
+                response = await PaymentApi.getPaymentsByStatus(
                     currentPageSize,
-                    direction,
-                    serializedCursor
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor,
+                    trimmedQuery
+                );
+            } else if (statusFilter !== 'ALL') {
+                // Branch 2: Filter by status only
+                response = await PaymentApi.getPaymentsByStatus(
+                    currentPageSize,
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Branch 3: Search by receipt number only (no status filter)
+                response = await PaymentApi.getPaymentsContainingReceiptNo(
+                    trimmedQuery,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor
                 );
             } else {
-                response = await PaymentApi.getPayments(currentPageSize, direction, serializedCursor, userRole);
+                // Branch 4: No filter, no search - get all
+                response = await PaymentApi.getPayments(currentPageSize, paginationDirection, paginationCursor);
             }
 
-            if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of payments
-                if (Array.isArray(response.data)) {
-                    setPayments(response.data);
-
-                    // Set pagination cursors from response
-                    setNextCursor(response.nextCursorPointer || undefined);
-                    setPrevCursor(response.prevCursorPointer || undefined);
-                } else {
-                    setPayments([]);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                }
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setPayments(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setPayments([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
             }
-
-            if (direction && cursor) {
-                setCurrentCursor(cursor);
-            } else {
-                setCurrentCursor(undefined);
-            }
-        } catch (err) {
+        } catch {
             setError('Failed to load payments. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Fetch on initial load and when these dependencies change
+    // Initial fetch
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
         if (hasFetchedRef.current) return;
         hasFetchedRef.current = true;
-
         fetchPayments();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
-    // Debounce search query changes (but not on initial mount with empty search)
+    // Debounce search query changes
     useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0 && !hasFetchedRef.current) {
+            return;
         }
 
-        const delayDebounceFn = setTimeout(() => {
-            fetchPayments();
-        }, 500); // 500ms delay
-
-        return () => clearTimeout(delayDebounceFn);
-    }, [searchQuery]);
-
-    const headers = [
-        { key: 'receiptNo', label: 'RECEIPT NO' },
-        { key: 'paymentDate', label: 'PAYMENT DATE' },
-        { key: 'customerName', label: 'CUSTOMER NAME' },
-        { key: 'paymentAmount', label: 'PAYMENT AMOUNT' },
-        { key: 'status', label: 'STATUS' },
-        { key: 'latestActivity', label: 'LATEST ACTIVITY' },
-    ];
-
-    // Helper function to get status text
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
-
-    const handleRowClick = async (payment: PaymentDto) => {
-        // Navigate to edit payment page
-        window.location.href = `/invoicing/payment/${payment.paymentId}/edit`;
-    };
-
-    const handleCreateClick = () => {
-        // Navigate to create payment page
-        window.location.href = '/invoicing/payment/create';
-    };
-
-    // Handle page size change - reset pagination and fetch fresh data
-    const handlePageSizeChange = (newPageSize: number) => {
-        setPageSize(newPageSize);
+        // Reset pagination when search query changes
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        setCurrentCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
-        fetchPayments(undefined, undefined, newPageSize);
+
+        const timer = setTimeout(() => {
+            fetchPayments(undefined, undefined);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Refetch when status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchPayments(undefined, undefined);
+    }, [statusFilter]);
+
+    const headers = useMemo(
+        () => [
+            { key: 'receiptNo', label: 'RECEIPT NO' },
+            { key: 'paymentDate', label: 'PAYMENT DATE' },
+            { key: 'customerName', label: 'CUSTOMER NAME' },
+            { key: 'paymentAmount', label: 'PAYMENT AMOUNT' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+        ],
+        []
+    );
+
+    // Transform data for table display using StatusBadge
+    const tableData = useMemo(
+        () =>
+            payments.map((payment) => {
+                // Get the latest activity log entry
+                let latestActivity = null;
+                if (payment.activityLogs && payment.activityLogs.length > 0) {
+                    const lastLog = payment.activityLogs[payment.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
+
+                return {
+                    ...payment,
+                    status: <StatusBadge status={payment.status ?? StatusEnum.ACTIVE} />,
+                    paymentAmount: payment.paymentAmount ? `₱${payment.paymentAmount.toFixed(2)}` : '₱0.00',
+                    latestActivity,
+                };
+            }),
+        [payments]
+    );
+
+    const handleCreateClick = () => {
+        router.push('/invoicing/payment/create');
     };
 
-    // Transform data for table display
-    const tableData =
-        payments?.map((payment) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (payment.activityLogs && payment.activityLogs.length > 0) {
-                const lastLog = payment.activityLogs[payment.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
+    const handleRowClick = (payment: PaymentDto) => {
+        router.push(`/invoicing/payment/${payment.paymentId}/edit`);
+    };
 
-            return {
-                ...payment,
-                status: getStatusBadge(payment.status || StatusEnum.ACTIVE),
-                paymentAmount: payment.paymentAmount ? `₱${payment.paymentAmount.toFixed(2)}` : '₱0.00',
-                latestActivity,
-            };
-        }) || [];
+    const handlePageSizeChange = (size: number) => {
+        setPageSize(size);
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchPayments(undefined, undefined, size);
+    };
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
-            {/* Error Message */}
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg flex justify-between items-center shadow-sm">
                     <span>{error}</span>
                     <button
+                        type="button"
                         onClick={() => setError(null)}
-                        className="bg-transparent border-none text-red-600 cursor-pointer text-lg font-bold hover:text-red-800"
+                        className="text-red-600 hover:text-red-800 font-bold"
                     >
                         ×
                     </button>
                 </div>
             )}
 
-            {/* Breadcrumbs */}
             <div>
-                <nav className="flex items-center gap-2">
-                    <a
-                        href="/dashboard"
-                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
-                    >
+                <nav className="flex items-center gap-2 text-sm text-gray-500">
+                    <a href="/dashboard" className="text-blue-600 hover:text-blue-700">
                         Home
                     </a>
-                    <span className="text-gray-400">/</span>
-                    <a
-                        href="/invoicing"
-                        className="text-blue-500 no-underline text-sm hover:text-blue-600 transition-colors duration-200"
-                    >
+                    <span>/</span>
+                    <a href="/invoicing" className="text-blue-600 hover:text-blue-700">
                         Invoicing
                     </a>
-                    <span className="text-gray-400">/</span>
-                    <span className="text-gray-800 text-sm font-medium">Payment</span>
+                    <span>/</span>
+                    <span className="text-gray-800 font-medium">Payment</span>
                 </nav>
             </div>
 
-            {/* Header Bar */}
             <PaymentHeader
                 searchQuery={searchQuery}
-                onSearchChange={(value: string) => {
+                statusFilter={statusFilter}
+                onSearchChange={(value) => {
                     setSearchQuery(value);
-                    // Reset pagination when search query changes
-                    setCurrentCursor(undefined);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
+                onStatusFilterChange={(value) => {
+                    setStatusFilter(value);
+                }}
                 onRefresh={() => {
                     setSearchQuery('');
-                    setCurrentCursor(undefined);
+                    setStatusFilter('ALL');
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                     fetchPayments();
@@ -277,9 +225,9 @@ export default function PaymentPage() {
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 canCreate={isAdminUser}
+                isAdminUser={isAdminUser}
             />
 
-            {/* Table */}
             <PaymentTable
                 isLoading={isLoading}
                 tableData={tableData}

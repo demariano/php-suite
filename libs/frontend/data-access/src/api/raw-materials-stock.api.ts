@@ -84,8 +84,8 @@ class RawMaterialsStockApi extends AxiosConfig {
         status: string,
         direction?: string,
         cursorPointer?: string,
-        userRole?: string,
-        name?: string
+        name?: string,
+        userRole?: string
     ): Promise<RawMaterialsStocksResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
@@ -100,12 +100,12 @@ class RawMaterialsStockApi extends AxiosConfig {
             params.append('cursorPointer', cursorPointer);
         }
 
-        if (userRole) {
-            params.append('userRole', userRole);
-        }
-
         if (name) {
             params.append('name', name);
+        }
+
+        if (userRole) {
+            params.append('userRole', userRole);
         }
 
         return await this.axiosInstance.get(`/raw-materials-stock/by-status?${params.toString()}`);

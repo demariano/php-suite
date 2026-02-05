@@ -13,6 +13,8 @@ interface CustomerClassificationFormProps {
     onReactivate?: () => void;
     onCancel: () => void;
     isAdminUser?: boolean;
+    onApprove?: () => void;
+    onDeny?: () => void;
 }
 
 export default function CustomerClassificationForm({
@@ -24,6 +26,8 @@ export default function CustomerClassificationForm({
     onReactivate,
     onCancel,
     isAdminUser = false,
+    onApprove,
+    onDeny,
 }: CustomerClassificationFormProps) {
     const [userHasMadeSelections, setUserHasMadeSelections] = useState(false);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -248,6 +252,48 @@ export default function CustomerClassificationForm({
                             {isCreateMode ? 'Create Classification' : 'Save Changes'}
                         </button>
                     )}
+
+                    {/* Approval Buttons - shown when admin user and approval/deletion state (NOT in create mode) */}
+                    {!isCreateMode &&
+                        isAdminUser &&
+                        selectedCustomerClassification &&
+                        [StatusEnum.FOR_APPROVAL, StatusEnum.FOR_DEACTIVATION, StatusEnum.NEW_RECORD].includes(
+                            selectedCustomerClassification.status as StatusEnum
+                        ) && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={onDeny}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                    Deny
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={onApprove}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                        />
+                                    </svg>
+                                    Approve
+                                </button>
+                            </>
+                        )}
+
                     <button
                         type="button"
                         onClick={onCancel}

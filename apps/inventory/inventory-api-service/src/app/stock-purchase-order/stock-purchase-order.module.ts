@@ -17,6 +17,7 @@ import { DenyStockPurchaseOrderHandler } from './command/deny-record/deny.handle
 import { IncomingPurchaseOrderHandler } from './command/incoming-purchase-order/incoming-purchase-order.handler';
 import { UpdateStockPurchaseOrderHandler } from './command/update/update.handler';
 import { GetStockPurchaseOrderByIdHandler } from './queries/get.by.id/get.stock.purchase-order.by.id.handler';
+import { GetStockPurchaseOrderRecordsByApprovalStatusPaginationHandler } from './queries/get.records.by.approval.status.pagination/get.records.by.approval.status.pagination.handler';
 import { GetStockPurchaseOrderRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
 import { GetStockPurchaseOrderRecordsBySupplierPaginationHandler } from './queries/get.records.by.supplier.pagination/get.records.by.supplier.pagination.handler';
 import { GetStockPurchaseOrderRecordsPaginationHandler } from './queries/get.records.pagination/get.records.pagination.handler';
@@ -32,6 +33,7 @@ const handlers = [
     UpdateStockPurchaseOrderHandler,
     GetStockPurchaseOrderByIdHandler,
     GetStockPurchaseOrderRecordsPaginationHandler,
+    GetStockPurchaseOrderRecordsByApprovalStatusPaginationHandler,
     GetStockPurchaseOrderRecordsByStatusPaginationHandler,
     GetStockPurchaseOrderRecordsBySupplierPaginationHandler,
 ];

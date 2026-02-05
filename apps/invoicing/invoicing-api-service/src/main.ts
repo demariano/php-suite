@@ -43,7 +43,7 @@ async function bootstrapServer() {
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('swagger', app, document, { useGlobalPrefix: true });
 
-    const port = process.env.PORT || 4047;
+    const port = process.env.PORT || 4078;
 
     await app.listen(port);
     Logger.log(`🚀 INVOICING-API-SERVICE is running on: http://localhost:${port}/api`);

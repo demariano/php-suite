@@ -406,21 +406,32 @@ export class PaymentController {
         description: 'Filter by status',
         enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'],
     })
+    @ApiQuery({
+        name: 'receiptNo',
+        type: String,
+        required: false,
+        description: 'Optional filter by receipt number (partial match)',
+        example: 'RCP-2024',
+    })
     @ApiResponse({ status: 200, description: 'Payments retrieved successfully' })
     @ApiResponse({ status: 400, description: 'Bad request - Invalid pagination parameters' })
     getRecordsPaginationByStatus(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
         @Query('cursorPointer') cursorPointer: string,
-        @Query('status') status: string
+        @Query('status') status: string,
+        @Query('receiptNo') receiptNo?: string
     ) {
-        return this.queryBus.execute(new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer));
+        return this.queryBus.execute(
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, receiptNo)
+        );
     }
 
     @Get('name/:receiptNo')
     @ApiOperation({
         summary: 'Get payments by receipt number',
-        description: 'Retrieves payments that contain the specified receipt number in their receipt number with pagination support.',
+        description:
+            'Retrieves payments that contain the specified receipt number in their receipt number with pagination support.',
     })
     @ApiParam({
         name: 'receiptNo',

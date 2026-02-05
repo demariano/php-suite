@@ -23,7 +23,8 @@ export class GetStockPurchaseOrderRecordsPaginationHandler
         const records = await this.stockPurchaseOrderDatabaseService.findRecordsByPagination(
             query.limit,
             query.direction,
-            query.cursorPointer
+            query.cursorPointer,
+            query.docNo
         );
         return new ResponseDto<PageDto<StockPurchaseOrderDto>>(records, HTTP_STATUS_OK);
     }

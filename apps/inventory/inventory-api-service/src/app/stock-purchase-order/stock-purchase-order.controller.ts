@@ -12,6 +12,7 @@ import { DenyStockPurchaseOrderDto } from './command/deny-record/deny.dto';
 import { IncomingPurchaseOrderCommand } from './command/incoming-purchase-order/incoming-purchase-order.command';
 import { UpdateStockPurchaseOrderCommand } from './command/update/update.command';
 import { GetStockPurchaseOrderByIdQuery } from './queries/get.by.id/get.stock.purchase-order.by.id.query';
+import { GetStockPurchaseOrderRecordsByApprovalStatusPaginationQuery } from './queries/get.records.by.approval.status.pagination/get.records.by.approval.status.pagination.query';
 import { GetStockPurchaseOrderRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
 import { GetStockPurchaseOrderRecordsBySupplierPaginationQuery } from './queries/get.records.by.supplier.pagination/get.records.by.supplier.pagination.query';
 import { GetStockPurchaseOrderRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
@@ -174,6 +175,31 @@ export class StockPurchaseOrderController {
         return this.commandBus.execute(new DeleteStockPurchaseOrderCommand(id, dto, user));
     }
 
+    @Get('by-approval-status')
+    @ApiOperation({ summary: 'List stock purchase orders by approval status with pagination' })
+    @ApiQuery({ name: 'status', required: true })
+    @ApiQuery({ name: 'limit', required: true })
+    @ApiQuery({ name: 'direction', required: false })
+    @ApiQuery({ name: 'cursorPointer', required: false })
+    @ApiQuery({ name: 'docNo', required: false })
+    findByApprovalStatus(
+        @Query('limit') limit: number,
+        @Query('status') status: string,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('docNo') docNo: string
+    ) {
+        return this.queryBus.execute(
+            new GetStockPurchaseOrderRecordsByApprovalStatusPaginationQuery(
+                limit,
+                status,
+                direction,
+                cursorPointer,
+                docNo
+            )
+        );
+    }
+
     @Get('by-status')
     @ApiOperation({ summary: 'List stock purchase orders by PO status with pagination' })
     @ApiQuery({ name: 'poStatus', required: true })
@@ -220,11 +246,15 @@ export class StockPurchaseOrderController {
     @ApiQuery({ name: 'limit', required: true })
     @ApiQuery({ name: 'direction', required: false })
     @ApiQuery({ name: 'cursorPointer', required: false })
+    @ApiQuery({ name: 'docNo', required: false, description: 'Filter by document number (partial match)' })
     findPage(
         @Query('limit') limit: number,
         @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string
+        @Query('cursorPointer') cursorPointer: string,
+        @Query('docNo') docNo: string
     ) {
-        return this.queryBus.execute(new GetStockPurchaseOrderRecordsPaginationQuery(limit, direction, cursorPointer));
+        return this.queryBus.execute(
+            new GetStockPurchaseOrderRecordsPaginationQuery(limit, direction, cursorPointer, docNo)
+        );
     }
 }

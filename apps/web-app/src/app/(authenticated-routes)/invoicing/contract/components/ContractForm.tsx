@@ -39,7 +39,8 @@ interface ContractFormProps {
     onDelete: () => void;
     onCancel: () => void;
     isAdminUser?: boolean;
-    activeTab?: 'details' | 'approval';
+    onApprove?: () => void;
+    onDeny?: () => void;
 }
 
 export default function ContractForm({
@@ -50,7 +51,8 @@ export default function ContractForm({
     onDelete,
     onCancel,
     isAdminUser = false,
-    activeTab = 'details',
+    onApprove,
+    onDeny,
 }: ContractFormProps) {
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
@@ -111,14 +113,8 @@ export default function ContractForm({
     // Set initial values when editing (only when user hasn't made selections)
     useEffect(() => {
         if (!isCreateMode && selectedContract && !userHasMadeSelections) {
-            // Use forApprovalVersion data when in approval tab, otherwise use regular contract data
-            const contractData =
-                activeTab === 'approval' && selectedContract.forApprovalVersion
-                    ? ({
-                          ...selectedContract,
-                          ...selectedContract.forApprovalVersion,
-                      } as ContractDto)
-                    : selectedContract;
+            // Always use the base contract data (forApprovalVersion is shown inline via diff highlighting)
+            const contractData = selectedContract;
 
             if (contractData.customerId && contractData.customerName) {
                 setSelectedCustomer({
@@ -161,7 +157,7 @@ export default function ContractForm({
                 rebateClaimedStatus: contractData.rebateClaimedStatus || '',
             });
         }
-    }, [isCreateMode, selectedContract, userHasMadeSelections, activeTab]);
+    }, [isCreateMode, selectedContract, userHasMadeSelections]);
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -1192,71 +1188,114 @@ export default function ContractForm({
                 </div>
 
                 <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                    {/* Hide all buttons on approval tab - let modal handle buttons */}
-                    {activeTab === 'approval' ? (
-                        <div className="hidden sm:block" />
+                    {/* Left side buttons */}
+                    {!isCreateMode && selectedContract?.status === StatusEnum.ACTIVE ? (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDelete();
+                            }}
+                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"
+                        >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                />
+                            </svg>
+                            Delete
+                        </button>
+                    ) : !isCreateMode &&
+                      isAdminUser &&
+                      (selectedContract?.status === StatusEnum.FOR_APPROVAL ||
+                          selectedContract?.status === StatusEnum.NEW_RECORD ||
+                          selectedContract?.status === StatusEnum.FOR_DELETION) ? (
+                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onDeny?.();
+                                }}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                {selectedContract?.status === StatusEnum.FOR_DELETION
+                                    ? 'Deny Deletion'
+                                    : 'Deny Changes'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    onApprove?.();
+                                }}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                                {selectedContract?.status === StatusEnum.FOR_DELETION
+                                    ? 'Approve Deletion'
+                                    : 'Approve Changes'}
+                            </button>
+                        </div>
                     ) : (
-                        <>
-                            {!isCreateMode && selectedContract?.status === StatusEnum.ACTIVE ? (
-                                <button
-                                    type="button"
-                                    onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        onDelete();
-                                    }}
-                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                        />
-                                    </svg>
-                                    Delete
-                                </button>
-                            ) : (
-                                <div className="hidden sm:block" />
-                            )}
-
-                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                                {(isCreateMode || selectedContract?.status === StatusEnum.ACTIVE) && (
-                                    <button
-                                        type="submit"
-                                        disabled={isFieldDisabled()}
-                                        className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                                    >
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M5 13l4 4L19 7"
-                                            />
-                                        </svg>
-                                        {isCreateMode ? 'Create Contract' : 'Save Changes'}
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={onCancel}
-                                    className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                    Cancel
-                                </button>
-                            </div>
-                        </>
+                        <div className="hidden sm:block" />
                     )}
+
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                        {(isCreateMode || selectedContract?.status === StatusEnum.ACTIVE) && (
+                            <button
+                                type="submit"
+                                disabled={isFieldDisabled()}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                                {isCreateMode ? 'Create Contract' : 'Save Changes'}
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={onCancel}
+                            className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                            Cancel
+                        </button>
+                    </div>
                 </div>
             </form>
 

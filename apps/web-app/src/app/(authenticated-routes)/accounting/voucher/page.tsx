@@ -1,14 +1,18 @@
 'use client';
 
 import { StatusBadge } from '@components-web';
-import { StatusEnum, VoucherApi, VoucherDto, useEnv, useLocalStore } from '@data-access/index';
+import { extractErrorMessage, StatusEnum, useEnv, useLocalStore, VoucherApi, VoucherDto } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { VoucherHeader, VoucherTable } from './components';
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function VoucherPage() {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [vouchers, setVouchers] = useState<VoucherDto[]>([]);
     const [error, setError] = useState<string | null>(null);
@@ -16,7 +20,7 @@ export default function VoucherPage() {
     const { authedUser } = useLocalStore();
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
     // Check if user is admin or super admin
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
@@ -37,36 +41,42 @@ export default function VoucherPage() {
 
             // Use custom page size if provided, otherwise use state page size
             const currentPageSize = customPageSize ?? pageSize;
+            const trimmedQuery = searchQuery.trim();
 
-            // If search term exists, use search API, otherwise use regular pagination API
-            if (searchTerm && searchTerm.trim() !== '') {
+            // 4-branch API logic: search+status → search only → status only → show all
+            if (trimmedQuery !== '' && statusFilter !== 'ALL') {
+                // Branch 1: Search with status filter (use status API with voucherNo param)
+                response = await VoucherApi.getVouchersPaginationByStatus(
+                    statusFilter,
+                    currentPageSize,
+                    direction,
+                    serializedCursor,
+                    trimmedQuery
+                );
+            } else if (trimmedQuery !== '') {
+                // Branch 2: Search only (no status filter)
                 response = await VoucherApi.getVouchersContainingVoucherNo(
                     currentPageSize,
-                    searchTerm.trim(),
+                    trimmedQuery,
+                    direction,
+                    serializedCursor
+                );
+            } else if (statusFilter !== 'ALL') {
+                // Branch 3: Filter by status only
+                response = await VoucherApi.getVouchersPaginationByStatus(
+                    statusFilter,
+                    currentPageSize,
                     direction,
                     serializedCursor
                 );
             } else {
-                // Use backend status filtering via GSI2 for efficiency
-                if (statusFilter !== 'ALL') {
-                    response = await VoucherApi.getVouchersPaginationByStatus(
-                        currentPageSize,
-                        statusFilter,
-                        direction,
-                        serializedCursor
-                    );
-                } else {
-                    response = await VoucherApi.getVouchersPagination(currentPageSize, direction, serializedCursor);
-                }
+                // Branch 4: Show all
+                response = await VoucherApi.getVouchersPagination(currentPageSize, direction, serializedCursor);
             }
 
             if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of vouchers
                 if (Array.isArray(response.data)) {
-                    // No client-side filtering needed - backend already filtered by status
                     setVouchers(response.data);
-
-                    // Set pagination cursors from response
                     setNextCursor(response.nextCursorPointer || undefined);
                     setPrevCursor(response.prevCursorPointer || undefined);
                 } else {
@@ -79,14 +89,14 @@ export default function VoucherPage() {
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
             }
-        } catch {
-            setError('Failed to load vouchers. Please try again.');
+        } catch (err) {
+            setError(extractErrorMessage(err, 'Failed to load vouchers. Please try again.'));
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Fetch on initial load and when these dependencies change
+    // Fetch on initial load
     useEffect(() => {
         // Prevent duplicate calls in React Strict Mode
         if (hasFetchedRef.current) return;
@@ -95,20 +105,20 @@ export default function VoucherPage() {
         fetchVouchers();
     }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
 
-    // Debounce search term changes (but not on initial mount with empty search)
+    // Debounce search term changes
     useEffect(() => {
-        // Only debounce if there's actually a search term
-        if (searchTerm === '') {
-            return; // Skip - initial load is handled by the other useEffect
+        if (searchQuery === '') {
+            return;
         }
 
         const delayDebounceFn = setTimeout(() => {
             fetchVouchers();
-        }, 500); // 500ms delay
+        }, 500);
 
         return () => clearTimeout(delayDebounceFn);
-    }, [searchTerm]);
+    }, [searchQuery]);
 
+    // Handle status filter changes
     useEffect(() => {
         setNextCursor(undefined);
         setPrevCursor(undefined);
@@ -124,56 +134,63 @@ export default function VoucherPage() {
         { key: 'latestActivity', label: 'LATEST ACTIVITY' },
     ];
 
-    const handleRowClick = async (voucher: VoucherDto) => {
-        // Navigate to edit voucher page
-        window.location.href = `/accounting/voucher/${voucher.voucherId}/edit`;
+    const handleRowClick = (voucher: VoucherDto) => {
+        router.push(`/accounting/voucher/${voucher.voucherId}/edit`);
     };
 
     const handleCreateClick = () => {
-        // Navigate to create voucher page
-        window.location.href = '/accounting/voucher/create';
+        router.push('/accounting/voucher/create');
     };
 
-    // Handle page size change - reset pagination and fetch fresh data
+    const handleRefresh = () => {
+        setSearchQuery('');
+        setStatusFilter('ALL');
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchVouchers();
+    };
+
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
         fetchVouchers(undefined, undefined, newPageSize);
     };
 
-    // Transform data for table display
-    const tableData =
-        vouchers?.map((voucher) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (voucher.activityLogs && voucher.activityLogs.length > 0) {
-                const lastLog = voucher.activityLogs[voucher.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
+    // Transform data for table display with useMemo
+    const tableData = useMemo(
+        () =>
+            vouchers?.map((voucher) => {
+                let latestActivity = null;
+                if (voucher.activityLogs && voucher.activityLogs.length > 0) {
+                    const lastLog = voucher.activityLogs[voucher.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
 
-            return {
-                ...voucher,
-                status: <StatusBadge status={voucher.status || StatusEnum.ACTIVE} />,
-                latestActivity,
-            };
-        }) || [];
+                return {
+                    ...voucher,
+                    status: <StatusBadge status={voucher.status || StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }) || [],
+        [vouchers]
+    );
 
     return (
-        <div className="p-4 sm:p-6 space-y-6">
+        <div className="space-y-6 p-4 sm:p-6">
             {/* Error Message */}
             {error && (
-                <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-xl flex justify-between items-center shadow-sm">
+                <div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-600 shadow-sm">
                     <span className="text-sm font-medium">{error}</span>
                     <button
+                        type="button"
                         onClick={() => setError(null)}
-                        className="text-red-700 hover:text-red-900 text-xl font-bold transition-colors duration-200"
+                        className="text-lg font-bold leading-none text-red-600 transition-colors duration-200 hover:text-red-800"
                         aria-label="Close error message"
                     >
                         ×
@@ -181,43 +198,17 @@ export default function VoucherPage() {
                 </div>
             )}
 
-            {/* Breadcrumbs */}
-            <nav className="flex items-center gap-2 text-sm">
-                <a
-                    href="/dashboard"
-                    className="text-blue-600 hover:text-blue-700 transition-colors duration-200 font-medium"
-                >
-                    Home
-                </a>
-                <span className="text-gray-400">/</span>
-                <a
-                    href="/accounting"
-                    className="text-blue-600 hover:text-blue-700 transition-colors duration-200 font-medium"
-                >
-                    Accounting
-                </a>
-                <span className="text-gray-400">/</span>
-                <span className="text-gray-800 font-semibold">Voucher</span>
-            </nav>
-
             {/* Header */}
             <VoucherHeader
-                searchTerm={searchTerm}
+                searchQuery={searchQuery}
                 onSearchChange={(value: string) => {
-                    setSearchTerm(value);
-                    // Reset pagination when search term changes
+                    setSearchQuery(value);
                     setNextCursor(undefined);
                     setPrevCursor(undefined);
                 }}
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
-                onRefresh={() => {
-                    setSearchTerm('');
-                    setStatusFilter('ALL');
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                    fetchVouchers();
-                }}
+                onRefresh={handleRefresh}
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 isAdminUser={isAdminUser}
@@ -228,12 +219,12 @@ export default function VoucherPage() {
                 isLoading={isLoading}
                 tableData={tableData}
                 headers={headers}
-                searchTerm={searchTerm}
+                searchQuery={searchQuery}
                 onRowClick={handleRowClick}
                 pageSize={pageSize}
                 onPageSizeChange={handlePageSizeChange}
-                prevCursor={prevCursor}
-                nextCursor={nextCursor}
+                hasPrevious={!!prevCursor}
+                hasNext={!!nextCursor}
                 onPrevious={() => fetchVouchers('prev', prevCursor)}
                 onNext={() => fetchVouchers('next', nextCursor)}
             />

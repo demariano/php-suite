@@ -185,12 +185,6 @@ export const getSidebarNavigation = (onNavigate?: (route: string) => void): Arra
               onClick: (route: string) => onNavigate?.(route)
             },
             { 
-              label: "Stock Delivery", 
-              route: "/inventory/stock-delivery", 
-              icon: File,
-              onClick: (route: string) => onNavigate?.(route)
-            },
-            { 
               label: "Raw Materials Purchase Order", 
               route: "/inventory/raw-materials-purchase-order", 
               icon: File,

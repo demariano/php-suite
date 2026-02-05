@@ -406,9 +406,17 @@ export class ContractController {
     @ApiQuery({
         name: 'customerId',
         type: String,
-        required: true,
-        description: 'Filter by customer ID',
+        required: false,
+        description:
+            'Filter by customer ID (optional - if not provided, returns all contracts with the specified status)',
         example: 'customer-123',
+    })
+    @ApiQuery({
+        name: 'contractNo',
+        type: String,
+        required: false,
+        description: 'Optional filter by contract number (partial match)',
+        example: 'CT-2024',
     })
     @ApiResponse({ status: 200, description: 'Contracts retrieved successfully' })
     @ApiResponse({ status: 400, description: 'Bad request - Invalid pagination parameters' })
@@ -417,10 +425,11 @@ export class ContractController {
         @Query('direction') direction: string,
         @Query('cursorPointer') cursorPointer: string,
         @Query('status') status: string,
-        @Query('customerId') customerId: string
+        @Query('customerId') customerId?: string,
+        @Query('contractNo') contractNo?: string
     ) {
         return this.queryBus.execute(
-            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, customerId)
+            new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, customerId, contractNo)
         );
     }
 

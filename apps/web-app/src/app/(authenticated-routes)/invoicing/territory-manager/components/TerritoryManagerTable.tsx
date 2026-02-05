@@ -1,8 +1,7 @@
 'use client';
 
-import { Pagination } from '@components-web';
-import { StatusEnum, TerritoryManagerDto } from '@data-access/index';
-import { isValidElement, type ReactNode } from 'react';
+import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } from '@components-web';
+import { TerritoryManagerDto } from '@data-access/index';
 
 interface TerritoryManagerTableProps {
     isLoading: boolean;
@@ -31,44 +30,12 @@ export default function TerritoryManagerTable({
     onPrevious,
     onNext,
 }: TerritoryManagerTableProps) {
-    // Helper function to get status text when we don't receive the pre-rendered badge
-    const getStatusText = (status: StatusEnum | string): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return typeof status === 'string' ? status : '';
-        }
-    };
-
-    const renderStatus = (value: ReactNode | StatusEnum | string | undefined) => {
-        if (value === null || value === undefined) {
-            return '-';
-        }
-
-        if (isValidElement(value) || typeof value === 'object') {
-            return value;
-        }
-
-        if (typeof value === 'string') {
-            return value;
-        }
-
-        return getStatusText(value);
-    };
-
     return (
         <>
             {/* Desktop Table */}
             <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
                 {isLoading ? (
-                    <div className="p-10 text-center text-base text-gray-500">Loading territory managers...</div>
+                    <TableSkeleton columns={headers.length} rows={5} />
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
@@ -95,7 +62,7 @@ export default function TerritoryManagerTable({
                                             <td className="px-6 py-5 text-sm font-medium text-gray-900">
                                                 {territoryManager.territoryManagerName || '-'}
                                             </td>
-                                            <td className="px-6 py-5">{renderStatus(territoryManager.status)}</td>
+                                            <td className="px-6 py-5">{territoryManager.status}</td>
                                             <td className="px-6 py-5 text-sm">
                                                 {territoryManager.latestActivity ? (
                                                     <span
@@ -117,10 +84,11 @@ export default function TerritoryManagerTable({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                                            {searchQuery
-                                                ? `No territory managers found matching "${searchQuery}"`
-                                                : 'No territory managers found'}
+                                        <td colSpan={headers.length}>
+                                            <EmptyTableState
+                                                searchQuery={searchQuery}
+                                                entityName="territory managers"
+                                            />
                                         </td>
                                     </tr>
                                 )}
@@ -147,7 +115,7 @@ export default function TerritoryManagerTable({
                                             {territoryManager.territoryManagerName || '-'}
                                         </h3>
                                     </div>
-                                    <div>{renderStatus(territoryManager.status)}</div>
+                                    <div>{territoryManager.status}</div>
                                 </div>
                                 {territoryManager.latestActivity && (
                                     <div className="mt-2">
@@ -166,11 +134,13 @@ export default function TerritoryManagerTable({
                             </button>
                         ))
                     ) : (
-                        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-                            {searchQuery
-                                ? `No territory managers found matching "${searchQuery}"`
-                                : 'No territory managers found'}
-                        </div>
+                        <EmptyTableState
+                            message={
+                                searchQuery
+                                    ? `No territory managers found matching "${searchQuery}"`
+                                    : 'No territory managers found'
+                            }
+                        />
                     )}
                 </div>
             )}
@@ -182,14 +152,15 @@ export default function TerritoryManagerTable({
             )}
 
             {/* Pagination */}
-            <Pagination
-                pageSize={pageSize}
-                onPageSizeChange={onPageSizeChange}
-                onPrevious={onPrevious}
-                onNext={onNext}
-                hasPrevious={!!prevCursor}
-                hasNext={!!nextCursor}
-            />
+            <div className="mt-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
+                <PaginationButtons
+                    onPrevious={onPrevious}
+                    onNext={onNext}
+                    hasPrevious={!!prevCursor}
+                    hasNext={!!nextCursor}
+                />
+            </div>
         </>
     );
 }

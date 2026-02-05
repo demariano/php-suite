@@ -65,7 +65,8 @@ export class ProductUnitRawMaterialController {
     @Get()
     @ApiOperation({
         summary: 'Get product unit raw materials with pagination',
-        description: 'Retrieves product unit raw materials with pagination support.',
+        description:
+            'Retrieves product unit raw materials with pagination support. Supports optional status and productName filtering.',
     })
     @ApiQuery({
         name: 'limit',
@@ -88,6 +89,21 @@ export class ProductUnitRawMaterialController {
         description: 'Cursor for pagination',
     })
     @ApiQuery({
+        name: 'status',
+        type: String,
+        required: false,
+        description: 'Filter by status (e.g., ACTIVE, FOR_APPROVAL)',
+        enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD', 'DRAFT'],
+        example: 'ACTIVE',
+    })
+    @ApiQuery({
+        name: 'productName',
+        type: String,
+        required: false,
+        description: 'Filter by product name (partial match)',
+        example: 'Widget',
+    })
+    @ApiQuery({
         name: 'userRole',
         type: String,
         required: false,
@@ -103,9 +119,17 @@ export class ProductUnitRawMaterialController {
         @Query('limit') limit: number,
         @Query('direction') direction: string,
         @Query('cursorPointer') cursorPointer: string,
+        @Query('status') status: string,
+        @Query('productName') productName: string,
         @Query('userRole') userRole: string
     ) {
-        const query = new GetProductUnitRawMaterialRecordsPaginationQuery(limit, direction, cursorPointer);
+        const query = new GetProductUnitRawMaterialRecordsPaginationQuery(
+            limit,
+            direction,
+            cursorPointer,
+            status,
+            productName
+        );
         return this.queryBus.execute(query);
     }
 

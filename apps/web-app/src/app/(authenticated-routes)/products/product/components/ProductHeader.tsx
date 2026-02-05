@@ -37,12 +37,7 @@ export default function ProductHeader({
                             leftIcon={Search}
                         />
                     </div>
-                    <StatusFilterDropdown
-                        value={statusFilter}
-                        onChange={onStatusFilterChange}
-                        showAdminOptions={true}
-                        isAdminUser={isAdminUser}
-                    />
+                    <StatusFilterDropdown value={statusFilter} onChange={onStatusFilterChange} />
                     <RefreshButton onClick={onRefresh} isLoading={isLoading} />
                 </div>
                 {canCreate && (

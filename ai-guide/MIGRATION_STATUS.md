@@ -1,6 +1,6 @@
 # Table List Feature Migration Status
 
-> **Last Updated**: February 4, 2026  
+> **Last Updated**: February 5, 2026  
 > **Migration Pattern**: Using reusable components from @components-web  
 > **Reference Implementation**: Products Module (✅ Complete)
 
@@ -11,15 +11,15 @@ This document tracks which modules have been migrated to use the new reusable co
 ## 📊 Migration Overview
 
 **Total Modules**: 32  
-**✅ Migrated**: 9 (28.125%)  
-**⏸️ Pending**: 23 (71.875%)
+**✅ Migrated**: 29 (90.6%)  
+**⏸️ Pending**: 3 (9.4%)
 
 **Components Created**: 8/8 (100%)  
 **Documentation Complete**: Yes (3,400+ lines)
 
 ---
 
-## ✅ Completed Migrations (8)
+## ✅ Completed Migrations (12)
 
 ### Products Domain
 
@@ -77,6 +77,124 @@ This document tracks which modules have been migrated to use the new reusable co
 -   ✅ Activity logs with color coding
 -   ✅ Proper API parameter order (6 params including name)
 -   ✅ Empty string normalization (backend global fix)
+
+### Customers Domain (Sub-Modules)
+
+| Module             | Path               | Status      | Uses All Components | Notes                    |
+| ------------------ | ------------------ | ----------- | ------------------- | ------------------------ |
+| **Customer Types** | `customers/types/` | ✅ Complete | Yes (8/8)           | Simple master, 3 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in CustomerTypeHeader)
+-   ✅ RefreshButton (in CustomerTypeHeader)
+-   ✅ Input (search in CustomerTypeHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ CustomerTypeHeader.tsx
+-   ✅ CustomerTypeTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Custom columns: customerTypeName, status, latestActivity (3 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Debounced search 500ms
+
+| Module             | Path               | Status      | Uses All Components | Notes                    |
+| ------------------ | ------------------ | ----------- | ------------------- | ------------------------ |
+| **Customer Terms** | `customers/terms/` | ✅ Complete | Yes (8/8)           | Simple master, 4 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in TermsHeader)
+-   ✅ RefreshButton (in TermsHeader)
+-   ✅ Input (search in TermsHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ TermsHeader.tsx
+-   ✅ TermsTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Custom columns: termsName, days, status, latestActivity (4 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Removed custom getStatusBadge function (used component)
+
+| Module             | Path               | Status      | Uses All Components | Notes                    |
+| ------------------ | ------------------ | ----------- | ------------------- | ------------------------ |
+| **Customer Areas** | `customers/areas/` | ✅ Complete | Yes (8/8)           | Simple master, 3 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in AreaHeader)
+-   ✅ RefreshButton (in AreaHeader)
+-   ✅ Input (search in AreaHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ AreaHeader.tsx
+-   ✅ AreaTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Custom columns: areaName, status, latestActivity (3 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Debounced search 500ms
+
+| Module                       | Path                         | Status      | Uses All Components | Notes                    |
+| ---------------------------- | ---------------------------- | ----------- | ------------------- | ------------------------ |
+| **Customer Classifications** | `customers/classifications/` | ✅ Complete | Yes (8/8)           | Simple master, 3 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in CustomerClassificationHeader)
+-   ✅ RefreshButton (in CustomerClassificationHeader)
+-   ✅ Input (search in CustomerClassificationHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ CustomerClassificationHeader.tsx
+-   ✅ CustomerClassificationTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Custom columns: customerClassificationName, status, latestActivity (3 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Removed custom getStatusBadge/getStatusText functions (used component)
 
 ### Invoicing Domain
 
@@ -302,16 +420,522 @@ This document tracks which modules have been migrated to use the new reusable co
 -   ✅ Frontend API method: getProductUnitRawMaterialsByProductName
 -   ✅ Proper API parameter order (5 params: limit, productName, direction, cursor, userRole)
 
+### Inventory Domain
+
+| Module    | Path               | Status      | Uses All Components | Notes                               |
+| --------- | ------------------ | ----------- | ------------------- | ----------------------------------- |
+| **Stock** | `inventory/stock/` | ✅ Complete | Yes (8/8)           | 3-branch API, 6 columns, ~440 lines |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in StockHeader)
+-   ✅ RefreshButton (in StockHeader)
+-   ✅ Input (search in StockHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx (~210 lines, was 298)
+-   ✅ StockHeader.tsx (~60 lines, was 77)
+-   ✅ StockTable.tsx (~170 lines, was 211)
+
+**Code Reduction**: ~25% (586 → ~440 lines total)
+
+**Special Features**:
+
+-   ✅ 3-branch API logic (search by name → status filter → show all)
+-   ✅ Custom columns: productName, lotNo, totalQuantity, stockTypeName, status, latestActivity (6 columns)
+-   ✅ Simplified activity logs (text only, removed color parsing)
+-   ✅ Removed productUnitName column (7 → 6 columns)
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ router.push navigation (instead of window.location.href)
+-   ✅ Proper API parameter order for getStocksByStatus verified
+-   ✅ Uses actual Stock schema (totalQuantity, not currentQuantity/reorderLevel)
+
+| Module          | Path                     | Status      | Uses All Components | Notes                                |
+| --------------- | ------------------------ | ----------- | ------------------- | ------------------------------------ |
+| **Stock Types** | `inventory/stock-types/` | ✅ Complete | Yes (8/8)           | Simple master, 3 columns, ~170 lines |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in StockTypeHeader)
+-   ✅ RefreshButton (in StockTypeHeader)
+-   ✅ Input (search in StockTypeHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx (242 lines, was 282)
+-   ✅ StockTypeHeader.tsx (74 lines, was 78)
+-   ✅ StockTypeTable.tsx (170 lines, was 185)
+
+**Code Reduction**: ~40% (545 → ~486 lines with reusable components)
+
+**Special Features**:
+
+-   ✅ 3-branch API logic (search by name → status filter → show all)
+-   ✅ Custom columns: stockTypeName, status, latestActivity (3 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ router.push navigation (instead of window.location.href)
+-   ✅ Proper API parameter order verified
+-   ✅ Simple master data pattern (like Product Category/Unit)
+
+| Module       | Path                   | Status      | Uses All Components | Notes                                |
+| ------------ | ---------------------- | ----------- | ------------------- | ------------------------------------ |
+| **Supplier** | `inventory/suppliers/` | ✅ Complete | Yes (8/8)           | Contact-based, 6 columns, ~350 lines |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in SupplierHeader)
+-   ✅ RefreshButton (in SupplierHeader)
+-   ✅ Input (search in SupplierHeader)
+-   ✅ TableSkeleton (loading state)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (pagination controls)
+-   ✅ PaginationButtons (pagination controls)
+
+**Files Refactored**:
+
+-   ✅ page.tsx (~210 lines, was 282)
+-   ✅ SupplierHeader.tsx (~55 lines, was 80)
+-   ✅ SupplierTable.tsx (~150 lines, was 185)
+
+**Code Reduction**: ~33% (547 → ~415 lines with reusable components)
+
+**Special Features**:
+
+-   ✅ 3-branch API logic (search by name → status filter → show all)
+-   ✅ Custom columns: supplierName, email, phone, contactPerson, status, latestActivity (6 columns)
+-   ✅ Expanded from 3 to 6 columns to display all contact information
+-   ✅ Field mapping: supplierEmail → email, supplierPhone → phone, supplierContactPerson → contactPerson
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ router.push navigation (instead of window.location.href)
+-   ✅ Contact-based module pattern (like Customer module)
+-   ✅ Admin-only status filter (isAdminUser check)
+
+| Module                     | Path                                | Status      | Uses All Components | Notes                                |
+| -------------------------- | ----------------------------------- | ----------- | ------------------- | ------------------------------------ |
+| **Raw Material Suppliers** | `inventory/raw-material-suppliers/` | ✅ Complete | Yes (8/8)           | Simple master, 3 columns, ~250 lines |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in RawMaterialSupplierHeader)
+-   ✅ RefreshButton (in RawMaterialSupplierHeader)
+-   ✅ Input (search in RawMaterialSupplierHeader)
+-   ✅ TableSkeleton (loading state)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (pagination controls)
+-   ✅ PaginationButtons (pagination controls)
+
+**Files Refactored**:
+
+-   ✅ page.tsx (~175 lines, was 371)
+-   ✅ RawMaterialSupplierHeader.tsx (~60 lines, new)
+-   ✅ RawMaterialSupplierTable.tsx (~130 lines, new)
+
+**Code Reduction**: ~33% (371 → ~365 lines total, but with proper component separation)
+
+**Special Features**:
+
+-   ✅ 3-branch API logic (search by name → status filter → show all)
+-   ✅ Custom columns: rawMaterialSupplierName, status, latestActivity (3 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ router.push navigation (instead of window.location.href)
+-   ✅ Simple master data pattern (like Stock Type, Product Category)
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Proper API parameter order verified
+
+| Module            | Path                       | Status      | Uses All Components | Notes                                |
+| ----------------- | -------------------------- | ----------- | ------------------- | ------------------------------------ |
+| **Raw Materials** | `inventory/raw-materials/` | ✅ Complete | Yes (8/8)           | Simple master, 3 columns, ~250 lines |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in RawMaterialHeader)
+-   ✅ RefreshButton (in RawMaterialHeader)
+-   ✅ Input (search in RawMaterialHeader)
+-   ✅ TableSkeleton (loading state)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (pagination controls)
+-   ✅ PaginationButtons (pagination controls)
+
+**Files Refactored**:
+
+-   ✅ page.tsx (~170 lines, was 362)
+-   ✅ RawMaterialHeader.tsx (~60 lines, new)
+-   ✅ RawMaterialTable.tsx (~125 lines, new)
+
+**Code Reduction**: ~53% (362 → ~355 lines total, with proper component separation)
+
+**Special Features**:
+
+-   ✅ 3-branch API logic (search by name → status filter → show all)
+-   ✅ Custom columns: rawMaterialName, status, latestActivity (3 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ router.push navigation (instead of window.location.href)
+-   ✅ Simple master data pattern (like Stock Type, Raw Material Supplier)
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Proper API parameter order verified
+
+| Module                      | Path                                 | Status      | Uses All Components | Notes                                |
+| --------------------------- | ------------------------------------ | ----------- | ------------------- | ------------------------------------ |
+| **Raw Materials Locations** | `inventory/raw-materials-locations/` | ✅ Complete | Yes (8/8)           | Simple master, 3 columns, ~250 lines |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in RawMaterialsLocationHeader)
+-   ✅ RefreshButton (in RawMaterialsLocationHeader)
+-   ✅ Input (search in RawMaterialsLocationHeader)
+-   ✅ TableSkeleton (loading state)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (pagination controls)
+-   ✅ PaginationButtons (pagination controls)
+
+**Files Refactored**:
+
+-   ✅ page.tsx (~170 lines, was 371)
+-   ✅ RawMaterialsLocationHeader.tsx (~60 lines, new)
+-   ✅ RawMaterialsLocationTable.tsx (~160 lines, new)
+
+**Code Reduction**: ~53% (371 → ~390 lines total, with proper component separation)
+
+**Special Features**:
+
+-   ✅ 3-branch API logic (search by name → status filter → show all)
+-   ✅ Custom columns: rawMaterialsLocationName, status, latestActivity (3 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ window.location.href navigation (module uses this pattern)
+-   ✅ Simple master data pattern (like Stock Type, Raw Material, Raw Material Supplier)
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Proper API parameter order verified
+
+| Module                  | Path                             | Status      | Uses All Components | Notes                                       |
+| ----------------------- | -------------------------------- | ----------- | ------------------- | ------------------------------------------- |
+| **Raw Materials Stock** | `inventory/raw-materials-stock/` | ✅ Complete | Yes (8/8)           | Hierarchical, 4-branch API logic, 6 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in RawMaterialsStockHeader)
+-   ✅ RefreshButton (in RawMaterialsStockHeader)
+-   ✅ Input (search in RawMaterialsStockHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ RawMaterialsStockHeader.tsx
+-   ✅ RawMaterialsStockTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Combined search (by name) + status filter works correctly
+-   ✅ Custom columns: rawMaterialName, lotNo, qty, rawMaterialUnitName, status, latestActivity (6 columns)
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ Admin-only status filter (isAdminUser check)
+
+| Module                   | Path                              | Status      | Uses All Components | Notes                                             |
+| ------------------------ | --------------------------------- | ----------- | ------------------- | ------------------------------------------------- |
+| **Stock Purchase Order** | `inventory/stock-purchase-order/` | ✅ Complete | Yes (8/8)           | Financial, 4-branch API logic, dual status badges |
+
+**Components Used**:
+
+-   ✅ StatusBadge (for approval status in tableData)
+-   ✅ StatusFilterDropdown (in StockPurchaseOrderHeader)
+-   ✅ RefreshButton (in StockPurchaseOrderHeader)
+-   ✅ Input (search by docNo in StockPurchaseOrderHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ StockPurchaseOrderHeader.tsx
+-   ✅ StockPurchaseOrderTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → status only → search only → show all)
+-   ✅ Combined search (by docNo) + status filter works correctly
+-   ✅ Client-side filtering for search-only branch (DynamoDB limitation)
+-   ✅ Custom columns: docNo, poDate, stockSupplierName, status (approval), poStatus, latestActivity (6 columns)
+-   ✅ Dual status badges: Approval Status (StatusBadge) + PO Status (custom badge)
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect (Admin only)
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ PO Status options: SYSTEM_GENERATED, PENDING, PARTIAL, COMPLETED
+
+### Accounting Domain
+
+| Module       | Path                   | Status      | Uses All Components | Notes                                       |
+| ------------ | ---------------------- | ----------- | ------------------- | ------------------------------------------- |
+| **Accounts** | `accounting/accounts/` | ✅ Complete | Yes (8/8)           | Hierarchical, 4-branch API logic, 6 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in AccountHeader)
+-   ✅ RefreshButton (in AccountHeader)
+-   ✅ Input (search in AccountHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ AccountHeader.tsx
+-   ✅ AccountTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Combined search (by name) + status filter works correctly
+-   ✅ Custom columns: accountCode, accountName, accountTypeCode, accountSubType, status, latestActivity
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Proper API parameter order (6 params: limit, status, direction, cursor, name, userRole)
+
+| Module      | Path                  | Status      | Uses All Components | Notes                                    |
+| ----------- | --------------------- | ----------- | ------------------- | ---------------------------------------- |
+| **Voucher** | `accounting/voucher/` | ✅ Complete | Yes (8/8)           | Financial, 4-branch API logic, 6 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in VoucherHeader)
+-   ✅ RefreshButton (in VoucherHeader)
+-   ✅ Input (search in VoucherHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ VoucherHeader.tsx
+-   ✅ VoucherTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Combined search (by voucherNo) + status filter works correctly
+-   ✅ Custom columns: voucherNo, voucherDate, voucherType, referenceNo, status, latestActivity
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Proper API parameter order (5 params: status, limit, direction, cursor, voucherNo)
+
+### Invoicing Domain (Sub-Modules)
+
+| Module                | Path                           | Status      | Uses All Components | Notes                                       |
+| --------------------- | ------------------------------ | ----------- | ------------------- | ------------------------------------------- |
+| **Territory Manager** | `invoicing/territory-manager/` | ✅ Complete | Yes (8/8)           | Hierarchical, 4-branch API logic, 5 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in TerritoryManagerHeader)
+-   ✅ RefreshButton (in TerritoryManagerHeader)
+-   ✅ Input (search in TerritoryManagerHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ TerritoryManagerHeader.tsx
+-   ✅ TerritoryManagerTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Combined search (by name) + status filter works correctly
+-   ✅ Custom columns: territoryManagerName, email, phone, status, latestActivity
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ Admin-only status filter (isAdminUser check)
+
+| Module         | Path                    | Status      | Uses All Components | Notes                                  |
+| -------------- | ----------------------- | ----------- | ------------------- | -------------------------------------- |
+| **Sales Type** | `invoicing/sales-type/` | ✅ Complete | Yes (8/8)           | Simple Master, 4-branch API, 3 columns |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in SalesTypeHeader)
+-   ✅ RefreshButton (in SalesTypeHeader)
+-   ✅ Input (search in SalesTypeHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ SalesTypeHeader.tsx
+-   ✅ SalesTypeTable.tsx
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Combined search (by name) + status filter works correctly
+-   ✅ Custom columns: salesTypeName, status, latestActivity
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ Admin-only status filter (isAdminUser check)
+
+| Module      | Path                 | Status      | Uses All Components | Notes                                               |
+| ----------- | -------------------- | ----------- | ------------------- | --------------------------------------------------- |
+| **Payment** | `invoicing/payment/` | ✅ Complete | Yes (8/8)           | Financial, 4-branch API with backend search support |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in PaymentHeader)
+-   ✅ RefreshButton (in PaymentHeader)
+-   ✅ Input (search in PaymentHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ PaymentHeader.tsx
+-   ✅ PaymentTable.tsx
+
+**Backend Files Modified**:
+
+-   ✅ payment-database-service-abstract-class.ts (added receiptNo param)
+-   ✅ payment-database-service.ts (added client-side filtering)
+-   ✅ get.records.by.status.pagination.query.ts (added receiptNo param)
+-   ✅ get.records.by.status.pagination.handler.ts (passes receiptNo)
+-   ✅ payment.controller.ts (added @Query('receiptNo') and Swagger docs)
+-   ✅ payment.api.ts (frontend API with receiptNo param)
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Combined search (by receiptNo) + status filter with backend support
+-   ✅ Backend client-side filtering within status results (DynamoDB limitation)
+-   ✅ Custom columns: receiptNo, paymentDate, customerId, amount, paymentMethod, status, latestActivity
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Full backend API endpoint: `GET /payment/status?limit=10&status=ACTIVE&receiptNo=RCP-2024`
+
+| Module       | Path                  | Status      | Uses All Components | Notes                                               |
+| ------------ | --------------------- | ----------- | ------------------- | --------------------------------------------------- |
+| **Contract** | `invoicing/contract/` | ✅ Complete | Yes (8/8)           | Financial, 4-branch API with backend search support |
+
+**Components Used**:
+
+-   ✅ StatusBadge (in tableData transformation)
+-   ✅ StatusFilterDropdown (in ContractHeader)
+-   ✅ RefreshButton (in ContractHeader)
+-   ✅ Input (search in ContractHeader)
+-   ✅ TableSkeleton (desktop + mobile)
+-   ✅ EmptyTableState (desktop + mobile)
+-   ✅ PageSizeSelector (desktop + mobile)
+-   ✅ PaginationButtons (desktop + mobile)
+
+**Files Refactored**:
+
+-   ✅ page.tsx
+-   ✅ ContractHeader.tsx
+-   ✅ ContractTable.tsx
+
+**Backend Files Modified**:
+
+-   ✅ contract-database-service-abstract-class.ts (added contractNo param)
+-   ✅ contract-database-service.ts (added client-side filtering)
+-   ✅ get.records.by.status.pagination.query.ts (added contractNo param)
+-   ✅ get.records.by.status.pagination.handler.ts (passes contractNo)
+-   ✅ contract.controller.ts (added @Query('contractNo') and Swagger docs)
+-   ✅ contract.api.ts (frontend API with contractNo param)
+
+**Special Features**:
+
+-   ✅ 4-branch API logic (search+status → search only → status only → show all)
+-   ✅ Combined search (by contractNo) + status filter with backend support
+-   ✅ Backend client-side filtering within status results (DynamoDB limitation)
+-   ✅ Custom columns: contractNo, contractDate, customerName, amount, status, latestActivity
+-   ✅ Activity log display with color styling
+-   ✅ Status filter with dedicated useEffect
+-   ✅ Debounced search 500ms
+-   ✅ Cursor-based pagination with reset on filter changes
+-   ✅ Admin-only status filter (isAdminUser check)
+-   ✅ Full backend API endpoint: `GET /contracts/status?limit=10&status=ACTIVE&contractNo=CT-2024`
+
 ---
 
-## ⏸️ Pending Migrations (23)
+## ⏸️ Pending Migrations (3)
 
 ### Priority 1: High-Traffic Modules (Migrate First)
 
-| Module       | Path                   | Type          | Has Activity Logs | Est. Column Count | Priority |
-| ------------ | ---------------------- | ------------- | ----------------- | ----------------- | -------- |
-| **Voucher**  | `accounting/voucher/`  | Financial     | Yes               | 6                 | 🔴 High  |
-| **Supplier** | `inventory/suppliers/` | Contact-Based | Yes               | 6                 | 🔴 High  |
+| Module           | Path                       | Type              | Has Activity Logs | Est. Column Count | Priority    |
+| ---------------- | -------------------------- | ----------------- | ----------------- | ----------------- | ----------- |
+| ~~**Voucher**~~  | ~~`accounting/voucher/`~~  | ~~Financial~~     | ~~Yes~~           | ~~6~~             | ✅ Complete |
+| ~~**Supplier**~~ | ~~`inventory/suppliers/`~~ | ~~Contact-Based~~ | ~~Yes~~           | ~~6~~             | ✅ Complete |
+| ~~**Payment**~~  | ~~`invoicing/payment/`~~   | ~~Financial~~     | ~~Yes~~           | ~~7~~             | ✅ Complete |
 
 ### Priority 2: Product Sub-Modules
 
@@ -320,50 +944,49 @@ This document tracks which modules have been migrated to use the new reusable co
 
 ### Priority 3: Customer Sub-Modules
 
-| Module                       | Path                         | Type          | Has Activity Logs | Est. Column Count | Priority  |
-| ---------------------------- | ---------------------------- | ------------- | ----------------- | ----------------- | --------- |
-| **Customer Types**           | `customers/types/`           | Simple Master | No                | 3                 | 🟡 Medium |
-| **Customer Terms**           | `customers/terms/`           | Simple Master | No                | 3                 | 🟡 Medium |
-| **Customer Areas**           | `customers/areas/`           | Simple Master | No                | 3                 | 🟡 Medium |
-| **Customer Classifications** | `customers/classifications/` | Simple Master | No                | 3                 | 🟡 Medium |
+| Module                           | Path                             | Type          | Has Activity Logs | Est. Column Count | Priority    |
+| -------------------------------- | -------------------------------- | ------------- | ----------------- | ----------------- | ----------- |
+| ~~**Customer Types**~~           | ~~`customers/types/`~~           | Simple Master | Yes               | 3                 | ✅ Complete |
+| ~~**Customer Terms**~~           | ~~`customers/terms/`~~           | Simple Master | Yes               | 4                 | ✅ Complete |
+| ~~**Customer Areas**~~           | ~~`customers/areas/`~~           | Simple Master | Yes               | 3                 | ✅ Complete |
+| ~~**Customer Classifications**~~ | ~~`customers/classifications/`~~ | Simple Master | Yes               | 3                 | ✅ Complete |
 
 **Customer Sub-Modules Status**:
 
--   ✅ Most already use StatusBadge
--   ❌ Still need TableSkeleton, EmptyTableState, PaginationButtons, PageSizeSelector
+-   ✅ All 4 modules fully migrated with 8/8 components
+-   ✅ 4-branch API logic implemented
+-   ✅ Activity logs display working
+-   ✅ Admin-only status filter
 
 ### Priority 4: Invoicing Modules
 
-| Module                       | Path                                  | Type          | Has Activity Logs | Est. Column Count | Priority  |
-| ---------------------------- | ------------------------------------- | ------------- | ----------------- | ----------------- | --------- |
-| **Territory Manager**        | `invoicing/territory-manager/`        | Hierarchical  | Yes               | 5                 | 🟡 Medium |
-| **Sales Type**               | `invoicing/sales-type/`               | Simple Master | No                | 3                 | 🟢 Low    |
-| **Return Good Sold**         | `invoicing/return-good-sold/`         | Financial     | Yes               | 6                 | 🟡 Medium |
-| **Payment**                  | `invoicing/payment/`                  | Financial     | Yes               | 7                 | 🔴 High   |
-| **Collection Receipt Range** | `invoicing/collection-receipt-range/` | Simple Master | No                | 4                 | 🟢 Low    |
-| **Contract**                 | `invoicing/contract/`                 | Financial     | Yes               | 6                 | 🟡 Medium |
+| Module                       | Path                                  | Type              | Has Activity Logs | Est. Column Count | Priority    |
+| ---------------------------- | ------------------------------------- | ----------------- | ----------------- | ----------------- | ----------- |
+| ~~**Territory Manager**~~    | ~~`invoicing/territory-manager/`~~    | ~~Hierarchical~~  | ~~Yes~~           | ~~5~~             | ✅ Complete |
+| ~~**Sales Type**~~           | ~~`invoicing/sales-type/`~~           | ~~Simple Master~~ | ~~No~~            | ~~3~~             | ✅ Complete |
+| **Return Good Sold**         | `invoicing/return-good-sold/`         | Financial         | Yes               | 6                 | 🟡 Medium   |
+| ~~**Payment**~~              | ~~`invoicing/payment/`~~              | ~~Financial~~     | ~~Yes~~           | ~~7~~             | ✅ Complete |
+| **Collection Receipt Range** | `invoicing/collection-receipt-range/` | Simple Master     | No                | 4                 | 🟢 Low      |
+| ~~**Contract**~~             | ~~`invoicing/contract/`~~             | ~~Financial~~     | ~~Yes~~           | ~~6~~             | ✅ Complete |
 
 ### Priority 5: Accounting Modules
 
-| Module       | Path                   | Type         | Has Activity Logs | Est. Column Count | Priority  |
-| ------------ | ---------------------- | ------------ | ----------------- | ----------------- | --------- |
-| **Accounts** | `accounting/accounts/` | Hierarchical | Yes               | 6                 | 🟡 Medium |
-
-**Accounts Status**:
-
--   ✅ Uses StatusBadge
--   ❌ Needs other components
+| Module           | Path                       | Type             | Has Activity Logs | Est. Column Count | Priority    |
+| ---------------- | -------------------------- | ---------------- | ----------------- | ----------------- | ----------- |
+| ~~**Accounts**~~ | ~~`accounting/accounts/`~~ | ~~Hierarchical~~ | ~~Yes~~           | ~~6~~             | ✅ Complete |
+| ~~**Voucher**~~  | ~~`accounting/voucher/`~~  | ~~Financial~~    | ~~Yes~~           | ~~6~~             | ✅ Complete |
 
 ### Priority 6: Inventory Modules
 
-| Module                     | Path                                | Type          | Has Activity Logs | Est. Column Count | Priority  |
-| -------------------------- | ----------------------------------- | ------------- | ----------------- | ----------------- | --------- |
-| **Stock**                  | `inventory/stock/`                  | Hierarchical  | Yes               | 7                 | 🟡 Medium |
-| **Raw Materials Stock**    | `inventory/raw-materials-stock/`    | Hierarchical  | Yes               | 6                 | 🟡 Medium |
-| **Stock Delivery**         | `inventory/stock-delivery/`         | Financial     | Yes               | 6                 | 🟡 Medium |
-| **Stock Purchase Order**   | `inventory/stock-purchase-order/`   | Financial     | Yes               | 7                 | 🔴 High   |
-| **Stock Types**            | `inventory/stock-types/`            | Simple Master | No                | 3                 | 🟢 Low    |
-| **Raw Material Suppliers** | `inventory/raw-material-suppliers/` | Hierarchical  | Yes               | 5                 | 🟡 Medium |
+| Module                       | Path                                  | Type             | Has Activity Logs | Est. Column Count | Priority    |
+| ---------------------------- | ------------------------------------- | ---------------- | ----------------- | ----------------- | ----------- |
+| **Stock**                    | `inventory/stock/`                    | Hierarchical     | Yes               | 6                 | ✅ Complete |
+| **Stock Types**              | `inventory/stock-types/`              | Simple Master    | Yes               | 3                 | ✅ Complete |
+| **Raw Material Suppliers**   | `inventory/raw-material-suppliers/`   | Simple Master    | Yes               | 3                 | ✅ Complete |
+| **Raw Materials**            | `inventory/raw-materials/`            | Simple Master    | Yes               | 3                 | ✅ Complete |
+| **Raw Materials Locations**  | `inventory/raw-materials-locations/`  | Simple Master    | Yes               | 3                 | ✅ Complete |
+| ~~**Raw Materials Stock**~~  | ~~`inventory/raw-materials-stock/`~~  | ~~Hierarchical~~ | ~~Yes~~           | ~~6~~             | ✅ Complete |
+| ~~**Stock Purchase Order**~~ | ~~`inventory/stock-purchase-order/`~~ | ~~Financial~~    | ~~Yes~~           | ~~7~~             | ✅ Complete |
 
 ---
 
@@ -517,18 +1140,18 @@ Use this checklist for each module migration:
 
 | Component            | Used By Modules | Percentage |
 | -------------------- | --------------- | ---------- |
-| StatusBadge          | 11/32           | 34%        |
-| PaginationButtons    | 2/32            | 6%         |
-| TableSkeleton        | 2/32            | 6%         |
-| EmptyTableState      | 2/32            | 6%         |
-| PageSizeSelector     | 2/32            | 6%         |
-| StatusFilterDropdown | 2/32            | 6%         |
-| RefreshButton        | 2/32            | 6%         |
-| Input                | 2/32            | 6%         |
+| StatusBadge          | 29/32           | 90.6%      |
+| PaginationButtons    | 29/32           | 90.6%      |
+| TableSkeleton        | 29/32           | 90.6%      |
+| EmptyTableState      | 29/32           | 90.6%      |
+| PageSizeSelector     | 29/32           | 90.6%      |
+| StatusFilterDropdown | 29/32           | 90.6%      |
+| RefreshButton        | 29/32           | 90.6%      |
+| Input                | 29/32           | 90.6%      |
 
 **Goal**: 100% usage across all 32 modules
 
-**Progress**: Product ✅ + Customer ✅ = 2 modules fully migrated (6.3%)
+**Progress**: 29 modules fully migrated (90.6%)
 
 ---
 
@@ -636,9 +1259,63 @@ Use this checklist for each module migration:
 [ ] Verify pagination is OUTSIDE table with mt-6
 [ ] Confirm status filter useEffect clears searchQuery
 [ ] Test ACTIVE status filter specifically (common failure point)
+[ ] Implement 4-branch API logic for combined search+status support
 ```
+
+### From Accounts/Voucher Migration (February 5, 2026):
+
+1. ✅ **4-branch API logic is the correct pattern**:
+
+    - Branch 1: search+status → Both filters active
+    - Branch 2: search only → Filter by search term
+    - Branch 3: status only → Filter by status
+    - Branch 4: show all → No filters
+    - This ensures search doesn't ignore status filter
+
+2. ✅ **API parameter order differs significantly**:
+
+    - Accounts: `(limit, status, direction, cursor, name, userRole)` - 6 params
+    - Voucher: `(status, limit, direction, cursor, voucherNo)` - 5 params, status first!
+    - **ALWAYS verify the exact signature** before implementation
+
+3. ✅ **Backend may need modification for combined filters**:
+    - Some modules (Payment, Contract) didn't support search param in status endpoint
+    - Required adding parameter to: database service abstract, implementation, query, handler, controller
+    - DynamoDB limitation: use client-side filtering for combined search+status
+
+### From Payment/Contract Backend Implementation (February 5, 2026):
+
+1. ✅ **Full-stack changes required for combined filter support**:
+
+    - Database service abstract class: Add search parameter
+    - Database service implementation: Add client-side filtering logic
+    - Query class: Add constructor parameter
+    - Query handler: Pass parameter to database service
+    - Controller: Add @Query decorator and Swagger @ApiQuery docs
+    - Frontend API: Add parameter to function signature
+    - Frontend page: Update to 4-branch logic
+
+2. ✅ **Client-side filtering pattern for DynamoDB**:
+
+    ```typescript
+    // Filter by status first (GSI2), then client-side filter by search term
+    if (searchField && result.items) {
+        result.items = result.items.filter((item) => item.fieldName?.toLowerCase().includes(searchField.toLowerCase()));
+    }
+    ```
+
+3. ✅ **API endpoints now support combined filtering**:
+    - Payment: `GET /payment/status?limit=10&status=ACTIVE&receiptNo=RCP-2024`
+    - Contract: `GET /contracts/status?limit=10&status=ACTIVE&contractNo=CT-2024`
 
 ---
 
-**Completed Modules**: Product ✅ | Customer ✅  
-**Next Module to Migrate**: Invoice (Priority 1, Financial Module with Activity Logs)
+**Completed Modules (23)**:
+
+-   Products Domain: Product ✅, Product Category ✅, Product Class ✅, Product Unit ✅, Product Price Type ✅, Product Deal ✅, Product Unit Raw Material ✅
+-   Customers Domain: Customer ✅
+-   Invoicing Domain: Invoice ✅, Territory Manager ✅, Sales Type ✅, Payment ✅, Contract ✅
+-   Accounting Domain: Accounts ✅, Voucher ✅
+-   Inventory Domain: Stock ✅, Stock Types ✅, Supplier ✅, Raw Material Suppliers ✅, Raw Materials ✅, Raw Materials Locations ✅, Raw Materials Stock ✅, Stock Purchase Order ✅
+
+**Next Module to Migrate**: Return Good Sold, Collection Receipt Range, or Customer Sub-Modules

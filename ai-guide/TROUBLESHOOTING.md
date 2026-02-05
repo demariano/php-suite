@@ -99,7 +99,7 @@ const router = useRouter();
 
 {/* Pagination - OUTSIDE table with mt-6 */}
 <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">
-    <PageSizeSelector pageSize={pageSize} onChange={onPageSizeChange} variant="desktop" />
+    <PageSizeSelector value={pageSize} onChange={onPageSizeChange} variant="desktop" />
     <PaginationButtons onPrevious={onPrevious} onNext={onNext} hasPrevious={!!prevCursor} hasNext={!!nextCursor} variant="desktop" />
 </div>
 ```

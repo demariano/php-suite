@@ -1,7 +1,7 @@
 #!/bin/bash
 aws dynamodb create-table \
     --endpoint-url http://localhost:4566 \
-     --region eu-west-2 \
+     --region us-east-1 \
     --table-name invoicing \
     --attribute-definitions AttributeName=PK,AttributeType=S AttributeName=SK,AttributeType=S AttributeName=GSI1PK,AttributeType=S AttributeName=GSI1SK,AttributeType=S AttributeName=GSI2PK,AttributeType=S AttributeName=GSI2SK,AttributeType=S AttributeName=GSI3PK,AttributeType=S AttributeName=GSI3SK,AttributeType=S AttributeName=GSI4PK,AttributeType=S AttributeName=GSI4SK,AttributeType=S AttributeName=GSI5PK,AttributeType=S AttributeName=GSI5SK,AttributeType=S AttributeName=GSI6PK,AttributeType=S AttributeName=GSI6SK,AttributeType=S AttributeName=GSI7PK,AttributeType=S AttributeName=GSI7SK,AttributeType=S AttributeName=GSI8PK,AttributeType=S AttributeName=GSI8SK,AttributeType=S AttributeName=GSI9PK,AttributeType=S AttributeName=GSI9SK,AttributeType=S AttributeName=GSI10PK,AttributeType=S AttributeName=GSI10SK,AttributeType=S AttributeName=GSI11PK,AttributeType=S AttributeName=GSI11SK,AttributeType=S AttributeName=GSI12PK,AttributeType=S AttributeName=GSI12SK,AttributeType=S AttributeName=GSI13PK,AttributeType=S AttributeName=GSI13SK,AttributeType=S \
     --key-schema AttributeName=PK,KeyType=HASH AttributeName=SK,KeyType=RANGE \

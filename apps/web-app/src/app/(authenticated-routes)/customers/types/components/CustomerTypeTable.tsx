@@ -1,11 +1,18 @@
 'use client';
 
-import { Pagination } from '@components-web';
+import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } from '@components-web';
 import { CustomerTypeDto } from '@data-access/index';
+
+interface TableRowData {
+    customerTypeId: string;
+    customerTypeName: string;
+    status: React.ReactNode;
+    latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
+}
 
 interface CustomerTypeTableProps {
     isLoading: boolean;
-    tableData: any[];
+    tableData: TableRowData[];
     headers: { key: string; label: string }[];
     searchQuery: string;
     onRowClick: (customerType: CustomerTypeDto) => void;
@@ -32,11 +39,11 @@ export default function CustomerTypeTable({
 }: CustomerTypeTableProps) {
     return (
         <>
-            {/* Table */}
+            {/* Desktop Table */}
             <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
                 {isLoading ? (
-                    <div className="p-10 text-center text-base text-gray-500">Loading customer types...</div>
-                ) : (
+                    <TableSkeleton rows={pageSize} columns={headers.length} />
+                ) : tableData.length > 0 ? (
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
                             <thead className="border-b border-blue-700 bg-blue-600">
@@ -52,57 +59,57 @@ export default function CustomerTypeTable({
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-200 bg-white">
-                                {tableData.length > 0 ? (
-                                    tableData.map((customerType) => (
-                                        <tr
-                                            key={customerType.customerTypeId}
-                                            onClick={() => onRowClick(customerType)}
-                                            className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
-                                        >
-                                            <td className="px-6 py-5 text-sm font-medium text-gray-900">
-                                                {customerType.customerTypeName || '-'}
-                                            </td>
-                                            <td className="px-6 py-5">{customerType.status}</td>
-                                            <td className="px-6 py-5 text-sm">
-                                                {customerType.latestActivity ? (
-                                                    <span
-                                                        className={`px-2 py-1 rounded ${customerType.latestActivity.style.bgColor} ${customerType.latestActivity.style.textColor}`}
-                                                        title={customerType.latestActivity.text}
-                                                    >
-                                                        {customerType.latestActivity.text.length > 50
-                                                            ? `${customerType.latestActivity.text.substring(0, 50)}...`
-                                                            : customerType.latestActivity.text}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400">-</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                                            {searchQuery
-                                                ? `No customer types found matching "${searchQuery}"`
-                                                : 'No customer types found'}
+                                {tableData.map((customerType) => (
+                                    <tr
+                                        key={customerType.customerTypeId}
+                                        onClick={() => onRowClick(customerType as unknown as CustomerTypeDto)}
+                                        className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
+                                    >
+                                        <td className="px-6 py-5 text-sm font-medium text-gray-900">
+                                            {customerType.customerTypeName || '-'}
+                                        </td>
+                                        <td className="px-6 py-5">{customerType.status}</td>
+                                        <td className="px-6 py-5 text-sm">
+                                            {customerType.latestActivity ? (
+                                                <span
+                                                    className={`px-2 py-1 rounded ${customerType.latestActivity.style.bgColor} ${customerType.latestActivity.style.textColor}`}
+                                                    title={customerType.latestActivity.text}
+                                                >
+                                                    {customerType.latestActivity.text.length > 50
+                                                        ? `${customerType.latestActivity.text.substring(0, 50)}...`
+                                                        : customerType.latestActivity.text}
+                                                </span>
+                                            ) : (
+                                                <span className="text-gray-400">-</span>
+                                            )}
                                         </td>
                                     </tr>
-                                )}
+                                ))}
                             </tbody>
                         </table>
                     </div>
+                ) : (
+                    <EmptyTableState
+                        message={
+                            searchQuery
+                                ? `No customer types found matching "${searchQuery}"`
+                                : 'No customer types found'
+                        }
+                    />
                 )}
             </div>
 
             {/* Mobile Cards */}
-            {!isLoading && (
-                <div className="space-y-4 sm:hidden">
-                    {tableData.length > 0 ? (
-                        tableData.map((customerType) => (
+            <div className="sm:hidden">
+                {isLoading ? (
+                    <TableSkeleton rows={pageSize} columns={1} variant="mobile" />
+                ) : tableData.length > 0 ? (
+                    <div className="space-y-4">
+                        {tableData.map((customerType) => (
                             <button
                                 key={customerType.customerTypeId}
                                 type="button"
-                                onClick={() => onRowClick(customerType)}
+                                onClick={() => onRowClick(customerType as unknown as CustomerTypeDto)}
                                 className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                             >
                                 <div className="flex items-start justify-between gap-4">
@@ -126,32 +133,31 @@ export default function CustomerTypeTable({
                                     <div>{customerType.status}</div>
                                 </div>
                             </button>
-                        ))
-                    ) : (
-                        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-                            {searchQuery
+                        ))}
+                    </div>
+                ) : (
+                    <EmptyTableState
+                        message={
+                            searchQuery
                                 ? `No customer types found matching "${searchQuery}"`
-                                : 'No customer types found'}
-                        </div>
-                    )}
-                </div>
-            )}
-
-            {isLoading && (
-                <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm sm:hidden">
-                    Loading customer types...
-                </div>
-            )}
+                                : 'No customer types found'
+                        }
+                        variant="mobile"
+                    />
+                )}
+            </div>
 
             {/* Pagination */}
-            <Pagination
-                pageSize={pageSize}
-                onPageSizeChange={onPageSizeChange}
-                onPrevious={onPrevious}
-                onNext={onNext}
-                hasPrevious={!!prevCursor}
-                hasNext={!!nextCursor}
-            />
+            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <PageSizeSelector pageSize={pageSize} onPageSizeChange={onPageSizeChange} variant="desktop" />
+                <PaginationButtons
+                    onPrevious={onPrevious}
+                    onNext={onNext}
+                    hasPrevious={!!prevCursor}
+                    hasNext={!!nextCursor}
+                    variant="desktop"
+                />
+            </div>
         </>
     );
 }

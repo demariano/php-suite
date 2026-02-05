@@ -33,27 +33,19 @@ export default function ProductUnitRawMaterialsMainPage() {
             const validDirection = direction && serializedCursor ? direction : undefined;
             const validCursor = direction && serializedCursor ? serializedCursor : undefined;
 
-            let response;
+            const trimmedQuery = searchQuery.trim();
+            const statusValue = statusFilter !== 'ALL' ? statusFilter : undefined;
 
-            // Branch 1: Search query is active (takes priority)
-            if (searchQuery && searchQuery.trim() !== '') {
-                response = await ProductUnitRawMaterialApi.getProductUnitRawMaterialsByProductName(
-                    pageSize,
-                    searchQuery.trim(),
-                    validDirection,
-                    validCursor,
-                    userRole
-                );
-            }
-            // Branch 2: Show all records
-            else {
-                response = await ProductUnitRawMaterialApi.getAllProductUnitRawMaterials(
-                    pageSize,
-                    validDirection,
-                    validCursor,
-                    userRole
-                );
-            }
+            // Use the unified backend endpoint with optional status and productName filters
+            // Backend handles all 4 branches: search+status, search only, status only, show all
+            const response = await ProductUnitRawMaterialApi.getAllProductUnitRawMaterials(
+                pageSize,
+                validDirection,
+                validCursor,
+                userRole,
+                statusValue,
+                trimmedQuery || undefined
+            );
 
             setProductUnitRawMaterials(response.data || []);
             setNextCursor(response.nextCursorPointer);
@@ -105,19 +97,18 @@ export default function ProductUnitRawMaterialsMainPage() {
         []
     );
 
+    // No client-side filtering - backend handles all filtering
     const tableData = useMemo(
         () =>
-            productUnitRawMaterials
-                .filter((item) => statusFilter === 'ALL' || item.status === statusFilter)
-                .map((item) => ({
-                    ...item,
-                    status: <StatusBadge status={item.status} />,
-                    latestActivity:
-                        item.activityLogs && item.activityLogs.length > 0
-                            ? item.activityLogs[item.activityLogs.length - 1]
-                            : '-',
-                })),
-        [productUnitRawMaterials, statusFilter]
+            productUnitRawMaterials.map((item) => ({
+                ...item,
+                status: <StatusBadge status={item.status} />,
+                latestActivity:
+                    item.activityLogs && item.activityLogs.length > 0
+                        ? item.activityLogs[item.activityLogs.length - 1]
+                        : '-',
+            })),
+        [productUnitRawMaterials]
     );
 
     const handleCreateClick = () => {

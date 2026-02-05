@@ -57,6 +57,8 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             GSI5SK: `${returnGoodSoldDto.dateReturned}`,
             GSI6PK: returnGoodSoldDto.areaId ? `RETURN_GOOD_SOLD#${returnGoodSoldDto.areaId}` : undefined,
             GSI6SK: `${returnGoodSoldDto.dateReturned}`,
+            GSI7PK: `RETURN_GOOD_SOLD#${returnGoodSoldDto.status}`,
+            GSI7SK: `${returnGoodSoldDto.rgsDocno}`,
         };
 
         const returnGoodSoldRecord: ReturnGoodSoldDataType = await this.returnGoodSoldTable.create(returnGoodSoldData);
@@ -265,11 +267,41 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
         rgsDocno?: string
     ): Promise<PageDto<ReturnGoodSoldDto>> {
         limit = Number(limit);
+
+        // Use GSI7 for combined status + rgsDocno search - NO CLIENT SIDE FILTERING
+        if (rgsDocno != null && rgsDocno.trim() !== '') {
+            const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI7', direction, cursorPointer);
+
+            const records = await this.returnGoodSoldTable.find(
+                {
+                    GSI7PK: `RETURN_GOOD_SOLD#${status}`,
+                    GSI7SK: { begins: rgsDocno.trim() },
+                },
+                dynamoDbOption
+            );
+
+            const pageRecordCursorPointers = pageRecordHandler(
+                records,
+                limit,
+                direction,
+                'GSI7PK',
+                'GSI7SK',
+                'PK',
+                'SK',
+                JSON.stringify(records.next),
+                JSON.stringify(records.prev)
+            );
+
+            return new PageDto(
+                await this.convertToDtoList(records),
+                pageRecordCursorPointers.nextCursorPointer,
+                pageRecordCursorPointers.prevCursorPointer
+            );
+        }
+
+        // Default: status only - use GSI2 sorted by dateReturned
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
 
-        // Note: GSI2SK is dateReturned, not rgsDocno, so we can't filter by rgsDocno on GSI2
-        // If rgsDocno is provided, we'll need to filter results after querying
-        // For now, we'll query all records for the status and filter in memory if rgsDocno is provided
         const records = await this.returnGoodSoldTable.find(
             {
                 GSI2PK: `RETURN_GOOD_SOLD#${status}`,
@@ -277,28 +309,20 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             dynamoDbOption
         );
 
-        // Filter by rgsDocno if provided (in-memory filter since GSI2SK is dateReturned)
-        let filteredRecords = records;
-        if (rgsDocno != null && rgsDocno.trim() !== '') {
-            filteredRecords = records.filter((record) =>
-                record.rgsDocno?.toLowerCase().includes(rgsDocno.trim().toLowerCase())
-            );
-        }
-
         const pageRecordCursorPointers = pageRecordHandler(
-            filteredRecords,
+            records,
             limit,
             direction,
             'GSI2PK',
             'GSI2SK',
             'PK',
             'SK',
-            JSON.stringify(filteredRecords.next),
-            JSON.stringify(filteredRecords.prev)
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
         );
 
         return new PageDto(
-            await this.convertToDtoList(filteredRecords),
+            await this.convertToDtoList(records),
             pageRecordCursorPointers.nextCursorPointer,
             pageRecordCursorPointers.prevCursorPointer
         );
@@ -438,6 +462,8 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             GSI5SK: dto.dateReturned,
             GSI6PK: dto.areaId ? `RETURN_GOOD_SOLD#${dto.areaId}` : undefined,
             GSI6SK: dto.dateReturned,
+            GSI7PK: `RETURN_GOOD_SOLD#${dto.status}`,
+            GSI7SK: dto.rgsDocno,
         };
         return returnGoodSoldData;
     }

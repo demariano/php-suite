@@ -36,7 +36,17 @@ export abstract class ProductUnitRawMaterialDatabaseServiceAbstract {
     abstract findRecordsByPagination(
         limit: number,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        status?: string,
+        productName?: string
+    ): Promise<PageDto<ProductUnitRawMaterialDto>>;
+
+    abstract findRecordsByGlobalStatusPagination(
+        limit: number,
+        status: string,
+        direction: string,
+        cursorPointer: string,
+        productName?: string
     ): Promise<PageDto<ProductUnitRawMaterialDto>>;
 
     abstract deleteRecord(productUnitRawMaterialDto: ProductUnitRawMaterialDto): Promise<ProductUnitRawMaterialDto>;

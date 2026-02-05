@@ -719,17 +719,17 @@ useEffect(() => {
 
 Allows users to filter records by their status (ACTIVE, INACTIVE, FOR_APPROVAL, etc.):
 
--   Dropdown shows all available status options
+-   Dropdown shows all available status options to ALL users
 -   "All" option shows records of any status
--   Admin-only statuses (FOR_DELETION, FOR_DEACTIVATION) are visible only to admin users
+-   All status options are visible to all users (no admin-only restrictions)
 -   Changing filter resets pagination to first page
 -   Backend filtering via GSI2 for efficiency
 
 ### 🔒 Business Rules
 
--   **ALL USERS** can filter by: ALL, ACTIVE, INACTIVE, FOR_APPROVAL, NEW_RECORD, DRAFT
--   **ADMIN USERS ONLY** can filter by: FOR_DELETION, FOR_DEACTIVATION
--   Default filter: "ALL" (shows all statuses user has access to)
+-   **ALL USERS** can see and filter by: ALL, ACTIVE, INACTIVE, FOR_APPROVAL, NEW_RECORD, DRAFT, FOR_DELETION, FOR_DEACTIVATION
+-   No status options are restricted to admin users only
+-   Default filter: "ALL" (shows all statuses)
 -   Filter persists during search
 -   Filter changes trigger immediate data refresh
 
@@ -960,15 +960,15 @@ Allows users to navigate to the create form for new records:
 
 -   Displayed in the header section
 -   Navigates to `/[domain]/[module]/create` route
--   Visible only when user has CREATE permission
+-   Visible to ALL users by default
 -   Consistent styling across all modules
 
 ### 🔒 Business Rules
 
--   **PERMISSION-BASED**: Only users with CREATE permission see this button
--   Button visibility controlled by `canCreate` prop
--   Admins typically have CREATE permission by default
--   Regular users may or may not have CREATE permission based on role configuration
+-   **ALL USERS** can see and click the CREATE/NEW button
+-   Button visibility defaults to `canCreate={true}` for all users
+-   No role-based restrictions on CREATE button visibility
+-   Backend will handle actual permission validation when creating records
 -   Clicking navigates to create page (does not open modal)
 
 ### 🔌 Backend Integration

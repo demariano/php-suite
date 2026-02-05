@@ -9,7 +9,15 @@ const HTTP_STATUS_OK = 200;
 const MIN_LIMIT = 1;
 const MAX_LIMIT = 100;
 const VALID_DIRECTIONS = ['next', 'prev'];
-const VALID_STATUSES = ['ACTIVE', 'FOR_APPROVAL', 'FOR_DELETION'];
+const VALID_STATUSES = [
+    'ACTIVE',
+    'INACTIVE',
+    'FOR_APPROVAL',
+    'FOR_DELETION',
+    'FOR_DEACTIVATION',
+    'NEW_RECORD',
+    'DRAFT',
+];
 
 @QueryHandler(GetRecordsPaginationQuery)
 export class GetRecordsPaginationHandler implements IQueryHandler<GetRecordsPaginationQuery> {

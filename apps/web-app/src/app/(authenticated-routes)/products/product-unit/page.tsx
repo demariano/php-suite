@@ -111,7 +111,10 @@ export default function ProductUnitsMainPage() {
         return () => clearTimeout(timer);
     }, [searchQuery]);
 
+    // Refetch when status filter changes
     useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
         setNextCursor(undefined);
         setPrevCursor(undefined);
         fetchProductUnits(undefined, undefined);

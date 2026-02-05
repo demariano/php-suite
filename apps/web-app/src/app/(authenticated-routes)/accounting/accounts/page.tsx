@@ -1,21 +1,24 @@
 'use client';
 
 import { StatusBadge } from '@components-web';
-import { AccountApi, AccountsDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { AccountApi, AccountsDto, extractErrorMessage, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AccountHeader, AccountTable } from './components';
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function AccountsPage() {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [accounts, setAccounts] = useState<AccountsDto[]>([]);
     const [error, setError] = useState<string | null>(null);
-    const [pageSize, setPageSize] = useState(10);
-    const [nextCursor, setNextCursor] = useState<any>(undefined);
-    const [prevCursor, setPrevCursor] = useState<any>(undefined);
-    const [currentCursor, setCurrentCursor] = useState<any>(undefined);
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
+    const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
+    const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
 
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
@@ -25,87 +28,111 @@ export default function AccountsPage() {
     const canCreateAccount = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
-    const fetchAccounts = async (direction?: 'next' | 'prev', cursor?: any, customPageSize?: number) => {
+    const fetchAccounts = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
         try {
             setIsLoading(true);
             setError(null);
 
-            const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
             const currentPageSize = customPageSize ?? pageSize;
-            const trimmedQuery = searchQuery.trim();
+            const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && serializedCursor ? direction : undefined;
+            const paginationCursor = direction && serializedCursor ? serializedCursor : undefined;
+
+            const trimmedQuery = searchQuery.trim();
             let response;
-            if (trimmedQuery) {
+
+            // 4-branch API logic: search+status → search only → status only → show all
+            if (trimmedQuery.length > 0 && statusFilter !== 'ALL') {
+                // Branch 1: Search with status filter (use status API with name param)
+                response = await AccountApi.getAccountsByStatus(
+                    statusFilter,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor,
+                    trimmedQuery,
+                    userRole
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Branch 2: Search only (no status filter)
                 response = await AccountApi.getAccountsByName(
                     trimmedQuery,
                     currentPageSize,
-                    direction,
-                    serializedCursor,
+                    paginationDirection,
+                    paginationCursor,
+                    userRole
+                );
+            } else if (statusFilter !== 'ALL') {
+                // Branch 3: Filter by status only
+                response = await AccountApi.getAccountsByStatus(
+                    statusFilter,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor,
+                    undefined, // name parameter
                     userRole
                 );
             } else {
-                // Use backend status filtering via GSI2 for efficiency
-                if (statusFilter !== 'ALL') {
-                    response = await AccountApi.getAccountsByStatus(
-                        statusFilter,
-                        currentPageSize,
-                        direction,
-                        serializedCursor,
-                        userRole
-                    );
-                } else {
-                    response = await AccountApi.getAccounts(currentPageSize, direction, serializedCursor, userRole);
-                }
+                // Branch 4: No filter, no search - get all
+                response = await AccountApi.getAccounts(
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor,
+                    userRole
+                );
             }
 
             if (response?.statusCode === 200 && Array.isArray(response.data)) {
-                // No client-side filtering needed - backend already filtered by status
                 setAccounts(response.data);
-                setNextCursor(response.nextCursorPointer || undefined);
-                setPrevCursor(response.prevCursorPointer || undefined);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setAccounts([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
             }
-
-            if (direction && cursor) {
-                setCurrentCursor(cursor);
-            } else {
-                setCurrentCursor(undefined);
-            }
         } catch (err) {
-            console.error('Failed to load accounts:', err);
-            setError('Failed to load accounts. Please try again.');
+            const errorMessage = extractErrorMessage(err, 'Failed to load accounts. Please try again.');
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
     };
 
+    // Initial fetch
     useEffect(() => {
         if (hasFetchedRef.current) return;
         hasFetchedRef.current = true;
         fetchAccounts();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
+    // Debounce search query changes
     useEffect(() => {
-        if (searchQuery === '') {
-            fetchAccounts();
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0 && !hasFetchedRef.current) {
             return;
         }
 
-        const timeoutId = setTimeout(() => {
-            fetchAccounts();
-        }, 500);
-
-        return () => clearTimeout(timeoutId);
-    }, [searchQuery]);
-
-    useEffect(() => {
-        setCurrentCursor(undefined);
+        // Reset pagination when search query changes
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        fetchAccounts();
+
+        const timer = setTimeout(() => {
+            fetchAccounts(undefined, undefined);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
+    // Refetch when status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchAccounts(undefined, undefined);
     }, [statusFilter]);
 
     const headers = [
@@ -117,42 +144,52 @@ export default function AccountsPage() {
 
     const handleRowClick = (account: AccountsDto) => {
         if (account?.accountingId) {
-            window.location.href = `/accounting/accounts/${account.accountingId}/edit`;
+            router.push(`/accounting/accounts/${account.accountingId}/edit`);
         }
     };
 
     const handleCreateClick = () => {
-        window.location.href = '/accounting/accounts/create';
+        router.push('/accounting/accounts/create');
+    };
+
+    const handleRefresh = () => {
+        setSearchQuery('');
+        setStatusFilter('ALL');
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchAccounts();
     };
 
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        setCurrentCursor(undefined);
         fetchAccounts(undefined, undefined, newPageSize);
     };
 
-    const tableData =
-        accounts?.map((account) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (account.activityLogs && account.activityLogs.length > 0) {
-                const lastLog = account.activityLogs[account.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
+    const tableData = useMemo(
+        () =>
+            accounts?.map((account) => {
+                // Get the latest activity log entry
+                let latestActivity = null;
+                if (account.activityLogs && account.activityLogs.length > 0) {
+                    const lastLog = account.activityLogs[account.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
 
-            return {
-                ...account,
-                status: <StatusBadge status={account.status || StatusEnum.ACTIVE} />,
-                latestActivity,
-            };
-        }) ?? [];
+                return {
+                    ...account,
+                    status: <StatusBadge status={account.status || StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }) ?? [],
+        [accounts]
+    );
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -169,38 +206,12 @@ export default function AccountsPage() {
                 </div>
             )}
 
-            <div>
-                <nav className="flex items-center gap-2 text-sm">
-                    <a href="/dashboard" className="text-blue-500 transition-colors duration-200 hover:text-blue-600">
-                        Home
-                    </a>
-                    <span className="text-gray-400">/</span>
-                    <a href="/accounting" className="text-blue-500 transition-colors duration-200 hover:text-blue-600">
-                        Accounting
-                    </a>
-                    <span className="text-gray-400">/</span>
-                    <span className="text-gray-800 font-medium">Accounts</span>
-                </nav>
-            </div>
-
             <AccountHeader
                 searchQuery={searchQuery}
-                onSearchChange={(value: string) => {
-                    setSearchQuery(value);
-                    setCurrentCursor(undefined);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                }}
+                onSearchChange={setSearchQuery}
                 statusFilter={statusFilter}
                 onStatusFilterChange={setStatusFilter}
-                onRefresh={() => {
-                    setSearchQuery('');
-                    setStatusFilter('ALL');
-                    setCurrentCursor(undefined);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                    fetchAccounts();
-                }}
+                onRefresh={handleRefresh}
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 canCreate={canCreateAccount}
@@ -215,8 +226,8 @@ export default function AccountsPage() {
                 onRowClick={handleRowClick}
                 pageSize={pageSize}
                 onPageSizeChange={handlePageSizeChange}
-                prevCursor={prevCursor}
-                nextCursor={nextCursor}
+                hasPrevious={!!prevCursor}
+                hasNext={!!nextCursor}
                 onPrevious={() => fetchAccounts('prev', prevCursor)}
                 onNext={() => fetchAccounts('next', nextCursor)}
             />

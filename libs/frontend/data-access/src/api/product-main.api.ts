@@ -205,6 +205,20 @@ class ProductMainApi extends AxiosConfig {
 
         return await this.axiosInstance.post(url, { approverMessage });
     };
+
+    public reactivateProduct = async (id: string, userRole?: string): Promise<ProductDto> => {
+        const params = new URLSearchParams();
+
+        // SECURITY: Only add userRole query parameter if BYPASS_AUTH is enabled
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/products/${id}/reactivate?${queryString}` : `/products/${id}/reactivate`;
+
+        return await this.axiosInstance.post(url);
+    };
 }
 
 export default new ProductMainApi();

@@ -1,18 +1,18 @@
 'use client';
 
-import { Pagination } from '@components-web';
+import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } from '@components-web';
 import { VoucherDto } from '@data-access/index';
 
 interface VoucherTableProps {
     isLoading: boolean;
     tableData: any[];
     headers: { key: string; label: string }[];
-    searchTerm: string;
+    searchQuery: string;
     onRowClick: (voucher: VoucherDto) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
-    prevCursor: string | undefined;
-    nextCursor: string | undefined;
+    hasPrevious: boolean;
+    hasNext: boolean;
     onPrevious: () => void;
     onNext: () => void;
 }
@@ -21,12 +21,12 @@ export default function VoucherTable({
     isLoading,
     tableData,
     headers,
-    searchTerm,
+    searchQuery,
     onRowClick,
     pageSize,
     onPageSizeChange,
-    prevCursor,
-    nextCursor,
+    hasPrevious,
+    hasNext,
     onPrevious,
     onNext,
 }: VoucherTableProps) {
@@ -35,34 +35,36 @@ export default function VoucherTable({
         return `₱${amount.toFixed(2)}`;
     };
 
+    const emptyStateMessage = searchQuery ? `No vouchers found matching "${searchQuery}"` : 'No vouchers found';
+
     return (
         <>
             {/* Desktop Table */}
-            <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+            <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg sm:block">
                 {isLoading ? (
-                    <div className="p-10 text-center text-gray-500 text-base">Loading vouchers...</div>
+                    <TableSkeleton rows={5} columns={headers.length} />
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
-                            <thead className="bg-blue-600 border-b border-blue-700">
+                            <thead className="border-b border-blue-700 bg-blue-600">
                                 <tr>
                                     {headers.map((header) => (
                                         <th
                                             key={header.key}
-                                            className="px-6 py-4 text-left text-white font-semibold text-xs uppercase tracking-wider"
+                                            className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-wider text-white"
                                         >
                                             {header.label}
                                         </th>
                                     ))}
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="divide-y divide-gray-200 bg-white">
                                 {tableData.length > 0 ? (
                                     tableData.map((voucher) => (
                                         <tr
                                             key={voucher.voucherId}
                                             onClick={() => onRowClick(voucher)}
-                                            className="cursor-pointer transition-all duration-200 bg-white hover:bg-gray-50"
+                                            className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
                                         >
                                             <td className="px-6 py-5 text-sm font-medium text-gray-900">
                                                 {voucher.voucherNo || '-'}
@@ -95,10 +97,8 @@ export default function VoucherTable({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                                            {searchTerm
-                                                ? `No vouchers found matching "${searchTerm}"`
-                                                : 'No vouchers found'}
+                                        <td colSpan={headers.length}>
+                                            <EmptyTableState message={emptyStateMessage} />
                                         </td>
                                     </tr>
                                 )}
@@ -109,8 +109,12 @@ export default function VoucherTable({
             </div>
 
             {/* Mobile Cards */}
-            {!isLoading && (
-                <div className="sm:hidden space-y-4">
+            {isLoading ? (
+                <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm sm:hidden">
+                    <TableSkeleton rows={3} columns={1} />
+                </div>
+            ) : (
+                <div className="space-y-4 sm:hidden">
                     {tableData.length > 0 ? (
                         tableData.map((voucher) => (
                             <button
@@ -143,7 +147,7 @@ export default function VoucherTable({
                                     </div>
                                     {voucher.latestActivity && (
                                         <div className="mt-2">
-                                            <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                                            <dt className="mb-1 font-medium text-gray-500">Latest Activity</dt>
                                             <dd>
                                                 <span
                                                     className={`px-2 py-1 rounded text-xs ${voucher.latestActivity.style.bgColor} ${voucher.latestActivity.style.textColor}`}
@@ -159,28 +163,21 @@ export default function VoucherTable({
                             </button>
                         ))
                     ) : (
-                        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-                            {searchTerm ? `No vouchers found matching "${searchTerm}"` : 'No vouchers found'}
-                        </div>
+                        <EmptyTableState message={emptyStateMessage} />
                     )}
                 </div>
             )}
 
-            {isLoading && (
-                <div className="sm:hidden rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm">
-                    Loading vouchers...
-                </div>
-            )}
-
             {/* Pagination */}
-            <Pagination
-                pageSize={pageSize}
-                onPageSizeChange={onPageSizeChange}
-                onPrevious={onPrevious}
-                onNext={onNext}
-                hasPrevious={!!prevCursor}
-                hasNext={!!nextCursor}
-            />
+            <div className="flex items-center justify-between">
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
+                <PaginationButtons
+                    hasPrevious={hasPrevious}
+                    hasNext={hasNext}
+                    onPrevious={onPrevious}
+                    onNext={onNext}
+                />
+            </div>
         </>
     );
 }

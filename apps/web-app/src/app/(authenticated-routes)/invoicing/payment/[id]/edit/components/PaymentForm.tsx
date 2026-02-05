@@ -811,7 +811,7 @@ export default function PaymentForm({
                     <div className="space-y-6 animate-fadeIn">
                         <div className="rounded-xl border-2 border-gray-200 bg-white p-4 shadow-sm sm:p-6">
                             <div className="mb-4 flex items-center gap-3">
-                                <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                                <div className="rounded-lg bg-gray-600 p-2 text-white shadow-sm">
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path
                                             strokeLinecap="round"
@@ -821,7 +821,7 @@ export default function PaymentForm({
                                         />
                                     </svg>
                                 </div>
-                                <h3 className="m-0 text-base font-bold text-blue-600">Activity Logs</h3>
+                                <h3 className="m-0 text-base font-bold text-gray-700">Activity Logs</h3>
                             </div>
 
                             {renderActivityLogsTable(selectedPayment?.activityLogs)}

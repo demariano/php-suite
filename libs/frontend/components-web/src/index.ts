@@ -44,3 +44,9 @@ export { StatusBadge } from './StatusBadge';
 export { StatusFilterDropdown } from './StatusFilterDropdown';
 export { StatusTabs } from './StatusTabs';
 export { TableSkeleton } from './TableSkeleton';
+
+// Approval workflow components
+export * from './approval';
+
+// Form components
+export * from './form-components';

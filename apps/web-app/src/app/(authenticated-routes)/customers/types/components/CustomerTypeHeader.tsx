@@ -1,6 +1,6 @@
 'use client';
 
-import { Add, Input, Search } from '@components-web';
+import { Add, Input, RefreshButton, Search, StatusFilterDropdown } from '@components-web';
 import { StatusEnum } from '@data-access/index';
 
 interface CustomerTypeHeaderProps {
@@ -39,45 +39,12 @@ export default function CustomerTypeHeader({
                         />
                     </div>
                     {isAdminUser && (
-                        <select
+                        <StatusFilterDropdown
                             value={statusFilter}
-                            onChange={(e) => onStatusFilterChange(e.target.value as StatusEnum | 'ALL')}
-                            className="rounded-md border-2 border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors duration-200 hover:bg-gray-50 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/40"
-                        >
-                            <option value="ALL">All Status</option>
-                            <option value="ACTIVE">Active</option>
-                            <option value="INACTIVE">Inactive</option>
-                            <option value="FOR_APPROVAL">For Approval</option>
-                            <option value="FOR_DEACTIVATION">For Deactivation</option>
-                            <option value="NEW_RECORD">New Record</option>
-                        </select>
+                            onChange={(value) => onStatusFilterChange(value as StatusEnum | 'ALL')}
+                        />
                     )}
-                    <button
-                        type="button"
-                        onClick={onRefresh}
-                        disabled={isLoading}
-                        aria-disabled={isLoading}
-                        className="rounded-md border border-gray-300 bg-white p-2 transition-colors duration-200 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
-                        title="Refresh"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            width="20"
-                            height="20"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="text-gray-600"
-                        >
-                            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
-                            <path d="M21 3v5h-5" />
-                            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
-                            <path d="M3 21v-5h5" />
-                        </svg>
-                    </button>
+                    <RefreshButton onClick={onRefresh} isLoading={isLoading} />
                 </div>
                 {canCreate && (
                     <button

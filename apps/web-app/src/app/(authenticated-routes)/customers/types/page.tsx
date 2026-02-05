@@ -3,8 +3,10 @@
 import { StatusBadge } from '@components-web';
 import { CustomerTypeApi, CustomerTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerTypeHeader, CustomerTypeTable } from './components';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function CustomerTypesPage() {
     const [isLoading, setIsLoading] = useState(false);
@@ -18,31 +20,40 @@ export default function CustomerTypesPage() {
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
     const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
     // Track if initial fetch has been made to prevent duplicate calls
     const hasFetchedRef = useRef(false);
 
-    // Fetch customer types from API
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
+    // Fetch customer types from API - 4-branch API logic
     const fetchCustomerTypes = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
         try {
             setIsLoading(true);
             setError(null);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            // This prevents role parameter leakage when bypass auth is disabled
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
-
-            let response;
-
-            // Use custom page size if provided, otherwise use state page size
             const currentPageSize = customPageSize ?? pageSize;
 
-            // If search query exists, use search API, otherwise use regular pagination API
-            if (searchQuery && searchQuery.trim() !== '') {
+            let response;
+            const hasSearch = searchQuery && searchQuery.trim() !== '';
+            const hasStatus = statusFilter !== 'ALL';
+
+            // 4-branch API logic
+            if (hasSearch && hasStatus) {
+                // Branch 1: Both search and status - use status API with name param (backend filtering)
+                response = await CustomerTypeApi.getCustomerTypes(
+                    currentPageSize,
+                    statusFilter,
+                    direction,
+                    serializedCursor,
+                    userRole,
+                    searchQuery.trim()
+                );
+            } else if (hasSearch) {
+                // Branch 2: Search only
                 response = await CustomerTypeApi.getCustomerTypesByName(
                     searchQuery.trim(),
                     currentPageSize,
@@ -50,13 +61,20 @@ export default function CustomerTypesPage() {
                     serializedCursor,
                     userRole
                 );
-            } else {
-                // Determine status parameter based on filter
-                const statusParam = statusFilter === 'ALL' ? undefined : statusFilter;
-
+            } else if (hasStatus) {
+                // Branch 3: Status only
                 response = await CustomerTypeApi.getCustomerTypes(
                     currentPageSize,
-                    statusParam,
+                    statusFilter,
+                    direction,
+                    serializedCursor,
+                    userRole
+                );
+            } else {
+                // Branch 4: Show all
+                response = await CustomerTypeApi.getCustomerTypes(
+                    currentPageSize,
+                    undefined,
                     direction,
                     serializedCursor,
                     userRole
@@ -64,11 +82,8 @@ export default function CustomerTypesPage() {
             }
 
             if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of customer types
                 if (Array.isArray(response.data)) {
                     setCustomerTypes(response.data);
-
-                    // Set pagination cursors from response
                     setNextCursor(response.nextCursorPointer || undefined);
                     setPrevCursor(response.prevCursorPointer || undefined);
                 } else {
@@ -94,78 +109,86 @@ export default function CustomerTypesPage() {
         }
     };
 
-    // Fetch on initial load and when these dependencies change
+    // Fetch on initial load
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
         if (hasFetchedRef.current) return;
         hasFetchedRef.current = true;
-
         fetchCustomerTypes();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize, statusFilter]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
-    // Debounce search query changes (but not on initial mount with empty search)
+    // Debounce search query changes
     useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
-        }
+        if (!hasFetchedRef.current) return;
+        if (searchQuery === '') return;
 
         const delayDebounceFn = setTimeout(() => {
+            setNextCursor(undefined);
+            setPrevCursor(undefined);
+            setCurrentCursor(undefined);
             fetchCustomerTypes();
-        }, 500); // 500ms delay
+        }, 500);
 
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
 
-    const headers = [
-        { key: 'customerTypeName', label: 'NAME' },
-        { key: 'status', label: 'STATUS' },
-        { key: 'latestActivity', label: 'LATEST ACTIVITY' },
-    ];
+    // Handle status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery('');
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        setCurrentCursor(undefined);
+        fetchCustomerTypes();
+    }, [statusFilter]);
+
+    const headers = useMemo(
+        () => [
+            { key: 'customerTypeName', label: 'NAME' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+        ],
+        []
+    );
+
+    const tableData = useMemo(
+        () =>
+            customerTypes?.map((customerType) => {
+                let latestActivity = null;
+                if (customerType.activityLogs && customerType.activityLogs.length > 0) {
+                    const lastLog = customerType.activityLogs[customerType.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
+
+                return {
+                    ...customerType,
+                    status: <StatusBadge status={customerType.status || StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }) || [],
+        [customerTypes]
+    );
 
     const handleRowClick = async (customerType: CustomerTypeDto) => {
-        // Navigate to edit customer type page
         window.location.href = `/customers/types/${customerType.customerTypeId}/edit`;
     };
 
     const handleCreateClick = () => {
-        // Navigate to create customer type page
         window.location.href = '/customers/types/create';
     };
 
-    // Handle page size change - reset pagination and fetch fresh data
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
         setNextCursor(undefined);
         setPrevCursor(undefined);
         setCurrentCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
         fetchCustomerTypes(undefined, undefined, newPageSize);
     };
 
-    // Transform data for table display
-    const tableData =
-        customerTypes?.map((customerType) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (customerType.activityLogs && customerType.activityLogs.length > 0) {
-                const lastLog = customerType.activityLogs[customerType.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
-
-            return {
-                ...customerType,
-                status: <StatusBadge status={customerType.status || StatusEnum.ACTIVE} />,
-                latestActivity,
-            };
-        }) || [];
-
-    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const canCreateType = isAdminUser;
 
     return (

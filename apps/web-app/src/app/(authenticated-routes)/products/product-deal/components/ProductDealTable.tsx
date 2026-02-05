@@ -45,7 +45,7 @@ export default function ProductDealTable({
             {/* Desktop Table */}
             <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg sm:block">
                 {isLoading ? (
-                    <TableSkeleton headers={headers} rowCount={pageSize} />
+                    <TableSkeleton rows={pageSize} columns={headers.length} />
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
@@ -85,7 +85,13 @@ export default function ProductDealTable({
                                 ) : (
                                     <tr>
                                         <td colSpan={headers.length}>
-                                            <EmptyTableState searchQuery={searchQuery} entityName="product deals" />
+                                            <EmptyTableState
+                                                message={
+                                                    searchQuery
+                                                        ? `No product deals found matching "${searchQuery}"`
+                                                        : 'No product deals found'
+                                                }
+                                            />
                                         </td>
                                     </tr>
                                 )}
@@ -98,7 +104,7 @@ export default function ProductDealTable({
             {/* Mobile Cards */}
             <div className="space-y-4 sm:hidden">
                 {isLoading ? (
-                    <TableSkeleton headers={headers} rowCount={pageSize} isMobile />
+                    <TableSkeleton rows={pageSize} columns={1} />
                 ) : tableData.length > 0 ? (
                     tableData.map((productDeal) => (
                         <button
@@ -126,7 +132,11 @@ export default function ProductDealTable({
                         </button>
                     ))
                 ) : (
-                    <EmptyTableState searchQuery={searchQuery} entityName="product deals" isMobile />
+                    <EmptyTableState
+                        message={
+                            searchQuery ? `No product deals found matching "${searchQuery}"` : 'No product deals found'
+                        }
+                    />
                 )}
             </div>
 

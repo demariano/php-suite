@@ -105,7 +105,7 @@ export default function CustomerTable({
 
             {/* Pagination */}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">
-                <PageSizeSelector pageSize={pageSize} onChange={onPageSizeChange} variant="desktop" />
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} variant="desktop" />
                 <PaginationButtons
                     onPrevious={onPrevious}
                     onNext={onNext}
@@ -176,7 +176,7 @@ export default function CustomerTable({
                                 </button>
                             ))}
                             <div className="space-y-3 bg-gray-50 border-t border-gray-200 px-4 py-5 rounded-xl">
-                                <PageSizeSelector pageSize={pageSize} onChange={onPageSizeChange} variant="mobile" />
+                                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} variant="mobile" />
                                 <PaginationButtons
                                     onPrevious={onPrevious}
                                     onNext={onNext}

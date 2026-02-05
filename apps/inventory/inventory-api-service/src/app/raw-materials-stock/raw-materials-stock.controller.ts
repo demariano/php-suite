@@ -85,31 +85,11 @@ export class RawMaterialsStockController {
         return this.commandBus.execute(new DeleteRawMaterialsStockCommand(id, dto, user));
     }
 
-    @Get(':id')
-    @ApiOperation({ summary: 'Get raw materials stock by id' })
-    @ApiParam({ name: 'id', description: 'Raw materials stock ID' })
-    findById(@Param('id') id: string) {
-        return this.queryBus.execute(new GetRawMaterialsStockByIdQuery(id));
-    }
-
     @Get('by-name/:name')
     @ApiOperation({ summary: 'Get raw materials stock by name' })
     @ApiParam({ name: 'name', description: 'Raw materials stock name' })
     findByName(@Param('name') name: string) {
         return this.queryBus.execute(new GetRawMaterialsStockByNameQuery(name));
-    }
-
-    @Get()
-    @ApiOperation({ summary: 'List raw materials stock with pagination' })
-    @ApiQuery({ name: 'limit', required: true })
-    @ApiQuery({ name: 'direction', required: false })
-    @ApiQuery({ name: 'cursorPointer', required: false })
-    findPage(
-        @Query('limit') limit: number,
-        @Query('direction') direction: string,
-        @Query('cursorPointer') cursorPointer: string
-    ) {
-        return this.queryBus.execute(new GetRawMaterialsStockRecordsPaginationQuery(limit, direction, cursorPointer));
     }
 
     @Get('by-status')
@@ -146,6 +126,26 @@ export class RawMaterialsStockController {
         return this.queryBus.execute(
             new GetRawMaterialsStockRecordsByNamePaginationQuery(limit, direction, cursorPointer, name)
         );
+    }
+
+    @Get(':id')
+    @ApiOperation({ summary: 'Get raw materials stock by id' })
+    @ApiParam({ name: 'id', description: 'Raw materials stock ID' })
+    findById(@Param('id') id: string) {
+        return this.queryBus.execute(new GetRawMaterialsStockByIdQuery(id));
+    }
+
+    @Get()
+    @ApiOperation({ summary: 'List raw materials stock with pagination' })
+    @ApiQuery({ name: 'limit', required: true })
+    @ApiQuery({ name: 'direction', required: false })
+    @ApiQuery({ name: 'cursorPointer', required: false })
+    findPage(
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
+        return this.queryBus.execute(new GetRawMaterialsStockRecordsPaginationQuery(limit, direction, cursorPointer));
     }
 
     @Post(':id/approve')

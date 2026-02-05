@@ -1,13 +1,18 @@
 'use client';
 
-import { SalesTypeApi, SalesTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { StatusBadge } from '@components-web';
+import { extractErrorMessage, SalesTypeApi, SalesTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { SalesTypeHeader, SalesTypeTable } from './components';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function SalesTypePage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [salesTypes, setSalesTypes] = useState<SalesTypeDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
@@ -15,11 +20,11 @@ export default function SalesTypePage() {
 
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
-    const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
-    // Track if initial fetch has been made to prevent duplicate calls
+    const router = useRouter();
     const hasFetchedRef = useRef(false);
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
 
     // Fetch sales types from API
     const fetchSalesTypes = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
@@ -27,90 +32,104 @@ export default function SalesTypePage() {
             setIsLoading(true);
             setError(null);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            // This prevents role parameter leakage when bypass auth is disabled
-            const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
+            const currentPageSize = customPageSize ?? pageSize;
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
+            // CRITICAL: Backend validation requires BOTH direction and cursor together or BOTH undefined
+            const paginationDirection = direction && serializedCursor ? direction : undefined;
+            const paginationCursor = direction && serializedCursor ? serializedCursor : undefined;
+
+            const trimmedQuery = searchQuery.trim();
             let response;
 
-            // Use custom page size if provided, otherwise use state page size
-            const currentPageSize = customPageSize ?? pageSize;
-
-            // If search query exists, use search API, otherwise use regular pagination API
-            if (searchQuery && searchQuery.trim() !== '') {
-                response = await SalesTypeApi.getSalesTypesByName(
-                    searchQuery.trim(),
+            // 4-branch API logic: search+status → search only → status only → show all
+            if (trimmedQuery.length > 0 && statusFilter !== 'ALL') {
+                // Branch 1: Search with status filter (use status API with name param)
+                response = await SalesTypeApi.getSalesTypesByStatus(
                     currentPageSize,
-                    direction,
-                    serializedCursor,
-                    userRole
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor,
+                    undefined, // userRole
+                    trimmedQuery
+                );
+            } else if (trimmedQuery.length > 0) {
+                // Branch 2: Search only (no status filter)
+                response = await SalesTypeApi.getSalesTypesByName(
+                    trimmedQuery,
+                    currentPageSize,
+                    paginationDirection,
+                    paginationCursor
+                );
+            } else if (statusFilter !== 'ALL') {
+                // Branch 3: Filter by status only
+                response = await SalesTypeApi.getSalesTypesByStatus(
+                    currentPageSize,
+                    statusFilter,
+                    paginationDirection,
+                    paginationCursor
                 );
             } else {
+                // Branch 4: No filter, no search - get all
                 response = await SalesTypeApi.getSalesTypes(
                     currentPageSize,
-                    undefined, // No status filter - show all records
-                    direction,
-                    serializedCursor,
-                    userRole
+                    undefined, // status
+                    paginationDirection,
+                    paginationCursor
                 );
             }
 
-            if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of sales types
-                if (Array.isArray(response.data)) {
-                    setSalesTypes(response.data);
-
-                    // Set pagination cursors from response
-                    setNextCursor(response.nextCursorPointer || undefined);
-                    setPrevCursor(response.prevCursorPointer || undefined);
-                } else {
-                    setSalesTypes([]);
-                    setNextCursor(undefined);
-                    setPrevCursor(undefined);
-                }
+            if (response?.statusCode === 200 && Array.isArray(response.data)) {
+                setSalesTypes(response.data);
+                setNextCursor(response.nextCursorPointer ?? undefined);
+                setPrevCursor(response.prevCursorPointer ?? undefined);
             } else {
                 setSalesTypes([]);
                 setNextCursor(undefined);
                 setPrevCursor(undefined);
             }
-
-            if (direction && cursor) {
-                setCurrentCursor(cursor);
-            } else {
-                setCurrentCursor(undefined);
-            }
-        } catch {
-            setError('Failed to load sales types. Please try again.');
+        } catch (err) {
+            const errorMessage = extractErrorMessage(err, 'Failed to load sales types. Please try again.');
+            setError(errorMessage);
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Fetch on initial load and when these dependencies change
+    // Initial fetch
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
         if (hasFetchedRef.current) return;
         hasFetchedRef.current = true;
-
         fetchSalesTypes();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
-    // Debounce search query changes (but not on initial mount with empty search)
+    // Debounce search query changes
     useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
+        const trimmedQuery = searchQuery.trim();
+
+        if (trimmedQuery.length === 0 && !hasFetchedRef.current) {
+            return;
         }
 
-        const delayDebounceFn = setTimeout(() => {
-            fetchSalesTypes();
-        }, 500); // 500ms delay
+        // Reset pagination when search query changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
 
-        return () => clearTimeout(delayDebounceFn);
+        const timer = setTimeout(() => {
+            fetchSalesTypes(undefined, undefined);
+        }, 500);
+
+        return () => clearTimeout(timer);
     }, [searchQuery]);
+
+    // Refetch when status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery(''); // Clear search when filter changes
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        fetchSalesTypes(undefined, undefined);
+    }, [statusFilter]);
 
     const headers = [
         { key: 'salesTypeName', label: 'NAME' },
@@ -118,85 +137,14 @@ export default function SalesTypePage() {
         { key: 'latestActivity', label: 'LATEST ACTIVITY' },
     ];
 
-    // Helper function to get status text
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
-
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
-
     // Handle row click - navigate to edit page
     const handleRowClick = (salesType: SalesTypeDto) => {
-        window.location.href = `/invoicing/sales-type/${salesType.salesTypeId}/edit`;
+        router.push(`/invoicing/sales-type/${salesType.salesTypeId}/edit`);
     };
 
     // Handle create new sales type - navigate to create page
     const handleCreateClick = () => {
-        window.location.href = '/invoicing/sales-type/create';
+        router.push('/invoicing/sales-type/create');
     };
 
     // Handle page size change - reset pagination and fetch fresh data
@@ -204,32 +152,32 @@ export default function SalesTypePage() {
         setPageSize(newPageSize);
         setNextCursor(undefined);
         setPrevCursor(undefined);
-        setCurrentCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
         fetchSalesTypes(undefined, undefined, newPageSize);
     };
 
-    // Transform data for table display
-    const tableData =
-        salesTypes?.map((salesType) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (salesType.activityLogs && salesType.activityLogs.length > 0) {
-                const lastLog = salesType.activityLogs[salesType.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
+    // Transform data for table display using useMemo
+    const tableData = useMemo(() => {
+        return (
+            salesTypes?.map((salesType) => {
+                let latestActivity = null;
+                if (salesType.activityLogs && salesType.activityLogs.length > 0) {
+                    const lastLog = salesType.activityLogs[salesType.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
 
-            return {
-                ...salesType,
-                status: getStatusBadge(salesType.status || StatusEnum.ACTIVE),
-                latestActivity,
-            };
-        }) || [];
+                return {
+                    ...salesType,
+                    status: <StatusBadge status={salesType.status || StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }) || []
+        );
+    }, [salesTypes]);
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -271,21 +219,19 @@ export default function SalesTypePage() {
             <div>
                 <SalesTypeHeader
                     searchQuery={searchQuery}
-                    onSearchChange={(value: string) => {
-                        setSearchQuery(value);
-                        // Reset pagination when search query changes
-                        setCurrentCursor(undefined);
-                        setNextCursor(undefined);
-                        setPrevCursor(undefined);
-                    }}
+                    statusFilter={statusFilter}
+                    onSearchChange={setSearchQuery}
+                    onStatusFilterChange={setStatusFilter}
                     onRefresh={() => {
                         setSearchQuery('');
-                        setCurrentCursor(undefined);
+                        setStatusFilter('ALL');
                         setNextCursor(undefined);
                         setPrevCursor(undefined);
                         fetchSalesTypes();
                     }}
                     onCreateClick={handleCreateClick}
+                    isLoading={isLoading}
+                    isAdminUser={isAdminUser}
                 />
             </div>
 

@@ -20,14 +20,15 @@ class AreaApi extends AxiosConfig {
         status?: string,
         direction?: string,
         cursorPointer?: string,
-        userRole?: string
+        userRole?: string,
+        name?: string
     ): Promise<AreasResponse> => {
         const params = new URLSearchParams({
             limit: limit.toString(),
         });
 
         if (status) {
-            return this.getAreasByStatus(limit, status, direction, cursorPointer, userRole);
+            return this.getAreasByStatus(limit, status, direction, cursorPointer, userRole, name);
         }
 
         if (direction) {

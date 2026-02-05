@@ -64,6 +64,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             GSI5PK: 'RAW_MATERIALS_PURCHASE_ORDER',
             GSI5SK: docNo,
             GSI6PK: `RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialsPurchaseOrderDto.rawMaterialSupplierId}`,
+            GSI7PK: `RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialsPurchaseOrderDto.status}`,
+            GSI7SK: docNo,
         };
 
         const record: RawMaterialsPurchaseOrderDataType = await this.rawMaterialsPurchaseOrderTable.create(
@@ -99,6 +101,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
         data.GSI5SK = docNo;
         data.GSI6PK = `RAW_MATERIALS_PURCHASE_ORDER#${record.rawMaterialSupplierId}`;
         data.GSI6SK = record.rawMaterialsPurchaseOrderId;
+        data.GSI7PK = `RAW_MATERIALS_PURCHASE_ORDER#${record.status}`;
+        data.GSI7SK = docNo;
         data.forApprovalVersion = record.forApprovalVersion;
         data.changeReason = record.changeReason;
         data.approverMessage = record.approverMessage;
@@ -158,6 +162,75 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             direction,
             'GSI3PK',
             'GSI3SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
+    async findRecordsByApprovalStatusPagination(
+        limit: number,
+        status: string,
+        direction: string,
+        cursorPointer: string,
+        name?: string
+    ): Promise<PageDto<RawMaterialsPurchaseOrderDto>> {
+        limit = Number(limit);
+
+        // Use GSI7 for combined status + docNo search - NO CLIENT SIDE FILTERING
+        if (name && name.trim() !== '') {
+            const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI7', direction, cursorPointer);
+
+            const records = await this.rawMaterialsPurchaseOrderTable.find(
+                {
+                    GSI7PK: `RAW_MATERIALS_PURCHASE_ORDER#${status}`,
+                    GSI7SK: { begins: name },
+                },
+                dynamoDbOption
+            );
+
+            const pageRecordCursorPointers = pageRecordHandler(
+                records,
+                limit,
+                direction,
+                'GSI7PK',
+                'GSI7SK',
+                'PK',
+                'SK',
+                JSON.stringify(records.next),
+                JSON.stringify(records.prev)
+            );
+
+            return new PageDto(
+                await this.convertToDtoList(records),
+                pageRecordCursorPointers.nextCursorPointer,
+                pageRecordCursorPointers.prevCursorPointer
+            );
+        }
+
+        // Default: status only - use GSI2 sorted by poDate
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
+
+        const records = await this.rawMaterialsPurchaseOrderTable.find(
+            {
+                GSI2PK: `RAW_MATERIALS_PURCHASE_ORDER#${status}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI2PK',
+            'GSI2SK',
             'PK',
             'SK',
             JSON.stringify(records.next),
@@ -359,6 +432,8 @@ export class RawMaterialsPurchaseOrderDatabaseService implements RawMaterialsPur
             GSI5SK: dto.docNo,
             GSI6PK: `RAW_MATERIALS_PURCHASE_ORDER#${dto.rawMaterialSupplierId}`,
             GSI6SK: dto.rawMaterialsPurchaseOrderId,
+            GSI7PK: `RAW_MATERIALS_PURCHASE_ORDER#${dto.status}`,
+            GSI7SK: dto.docNo,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
             changeReason: dto.changeReason,

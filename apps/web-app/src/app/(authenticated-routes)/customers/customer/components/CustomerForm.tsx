@@ -46,6 +46,8 @@ interface CustomerFormProps {
     onCancel: () => void;
     isAdminUser?: boolean;
     activeTab?: 'details' | 'approval';
+    onApprove?: () => void;
+    onDeny?: () => void;
 }
 
 export default function CustomerForm({
@@ -58,6 +60,8 @@ export default function CustomerForm({
     onCancel,
     isAdminUser = false,
     activeTab = 'details',
+    onApprove,
+    onDeny,
 }: CustomerFormProps) {
     const [selectedArea, setSelectedArea] = useState<{ id: string; name: string } | null>(null);
     const [selectedClassification, setSelectedClassification] = useState<{ id: string; name: string } | null>(null);

@@ -1,6 +1,6 @@
 'use client';
 
-import { Pagination } from '@components-web';
+import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } from '@components-web';
 import { AccountsDto } from '@data-access/index';
 
 interface AccountTableProps {
@@ -11,8 +11,8 @@ interface AccountTableProps {
     onRowClick: (account: AccountsDto) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
-    prevCursor: any;
-    nextCursor: any;
+    hasPrevious: boolean;
+    hasNext: boolean;
     onPrevious: () => void;
     onNext: () => void;
 }
@@ -25,8 +25,8 @@ export default function AccountTable({
     onRowClick,
     pageSize,
     onPageSizeChange,
-    prevCursor,
-    nextCursor,
+    hasPrevious,
+    hasNext,
     onPrevious,
     onNext,
 }: AccountTableProps) {
@@ -34,9 +34,10 @@ export default function AccountTable({
 
     return (
         <>
+            {/* Desktop Table */}
             <div className="hidden overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg sm:block">
                 {isLoading ? (
-                    <div className="p-10 text-center text-base text-gray-500">Loading accounts...</div>
+                    <TableSkeleton rows={5} columns={headers.length} />
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full border-collapse">
@@ -85,8 +86,8 @@ export default function AccountTable({
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan={headers.length} className="px-6 py-8 text-center text-gray-500">
-                                            {emptyStateMessage}
+                                        <td colSpan={headers.length}>
+                                            <EmptyTableState message={emptyStateMessage} />
                                         </td>
                                     </tr>
                                 )}
@@ -96,7 +97,12 @@ export default function AccountTable({
                 )}
             </div>
 
-            {!isLoading && (
+            {/* Mobile Cards */}
+            {isLoading ? (
+                <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm sm:hidden">
+                    <TableSkeleton rows={3} columns={1} />
+                </div>
+            ) : (
                 <div className="space-y-4 sm:hidden">
                     {tableData.length > 0 ? (
                         tableData.map((account) => (
@@ -119,7 +125,7 @@ export default function AccountTable({
                                 </div>
                                 {account.latestActivity && (
                                     <div className="mt-2">
-                                        <dt className="font-medium text-gray-500 mb-1">Latest Activity</dt>
+                                        <dt className="mb-1 font-medium text-gray-500">Latest Activity</dt>
                                         <dd>
                                             <span
                                                 className={`px-2 py-1 rounded text-xs ${account.latestActivity.style.bgColor} ${account.latestActivity.style.textColor}`}
@@ -134,28 +140,21 @@ export default function AccountTable({
                             </button>
                         ))
                     ) : (
-                        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
-                            {emptyStateMessage}
-                        </div>
+                        <EmptyTableState message={emptyStateMessage} />
                     )}
                 </div>
             )}
 
-            {isLoading && (
-                <div className="rounded-xl border border-gray-200 bg-white p-6 text-center text-gray-500 shadow-sm sm:hidden">
-                    Loading accounts...
-                </div>
-            )}
-
             {/* Pagination */}
-            <Pagination
-                pageSize={pageSize}
-                onPageSizeChange={onPageSizeChange}
-                prevCursor={prevCursor}
-                nextCursor={nextCursor}
-                onPrevious={onPrevious}
-                onNext={onNext}
-            />
+            <div className="flex items-center justify-between">
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
+                <PaginationButtons
+                    hasPrevious={hasPrevious}
+                    hasNext={hasNext}
+                    onPrevious={onPrevious}
+                    onNext={onNext}
+                />
+            </div>
         </>
     );
 }

@@ -48,7 +48,7 @@ async function bootstrapServer() {
         const sqsService = appContext.get(SqsLocalService);
         sqsService.pollQueue();
     } else {
-        const port = process.env.PORT || 4026;
+        const port = process.env.PORT || 4090;
 
         await app.listen(port);
         Logger.log(`🚀 USER-EVENT-HANDLER-SERVICE is running on: http://localhost:${port}/api`);

@@ -251,17 +251,22 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         limit: number,
         status: string,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        receiptNo?: string
     ): Promise<PageDto<PaymentDto>> {
         limit = Number(limit);
         const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer, true);
 
-        const records = await this.paymentTable.find(
-            {
-                GSI2PK: `PAYMENT#${status}`,
-            },
-            dynamoDbOption
-        );
+        // GSI2SK is receiptNo, so we can use begins_with directly - NO CLIENT SIDE FILTERING
+        const queryParams: { GSI2PK: string; GSI2SK?: { begins: string } } = {
+            GSI2PK: `PAYMENT#${status}`,
+        };
+
+        if (receiptNo && receiptNo.trim() !== '') {
+            queryParams.GSI2SK = { begins: receiptNo };
+        }
+
+        const records = await this.paymentTable.find(queryParams, dynamoDbOption);
 
         const pageRecordCursorPointers = pageRecordHandler(
             records,

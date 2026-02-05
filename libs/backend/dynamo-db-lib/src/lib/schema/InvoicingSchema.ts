@@ -250,6 +250,9 @@ export const InvoicingSchema = {
             GSI5SK: { type: String, value: '${dateReturned}', hidden: false },
             GSI6PK: { type: String, value: 'RETURN_GOOD_SOLD#${areaId}', hidden: false },
             GSI6SK: { type: String, value: '${dateReturned}', hidden: false },
+            // GSI7: Combined status + rgsDocno index for filtering by status with rgsDocno prefix search
+            GSI7PK: { type: String, value: 'RETURN_GOOD_SOLD#${status}', hidden: false },
+            GSI7SK: { type: String, value: '${rgsDocno}', hidden: false },
         },
         CollectionReceiptRange: {
             PK: { type: String, value: 'COLLECTION_RECEIPT_RANGE', hidden: false },

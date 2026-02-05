@@ -24,7 +24,7 @@ interface EditProductPageProps {
 export default function EditProductPage({ params }: EditProductPageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<ProductDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
@@ -48,20 +48,6 @@ export default function EditProductPage({ params }: EditProductPageProps) {
 
                 const product = await ProductApi.getProductById(params.id, userRole);
                 setSelectedProduct(product);
-
-                // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-                if (
-                    (product.status === StatusEnum.FOR_APPROVAL ||
-                        product.status === StatusEnum.NEW_RECORD ||
-                        product.status === StatusEnum.FOR_DEACTIVATION ||
-                        product.status === StatusEnum.FOR_DELETION) &&
-                    isAdminUser
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    // Default to details tab
-                    setActiveTab('details');
-                }
             } catch (err) {
                 console.error('Error fetching product:', err);
                 const errorMessage = extractErrorMessage(err, 'Failed to load product details. Please try again.');

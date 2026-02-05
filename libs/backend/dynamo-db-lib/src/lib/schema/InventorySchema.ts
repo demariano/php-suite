@@ -204,6 +204,9 @@ export const InventorySchema = {
             GSI5SK: { type: String, value: '${docNo}', hidden: false },
             GSI6PK: { type: String, value: 'RAW_MATERIALS_PURCHASE_ORDER#${rawMaterialSupplierId}', hidden: false },
             GSI6SK: { type: String, value: '${rawMaterialsPurchaseOrderId}', hidden: false },
+            // GSI7: Combined status + docNo index for filtering by status with docNo prefix search
+            GSI7PK: { type: String, value: 'RAW_MATERIALS_PURCHASE_ORDER#${status}', hidden: false },
+            GSI7SK: { type: String, value: '${docNo}', hidden: false },
         },
         RawMaterialUnits: {
             PK: { type: String, value: 'RAW_MATERIAL_UNIT', hidden: false },
@@ -316,6 +319,9 @@ export const InventorySchema = {
             GSI5SK: { type: String, value: '${docNo}', hidden: false },
             GSI6PK: { type: String, value: 'STOCK_PURCHASE_ORDER#${supplierId}', hidden: false },
             GSI6SK: { type: String, value: '${stockPurchaseOrderId}', hidden: false },
+            // GSI7: Combined status + docNo index for filtering by status with docNo prefix search
+            GSI7PK: { type: String, value: 'STOCK_PURCHASE_ORDER#${status}', hidden: false },
+            GSI7SK: { type: String, value: '${docNo}', hidden: false },
         },
     } as const,
     params: {

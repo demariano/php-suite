@@ -15,9 +15,8 @@ import {
     SalesTypeApi,
     SalesTypeDto,
     StatusEnum,
-    StockApi,
     TermsDto,
-    useSessionStore,
+    useSessionStore
 } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../../../components';
@@ -409,47 +408,32 @@ export default function RecordDetailsTab({
         setPendingContractAction(null);
     };
 
+    const STATUS_BADGE_CLASSES: Record<StatusEnum, string> = {
+        [StatusEnum.ACTIVE]: 'bg-green-100 text-green-800',
+        [StatusEnum.FOR_APPROVAL]: 'bg-yellow-100 text-yellow-800',
+        [StatusEnum.FOR_DELETION]: 'bg-red-100 text-red-800',
+        [StatusEnum.FOR_DEACTIVATION]: 'bg-red-100 text-red-800',
+        [StatusEnum.NEW_RECORD]: 'bg-blue-100 text-blue-800',
+        [StatusEnum.INACTIVE]: 'bg-gray-100 text-gray-600',
+        [StatusEnum.DRAFT]: 'bg-blue-100 text-blue-800',
+    };
+
+    const PAYMENT_STATUS_BADGE_CLASSES: Record<PaymentStatusEnum, string> = {
+        [PaymentStatusEnum.PENDING]: 'bg-yellow-100 text-yellow-800',
+        [PaymentStatusEnum.PARTIAL]: 'bg-orange-100 text-orange-800',
+        [PaymentStatusEnum.PAID]: 'bg-green-100 text-green-800',
+    };
+
+    const PRINT_STATUS_BADGE_CLASSES: Record<PrintStatusEnum, string> = {
+        [PrintStatusEnum.COMPLETED]: 'bg-green-100 text-green-800',
+        [PrintStatusEnum.PENDING]: 'bg-gray-100 text-gray-800',
+    };
+
     const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
+        const colorClasses = STATUS_BADGE_CLASSES[status] ?? 'bg-gray-100 text-gray-600';
         return (
             <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium uppercase ${colorClasses}`}
             >
                 {status}
             </span>
@@ -457,40 +441,10 @@ export default function RecordDetailsTab({
     };
 
     const getPaymentStatusBadge = (status: PaymentStatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === PaymentStatusEnum.PENDING) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === PaymentStatusEnum.PARTIAL) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === PaymentStatusEnum.PAID) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
+        const colorClasses = PAYMENT_STATUS_BADGE_CLASSES[status] ?? 'bg-gray-100 text-gray-600';
         return (
             <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === PaymentStatusEnum.PENDING
-                            ? '#fef3c7'
-                            : status === PaymentStatusEnum.PARTIAL
-                            ? '#fed7aa'
-                            : status === PaymentStatusEnum.PAID
-                            ? '#dcfce7'
-                            : '#f3f4f6',
-                    color:
-                        status === PaymentStatusEnum.PENDING
-                            ? '#92400e'
-                            : status === PaymentStatusEnum.PARTIAL
-                            ? '#c2410c'
-                            : status === PaymentStatusEnum.PAID
-                            ? '#166534'
-                            : '#6b7280',
-                }}
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium uppercase ${colorClasses}`}
             >
                 {status}
             </span>
@@ -498,34 +452,10 @@ export default function RecordDetailsTab({
     };
 
     const getPrintStatusBadge = (status: PrintStatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
-
-        let colorClasses = '';
-        if (status === PrintStatusEnum.COMPLETED) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === PrintStatusEnum.PENDING) {
-            colorClasses = '!bg-gray-100 !text-gray-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
-
+        const colorClasses = PRINT_STATUS_BADGE_CLASSES[status] ?? 'bg-gray-100 text-gray-600';
         return (
             <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === PrintStatusEnum.COMPLETED
-                            ? '#dcfce7'
-                            : status === PrintStatusEnum.PENDING
-                            ? '#f3f4f6'
-                            : '#f3f4f6',
-                    color:
-                        status === PrintStatusEnum.COMPLETED
-                            ? '#166534'
-                            : status === PrintStatusEnum.PENDING
-                            ? '#6b7280'
-                            : '#6b7280',
-                }}
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium uppercase ${colorClasses}`}
             >
                 {status}
             </span>

@@ -8,6 +8,7 @@ import { CreateProductCommand } from './command/create/create.command';
 import { DeleteProductCommand } from './command/delete/delete.command';
 import { DenyProductCommand } from './command/deny-record/deny.command';
 import { DenyProductDto } from './command/deny-record/deny.dto';
+import { ReactivateProductCommand } from './command/reactivate/reactivate.command';
 import { UpdateProductCommand } from './command/update/update.command';
 import { GetProductByIdQuery } from './queries/get.by.id/get.product.by.id.query';
 import { GetProductByNameQuery } from './queries/get.by.name/get.product.by.name.query';
@@ -335,6 +336,51 @@ export class ProductController {
         }
 
         const command = new DenyProductCommand(id, user, denyDto.approverMessage);
+        return this.commandBus.execute(command);
+    }
+
+    @Post(':id/reactivate')
+    @ApiOperation({
+        summary: 'Reactivate product',
+        description: 'Reactivates an INACTIVE product back to ACTIVE status. Requires admin privileges.',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Unique product identifier',
+        example: 'prod_123456789',
+    })
+    @ApiQuery({
+        name: 'userRole',
+        type: String,
+        required: false,
+        description: 'Override user role for testing purposes (only works when BYPASS_AUTH=ENABLED)',
+        enum: ['USER', 'ADMIN', 'SUPER_ADMIN'],
+        example: 'ADMIN',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Product successfully reactivated',
+        type: ProductDto,
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Product not found',
+    })
+    @ApiResponse({
+        status: 403,
+        description: 'Forbidden - Insufficient permissions',
+    })
+    async reactivateRecord(
+        @Param('id') id: string,
+        @Query('userRole') userRole: string,
+        @CurrentUser() user: UserCognito
+    ) {
+        // Override user roles if userRole query parameter is provided and BYPASS_AUTH is enabled
+        if (userRole && process.env['BYPASS_AUTH'] === 'ENABLED') {
+            user.roles = [userRole];
+        }
+
+        const command = new ReactivateProductCommand(id, user);
         return this.commandBus.execute(command);
     }
 

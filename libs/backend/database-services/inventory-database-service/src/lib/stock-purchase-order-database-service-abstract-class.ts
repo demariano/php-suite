@@ -15,6 +15,14 @@ export abstract class StockPurchaseOrderDatabaseServiceAbstract {
         cursorPointer: string
     ): Promise<PageDto<StockPurchaseOrderDto>>;
 
+    abstract findRecordsByApprovalStatusPagination(
+        limit: number,
+        status: string,
+        direction: string,
+        cursorPointer: string,
+        docNo?: string
+    ): Promise<PageDto<StockPurchaseOrderDto>>;
+
     abstract findRecordsBySupplierPagination(
         limit: number,
         supplierId: string,
@@ -25,7 +33,8 @@ export abstract class StockPurchaseOrderDatabaseServiceAbstract {
     abstract findRecordsByPagination(
         limit: number,
         direction: string,
-        cursorPointer: string
+        cursorPointer: string,
+        docNo?: string
     ): Promise<PageDto<StockPurchaseOrderDto>>;
 
     abstract updateRecord(stockPurchaseOrderData: StockPurchaseOrderDto): Promise<StockPurchaseOrderDto>;

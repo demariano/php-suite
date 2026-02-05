@@ -3,13 +3,15 @@
 import { StatusBadge } from '@components-web';
 import { StatusEnum, TermsApi, TermsDto, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { TermsHeader, TermsTable } from './components';
+
+const DEFAULT_PAGE_SIZE = 10;
 
 export default function TermsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
-    const [statusFilter, setStatusFilter] = useState('ALL');
+    const [statusFilter, setStatusFilter] = useState<StatusEnum | 'ALL'>('ALL');
     const [terms, setTerms] = useState<TermsDto[]>([]);
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
@@ -18,31 +20,39 @@ export default function TermsPage() {
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
     const [currentCursor, setCurrentCursor] = useState<string | undefined>(undefined);
-    const [pageSize, setPageSize] = useState<number>(10);
+    const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
 
-    // Track if initial fetch has been made to prevent duplicate calls
     const hasFetchedRef = useRef(false);
 
-    // Fetch terms from API
+    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
+
+    // Fetch terms from API - 4-branch API logic
     const fetchTerms = async (direction?: 'next' | 'prev', cursor?: string, customPageSize?: number) => {
         try {
             setIsLoading(true);
             setError(null);
 
-            // SECURITY: Only get user role if BYPASS_AUTH is enabled
-            // This prevents role parameter leakage when bypass auth is disabled
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-
-            // Serialize cursor object to JSON string if it's an object
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
-
-            let response;
-
-            // Use custom page size if provided, otherwise use state page size
             const currentPageSize = customPageSize ?? pageSize;
 
-            // If search query exists, use search API, otherwise use regular pagination API
-            if (searchQuery && searchQuery.trim() !== '') {
+            let response;
+            const hasSearch = searchQuery && searchQuery.trim() !== '';
+            const hasStatus = statusFilter !== 'ALL';
+
+            // 4-branch API logic
+            if (hasSearch && hasStatus) {
+                // Branch 1: Both search and status - use status API with name param (backend filtering)
+                response = await TermsApi.getTerms(
+                    currentPageSize,
+                    statusFilter,
+                    direction,
+                    serializedCursor,
+                    userRole,
+                    searchQuery.trim()
+                );
+            } else if (hasSearch) {
+                // Branch 2: Search only
                 response = await TermsApi.getTermsByName(
                     searchQuery.trim(),
                     currentPageSize,
@@ -50,22 +60,23 @@ export default function TermsPage() {
                     serializedCursor,
                     userRole
                 );
-            } else {
+            } else if (hasStatus) {
+                // Branch 3: Status only
                 response = await TermsApi.getTerms(
                     currentPageSize,
-                    statusFilter === 'ALL' ? undefined : statusFilter,
+                    statusFilter,
                     direction,
                     serializedCursor,
                     userRole
                 );
+            } else {
+                // Branch 4: Show all
+                response = await TermsApi.getTerms(currentPageSize, undefined, direction, serializedCursor, userRole);
             }
 
             if (response && response.statusCode === 200 && response.data) {
-                // The response.data contains the array of terms
                 if (Array.isArray(response.data)) {
                     setTerms(response.data);
-
-                    // Set pagination cursors from response
                     setNextCursor(response.nextCursorPointer || undefined);
                     setPrevCursor(response.prevCursorPointer || undefined);
                 } else {
@@ -91,152 +102,87 @@ export default function TermsPage() {
         }
     };
 
-    // Fetch on initial load and when these dependencies change
+    // Fetch on initial load
     useEffect(() => {
-        // Prevent duplicate calls in React Strict Mode
         if (hasFetchedRef.current) return;
         hasFetchedRef.current = true;
-
         fetchTerms();
-    }, [env.BYPASS_AUTH, authedUser?.userRole, pageSize, statusFilter]);
+    }, [env.BYPASS_AUTH, authedUser?.userRole]);
 
-    // Debounce search query changes (but not on initial mount with empty search)
+    // Debounce search query changes
     useEffect(() => {
-        // Only debounce if there's actually a search query
-        if (searchQuery === '') {
-            return; // Skip - initial load is handled by the other useEffect
-        }
+        if (!hasFetchedRef.current) return;
+        if (searchQuery === '') return;
 
         const delayDebounceFn = setTimeout(() => {
+            setNextCursor(undefined);
+            setPrevCursor(undefined);
+            setCurrentCursor(undefined);
             fetchTerms();
-        }, 500); // 500ms delay
+        }, 500);
 
         return () => clearTimeout(delayDebounceFn);
     }, [searchQuery]);
 
-    const headers = [
-        { key: 'termsName', label: 'NAME' },
-        { key: 'days', label: 'DAYS' },
-        { key: 'status', label: 'STATUS' },
-        { key: 'latestActivity', label: 'LATEST ACTIVITY' },
-    ];
+    // Handle status filter changes
+    useEffect(() => {
+        if (!hasFetchedRef.current) return;
+        setSearchQuery('');
+        setNextCursor(undefined);
+        setPrevCursor(undefined);
+        setCurrentCursor(undefined);
+        fetchTerms();
+    }, [statusFilter]);
 
-    const getStatusText = (status: StatusEnum): string => {
-        switch (status) {
-            case StatusEnum.ACTIVE:
-                return 'Active';
-            case StatusEnum.FOR_APPROVAL:
-                return 'For Approval';
-            case StatusEnum.FOR_DELETION:
-                return 'For Deletion';
-            case StatusEnum.FOR_DEACTIVATION:
-                return 'For Deactivation';
-            case StatusEnum.INACTIVE:
-                return 'Inactive';
-            case StatusEnum.NEW_RECORD:
-                return 'New Record';
-            default:
-                return status;
-        }
-    };
+    const headers = useMemo(
+        () => [
+            { key: 'termsName', label: 'NAME' },
+            { key: 'days', label: 'DAYS' },
+            { key: 'status', label: 'STATUS' },
+            { key: 'latestActivity', label: 'LATEST ACTIVITY' },
+        ],
+        []
+    );
 
-    const getStatusBadge = (status: StatusEnum) => {
-        const baseClasses = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase';
+    const tableData = useMemo(
+        () =>
+            terms?.map((term) => {
+                let latestActivity = null;
+                if (term.activityLogs && term.activityLogs.length > 0) {
+                    const lastLog = term.activityLogs[term.activityLogs.length - 1];
+                    const parsed = parseActivityLog(lastLog);
+                    const activityStyle = getActivityStyle(parsed.activity);
+                    latestActivity = {
+                        text: parsed.activity,
+                        style: activityStyle,
+                    };
+                }
 
-        let colorClasses = '';
-        if (status === StatusEnum.ACTIVE) {
-            colorClasses = '!bg-green-100 !text-green-800';
-        } else if (status === StatusEnum.FOR_APPROVAL) {
-            colorClasses = '!bg-yellow-100 !text-yellow-800';
-        } else if (status === StatusEnum.FOR_DELETION) {
-            colorClasses = '!bg-red-100 !text-red-800';
-        } else if (status === StatusEnum.FOR_DEACTIVATION) {
-            colorClasses = '!bg-orange-100 !text-orange-800';
-        } else if (status === StatusEnum.INACTIVE) {
-            colorClasses = '!bg-gray-200 !text-gray-500';
-        } else if (status === StatusEnum.NEW_RECORD) {
-            colorClasses = '!bg-blue-100 !text-blue-800';
-        } else {
-            colorClasses = '!bg-gray-100 !text-gray-600';
-        }
+                return {
+                    ...term,
+                    status: <StatusBadge status={term.status || StatusEnum.ACTIVE} />,
+                    latestActivity,
+                };
+            }) || [],
+        [terms]
+    );
 
-        return (
-            <span
-                className={`${baseClasses} ${colorClasses}`}
-                style={{
-                    backgroundColor:
-                        status === StatusEnum.ACTIVE
-                            ? '#dcfce7'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#fef3c7'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#fef2f2'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#dbeafe'
-                            : '#f3f4f6',
-                    color:
-                        status === StatusEnum.ACTIVE
-                            ? '#166534'
-                            : status === StatusEnum.FOR_APPROVAL
-                            ? '#92400e'
-                            : status === StatusEnum.FOR_DELETION
-                            ? '#dc2626'
-                            : status === StatusEnum.NEW_RECORD
-                            ? '#1e40af'
-                            : '#6b7280',
-                }}
-            >
-                {getStatusText(status)}
-            </span>
-        );
-    };
-
-    const handleRowClick = async (terms: TermsDto) => {
-        // Navigate to edit terms page
-        window.location.href = `/customers/terms/${terms.termsId}/edit`;
+    const handleRowClick = async (term: TermsDto) => {
+        window.location.href = `/customers/terms/${term.termsId}/edit`;
     };
 
     const handleCreateClick = () => {
-        // Navigate to create terms page
         window.location.href = '/customers/terms/create';
     };
 
-    // Handle page size change - reset pagination and fetch fresh data
     const handlePageSizeChange = (newPageSize: number) => {
         setPageSize(newPageSize);
         setNextCursor(undefined);
         setPrevCursor(undefined);
         setCurrentCursor(undefined);
-        // Fetch with new page size and no cursor (like initial load)
         fetchTerms(undefined, undefined, newPageSize);
     };
 
-    // Transform data for table display
-    const tableData =
-        terms?.map((terms) => {
-            // Get the latest activity log entry
-            let latestActivity = null;
-            if (terms.activityLogs && terms.activityLogs.length > 0) {
-                const lastLog = terms.activityLogs[terms.activityLogs.length - 1];
-                const parsed = parseActivityLog(lastLog);
-                const activityStyle = getActivityStyle(parsed.activity);
-                latestActivity = {
-                    text: parsed.activity,
-                    style: activityStyle,
-                };
-            }
-
-            return {
-                ...terms,
-                status: getStatusBadge(terms.status || StatusEnum.ACTIVE),
-                latestActivity,
-            };
-        }) || [];
-
-    // Use StatusBadge component for rendering
-    const renderStatusBadge = (status: StatusEnum) => <StatusBadge status={status} />;
-
-    const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const canCreateTerms = isAdminUser;
 
     return (
@@ -276,7 +222,7 @@ export default function TermsPage() {
             <TermsHeader
                 searchQuery={searchQuery}
                 statusFilter={statusFilter}
-                onStatusFilterChange={(value: string) => {
+                onStatusFilterChange={(value: StatusEnum | 'ALL') => {
                     setStatusFilter(value);
                     setCurrentCursor(undefined);
                     setNextCursor(undefined);
@@ -299,6 +245,7 @@ export default function TermsPage() {
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
                 canCreate={canCreateTerms}
+                isAdminUser={isAdminUser}
             />
 
             <TermsTable
