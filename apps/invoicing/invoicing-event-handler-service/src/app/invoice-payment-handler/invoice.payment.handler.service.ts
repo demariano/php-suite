@@ -16,7 +16,6 @@ import {
 import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InvoiceAmountCalculatorHandlerService } from '../invoice-amount-calculator/invoice.amount.calculator.handler.service';
 
 @Injectable()
 export class InvoicePaymentHandlerService {
@@ -30,8 +29,6 @@ export class InvoicePaymentHandlerService {
         private readonly messageQueueService: MessageQueueServiceAbstract,
 
         private readonly configService: ConfigService,
-
-        private readonly invoiceAmountCalculatorHandlerService: InvoiceAmountCalculatorHandlerService,
 
         @Inject('OverPaymentDatabaseService')
         private readonly overPaymentDatabaseService: OverPaymentDatabaseServiceAbstract,
