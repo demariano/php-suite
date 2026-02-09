@@ -1,12 +1,12 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
 import {
     ContractInvoiceEventEnum,
-    CustomerBalanceEventDto,
-    CustomerBalanceEventEnum,
     ErrorResponseDto,
     InventoryEventDto,
     InventoryEventEnum,
     InvoiceDto,
+    InvoicePaymentEventDto,
+    InvoicePaymentEventEnum,
     ResponseDto,
     StatusEnum,
     UserRole,
@@ -126,9 +126,6 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
             if (createdRecord.status === StatusEnum.ACTIVE) {
                 await this.sendInventoryApprovedEvent(createdRecord);
 
-                // Send customer balance event to add invoice amount to balance
-                await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.INVOICE_CREATED, createdRecord);
-
                 // If invoice has a contractId, trigger recalculation of contract invoiced amount
                 if (createdRecord.contractId) {
                     await this.sendContractInvoiceEvent(
@@ -136,6 +133,16 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
                         createdRecord.contractId
                     );
                 }
+
+                const invoicePaymentDto: InvoicePaymentEventDto = {
+                    invoiceId: createdRecord.invoiceId,
+                    customerId: createdRecord.customerId,
+                    invoicePaymentEvent: InvoicePaymentEventEnum.INVOICE_CREATED,
+                };
+                const invoicePayloads: InvoicePaymentEventDto[] = [];
+
+                invoicePayloads.push(invoicePaymentDto);
+                await this.sendInvoicePaymentEvent(invoicePayloads);
             }
 
             this.logger.log(
@@ -293,35 +300,6 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
     }
 
     /**
-     * Sends customer balance event to update customer balance
-     */
-    private async sendCustomerBalanceEvent(eventType: CustomerBalanceEventEnum, invoice: InvoiceDto): Promise<void> {
-        if (!invoice.customerId) {
-            this.logger.warn(`No customerId found for invoice ${invoice.invoiceId}, skipping balance event`);
-            return;
-        }
-
-        const customerBalanceEvent: CustomerBalanceEventDto = {
-            eventType,
-            customerId: invoice.customerId,
-            customerName: invoice.customerName,
-            amount: invoice.finalAmount,
-            referenceId: invoice.invoiceId,
-            referenceNo: invoice.docno,
-        };
-
-        try {
-            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
-            this.logger.log(
-                `${eventType} event sent for invoice: ${invoice.invoiceId}, customer: ${invoice.customerId}, amount: ${invoice.finalAmount}`
-            );
-        } catch (error) {
-            this.logger.error(`Failed to send ${eventType} event for invoice ${invoice.invoiceId}:`, error);
-        }
-    }
-
-    /**
      * Validates that adding this invoice won't exceed the contract amount limit
      */
     private async validateContractAmountLimit(
@@ -363,5 +341,16 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
                 `Current: ${currentInvoicedAmount}, New invoice: ${newInvoiceAmount}, ` +
                 `Projected: ${projectedInvoicedAmount}`
         );
+    }
+
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
+        const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+        const eventPayload = {
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
+            paymentData,
+        };
+
+        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
     }
 }

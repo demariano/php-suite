@@ -38,6 +38,7 @@ export const InvoicingSchema = {
             invoiceAmount: { type: Number },
             taxAmount: { type: Number },
             totalAmountPaid: { type: Number, required: false, default: 0 },
+            overPaymentAmount: { type: Number, required: false, default: 0 },
             contractId: { type: String },
             contractName: { type: String },
             termsId: { type: String },
@@ -189,6 +190,7 @@ export const InvoicingSchema = {
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
             contractPayment: { type: Boolean, required: false },
+            customerCreditPayment: { type: Boolean, required: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],
@@ -199,7 +201,6 @@ export const InvoicingSchema = {
             contractNo: { type: String },
             chequeClearStatus: { type: String, enum: ['PENDING', 'CLEARED'], required: false },
             paymentDetails: { type: Array }, //will hold 1 to many payment details , cheque no , cheque date , bank or cash payment
-            paymentInvoiceDetails: { type: Array }, // will hold invoice to apply the payment
             changeReason: { type: String, required: false },
             approverMessage: { type: String, required: false },
             GSI1PK: { type: String, value: 'PAYMENT', hidden: false },
@@ -214,6 +215,38 @@ export const InvoicingSchema = {
             GSI5SK: { type: String, value: '${paymentDate}', hidden: false },
             GSI6PK: { type: String, value: 'PAYMENT#${contractId}', hidden: false },
             GSI6SK: { type: String, value: '${paymentDate}', hidden: false },
+        },
+        PaymentInvoice: {
+            PK: { type: String, value: 'PAYMENTINVOICE', hidden: false },
+            SK: { type: String, value: '${paymentId}', hidden: false },
+            paymentDetailsId: { type: String, generate: 'ulid' },
+            paymentId: { type: String },
+            invoiceId: { type: String },
+            amountApplied: { type: Number },
+            dateCreated: { type: String },
+            docno: { type: String },
+            customerCreditPayment: { type: Boolean, required: false },
+            GSI1PK: { type: String, value: 'PAYMENTINVOICE', hidden: false },
+            GSI1SK: { type: String, value: '${paymentId}', hidden: false },
+            GSI2PK: { type: String, value: 'PAYMENTINVOICE', hidden: false },
+            GSI2SK: { type: String, value: '${invoiceId}', hidden: false },
+            GSI3PK: { type: String, value: 'PAYMENTINVOICE', hidden: false },
+            GSI3SK: { type: String, value: '${docno}', hidden: false },
+        },
+        OverPayment: {
+            PK: { type: String, value: 'OVERPAYMENT', hidden: false },
+            SK: { type: String, value: '${overPaymentId}', hidden: false },
+            overPaymentId: { type: String, generate: 'ulid' },
+            paymentId: { type: String, generate: 'ulid' },
+            overPaymentAmount: { type: Number },
+            invoiceId: { type: String },
+            customerId: { type: String },
+            GSI1PK: { type: String, value: 'OVERPAYMENT', hidden: false },
+            GSI1SK: { type: String, value: '${paymentId}', hidden: false },
+            GSI2PK: { type: String, value: 'OVERPAYMENT', hidden: false },
+            GSI2SK: { type: String, value: '${invoiceId}', hidden: false },
+            GSI3PK: { type: String, value: 'OVERPAYMENT', hidden: false },
+            GSI3SK: { type: String, value: '${customerId}', hidden: false },
         },
         ReturnGoodSold: {
             PK: { type: String, value: 'RETURN_GOOD_SOLD', hidden: false },
@@ -299,3 +332,5 @@ export type ContractDataType = Entity<typeof InvoicingSchema.models.Contract>;
 export type PaymentDataType = Entity<typeof InvoicingSchema.models.Payment>;
 export type ReturnGoodSoldDataType = Entity<typeof InvoicingSchema.models.ReturnGoodSold>;
 export type CollectionReceiptRangeDataType = Entity<typeof InvoicingSchema.models.CollectionReceiptRange>;
+export type OverPaymentDataType = Entity<typeof InvoicingSchema.models.OverPayment>;
+export type PaymentInvoiceDataType = Entity<typeof InvoicingSchema.models.PaymentInvoice>;

@@ -1,10 +1,8 @@
 import {
     ContractPaymentDto,
     ContractPaymentEventEnum,
-    CustomerBalanceEventDto,
-    CustomerBalanceEventEnum,
     ErrorResponseDto,
-    InvoicePaymentDto,
+    InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
     PaymentDto,
     ResponseDto,
@@ -12,7 +10,10 @@ import {
     UserRole,
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import {
+    PaymentDatabaseServiceAbstractClass,
+    PaymentInvoiceDatabaseServiceAbstractClass,
+} from '@invoicing-database-service';
 import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -32,7 +33,10 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
         private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+
+        @Inject('PaymentInvoiceDatabaseService')
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
     ) {}
 
     async execute(command: DeletePaymentCommand): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -40,19 +44,16 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
 
         try {
             // Fetch and validate existing payment record
-            const existingRecord = await this.validatePaymentExists(command.id);
-
-            // Store original status before modification
-            const originalStatus = existingRecord.status;
+            const existingRecord = await this.validatePayment(command.id);
 
             // Check user authorization
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
             // Update status and activity logs based on permissions
-            this.updatePaymentStatus(command, existingRecord, hasApprovalPermission, originalStatus);
+            this.updatePaymentStatus(command, existingRecord, hasApprovalPermission);
 
             // Delete or mark for deletion based on permissions
-            const deletedRecord = await this.performDeletion(command, hasApprovalPermission, originalStatus);
+            const deletedRecord = await this.performDeletion(command, hasApprovalPermission);
 
             this.logger.log(`Payment deleted successfully: ${deletedRecord.paymentId}`);
             return new ResponseDto<PaymentDto>(deletedRecord, HTTP_STATUS_OK);
@@ -64,7 +65,7 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
     /**
      * Validates that the payment exists
      */
-    private async validatePaymentExists(recordId: string): Promise<PaymentDto> {
+    private async validatePayment(recordId: string): Promise<PaymentDto> {
         const existingRecord = await this.paymentDatabaseService.findRecordById(recordId);
 
         if (!existingRecord) {
@@ -93,8 +94,7 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
     private updatePaymentStatus(
         command: DeletePaymentCommand,
         existingRecord: PaymentDto,
-        hasApprovalPermission: boolean,
-        originalStatus: StatusEnum
+        hasApprovalPermission: boolean
     ): void {
         // Set the ID
         command.paymentDto.paymentId = command.id;
@@ -126,7 +126,6 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
             // Store original status in forApprovalVersion for later reference (matching invoice pattern)
             command.paymentDto.status = StatusEnum.FOR_DELETION;
             command.paymentDto.forApprovalVersion = command.paymentDto.forApprovalVersion || {};
-            command.paymentDto.forApprovalVersion.originalStatus = originalStatus;
             command.paymentDto.activityLogs = existingRecord.activityLogs || [];
             command.paymentDto.activityLogs.push(
                 `Date: ${new Date().toLocaleString('en-US', {
@@ -142,52 +141,47 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
     /**
      * Performs the actual deletion based on user permissions
      */
-    private async performDeletion(
-        command: DeletePaymentCommand,
-        hasApprovalPermission: boolean,
-        originalStatus: StatusEnum
-    ): Promise<PaymentDto> {
+    private async performDeletion(command: DeletePaymentCommand, hasApprovalPermission: boolean): Promise<PaymentDto> {
         if (hasApprovalPermission) {
-            // Only send events if payment was ACTIVE (approved)
-            // NEW_RECORD payments never had events sent, so no reversal needed
-            if (originalStatus === StatusEnum.ACTIVE) {
-                // Send PAYMENT_DELETED events BEFORE hard delete
-                if (command.paymentDto.paymentInvoiceDetails && command.paymentDto.paymentInvoiceDetails.length > 0) {
-                    for (const detail of command.paymentDto.paymentInvoiceDetails) {
-                        const invoicePaymentDto: InvoicePaymentDto = {
-                            invoiceId: detail.invoiceId,
-                            receiptNo: command.paymentDto.receiptNo,
-                            paymentDate: command.paymentDto.paymentDate,
-                            paymentAmount: detail.amountApplied,
-                            contractPayment: command.paymentDto.contractPayment,
-                            paymentId: command.paymentDto.paymentId,
-                        };
+            // Hard delete
+            const paymentInvoiceRecors = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
+                command.paymentDto.paymentId
+            );
+            if (paymentInvoiceRecors && paymentInvoiceRecors.length > 0) {
+                for (const record of paymentInvoiceRecors) {
+                    await this.paymentInvoiceDatabaseService.deleteRecord(record);
+                }
+            }
 
-                        await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_DELETED, invoicePaymentDto);
-                    }
+            // Send PAYMENT_DELETED events after hard delete of invoice details
+            const paymentInvoicePayloads: InvoicePaymentEventDto[] = [];
+            if (command.paymentDto.paymentInvoiceDetails && command.paymentDto.paymentInvoiceDetails.length > 0) {
+                for (const detail of command.paymentDto.paymentInvoiceDetails) {
+                    const invoicePaymentDto: InvoicePaymentEventDto = {
+                        invoiceId: detail.invoiceId,
+                        receiptNo: command.paymentDto.receiptNo,
+                        paymentDate: command.paymentDto.paymentDate,
+                        paymentAmount: detail.amountApplied,
+                        contractPayment: command.paymentDto.contractPayment,
+                        paymentId: command.paymentDto.paymentId,
+                        customerId: command.paymentDto.customerId,
+                        customerCreditPayment: detail.customerCreditPayment,
+                        invoicePaymentEvent: InvoicePaymentEventEnum.PAYMENT_DELETED,
+                    };
 
-                    this.logger.log(
-                        `Sent PAYMENT_DELETED events for ${command.paymentDto.paymentInvoiceDetails.length} invoices in payment ${command.paymentDto.paymentId}`
-                    );
+                    paymentInvoicePayloads.push(invoicePaymentDto);
                 }
 
-                // Send contract payment deletion event if this is a contract payment
-                if (command.paymentDto.contractPayment && command.paymentDto.contractId) {
-                    await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, command.paymentDto);
-                }
+                await this.sendInvoicePaymentEvent(paymentInvoicePayloads);
 
-                // Send customer balance event for non-contract payments
-                // Contract payments don't affect customer balance directly
-                if (!command.paymentDto.contractPayment && command.paymentDto.customerId) {
-                    await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.PAYMENT_DELETED, command.paymentDto);
-                }
-            } else {
                 this.logger.log(
-                    `Skipping deletion events for payment ${command.paymentDto.paymentId} - original status was ${originalStatus}, not ACTIVE`
+                    `Sent PAYMENT_DELETED events for ${command.paymentDto.paymentInvoiceDetails.length} invoices in payment ${command.paymentDto.paymentId}`
                 );
             }
 
-            // Hard delete
+            if (command.paymentDto.contractPayment && command.paymentDto.contractId) {
+                await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, command.paymentDto);
+            }
             return await this.paymentDatabaseService.deleteRecord(command.paymentDto);
         } else {
             // Soft delete (mark for deletion)
@@ -230,47 +224,15 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
     /**
      * Sends invoice payment event to SQS queue
      */
-    private async sendInvoicePaymentEvent(
-        eventType: InvoicePaymentEventEnum,
-        paymentData: InvoicePaymentDto
-    ): Promise<void> {
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
         const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
 
         const eventPayload = {
-            eventType,
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
             paymentData,
         };
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
-    }
-
-    /**
-     * Sends customer balance event to update customer balance
-     */
-    private async sendCustomerBalanceEvent(eventType: CustomerBalanceEventEnum, payment: PaymentDto): Promise<void> {
-        if (!payment.customerId) {
-            this.logger.warn(`No customerId found for payment ${payment.paymentId}, skipping balance event`);
-            return;
-        }
-
-        const customerBalanceEvent: CustomerBalanceEventDto = {
-            eventType,
-            customerId: payment.customerId,
-            customerName: payment.customerName,
-            amount: payment.paymentAmount,
-            referenceId: payment.paymentId,
-            referenceNo: payment.receiptNo,
-        };
-
-        try {
-            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
-            this.logger.log(
-                `${eventType} event sent for payment: ${payment.paymentId}, customer: ${payment.customerId}, amount: ${payment.paymentAmount}`
-            );
-        } catch (error) {
-            this.logger.error(`Failed to send ${eventType} event for payment ${payment.paymentId}:`, error);
-        }
     }
 
     /**

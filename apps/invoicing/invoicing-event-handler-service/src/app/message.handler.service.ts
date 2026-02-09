@@ -8,8 +8,7 @@ import {
     ContractPaymentEventEnum,
     CustomerEventDto,
     CustomerEventEnum,
-    InvoiceAmountChangedDto,
-    InvoicePaymentDto,
+    InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
     ProductPriceTypeEventDto,
     ProductPriceTypeEventEnum,
@@ -207,56 +206,9 @@ export class MessageHandlerService {
         // Handle invoice payment events
         const invoicePaymentEvent = messageBody as {
             eventType: InvoicePaymentEventEnum;
-            paymentData: InvoicePaymentDto;
+            paymentData: InvoicePaymentEventDto[];
         };
 
-        switch (invoicePaymentEvent.eventType) {
-            case InvoicePaymentEventEnum.PAYMENT_ADDED:
-                this.logger.log(
-                    `Handling payment added for Invoice ID: ${invoicePaymentEvent.paymentData.invoiceId}, Payment ID: ${invoicePaymentEvent.paymentData.paymentId}`
-                );
-                await this.invoicePaymentHandlerService.handle(
-                    invoicePaymentEvent.paymentData,
-                    InvoicePaymentEventEnum.PAYMENT_ADDED
-                );
-                break;
-
-            case InvoicePaymentEventEnum.PAYMENT_DELETED:
-                this.logger.log(
-                    `Handling payment deleted for Invoice ID: ${invoicePaymentEvent.paymentData.invoiceId}, Payment ID: ${invoicePaymentEvent.paymentData.paymentId}`
-                );
-                await this.invoicePaymentHandlerService.handle(
-                    invoicePaymentEvent.paymentData,
-                    InvoicePaymentEventEnum.PAYMENT_DELETED
-                );
-                break;
-
-            case InvoicePaymentEventEnum.PAYMENT_UPDATED:
-                this.logger.log(
-                    `Handling payment updated for Invoice ID: ${invoicePaymentEvent.paymentData.invoiceId}, Payment ID: ${invoicePaymentEvent.paymentData.paymentId}`
-                );
-                await this.invoicePaymentHandlerService.handle(
-                    invoicePaymentEvent.paymentData,
-                    InvoicePaymentEventEnum.PAYMENT_UPDATED
-                );
-                break;
-
-            case InvoicePaymentEventEnum.INVOICE_AMOUNT_CHANGED:
-                // Handle invoice amount changed event - data is in different format
-                const amountChangedData = messageBody as {
-                    eventType: InvoicePaymentEventEnum;
-                    invoiceData: InvoiceAmountChangedDto;
-                };
-                this.logger.log(
-                    `Handling invoice amount changed for Invoice ID: ${amountChangedData.invoiceData.invoiceId}, old: ${amountChangedData.invoiceData.oldFinalAmount}, new: ${amountChangedData.invoiceData.newFinalAmount}`
-                );
-                await this.invoicePaymentHandlerService.handleInvoiceAmountChanged(
-                    amountChangedData.invoiceData
-                );
-                break;
-
-            default:
-                this.logger.warn(`Unhandled invoice payment event type: ${invoicePaymentEvent.eventType}`);
-        }
+        await this.invoicePaymentHandlerService.handleEvent(invoicePaymentEvent.paymentData);
     }
 }

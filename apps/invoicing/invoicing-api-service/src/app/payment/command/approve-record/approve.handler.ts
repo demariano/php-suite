@@ -1,12 +1,12 @@
 import { UserCognito } from '@auth-guard-lib';
+import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
 import {
     ChequeClearStatusEnum,
     ContractPaymentDto,
     ContractPaymentEventEnum,
-    CustomerBalanceEventDto,
-    CustomerBalanceEventEnum,
+    CreatePaymentInvoiceDetailsDto,
     ErrorResponseDto,
-    InvoicePaymentDto,
+    InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
     PaymentDetailsDto,
     PaymentDto,
@@ -16,7 +16,10 @@ import {
     UserRole,
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import {
+    PaymentDatabaseServiceAbstractClass,
+    PaymentInvoiceDatabaseServiceAbstractClass,
+} from '@invoicing-database-service';
 import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -36,7 +39,11 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        @Inject('PaymentInvoiceDatabaseService')
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
+        @Inject('CustomerDatabaseService')
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
     ) {}
 
     async execute(command: ApprovePaymentCommand): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -44,7 +51,7 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
 
         try {
             // Validate record exists
-            const existingRecord = await this.validatePaymentExists(command.recordId);
+            const existingRecord = await this.validatePaymentRecord(command.recordId);
 
             // Check user authorization
             this.validateUserAuthorization(command.user.roles);
@@ -59,12 +66,41 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
     /**
      * Validates that the payment record exists
      */
-    private async validatePaymentExists(recordId: string): Promise<PaymentDto> {
+    private async validatePaymentRecord(recordId: string): Promise<PaymentDto> {
         const existingRecord = await this.paymentDatabaseService.findRecordById(recordId);
 
         if (!existingRecord) {
             this.logger.warn(`Payment not found: ${recordId}`);
             throw new NotFoundException(`Payment record not found for id ${recordId}`);
+        }
+
+        const customer = await this.customerDatabaseService.findRecordById(existingRecord.customerId);
+
+        //check if customer credit payment , make sure 1 invoice is included and no other payment type is included
+        if (existingRecord.customerCreditPayment) {
+            if (!existingRecord.paymentInvoiceDetails || existingRecord.paymentInvoiceDetails.length > 1) {
+                this.logger.warn(`Customer credit payment must have exactly one invoice detail`);
+                throw new BadRequestException('Customer credit payment must have exactly one invoice detail');
+            }
+
+            //check for other payment types fro payment details array
+            const hasOtherPaymentTypes = existingRecord.paymentDetails.some((detail) => !detail.customerCreditPayment);
+            if (hasOtherPaymentTypes) {
+                this.logger.warn(`Customer credit payment cannot have other payment types in payment details`);
+                throw new BadRequestException(
+                    'Customer credit payment cannot have other payment types in payment details'
+                );
+            }
+
+            //check for customer credit limit if it's a customer credit payment
+            if (
+                customer &&
+                customer.customerCredit !== undefined &&
+                customer.customerCredit < existingRecord.paymentAmount
+            ) {
+                this.logger.warn(`Customer credit payment exceeds customer credit limit`);
+                throw new BadRequestException('Customer credit payment exceeds customer credit limit');
+            }
         }
 
         return existingRecord;
@@ -118,15 +154,6 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
         const oldPaymentInvoiceDetails = existingRecord.paymentInvoiceDetails || [];
-        // Store original values for customer balance delta calculation
-        const originalStatus = forApprovalVersion.originalStatus as StatusEnum | undefined;
-        const originalPaymentAmount = forApprovalVersion.originalPaymentAmount as number | undefined;
-
-        this.logger.log(
-            `DEBUG: Approving payment ${existingRecord.paymentId}, oldPaymentInvoiceDetails length: ${
-                oldPaymentInvoiceDetails.length
-            }, forApprovalVersion.paymentInvoiceDetails: ${JSON.stringify(forApprovalVersion.paymentInvoiceDetails)}`
-        );
 
         existingRecord.paymentDate = forApprovalVersion.paymentDate as string;
         existingRecord.paymentAmount = forApprovalVersion.paymentAmount as number;
@@ -148,44 +175,67 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         // Update record in database
         const updatedRecord = await this.paymentDatabaseService.updateRecord(existingRecord);
 
-        this.logger.log(
-            `DEBUG: After update, updatedRecord.paymentInvoiceDetails length: ${
-                updatedRecord.paymentInvoiceDetails?.length || 0
-            }`
+        const paymentInvoiceDetails = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
+            updatedRecord.paymentId
         );
-
-        // Send events based on whether this is NEW_RECORD or FOR_APPROVAL
-        if (oldPaymentInvoiceDetails.length === 0) {
-            // NEW_RECORD approval - all invoices are new
-            await this.sendNewRecordApprovalEvents(updatedRecord);
-        } else {
-            // FOR_APPROVAL - calculate delta
-            await this.sendPaymentInvoiceDeltaEvents(
-                updatedRecord,
-                oldPaymentInvoiceDetails,
-                updatedRecord.paymentInvoiceDetails || []
-            );
+        for (const pid of paymentInvoiceDetails) {
+            await this.paymentInvoiceDatabaseService.deleteRecord(pid);
         }
+
+        for (const detail of forApprovalVersion.paymentInvoiceDetails as PaymentInvoiceDetailsDto[]) {
+            //create new payment invoice details record
+            const newPaymentInvoiceDetail: CreatePaymentInvoiceDetailsDto = {
+                paymentId: updatedRecord.paymentId,
+                invoiceId: detail.invoiceId,
+                docno: detail.docno,
+                amountApplied: detail.amountApplied,
+                dateCreated: new Date().toISOString(),
+                customerCreditPayment: detail.customerCreditPayment,
+            };
+            await this.paymentInvoiceDatabaseService.createRecord(newPaymentInvoiceDetail);
+        }
+
+        // get the old and new payment invoice details and send all the necessary events
+        const oldInvoiceDetails = oldPaymentInvoiceDetails;
+        const newInvoiceDetails = updatedRecord.paymentInvoiceDetails || [];
+
+        const paymentInvoicePayloads: InvoicePaymentEventDto[] = [];
+        for (const detail of newInvoiceDetails) {
+            const invoicePaymentDto: InvoicePaymentEventDto = {
+                invoiceId: detail.invoiceId,
+                receiptNo: updatedRecord.receiptNo,
+                paymentDate: updatedRecord.paymentDate,
+                paymentAmount: detail.amountApplied,
+                contractPayment: updatedRecord.contractPayment,
+                paymentId: updatedRecord.paymentId,
+                customerId: updatedRecord.customerId,
+                customerCreditPayment: detail.customerCreditPayment,
+                invoicePaymentEvent: InvoicePaymentEventEnum.PAYMENT_ADDED,
+            };
+            paymentInvoicePayloads.push(invoicePaymentDto);
+        }
+
+        //add the old invoice details with PAYMENT_DELETED event
+        for (const detail of oldInvoiceDetails) {
+            const invoicePaymentDto: InvoicePaymentEventDto = {
+                invoiceId: detail.invoiceId,
+                receiptNo: updatedRecord.receiptNo,
+                paymentDate: updatedRecord.paymentDate,
+                paymentAmount: detail.amountApplied,
+                contractPayment: updatedRecord.contractPayment,
+                paymentId: updatedRecord.paymentId,
+                customerId: updatedRecord.customerId,
+                customerCreditPayment: detail.customerCreditPayment,
+                invoicePaymentEvent: InvoicePaymentEventEnum.PAYMENT_DELETED,
+            };
+            paymentInvoicePayloads.push(invoicePaymentDto);
+        }
+
+        await this.sendInvoicePaymentEvent(paymentInvoicePayloads);
 
         // Send contract payment event if this is a contract payment
         if (updatedRecord.contractPayment && updatedRecord.contractId) {
             await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_ADDED, updatedRecord);
-        }
-
-        // Send customer balance event for non-contract payments
-        // Contract payments don't affect customer balance directly
-        if (!updatedRecord.contractPayment && updatedRecord.customerId) {
-            if (originalStatus === StatusEnum.ACTIVE && originalPaymentAmount !== undefined) {
-                // FOR_APPROVAL from ACTIVE: Calculate and send balance delta
-                await this.sendCustomerBalanceDeltaEvent(
-                    originalPaymentAmount,
-                    updatedRecord.paymentAmount,
-                    updatedRecord
-                );
-            } else {
-                // NEW_RECORD approval: Payment is being activated for the first time
-                await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.PAYMENT_CREATED, updatedRecord);
-            }
         }
 
         this.logger.log(`Payment approved successfully: ${existingRecord.paymentId}`);
@@ -196,49 +246,31 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
      * Approves deletion of a payment
      */
     private async approveDeletion(existingRecord: PaymentDto): Promise<ResponseDto<PaymentDto>> {
-        // Check original status from forApprovalVersion (stored by delete handler)
-        // Only send events if payment was originally ACTIVE (not NEW_RECORD)
-        const originalStatus = existingRecord.forApprovalVersion?.originalStatus as StatusEnum | undefined;
-
-        if (originalStatus === StatusEnum.ACTIVE) {
-            // Send PAYMENT_DELETED events BEFORE deleting
-            if (existingRecord.paymentInvoiceDetails && existingRecord.paymentInvoiceDetails.length > 0) {
-                for (const detail of existingRecord.paymentInvoiceDetails) {
-                    const invoicePaymentDto: InvoicePaymentDto = {
-                        invoiceId: detail.invoiceId,
-                        receiptNo: existingRecord.receiptNo,
-                        paymentDate: existingRecord.paymentDate,
-                        paymentAmount: detail.amountApplied,
-                        contractPayment: existingRecord.contractPayment,
-                        paymentId: existingRecord.paymentId,
-                    };
-
-                    await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_DELETED, invoicePaymentDto);
-                }
-
-                this.logger.log(
-                    `Sent PAYMENT_DELETED events for ${existingRecord.paymentInvoiceDetails.length} invoices in payment ${existingRecord.paymentId}`
-                );
-            }
-
-            // Send contract payment deletion event if this is a contract payment
-            if (existingRecord.contractPayment && existingRecord.contractId) {
-                await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, existingRecord);
-            }
-
-            // Send customer balance event for non-contract payments
-            // Contract payments don't affect customer balance directly
-            if (!existingRecord.contractPayment && existingRecord.customerId) {
-                await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.PAYMENT_DELETED, existingRecord);
-            }
-        } else {
-            this.logger.log(
-                `Skipping deletion events for payment ${existingRecord.paymentId} - original status was ${originalStatus}, not ACTIVE`
-            );
+        //get the invoice payment details associated with this payment and delete them
+        const paymentInvoiceDetails = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
+            existingRecord.paymentId
+        );
+        for (const pid of paymentInvoiceDetails) {
+            await this.paymentInvoiceDatabaseService.deleteRecord(pid);
         }
 
-        // Reset changeReason to null before deleting
-        existingRecord.changeReason = null;
+        const invoicePaymentPayloads: InvoicePaymentEventDto[] = [];
+        for (const detail of existingRecord.paymentInvoiceDetails) {
+            const invoicePaymentDto: InvoicePaymentEventDto = {
+                invoiceId: detail.invoiceId,
+                receiptNo: existingRecord.receiptNo,
+                paymentDate: existingRecord.paymentDate,
+                paymentAmount: detail.amountApplied,
+                contractPayment: existingRecord.contractPayment,
+                paymentId: existingRecord.paymentId,
+                customerId: existingRecord.customerId,
+                invoicePaymentEvent: InvoicePaymentEventEnum.PAYMENT_DELETED,
+            };
+            invoicePaymentPayloads.push(invoicePaymentDto);
+        }
+
+        await this.sendInvoicePaymentEvent(invoicePaymentPayloads);
+        await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, existingRecord);
         await this.paymentDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Payment deletion approved: ${existingRecord.paymentId}`);
@@ -278,199 +310,17 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
     }
 
     /**
-     * Sends PAYMENT_ADDED events for all invoices in a NEW_RECORD approval
-     */
-    private async sendNewRecordApprovalEvents(payment: PaymentDto): Promise<void> {
-        if (!payment.paymentInvoiceDetails || payment.paymentInvoiceDetails.length === 0) {
-            return;
-        }
-
-        for (const detail of payment.paymentInvoiceDetails) {
-            const invoicePaymentDto: InvoicePaymentDto = {
-                invoiceId: detail.invoiceId,
-                receiptNo: payment.receiptNo,
-                paymentDate: payment.paymentDate,
-                paymentAmount: detail.amountApplied,
-                contractPayment: payment.contractPayment,
-                paymentId: payment.paymentId,
-            };
-
-            await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_ADDED, invoicePaymentDto);
-        }
-
-        this.logger.log(
-            `Sent PAYMENT_ADDED events for ${payment.paymentInvoiceDetails.length} invoices in NEW_RECORD approval for payment ${payment.paymentId}`
-        );
-    }
-
-    /**
-     * Calculates and sends delta events for payment invoice changes
-     */
-    private async sendPaymentInvoiceDeltaEvents(
-        payment: PaymentDto,
-        oldDetails: PaymentInvoiceDetailsDto[],
-        newDetails: PaymentInvoiceDetailsDto[]
-    ): Promise<void> {
-        const oldMap = new Map(oldDetails.map((d) => [d.invoiceId, d.amountApplied]));
-        const newMap = new Map(newDetails.map((d) => [d.invoiceId, d.amountApplied]));
-
-        let addedCount = 0;
-        let deletedCount = 0;
-        let updatedCount = 0;
-
-        // Added invoices
-        for (const detail of newDetails) {
-            if (!oldMap.has(detail.invoiceId)) {
-                const invoicePaymentDto: InvoicePaymentDto = {
-                    invoiceId: detail.invoiceId,
-                    receiptNo: payment.receiptNo,
-                    paymentDate: payment.paymentDate,
-                    paymentAmount: detail.amountApplied,
-                    contractPayment: payment.contractPayment,
-                    paymentId: payment.paymentId,
-                };
-
-                await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_ADDED, invoicePaymentDto);
-                addedCount++;
-            }
-        }
-
-        // Removed invoices
-        for (const detail of oldDetails) {
-            if (!newMap.has(detail.invoiceId)) {
-                const invoicePaymentDto: InvoicePaymentDto = {
-                    invoiceId: detail.invoiceId,
-                    receiptNo: payment.receiptNo,
-                    paymentDate: payment.paymentDate,
-                    paymentAmount: detail.amountApplied,
-                    contractPayment: payment.contractPayment,
-                    paymentId: payment.paymentId,
-                };
-
-                await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_DELETED, invoicePaymentDto);
-                deletedCount++;
-            }
-        }
-
-        // Updated amounts
-        for (const detail of newDetails) {
-            const oldAmount = oldMap.get(detail.invoiceId);
-            if (oldAmount !== undefined && oldAmount !== detail.amountApplied) {
-                const invoicePaymentDto: InvoicePaymentDto = {
-                    invoiceId: detail.invoiceId,
-                    receiptNo: payment.receiptNo,
-                    paymentDate: payment.paymentDate,
-                    paymentAmount: detail.amountApplied,
-                    contractPayment: payment.contractPayment,
-                    paymentId: payment.paymentId,
-                };
-
-                await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_UPDATED, invoicePaymentDto);
-                updatedCount++;
-            }
-        }
-
-        if (addedCount + deletedCount + updatedCount > 0) {
-            this.logger.log(
-                `Sent payment invoice delta events for FOR_APPROVAL payment ${payment.paymentId}: ` +
-                    `${addedCount} added, ${deletedCount} deleted, ${updatedCount} updated`
-            );
-        }
-    }
-
-    /**
      * Sends invoice payment event to SQS queue
      */
-    private async sendInvoicePaymentEvent(
-        eventType: InvoicePaymentEventEnum,
-        paymentData: InvoicePaymentDto
-    ): Promise<void> {
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
         const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
 
         const eventPayload = {
-            eventType,
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
             paymentData,
         };
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
-    }
-
-    /**
-     * Sends customer balance event to update customer balance
-     */
-    private async sendCustomerBalanceEvent(eventType: CustomerBalanceEventEnum, payment: PaymentDto): Promise<void> {
-        if (!payment.customerId) {
-            this.logger.warn(`No customerId found for payment ${payment.paymentId}, skipping balance event`);
-            return;
-        }
-
-        const customerBalanceEvent: CustomerBalanceEventDto = {
-            eventType,
-            customerId: payment.customerId,
-            customerName: payment.customerName,
-            amount: payment.paymentAmount,
-            referenceId: payment.paymentId,
-            referenceNo: payment.receiptNo,
-        };
-
-        try {
-            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
-            this.logger.log(
-                `${eventType} event sent for payment: ${payment.paymentId}, customer: ${payment.customerId}, amount: ${payment.paymentAmount}`
-            );
-        } catch (error) {
-            this.logger.error(`Failed to send ${eventType} event for payment ${payment.paymentId}:`, error);
-        }
-    }
-
-    /**
-     * Sends customer balance delta event when payment amount changes
-     * Calculates the difference and sends appropriate event
-     */
-    private async sendCustomerBalanceDeltaEvent(
-        originalAmount: number,
-        newAmount: number,
-        payment: PaymentDto
-    ): Promise<void> {
-        if (!payment.customerId) {
-            this.logger.warn(`No customerId found for payment ${payment.paymentId}, skipping balance delta event`);
-            return;
-        }
-
-        const delta = newAmount - originalAmount;
-
-        if (delta === 0) {
-            this.logger.log(`No amount change for payment ${payment.paymentId}, skipping balance delta event`);
-            return;
-        }
-
-        // For payments, the balance effect is opposite of invoices:
-        // If delta > 0: customer paid more → PAYMENT_CREATED (deduct more from balance)
-        // If delta < 0: customer paid less → PAYMENT_DELETED (add back to balance)
-        const eventType =
-            delta > 0 ? CustomerBalanceEventEnum.PAYMENT_CREATED : CustomerBalanceEventEnum.PAYMENT_DELETED;
-        const amount = Math.abs(delta);
-
-        const customerBalanceEvent: CustomerBalanceEventDto = {
-            eventType,
-            customerId: payment.customerId,
-            customerName: payment.customerName,
-            amount,
-            referenceId: payment.paymentId,
-            referenceNo: payment.receiptNo,
-        };
-
-        try {
-            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
-            this.logger.log(
-                `${eventType} delta event sent for payment: ${payment.paymentId}, customer: ${payment.customerId}, ` +
-                    `original: ${originalAmount}, new: ${newAmount}, delta: ${delta}`
-            );
-        } catch (error) {
-            this.logger.error(`Failed to send ${eventType} delta event for payment ${payment.paymentId}:`, error);
-        }
     }
 
     /**

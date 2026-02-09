@@ -18,4 +18,7 @@ export class InvoicePaymentDto {
 
     @ApiProperty()
     paymentId!: string;
+
+    @ApiProperty()
+    customerId!: string;
 }

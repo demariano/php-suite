@@ -52,6 +52,9 @@ export class InvoiceDto {
     totalAmountPaid?: number;
 
     @ApiProperty()
+    overPaymentAmount?: number;
+
+    @ApiProperty()
     contractId?: string;
 
     @ApiProperty()

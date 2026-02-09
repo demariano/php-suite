@@ -3,10 +3,8 @@ import {
     ContractPaymentDto,
     ContractPaymentEventEnum,
     CreatePaymentDto,
-    CustomerBalanceEventDto,
-    CustomerBalanceEventEnum,
     ErrorResponseDto,
-    InvoicePaymentDto,
+    InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
     PaymentDto,
     ResponseDto,
@@ -17,6 +15,7 @@ import { reduceArrayContents } from '@dynamo-db-lib';
 import {
     CollectionReceiptRangeDatabaseServiceAbstract,
     PaymentDatabaseServiceAbstractClass,
+    PaymentInvoiceDatabaseServiceAbstractClass,
 } from '@invoicing-database-service';
 import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
@@ -41,7 +40,10 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
         private readonly customerDatabaseService: CustomerDatabaseServiceAbstract,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+
+        @Inject('PaymentInvoiceDatabaseService')
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
     ) {}
 
     async execute(command: CreatePaymentCommand): Promise<ResponseDto<CreatePaymentDto | ErrorResponseDto>> {
@@ -51,6 +53,37 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             // Validate that receipt number doesn't already exist
             await this.validateReceiptNoUnique(command.paymentDto.receiptNo);
 
+            const customer = await this.customerDatabaseService.findRecordById(command.paymentDto.customerId);
+
+            //check if customer credit payment , make sure 1 invoice is included and no other payment type is included
+            if (command.paymentDto.customerCreditPayment) {
+                if (!command.paymentDto.paymentInvoiceDetails || command.paymentDto.paymentInvoiceDetails.length > 1) {
+                    this.logger.warn(`Customer credit payment must have exactly one invoice detail`);
+                    throw new BadRequestException('Customer credit payment must have exactly one invoice detail');
+                }
+
+                //check for other payment types fro payment details array
+                const hasOtherPaymentTypes = command.paymentDto.paymentDetails.some(
+                    (detail) => !detail.customerCreditPayment
+                );
+                if (hasOtherPaymentTypes) {
+                    this.logger.warn(`Customer credit payment cannot have other payment types in payment details`);
+                    throw new BadRequestException(
+                        'Customer credit payment cannot have other payment types in payment details'
+                    );
+                }
+
+                //check for customer credit limit if it's a customer credit payment
+                if (
+                    customer &&
+                    customer.customerCredit !== undefined &&
+                    customer.customerCredit < command.paymentDto.paymentAmount
+                ) {
+                    this.logger.warn(`Customer credit payment exceeds customer credit limit`);
+                    throw new BadRequestException('Customer credit payment exceeds customer credit limit');
+                }
+            }
+
             // Check user authorization and determine status
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
@@ -59,6 +92,21 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
 
             // Create record in database
             const createdRecord = await this.paymentDatabaseService.createRecord(command.paymentDto);
+
+            //create the paymentinvoice records
+            if (command.paymentDto.paymentInvoiceDetails && command.paymentDto.paymentInvoiceDetails.length > 0) {
+                for (const invoiceDetail of command.paymentDto.paymentInvoiceDetails) {
+                    const paymentInvoiceDto = {
+                        paymentId: createdRecord.paymentId,
+                        invoiceId: invoiceDetail.invoiceId,
+                        docno: invoiceDetail.docno,
+                        amountApplied: invoiceDetail.amountApplied,
+                        dateCreated: new Date().toISOString(),
+                        customerCreditPayment: invoiceDetail.customerCreditPayment,
+                    };
+                    await this.paymentInvoiceDatabaseService.createRecord(paymentInvoiceDto);
+                }
+            }
 
             this.logger.log(`Payment created successfully: ${createdRecord.paymentId}`);
 
@@ -76,22 +124,9 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
                 await this.sendContractPaymentEvent(createdRecord);
             }
 
-            // Send customer balance event for ACTIVE non-contract payments
-            // Contract payments don't affect customer balance directly
-            if (
-                createdRecord.status === StatusEnum.ACTIVE &&
-                !createdRecord.contractPayment &&
-                createdRecord.customerId
-            ) {
-                await this.sendCustomerBalanceEvent(CustomerBalanceEventEnum.PAYMENT_CREATED, createdRecord);
-            }
-
             // Mark receipt number as used if receipt number is provided
             if (createdRecord.receiptNo && createdRecord.customerId) {
                 try {
-                    // Fetch customer to get areaId
-                    const customer = await this.customerDatabaseService.findRecordById(createdRecord.customerId);
-
                     if (customer && customer.areaId) {
                         const receiptNumber = parseInt(createdRecord.receiptNo, 10);
                         if (!isNaN(receiptNumber)) {
@@ -188,7 +223,6 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             command.paymentDto.forApprovalVersion.contractNo = command.paymentDto.contractNo;
             command.paymentDto.forApprovalVersion.chequeClearStatus = command.paymentDto.chequeClearStatus;
             command.paymentDto.forApprovalVersion.paymentDetails = command.paymentDto.paymentDetails;
-            command.paymentDto.forApprovalVersion.paymentInvoiceDetails = command.paymentDto.paymentInvoiceDetails;
 
             // Clear main record fields for NEW_RECORD - data is only in forApprovalVersion
             command.paymentDto.paymentInvoiceDetails = [];
@@ -234,19 +268,24 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
         if (!payment.paymentInvoiceDetails || payment.paymentInvoiceDetails.length === 0) {
             return;
         }
-
+        const invoicePaymentPayloads: InvoicePaymentEventDto[] = [];
         for (const detail of payment.paymentInvoiceDetails) {
-            const invoicePaymentDto: InvoicePaymentDto = {
+            const invoicePaymentDto: InvoicePaymentEventDto = {
                 invoiceId: detail.invoiceId,
                 receiptNo: payment.receiptNo,
                 paymentDate: payment.paymentDate,
                 paymentAmount: detail.amountApplied,
                 contractPayment: payment.contractPayment,
                 paymentId: payment.paymentId,
+                customerId: payment.customerId,
+                customerCreditPayment: detail.customerCreditPayment,
+                invoicePaymentEvent: InvoicePaymentEventEnum.PAYMENT_ADDED,
             };
 
-            await this.sendInvoicePaymentEvent(InvoicePaymentEventEnum.PAYMENT_ADDED, invoicePaymentDto);
+            invoicePaymentPayloads.push(invoicePaymentDto);
         }
+
+        await this.sendInvoicePaymentEvent(invoicePaymentPayloads);
 
         this.logger.log(
             `Sent PAYMENT_ADDED events for ${payment.paymentInvoiceDetails.length} invoices in payment ${payment.paymentId}`
@@ -256,47 +295,15 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
     /**
      * Sends invoice payment event to SQS queue
      */
-    private async sendInvoicePaymentEvent(
-        eventType: InvoicePaymentEventEnum,
-        paymentData: InvoicePaymentDto
-    ): Promise<void> {
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
         const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
 
         const eventPayload = {
-            eventType,
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
             paymentData,
         };
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
-    }
-
-    /**
-     * Sends customer balance event to update customer balance
-     */
-    private async sendCustomerBalanceEvent(eventType: CustomerBalanceEventEnum, payment: PaymentDto): Promise<void> {
-        if (!payment.customerId) {
-            this.logger.warn(`No customerId found for payment ${payment.paymentId}, skipping balance event`);
-            return;
-        }
-
-        const customerBalanceEvent: CustomerBalanceEventDto = {
-            eventType,
-            customerId: payment.customerId,
-            customerName: payment.customerName,
-            amount: payment.paymentAmount,
-            referenceId: payment.paymentId,
-            referenceNo: payment.receiptNo,
-        };
-
-        try {
-            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
-            this.logger.log(
-                `${eventType} event sent for payment: ${payment.paymentId}, customer: ${payment.customerId}, amount: ${payment.paymentAmount}`
-            );
-        } catch (error) {
-            this.logger.error(`Failed to send ${eventType} event for payment ${payment.paymentId}:`, error);
-        }
     }
 
     /**

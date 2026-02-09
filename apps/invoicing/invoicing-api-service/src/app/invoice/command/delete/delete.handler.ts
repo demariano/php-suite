@@ -4,12 +4,17 @@ import {
     InventoryEventDto,
     InventoryEventEnum,
     InvoiceDto,
+    InvoicePaymentEventDto,
+    InvoicePaymentEventEnum,
     ResponseDto,
     StatusEnum,
     UserRole,
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
+import {
+    InvoiceDatabaseServiceAbstract,
+    PaymentInvoiceDatabaseServiceAbstractClass,
+} from '@invoicing-database-service';
 import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -29,7 +34,9 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
         private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        @Inject('PaymentInvoiceDatabaseService')
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
     ) {}
 
     async execute(command: DeleteInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -37,7 +44,7 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
 
         try {
             // Fetch and validate existing invoice record
-            const existingRecord = await this.validateInvoiceExists(command.id);
+            const existingRecord = await this.validateInvoice(command.id);
 
             // Store original status before modification
             const originalStatus = existingRecord.status;
@@ -66,12 +73,26 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
     /**
      * Validates that the invoice exists
      */
-    private async validateInvoiceExists(recordId: string): Promise<InvoiceDto> {
+    private async validateInvoice(recordId: string): Promise<InvoiceDto> {
         const existingRecord = await this.invoiceDatabaseService.findRecordById(recordId);
 
         if (!existingRecord) {
             this.logger.warn(`Invoice not found: ${recordId}`);
             throw new NotFoundException(`Invoice record not found for id ${recordId}`);
+        }
+
+        //check if there are payments linked to the invoice, if yes, prevent deletion and return error message
+        const linkedPayments = await this.paymentInvoiceDatabaseService.findRecordByInvoiceId(recordId);
+        //check if linkedPayments has a customer credit payment, if yes, prevent deletion and return error message
+        if (linkedPayments && linkedPayments.length > 0) {
+            const hasCustomerCreditPayment = linkedPayments.some((payment) =>
+                payment.customerCreditPayment ? payment.customerCreditPayment : false
+            );
+
+            if (hasCustomerCreditPayment) {
+                this.logger.warn(`Invoice has linked customer credit payments: ${recordId}`);
+                throw new BadRequestException(`Invoice cannot be deleted as it has linked customer credit payments`);
+            }
         }
 
         return existingRecord;
@@ -146,12 +167,22 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
         const contractId = existingRecord.contractId; // Store before deletion
 
         if (hasApprovalPermission) {
+            const invoicePayloads: InvoicePaymentEventDto[] = [];
+
             // Hard delete - restore stock only if invoice was ACTIVE/APPROVED
             result = await this.invoiceDatabaseService.deleteRecord(command.invoiceDto);
 
             // Only restore stock if invoice was approved (not DRAFT or NEW_RECORD)
             if (originalStatus === StatusEnum.ACTIVE) {
                 await this.restoreStockQuantities(existingRecord);
+
+                const invoicePaymentDto: InvoicePaymentEventDto = {
+                    invoiceId: existingRecord.invoiceId,
+                    customerId: existingRecord.customerId,
+                    invoicePaymentEvent: InvoicePaymentEventEnum.INVOICE_DELETED,
+                };
+                invoicePayloads.push(invoicePaymentDto);
+                await this.sendInvoicePaymentEvent(invoicePayloads);
             }
 
             // If invoice had a contractId and was ACTIVE, trigger recalculation of contract invoiced amount
@@ -261,5 +292,16 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
         } catch (error) {
             this.logger.error(`Failed to send contract invoice event ${event} for contract ${contractId}:`, error);
         }
+    }
+
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
+        const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+        const eventPayload = {
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
+            paymentData,
+        };
+
+        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
     }
 }

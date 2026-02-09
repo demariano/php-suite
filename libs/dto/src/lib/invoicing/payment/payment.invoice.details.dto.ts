@@ -2,6 +2,9 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class PaymentInvoiceDetailsDto {
     @ApiProperty()
+    paymentDetailsId!: string;
+
+    @ApiProperty()
     invoiceId!: string;
 
     @ApiProperty()
@@ -11,11 +14,10 @@ export class PaymentInvoiceDetailsDto {
     amountApplied!: number;
 
     @ApiProperty()
-    receiptNo!: string;
+    paymentId!: string;
+
+    dateCreated!: string;
 
     @ApiProperty()
-    paymentDate!: string;
-
-    @ApiProperty()
-    paymentId!: number;
+    customerCreditPayment = false;
 }

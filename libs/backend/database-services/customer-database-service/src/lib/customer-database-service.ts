@@ -116,9 +116,7 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         const currentCredit = existingRecord.customerCredit || 0;
         const newCredit = currentCredit + creditAmount;
 
-        this.logger.log(
-            `Updating customer ${customerId} credit: ${currentCredit} + ${creditAmount} = ${newCredit}`
-        );
+        this.logger.log(`Updating customer ${customerId} credit: ${currentCredit} + ${creditAmount} = ${newCredit}`);
 
         const updatedRecord = await this.customerTable.update({
             PK: 'CUSTOMER',

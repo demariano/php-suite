@@ -6,6 +6,7 @@ import {
     CollectionReceiptRangeDatabaseService,
     InvoicingDatabaseServiceModule,
     PaymentDatabaseService,
+    PaymentInvoiceDatabaseService,
 } from '@invoicing-database-service';
 import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue-lib';
 import { Module } from '@nestjs/common';
@@ -51,6 +52,10 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         {
             provide: 'CustomerDatabaseService',
             useClass: CustomerDatabaseService,
+        },
+        {
+            provide: 'PaymentInvoiceDatabaseService',
+            useClass: PaymentInvoiceDatabaseService,
         },
         CreatePaymentHandler,
         GetPaymentByIdHandler,

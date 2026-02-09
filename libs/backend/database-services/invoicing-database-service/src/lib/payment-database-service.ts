@@ -45,7 +45,7 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             contractNo: paymentDto.contractNo,
             chequeClearStatus: paymentDto.chequeClearStatus,
             paymentDetails: paymentDto.paymentDetails,
-            paymentInvoiceDetails: paymentDto.paymentInvoiceDetails,
+            customerCreditPayment: paymentDto.customerCreditPayment,
             GSI1PK: `PAYMENT`,
             GSI1SK: paymentDto.receiptNo,
             GSI2PK: `PAYMENT#${paymentDto.status}`,
@@ -350,9 +350,9 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         dto.contractNo = record.contractNo ? record.contractNo : '';
         dto.chequeClearStatus = record.chequeClearStatus as ChequeClearStatusEnum;
         dto.paymentDetails = record.paymentDetails ? record.paymentDetails : [];
-        dto.paymentInvoiceDetails = record.paymentInvoiceDetails ? record.paymentInvoiceDetails : [];
         dto.changeReason = (record as PaymentDataType & { changeReason?: string }).changeReason || '';
         dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
+        dto.customerCreditPayment = record.customerCreditPayment ? record.customerCreditPayment : false;
         return dto;
     }
 
@@ -385,7 +385,7 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             contractNo: dto.contractNo,
             chequeClearStatus: dto.chequeClearStatus,
             paymentDetails: dto.paymentDetails,
-            paymentInvoiceDetails: dto.paymentInvoiceDetails,
+            customerCreditPayment: dto.customerCreditPayment,
             GSI1PK: `PAYMENT`,
             GSI1SK: dto.receiptNo,
             GSI2PK: `PAYMENT#${dto.status}`,

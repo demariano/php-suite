@@ -34,6 +34,13 @@ export abstract class InvoiceDatabaseServiceAbstract {
         nonContractOnly?: boolean
     ): Promise<InvoiceDto[] | null>;
 
+    abstract findRecordsByCustomerIdPagination(
+        limit: number,
+        customerId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<InvoiceDto>>;
+
     abstract findRecordsByPagination(
         limit: number,
         direction: string,

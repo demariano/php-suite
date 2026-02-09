@@ -22,4 +22,7 @@ export class PaymentDetailsDto {
 
     @ApiProperty()
     amount!: number;
+
+    @ApiProperty()
+    customerCreditPayment = false;
 }

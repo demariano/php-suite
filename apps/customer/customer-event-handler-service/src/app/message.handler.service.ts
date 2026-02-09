@@ -51,10 +51,7 @@ export class MessageHandlerService {
                 case TerritoryManagerEventEnum.TERRITORY_MANAGER_REACTIVATED:
                     await this.territoryManagerSyncHandler.handleTerritoryManagerReactivatedEvent(parsedMessage);
                     break;
-                case CustomerBalanceEventEnum.INVOICE_CREATED:
-                case CustomerBalanceEventEnum.INVOICE_DELETED:
-                case CustomerBalanceEventEnum.PAYMENT_CREATED:
-                case CustomerBalanceEventEnum.PAYMENT_DELETED:
+                case CustomerBalanceEventEnum.UPDATE_CUSTOMER_BALANCE:
                     await this.customerBalanceHandler.handleBalanceEvent(parsedMessage);
                     break;
                 default:

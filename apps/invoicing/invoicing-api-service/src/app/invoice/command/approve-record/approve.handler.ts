@@ -1,14 +1,12 @@
 import { UserCognito } from '@auth-guard-lib';
 import {
     ContractInvoiceEventEnum,
-    CustomerBalanceEventDto,
-    CustomerBalanceEventEnum,
     ErrorResponseDto,
     InventoryEventDto,
     InventoryEventEnum,
-    InvoiceAmountChangedDto,
     InvoiceDetailsDto,
     InvoiceDto,
+    InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
     ResponseDto,
     StatusEnum,
@@ -169,6 +167,7 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         const updatedRecord = await this.invoiceDatabaseService.updateRecord(existingRecord);
 
         // Handle stock adjustments based on original status
+        const invoicePayloads: InvoicePaymentEventDto[] = [];
         if (originalStatus === StatusEnum.ACTIVE) {
             // ACTIVE → FOR_APPROVAL → ACTIVE: Calculate and apply stock deltas
             await this.applyStockDeltas(
@@ -176,6 +175,13 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
                 updatedRecord.invoiceDetails || [],
                 updatedRecord.invoiceId
             );
+
+            const invoicePaymentDto: InvoicePaymentEventDto = {
+                invoiceId: existingRecord.invoiceId,
+                customerId: existingRecord.customerId,
+                invoicePaymentEvent: InvoicePaymentEventEnum.PAYMENT_UPDATED,
+            };
+            invoicePayloads.push(invoicePaymentDto);
         } else {
             // NEW_RECORD or DRAFT → FOR_APPROVAL → ACTIVE: Deduct all stock (first time)
             const stockItems = updatedRecord.invoiceDetails?.map((detail) => ({
@@ -188,8 +194,16 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
                 stockItems: stockItems,
             };
             await this.sendInventoryEventMessage(inventoryEvent);
+
+            const invoicePaymentDto: InvoicePaymentEventDto = {
+                invoiceId: existingRecord.invoiceId,
+                customerId: existingRecord.customerId,
+                invoicePaymentEvent: InvoicePaymentEventEnum.INVOICE_CREATED,
+            };
+            invoicePayloads.push(invoicePaymentDto);
         }
 
+        await this.sendInvoicePaymentEvent(invoicePayloads);
         this.logger.log(`Invoice approved successfully: ${existingRecord.invoiceId}`);
 
         // If invoice has a contractId, trigger recalculation of contract invoiced amount
@@ -232,6 +246,16 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         }
 
         this.logger.log(`Invoice deletion approved: ${existingRecord.invoiceId}`);
+
+        const invoicePayloads: InvoicePaymentEventDto[] = [];
+        const invoicePaymentDto: InvoicePaymentEventDto = {
+            invoiceId: existingRecord.invoiceId,
+            customerId: existingRecord.customerId,
+            invoicePaymentEvent: InvoicePaymentEventEnum.INVOICE_DELETED,
+        };
+        invoicePayloads.push(invoicePaymentDto);
+
+        await this.sendInvoicePaymentEvent(invoicePayloads);
 
         // If deleted invoice had contractId, trigger recalculation after deletion
         if (contractId) {
@@ -439,75 +463,6 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
     }
 
     /**
-     * Sends INVOICE_AMOUNT_CHANGED event to invoicing SQS
-     * This triggers the invoice payment handler to recalculate payment status
-     */
-    private async sendInvoiceAmountChangedEvent(
-        invoice: InvoiceDto,
-        oldFinalAmount: number,
-        newFinalAmount: number,
-        totalAmountPaid: number
-    ): Promise<void> {
-        const invoiceAmountChangedDto: InvoiceAmountChangedDto = {
-            invoiceId: invoice.invoiceId,
-            docno: invoice.docno,
-            customerId: invoice.customerId,
-            customerName: invoice.customerName,
-            oldFinalAmount,
-            newFinalAmount,
-            totalAmountPaid,
-        };
-
-        const eventPayload = {
-            eventType: InvoicePaymentEventEnum.INVOICE_AMOUNT_CHANGED,
-            invoiceData: invoiceAmountChangedDto,
-        };
-
-        try {
-            const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
-            this.logger.log(
-                `INVOICE_AMOUNT_CHANGED event sent for invoice: ${invoice.invoiceId}, ` +
-                    `old: ${oldFinalAmount}, new: ${newFinalAmount}`
-            );
-        } catch (error) {
-            this.logger.error(`Failed to send INVOICE_AMOUNT_CHANGED event for invoice ${invoice.invoiceId}:`, error);
-        }
-    }
-
-    /**
-     * Sends OVERPAYMENT_CREDIT event to customer SQS
-     * This adds the overpayment amount to customer's credit
-     */
-    private async sendOverpaymentCreditEvent(invoice: InvoiceDto, creditAmount: number): Promise<void> {
-        if (!invoice.customerId) {
-            this.logger.warn(`No customerId found for invoice ${invoice.invoiceId}, skipping overpayment credit event`);
-            return;
-        }
-
-        const customerBalanceEvent: CustomerBalanceEventDto = {
-            eventType: CustomerBalanceEventEnum.OVERPAYMENT_CREDIT,
-            customerId: invoice.customerId,
-            customerName: invoice.customerName,
-            amount: creditAmount, // Also adjust balance to offset negative from invoice reduction
-            creditAmount, // Amount to add to customerCredit
-            referenceId: invoice.invoiceId,
-            referenceNo: invoice.docno,
-        };
-
-        try {
-            const customerEventSQSUrl = this.configService.get<string>('CUSTOMER_EVENT_SQS');
-            await this.messageQueueService.sendMessageToSQS(customerEventSQSUrl, JSON.stringify(customerBalanceEvent));
-            this.logger.log(
-                `OVERPAYMENT_CREDIT event sent for invoice: ${invoice.invoiceId}, ` +
-                    `customer: ${invoice.customerId}, creditAmount: ${creditAmount}`
-            );
-        } catch (error) {
-            this.logger.error(`Failed to send OVERPAYMENT_CREDIT event for invoice ${invoice.invoiceId}:`, error);
-        }
-    }
-
-    /**
      * Sends contract invoice event to recalculate invoiced amount
      */
     private async sendContractInvoiceEvent(event: ContractInvoiceEventEnum, contractId: string): Promise<void> {
@@ -524,5 +479,19 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         } catch (error) {
             this.logger.error(`Failed to send contract invoice event ${event} for contract ${contractId}:`, error);
         }
+    }
+
+    /**
+     * Sends invoice payment event to SQS queue
+     */
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
+        const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+        const eventPayload = {
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
+            paymentData,
+        };
+
+        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
     }
 }

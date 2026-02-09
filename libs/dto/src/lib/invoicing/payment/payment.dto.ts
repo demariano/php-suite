@@ -21,6 +21,9 @@ export class PaymentDto {
     customerName!: string;
 
     @ApiProperty()
+    customerCreditPayment = false;
+
+    @ApiProperty()
     receiptNo!: string;
 
     @ApiProperty()

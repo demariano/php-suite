@@ -65,6 +65,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             activityLogs: dto.activityLogs,
             contractSales: dto.contractSales,
             forApprovalVersion: dto.forApprovalVersion,
+            overPaymentAmount: dto.overPaymentAmount,
         };
 
         const createdRecord: InvoiceDataType = await this.invoiceTable.create(invoiceData);
@@ -469,6 +470,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
         dto.approverMessage = record.approverMessage ? record.approverMessage : undefined;
         dto.payments = record.payments ? record.payments : [];
         dto.totalAmountPaid = record.totalAmountPaid ? record.totalAmountPaid : 0;
+        dto.overPaymentAmount = record.overPaymentAmount ? record.overPaymentAmount : 0;
         return dto;
     }
 
@@ -543,6 +545,7 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             approverMessage: dto.approverMessage,
             payments: dto.payments,
             totalAmountPaid: dto.totalAmountPaid,
+            overPaymentAmount: dto.overPaymentAmount,
         };
         return invoiceData;
     }
