@@ -9,6 +9,7 @@ import {
     useLocalStore,
 } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerClassificationHeader, CustomerClassificationTable } from './components';
 
@@ -22,6 +23,7 @@ export default function CustomerClassificationsPage() {
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
+    const router = useRouter();
 
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -183,11 +185,11 @@ export default function CustomerClassificationsPage() {
     );
 
     const handleRowClick = async (customerClassification: CustomerClassificationDto) => {
-        window.location.href = `/customers/classifications/${customerClassification.customerClassificationId}/edit`;
+        router.push(`/customers/classifications/${customerClassification.customerClassificationId}/edit`);
     };
 
     const handleCreateClick = () => {
-        window.location.href = '/customers/classifications/create';
+        router.push('/customers/classifications/create');
     };
 
     const handlePageSizeChange = (newPageSize: number) => {
@@ -198,7 +200,7 @@ export default function CustomerClassificationsPage() {
         fetchCustomerClassifications(undefined, undefined, newPageSize);
     };
 
-    const canCreateClassification = isAdminUser;
+    const canCreateClassification = true;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">

@@ -24,6 +24,7 @@ import { ProductUnitSyncHandlerService } from './product-unit-sync-handler.servi
 import { RawMaterialSupplierSyncHandlerService } from './raw-material-supplier-sync-handler.service';
 import { RawMaterialSyncHandlerService } from './raw-material-sync-handler.service';
 import { RawMaterialUnitSyncHandlerService } from './raw-material-unit-sync-handler.service';
+import { RawMaterialsAutoOrderService } from './raw-materials-auto-order/raw.materials.auto.order.service';
 import { RawMaterialsLocationSyncHandlerService } from './raw-materials-location-sync-handler.service';
 import { StockQtyHandlerService } from './stock-qty-handler/stock.qty.handler.service';
 import { StockTypeSyncHandlerService } from './stock-type-sync-handler.service';
@@ -42,7 +43,8 @@ export class MessageHandlerService {
         private readonly rawMaterialsLocationSyncHandlerService: RawMaterialsLocationSyncHandlerService,
         private readonly supplierSyncHandlerService: SupplierSyncHandlerService,
         private readonly productSyncHandlerService: ProductSyncHandlerService,
-        private readonly productUnitSyncHandlerService: ProductUnitSyncHandlerService
+        private readonly productUnitSyncHandlerService: ProductUnitSyncHandlerService,
+        private readonly rawMaterialsAutoOrderService: RawMaterialsAutoOrderService
     ) {}
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -132,6 +134,10 @@ export class MessageHandlerService {
         const inventoryEvent = parsedMessage as InventoryEventDto;
 
         switch (inventoryEvent.inventoryEvent) {
+            case InventoryEventEnum.STOCK_PURCHASE_ORDER_CREATED:
+                this.logger.log('Handling stock purchase order creation event for auto-ordering raw materials');
+                await this.rawMaterialsAutoOrderService.handle(inventoryEvent);
+                break;
             case InventoryEventEnum.STOCK_QTY_UPDATE:
                 // Handle single stock quantity update event
                 if (inventoryEvent.stockId && inventoryEvent.qty !== undefined) {

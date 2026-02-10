@@ -268,14 +268,39 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
                 </div>
                 {renderActivityLogsTable(selectedLocation?.activityLogs)}
             </div>
-            <div className="flex justify-end">
-                <button
-                    type="button"
-                    onClick={handleCancel}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-                >
-                    Cancel
-                </button>
+            <div className="mt-6 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <div className="hidden sm:block" />
+                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                    {isAdminUser &&
+                        selectedLocation &&
+                        [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(
+                            selectedLocation.status as StatusEnum
+                        ) && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleDeny}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                >
+                                    Deny
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handleApprove}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                >
+                                    Approve
+                                </button>
+                            </>
+                        )}
+                    <button
+                        type="button"
+                        onClick={handleCancel}
+                        className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                    >
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     );

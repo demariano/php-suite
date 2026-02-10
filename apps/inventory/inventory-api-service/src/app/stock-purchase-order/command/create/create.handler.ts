@@ -1,6 +1,8 @@
 import { UserCognito } from '@auth-guard-lib';
 import {
     ErrorResponseDto,
+    InventoryEventDto,
+    InventoryEventEnum,
     ResponseDto,
     StatusEnum,
     StockPurchaseOrderDto,
@@ -9,7 +11,9 @@ import {
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { StockPurchaseOrderDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateStockPurchaseOrderCommand } from './create.command';
 
@@ -22,22 +26,23 @@ export class CreateStockPurchaseOrderHandler implements ICommandHandler<CreateSt
 
     constructor(
         @Inject('StockPurchaseOrderDatabaseService')
-        private readonly stockPurchaseOrderDatabaseService: StockPurchaseOrderDatabaseServiceAbstract
+        private readonly stockPurchaseOrderDatabaseService: StockPurchaseOrderDatabaseServiceAbstract,
+        private readonly configService: ConfigService,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract
     ) {}
 
     async execute(
         command: CreateStockPurchaseOrderCommand
     ): Promise<ResponseDto<StockPurchaseOrderDto | ErrorResponseDto>> {
-        this.logger.log(
-            `Creating stock purchase order for supplier: ${command.stockPurchaseOrderDto.supplierName}`
-        );
+        this.logger.log(`Creating stock purchase order for supplier: ${command.stockPurchaseOrderDto.supplierName}`);
 
         const hasApprovalPermission = this.hasApprovalPermission(command.user);
         this.prepareStatusAndAudit(command.stockPurchaseOrderDto, command.user, hasApprovalPermission);
 
         // Check for duplicate docNo
         const existingRecord = await this.stockPurchaseOrderDatabaseService.findRecordByDocNo(
-            command.stockPurchaseOrderDto.docNo!
+            command.stockPurchaseOrderDto.docNo
         );
         if (existingRecord) {
             throw new BadRequestException(
@@ -46,9 +51,16 @@ export class CreateStockPurchaseOrderHandler implements ICommandHandler<CreateSt
         }
 
         try {
-            const created = await this.stockPurchaseOrderDatabaseService.createRecord(
-                command.stockPurchaseOrderDto
-            );
+            const created = await this.stockPurchaseOrderDatabaseService.createRecord(command.stockPurchaseOrderDto);
+
+            if (created.status === StatusEnum.ACTIVE) {
+                const inventoryEvent: InventoryEventDto = {
+                    inventoryEvent: InventoryEventEnum.STOCK_PURCHASE_ORDER_CREATED,
+                    stockPurchaseOrderDto: created,
+                };
+                await this.sendInventoryEventMessage(inventoryEvent);
+            }
+
             return new ResponseDto<StockPurchaseOrderDto>(created, HTTP_STATUS_CREATED);
         } catch (error) {
             this.logger.error('Failed to create stock purchase order', error as Error);
@@ -74,9 +86,7 @@ export class CreateStockPurchaseOrderHandler implements ICommandHandler<CreateSt
             dto.changeReason = undefined;
         } else {
             dto.status = StatusEnum.NEW_RECORD;
-            dto.activityLogs.push(
-                `Date: ${timestamp}, Stock purchase order created by ${user.username} for approval`
-            );
+            dto.activityLogs.push(`Date: ${timestamp}, Stock purchase order created by ${user.username} for approval`);
             dto.activityLogs = reduceArrayContents(dto.activityLogs, ACTIVITY_LOGS_LIMIT);
             dto.forApprovalVersion = {
                 poStatus: dto.poStatus,
@@ -88,5 +98,10 @@ export class CreateStockPurchaseOrderHandler implements ICommandHandler<CreateSt
                 deliveredPurchaseOrderDetails: dto.deliveredPurchaseOrderDetails,
             } as Record<string, unknown>;
         }
+    }
+
+    private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
+        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
     }
 }

@@ -224,7 +224,7 @@ export default function PaymentPage() {
                 }}
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
-                canCreate={isAdminUser}
+                canCreate={true}
                 isAdminUser={isAdminUser}
             />
 

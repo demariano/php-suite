@@ -34,11 +34,12 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
         @Inject('ContractDatabaseService')
         private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
-        @Inject('MessageQueueAwsLibService')
-        private readonly messageQueueService: MessageQueueServiceAbstract,
+
         @Inject('StockDatabaseService')
         private readonly stockDatabaseService: StockDatabaseServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract
     ) {}
 
     async execute(command: ApproveInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {

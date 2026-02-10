@@ -11,7 +11,7 @@ import {
     PaymentInvoiceDatabaseService,
     ReturnGoodSoldDatabaseService,
 } from '@invoicing-database-service';
-import { MessageQueueAwsLibService } from '@message-queue-lib';
+import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue-lib';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AreaSyncHandlerService } from './area-sync-handler/area-sync.handler.service';
@@ -28,7 +28,7 @@ import { TermsSyncHandlerService } from './terms-sync-handler/terms-sync.handler
 import { TerritoryManagerSyncHandlerService } from './territory-manager-sync-handler/territory-manager-sync.handler.service';
 
 @Module({
-    imports: [DynamoDbLibModule, InvoicingDatabaseServiceModule],
+    imports: [DynamoDbLibModule, InvoicingDatabaseServiceModule, MessageQueueLibModule],
     controllers: [AppController],
     providers: [
         AppService,

@@ -226,7 +226,7 @@ export default function ContractsPage() {
                 }}
                 onCreateClick={handleCreateClick}
                 isLoading={isLoading}
-                canCreate={isAdminUser}
+                canCreate={true}
                 isAdminUser={isAdminUser}
             />
 

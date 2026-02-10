@@ -1,7 +1,12 @@
 import { AuthGuardLibModule } from '@auth-guard-lib';
 import { ConfigurationLibModule } from '@configuration-lib';
 import { DynamoDbLibModule } from '@dynamo-db-lib';
-import { InvoicingDatabaseServiceModule, ReturnGoodSoldDatabaseService } from '@invoicing-database-service';
+import {
+    InvoiceDatabaseService,
+    InvoicingDatabaseServiceModule,
+    PaymentInvoiceDatabaseService,
+    ReturnGoodSoldDatabaseService,
+} from '@invoicing-database-service';
 import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue-lib';
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
@@ -37,6 +42,14 @@ import { ReturnGoodSoldController } from './return.good.sold.controller';
         {
             provide: 'ReturnGoodSoldDatabaseService',
             useClass: ReturnGoodSoldDatabaseService,
+        },
+        {
+            provide: 'InvoiceDatabaseService',
+            useClass: InvoiceDatabaseService,
+        },
+        {
+            provide: 'PaymentInvoiceDatabaseService',
+            useClass: PaymentInvoiceDatabaseService,
         },
         CreateReturnGoodSoldHandler,
         GetReturnGoodSoldByIdHandler,

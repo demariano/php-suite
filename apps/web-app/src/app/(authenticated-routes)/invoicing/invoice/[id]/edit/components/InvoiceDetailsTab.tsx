@@ -24,6 +24,10 @@ interface InvoiceDetailsTabProps {
     isReadOnly?: boolean;
     onAutoSave?: (invoice: InvoiceDto, invoiceId?: string) => Promise<string | void>;
     currentInvoiceId?: string;
+    approvalComparison?: {
+        original: InvoiceDetailsDto[];
+        pending: InvoiceDetailsDto[];
+    };
 }
 
 export default function InvoiceDetailsTab({
@@ -36,6 +40,7 @@ export default function InvoiceDetailsTab({
     isReadOnly = false,
     onAutoSave,
     currentInvoiceId,
+    approvalComparison,
 }: InvoiceDetailsTabProps) {
     const { setFlashNotification } = useSessionStore();
     const [stockSelection, setStockSelection] = useState<StockSelectionState>({
@@ -44,6 +49,79 @@ export default function InvoiceDetailsTab({
         quantity: 0,
         showStockModal: false,
     });
+
+    const isApprovalView = Boolean(approvalComparison && isReadOnly);
+    const originalDetails = approvalComparison?.original || [];
+    const pendingDetails = approvalComparison?.pending || [];
+
+    type ApprovalRowStatus = 'added' | 'modified' | 'removed' | 'unchanged';
+    const isDetailEqual = (a: InvoiceDetailsDto, b: InvoiceDetailsDto) => JSON.stringify(a) === JSON.stringify(b);
+
+    const approvalRows = (() => {
+        if (!isApprovalView) return [] as Array<{ detail: InvoiceDetailsDto; status: ApprovalRowStatus }>;
+
+        const rows: Array<{ detail: InvoiceDetailsDto; status: ApprovalRowStatus }> = [];
+        pendingDetails.forEach((detail, index) => {
+            const originalDetail = originalDetails[index];
+            if (!originalDetail) {
+                rows.push({ detail, status: 'added' });
+                return;
+            }
+            if (!isDetailEqual(originalDetail, detail)) {
+                rows.push({ detail, status: 'modified' });
+                return;
+            }
+            rows.push({ detail, status: 'unchanged' });
+        });
+
+        if (originalDetails.length > pendingDetails.length) {
+            originalDetails.slice(pendingDetails.length).forEach((detail) => {
+                rows.push({ detail, status: 'removed' });
+            });
+        }
+
+        return rows;
+    })();
+
+    const rowsToRender = isApprovalView
+        ? approvalRows
+        : (formData.invoiceDetails || []).map((detail) => ({ detail, status: 'unchanged' as ApprovalRowStatus }));
+
+    const showLegend = isApprovalView && approvalRows.some((row) => row.status !== 'unchanged');
+
+    const getRowClasses = (status: ApprovalRowStatus, detail: InvoiceDetailsDto, index: number) => {
+        if (isApprovalView) {
+            switch (status) {
+                case 'added':
+                    return 'bg-green-50';
+                case 'modified':
+                    return 'bg-blue-50';
+                case 'removed':
+                    return 'bg-red-50';
+                default:
+                    return 'bg-white';
+            }
+        }
+
+        if (detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM) {
+            return 'bg-green-50';
+        }
+
+        return index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+    };
+
+    const getStatusLabel = (status: ApprovalRowStatus) => {
+        switch (status) {
+            case 'added':
+                return 'Added';
+            case 'modified':
+                return 'Modified';
+            case 'removed':
+                return 'Removed';
+            default:
+                return '';
+        }
+    };
 
     // Handle stock item selection from modal
     const handleStockSelect = async (stock: StockDto) => {
@@ -609,22 +687,33 @@ export default function InvoiceDetailsTab({
             <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                     <h4 className="text-base font-semibold text-gray-900 m-0">
-                        Invoice Details ({formData.invoiceDetails?.length || 0} items)
+                        Invoice Details ({rowsToRender.length} items)
                     </h4>
                 </div>
 
-                {formData.invoiceDetails && formData.invoiceDetails.length > 0 ? (
+                {showLegend && (
+                    <div className="px-4 pt-3 flex flex-wrap gap-3 text-xs">
+                        <span className="flex items-center gap-1">
+                            <span className="h-3 w-3 rounded border border-green-300 bg-green-100" />
+                            <span>Added</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <span className="h-3 w-3 rounded border border-blue-300 bg-blue-100" />
+                            <span>Modified</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <span className="h-3 w-3 rounded border border-red-300 bg-red-100" />
+                            <span>Removed</span>
+                        </span>
+                    </div>
+                )}
+
+                {rowsToRender.length > 0 ? (
                     <div className="max-h-96 overflow-y-auto">
-                        {formData.invoiceDetails.map((detail, index) => (
+                        {rowsToRender.map(({ detail, status }, index) => (
                             <div
                                 key={detail.invoiceDetailId || index}
-                                className={`p-4 border-b border-gray-200 ${
-                                    detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM
-                                        ? 'bg-green-50'
-                                        : index % 2 === 0
-                                        ? 'bg-white'
-                                        : 'bg-gray-50'
-                                }`}
+                                className={`p-4 border-b border-gray-200 ${getRowClasses(status, detail, index)}`}
                             >
                                 <div
                                     className={`grid gap-4 items-center ${
@@ -639,6 +728,11 @@ export default function InvoiceDetailsTab({
                                             {detail.invoiceDetailType === InvoiceDetailTypeEnum.FREE_ITEM && (
                                                 <span className="ml-2 bg-green-600 text-white px-2 py-0.5 rounded text-xs font-semibold">
                                                     FREE
+                                                </span>
+                                            )}
+                                            {isApprovalView && status !== 'unchanged' && (
+                                                <span className="ml-2 rounded bg-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                                                    {getStatusLabel(status)}
                                                 </span>
                                             )}
                                         </div>

@@ -1,8 +1,21 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ResponseDto, ReturnGoodSoldDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    InvoicePaymentEventDto,
+    InvoicePaymentEventEnum,
+    ResponseDto,
+    ReturnGoodSoldDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { ReturnGoodSoldDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import {
+    InvoiceDatabaseServiceAbstract,
+    ReturnGoodSoldDatabaseServiceAbstractClass,
+} from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveReturnGoodSoldCommand } from './approve.command';
 
@@ -16,7 +29,13 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
 
     constructor(
         @Inject('ReturnGoodSoldDatabaseService')
-        private readonly returnGoodSoldDatabaseService: ReturnGoodSoldDatabaseServiceAbstractClass
+        private readonly returnGoodSoldDatabaseService: ReturnGoodSoldDatabaseServiceAbstractClass,
+
+        @Inject('InvoiceDatabaseService')
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(command: ApproveReturnGoodSoldCommand): Promise<ResponseDto<ReturnGoodSoldDto | ErrorResponseDto>> {
@@ -121,6 +140,31 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
         const updatedRecord = await this.returnGoodSoldDatabaseService.updateRecord(existingRecord);
 
         this.logger.log(`Return Good Sold approved successfully: ${existingRecord.returnGoodSoldId}`);
+
+        //update the invoice details based on the modifiedInvoiceDetails in the return good sold record
+        const invoiceRecord = await this.invoiceDatabaseService.findRecordById(existingRecord.invoiceId);
+        if (invoiceRecord) {
+            invoiceRecord.invoiceDetails = existingRecord.modifiedInvoiceDetails;
+            await this.invoiceDatabaseService.updateRecord(invoiceRecord);
+            this.logger.log(
+                `Invoice ${invoiceRecord.invoiceId} updated successfully based on approved return good sold ${existingRecord.returnGoodSoldId}`
+            );
+        } else {
+            this.logger.warn(
+                `Associated invoice not found for return good sold ${existingRecord.returnGoodSoldId}: ${existingRecord.invoiceId}`
+            );
+        }
+
+        const invoicePayloads: InvoicePaymentEventDto[] = [];
+        const invoicePaymentDto: InvoicePaymentEventDto = {
+            invoiceId: existingRecord.invoiceId,
+            customerId: existingRecord.customerId,
+            invoicePaymentEvent: InvoicePaymentEventEnum.INVOICE_UPDATED,
+        };
+        invoicePayloads.push(invoicePaymentDto);
+
+        await this.sendInvoicePaymentEvent(invoicePayloads);
+
         return new ResponseDto<ReturnGoodSoldDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -128,7 +172,30 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
      * Approves deletion of a return good sold
      */
     private async approveDeletion(existingRecord: ReturnGoodSoldDto): Promise<ResponseDto<ReturnGoodSoldDto>> {
+        // delete means the original invoice needs to be reinstated.
+        //update the invoice details based on the originalInvoiceDetails in the return good sold record
+        const invoiceRecord = await this.invoiceDatabaseService.findRecordById(existingRecord.invoiceId);
+        if (invoiceRecord) {
+            invoiceRecord.invoiceDetails = existingRecord.originalInvoiceDetails;
+            await this.invoiceDatabaseService.updateRecord(invoiceRecord);
+            this.logger.log(
+                `Invoice ${invoiceRecord.invoiceId} updated successfully based on approved return good sold ${existingRecord.returnGoodSoldId}`
+            );
+        } else {
+            this.logger.warn(
+                `Associated invoice not found for return good sold ${existingRecord.returnGoodSoldId}: ${existingRecord.invoiceId}`
+            );
+        }
+
         await this.returnGoodSoldDatabaseService.deleteRecord(existingRecord);
+        const invoicePayloads: InvoicePaymentEventDto[] = [];
+        const invoicePaymentDto: InvoicePaymentEventDto = {
+            invoiceId: existingRecord.invoiceId,
+            customerId: existingRecord.customerId,
+            invoicePaymentEvent: InvoicePaymentEventEnum.INVOICE_UPDATED,
+        };
+        invoicePayloads.push(invoicePaymentDto);
+        await this.sendInvoicePaymentEvent(invoicePayloads);
 
         this.logger.log(`Return Good Sold deletion approved: ${existingRecord.returnGoodSoldId}`);
         return new ResponseDto<ReturnGoodSoldDto>(existingRecord, HTTP_STATUS_OK);
@@ -164,5 +231,19 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Sends invoice payment event to SQS queue
+     */
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
+        const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+        const eventPayload = {
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
+            paymentData,
+        };
+
+        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
     }
 }

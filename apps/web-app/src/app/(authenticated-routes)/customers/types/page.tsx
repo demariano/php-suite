@@ -3,6 +3,7 @@
 import { StatusBadge } from '@components-web';
 import { CustomerTypeApi, CustomerTypeDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerTypeHeader, CustomerTypeTable } from './components';
 
@@ -16,6 +17,7 @@ export default function CustomerTypesPage() {
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
+    const router = useRouter();
 
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -174,11 +176,11 @@ export default function CustomerTypesPage() {
     );
 
     const handleRowClick = async (customerType: CustomerTypeDto) => {
-        window.location.href = `/customers/types/${customerType.customerTypeId}/edit`;
+        router.push(`/customers/types/${customerType.customerTypeId}/edit`);
     };
 
     const handleCreateClick = () => {
-        window.location.href = '/customers/types/create';
+        router.push('/customers/types/create');
     };
 
     const handlePageSizeChange = (newPageSize: number) => {
@@ -189,7 +191,7 @@ export default function CustomerTypesPage() {
         fetchCustomerTypes(undefined, undefined, newPageSize);
     };
 
-    const canCreateType = isAdminUser;
+    const canCreateType = true;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">

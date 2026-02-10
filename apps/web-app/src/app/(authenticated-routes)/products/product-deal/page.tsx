@@ -162,7 +162,7 @@ export default function ProductDealsMainPage() {
     );
 
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
-    const canCreate = isAdminUser;
+    const canCreate = true;
 
     return (
         <div className="space-y-6 p-4 sm:p-6">

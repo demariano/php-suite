@@ -25,7 +25,7 @@ interface EditInvoicePageProps {
 export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs' | 'payments'>('details');
     const [showDenyDialog, setShowDenyDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -50,18 +50,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                 const invoice = await InvoiceApi.getInvoiceById(params.id, userRole);
                 setSelectedInvoice(invoice);
 
-                // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-                if (
-                    (invoice.status === StatusEnum.FOR_APPROVAL ||
-                        invoice.status === StatusEnum.NEW_RECORD ||
-                        invoice.status === StatusEnum.FOR_DELETION) &&
-                    isAdminUser
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    // Default to details tab
-                    setActiveTab('details');
-                }
+                setActiveTab('details');
             } catch (err) {
                 console.error('Error fetching invoice:', err);
                 const errorMessage = extractErrorMessage(err, 'Failed to load invoice details. Please try again.');

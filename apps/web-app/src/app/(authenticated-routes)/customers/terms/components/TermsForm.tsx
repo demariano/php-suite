@@ -1,8 +1,9 @@
 'use client';
 
 import { StatusEnum, TermsDto } from '@data-access/index';
-import { useEffect, useState } from 'react';
-import { ChangeReasonField } from '../../../components';
+import { useEffect, useMemo, useState } from 'react';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 
 interface TermsFormProps {
     isCreateMode: boolean;
@@ -13,6 +14,9 @@ interface TermsFormProps {
     onCancel: () => void;
     isAdminUser?: boolean;
     onReactivate?: () => void;
+    onApprove?: () => void;
+    onDeny?: () => void;
+    isLoading?: boolean;
 }
 
 export default function TermsForm({
@@ -24,6 +28,9 @@ export default function TermsForm({
     onCancel,
     isAdminUser = false,
     onReactivate,
+    onApprove,
+    onDeny,
+    isLoading = false,
 }: TermsFormProps) {
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [formData, setFormData] = useState({
@@ -31,6 +38,71 @@ export default function TermsForm({
         days: '',
         changeReason: '',
     });
+
+    const currentStatus = selectedTerms?.status ?? StatusEnum.NEW_RECORD;
+    const pendingVersion = useMemo(
+        () => (selectedTerms?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        [selectedTerms?.forApprovalVersion]
+    );
+
+    const isApprovalState = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showApprovalUI = isApprovalState && !isCreateMode;
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION;
+
+    const isFieldChanged = createFieldChangeDetector(
+        (selectedTerms ?? {}) as Record<string, unknown>,
+        (selectedTerms?.forApprovalVersion as Record<string, unknown>) ?? undefined
+    );
+
+    const renderReadOnlyField = (label: string, value: any, fieldName?: string) => {
+        const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+
+        return (
+            <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    {label}
+                </label>
+                <div
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+                        fieldChanged
+                            ? 'border-blue-500 bg-blue-50 text-gray-700'
+                            : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                >
+                    {value === undefined || value === null || value === '' ? '-' : String(value)}
+                </div>
+            </div>
+        );
+    };
+
+    const renderFieldWithInlineDiff = (label: string, fieldName: string, currentValue: any, pendingValue: any) => {
+        const hasChange = isFieldChanged(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{currentValue ?? '-'}</span>
+                        <span className="mx-2 text-blue-600">→</span>
+                        <span className="font-semibold text-blue-700">
+                            {pendingValue === undefined || pendingValue === null || pendingValue === ''
+                                ? '-'
+                                : String(pendingValue)}
+                        </span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return renderReadOnlyField(label, displayValue, fieldName);
+    };
 
     useEffect(() => {
         if (!isCreateMode && selectedTerms) {
@@ -120,30 +192,51 @@ export default function TermsForm({
                 </div>
             )}
 
-            {!isCreateMode &&
-                selectedTerms &&
-                (selectedTerms.status === StatusEnum.FOR_APPROVAL ||
-                    selectedTerms.status === StatusEnum.NEW_RECORD ||
-                    selectedTerms.status === StatusEnum.FOR_DELETION) && (
-                    <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
-                            ⚠
-                        </div>
-                        <span className="text-sm font-semibold">
-                            {selectedTerms.status === StatusEnum.FOR_DELETION
-                                ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-                                : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-                        </span>
-                    </div>
-                )}
-
             {/* Change Reason Field - First component when displayed */}
-            {!isCreateMode && !isAdminUser && (
+            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                 <ChangeReasonField
                     value={formData.changeReason}
                     onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
                     disabled={isFormDisabled}
                 />
+            )}
+
+            {/* Change Reason Read-Only for approval states */}
+            {showApprovalUI && selectedTerms?.changeReason && (
+                <ChangeReasonReadOnly value={selectedTerms.changeReason} />
+            )}
+
+            {/* Deletion/Deactivation Approval Card */}
+            {showDeletionCard && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🗑️
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-red-800 m-0">
+                                {currentStatus === StatusEnum.FOR_DELETION
+                                    ? 'Record Marked for Deletion'
+                                    : 'Record Marked for Deactivation'}
+                            </h3>
+                            <p className="text-sm text-red-700">
+                                This record has been marked for{' '}
+                                {currentStatus === StatusEnum.FOR_DELETION ? 'deletion' : 'deactivation'} and is
+                                awaiting approval.
+                            </p>
+                        </div>
+                    </div>
+                    {selectedTerms?.changeReason && (
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-red-700">
+                                {currentStatus === StatusEnum.FOR_DELETION ? 'Deletion' : 'Deactivation'} Reason
+                            </p>
+                            <div className="bg-white border-2 border-red-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                                {selectedTerms.changeReason}
+                            </div>
+                        </div>
+                    )}
+                </div>
             )}
 
             <div className="space-y-6">
@@ -168,47 +261,68 @@ export default function TermsForm({
                             <h3 className="text-base font-bold text-blue-600">Terms Information</h3>
                         </div>
                         <div className="grid grid-cols-1 gap-6">
-                            <div className="group">
-                                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                    Terms Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="termsName"
-                                    value={formData.termsName}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, termsName: e.target.value }))}
-                                    placeholder={isCreateMode ? 'Enter terms name' : ''}
-                                    disabled={isFormDisabled}
-                                    className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                        isFormDisabled
-                                            ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                            : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
-                                    }`}
-                                    required
-                                />
-                            </div>
-                            <div className="group">
-                                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                    Days
-                                </label>
-                                <input
-                                    type="number"
-                                    name="days"
-                                    value={formData.days}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, days: e.target.value }))}
-                                    placeholder={isCreateMode ? 'Enter number of days' : ''}
-                                    min="1"
-                                    disabled={isFormDisabled}
-                                    className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                        isFormDisabled
-                                            ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                            : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
-                                    }`}
-                                    required
-                                />
-                            </div>
+                            {showApprovalUI ? (
+                                <>
+                                    {renderFieldWithInlineDiff(
+                                        'Terms Name',
+                                        'termsName',
+                                        selectedTerms?.termsName,
+                                        pendingVersion.termsName
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Days',
+                                        'days',
+                                        selectedTerms?.days,
+                                        pendingVersion.days
+                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    <div className="group">
+                                        <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                            Terms Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="termsName"
+                                            value={formData.termsName}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({ ...prev, termsName: e.target.value }))
+                                            }
+                                            placeholder={isCreateMode ? 'Enter terms name' : ''}
+                                            disabled={isFormDisabled}
+                                            className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                isFormDisabled
+                                                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                                            }`}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="group">
+                                        <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                            Days
+                                        </label>
+                                        <input
+                                            type="number"
+                                            name="days"
+                                            value={formData.days}
+                                            onChange={(e) => setFormData((prev) => ({ ...prev, days: e.target.value }))}
+                                            placeholder={isCreateMode ? 'Enter number of days' : ''}
+                                            min="1"
+                                            disabled={isFormDisabled}
+                                            className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                isFormDisabled
+                                                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                                            }`}
+                                            required
+                                        />
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -263,13 +377,50 @@ export default function TermsForm({
                     {(isCreateMode || selectedTerms?.status === StatusEnum.ACTIVE) && (
                         <button
                             type="submit"
-                            className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            disabled={isLoading}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
                         >
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                             {isCreateMode ? 'Create Terms' : 'Save Changes'}
                         </button>
+                    )}
+                    {!isCreateMode && isAdminUser && (isApprovalState || showDeletionCard) && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onDeny}
+                                disabled={isLoading}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:bg-red-300 disabled:cursor-not-allowed"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                Deny
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onApprove}
+                                disabled={isLoading}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-green-300 disabled:cursor-not-allowed"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                                Approve
+                            </button>
+                        </>
                     )}
                     <button
                         type="button"

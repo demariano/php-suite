@@ -17,6 +17,10 @@ interface PaymentInvoiceDetailsTabProps {
     isCreateMode: boolean;
     isReadOnly?: boolean;
     onBeforeSave?: () => void;
+    approvalComparison?: {
+        original: PaymentInvoiceDetailsDto[];
+        pending: PaymentInvoiceDetailsDto[];
+    };
 }
 
 export default function PaymentInvoiceDetailsTab({
@@ -24,6 +28,7 @@ export default function PaymentInvoiceDetailsTab({
     onFormDataChange,
     isCreateMode,
     isReadOnly = false,
+    approvalComparison,
 }: PaymentInvoiceDetailsTabProps) {
     const [showInvoiceModal, setShowInvoiceModal] = useState(false);
     const [pendingInvoices, setPendingInvoices] = useState<InvoiceDto[]>([]);
@@ -37,12 +42,88 @@ export default function PaymentInvoiceDetailsTab({
 
     const { setFlashNotification } = useSessionStore();
 
+    const isApprovalView = Boolean(approvalComparison && isReadOnly);
+    const originalDetails = approvalComparison?.original || [];
+    const pendingDetails = approvalComparison?.pending || [];
+
+    type ApprovalRowStatus = 'added' | 'modified' | 'removed' | 'unchanged';
+    const isInvoiceDetailEqual = (a: PaymentInvoiceDetailsDto, b: PaymentInvoiceDetailsDto) =>
+        a.amountApplied === b.amountApplied;
+
+    const approvalRows = (() => {
+        if (!isApprovalView) return [] as Array<{ detail: PaymentInvoiceDetailsDto; status: ApprovalRowStatus }>;
+
+        const rows: Array<{ detail: PaymentInvoiceDetailsDto; status: ApprovalRowStatus }> = [];
+        const originalById = new Map(originalDetails.map((detail) => [detail.invoiceId, detail]));
+        const pendingById = new Map(pendingDetails.map((detail) => [detail.invoiceId, detail]));
+
+        pendingDetails.forEach((detail) => {
+            const originalDetail = originalById.get(detail.invoiceId);
+            if (!originalDetail) {
+                rows.push({ detail, status: 'added' });
+                return;
+            }
+            if (!isInvoiceDetailEqual(originalDetail, detail)) {
+                rows.push({ detail, status: 'modified' });
+                return;
+            }
+            rows.push({ detail, status: 'unchanged' });
+        });
+
+        originalDetails.forEach((detail) => {
+            if (!pendingById.has(detail.invoiceId)) {
+                rows.push({ detail, status: 'removed' });
+            }
+        });
+
+        return rows;
+    })();
+
+    const rowsToRender = isApprovalView
+        ? approvalRows
+        : (formData.paymentInvoiceDetails || []).map((detail) => ({
+              detail,
+              status: 'unchanged' as ApprovalRowStatus,
+          }));
+
+    const showLegend = isApprovalView && approvalRows.some((row) => row.status !== 'unchanged');
+
+    const getRowClasses = (status: ApprovalRowStatus) => {
+        switch (status) {
+            case 'added':
+                return 'bg-green-50';
+            case 'modified':
+                return 'bg-blue-50';
+            case 'removed':
+                return 'bg-red-50';
+            default:
+                return 'bg-white';
+        }
+    };
+
+    const getStatusLabel = (status: ApprovalRowStatus) => {
+        switch (status) {
+            case 'added':
+                return 'Added';
+            case 'modified':
+                return 'Modified';
+            case 'removed':
+                return 'Removed';
+            default:
+                return '-';
+        }
+    };
+
     // Load invoice details for existing paymentInvoiceDetails (when editing)
     useEffect(() => {
         const loadInvoiceDetails = async () => {
-            if (formData.paymentInvoiceDetails && formData.paymentInvoiceDetails.length > 0) {
+            const detailSources = isApprovalView
+                ? rowsToRender.map((row) => row.detail)
+                : formData.paymentInvoiceDetails;
+
+            if (detailSources && detailSources.length > 0) {
                 const newInvoiceDetailsMap = new Map(invoiceDetailsMap);
-                const promises = formData.paymentInvoiceDetails.map(async (detail) => {
+                const promises = detailSources.map(async (detail) => {
                     // Only fetch if we don't already have it
                     if (!newInvoiceDetailsMap.has(detail.invoiceId)) {
                         try {
@@ -59,7 +140,7 @@ export default function PaymentInvoiceDetailsTab({
         };
 
         loadInvoiceDetails();
-    }, [formData.paymentInvoiceDetails?.length]); // Only reload when the count changes
+    }, [formData.paymentInvoiceDetails?.length, isApprovalView]); // Only reload when the count changes
 
     // Fetch contract type when contractId is available
     useEffect(() => {
@@ -465,8 +546,24 @@ export default function PaymentInvoiceDetailsTab({
                     )}
                 </div>
 
-                {formData.paymentInvoiceDetails && formData.paymentInvoiceDetails.length > 0 ? (
+                {rowsToRender.length > 0 ? (
                     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
+                        {showLegend && (
+                            <div className="px-6 pt-4 flex flex-wrap gap-3 text-xs">
+                                <span className="flex items-center gap-1">
+                                    <span className="h-3 w-3 rounded border border-green-300 bg-green-100" />
+                                    <span>Added</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="h-3 w-3 rounded border border-blue-300 bg-blue-100" />
+                                    <span>Modified</span>
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <span className="h-3 w-3 rounded border border-red-300 bg-red-100" />
+                                    <span>Removed</span>
+                                </span>
+                            </div>
+                        )}
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
                                 <thead className="bg-white border-b border-gray-200">
@@ -485,24 +582,32 @@ export default function PaymentInvoiceDetailsTab({
                                                 Actions
                                             </th>
                                         )}
+                                        {isReadOnly && isApprovalView && (
+                                            <th className="px-6 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider">
+                                                Status
+                                            </th>
+                                        )}
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {formData.paymentInvoiceDetails.map((detail, index) => {
+                                    {rowsToRender.map(({ detail, status }, index) => {
                                         // Get invoice details for display - use invoice amounts for CONTRACT_PER_INVOICE (same as non-contract)
                                         // For REGULAR contracts, this section is hidden anyway
                                         const invoice = invoiceDetailsMap.get(detail.invoiceId);
                                         const invoiceAmount = invoice ? invoice.finalAmount || 0 : 0;
                                         const invoiceTotalPaid = invoice ? invoice.totalAmountPaid || 0 : 0;
                                         const invoiceRemainingBalance = invoiceAmount - invoiceTotalPaid;
+                                        const invoiceDocno = detail.docno || invoice?.docno || detail.invoiceId;
 
                                         return (
                                             <tr
                                                 key={index}
-                                                className="transition-all duration-200 bg-white hover:bg-gray-50"
+                                                className={`transition-all duration-200 hover:bg-gray-50 ${getRowClasses(
+                                                    status
+                                                )}`}
                                             >
                                                 <td className="px-6 py-5 text-sm font-medium text-gray-900">
-                                                    {detail.docno}
+                                                    {invoiceDocno}
                                                 </td>
                                                 <td className="px-6 py-5 text-sm text-gray-600">
                                                     ₱{invoiceAmount.toFixed(2)}
@@ -611,6 +716,11 @@ export default function PaymentInvoiceDetailsTab({
                                                                 />
                                                             </svg>
                                                         </button>
+                                                    </td>
+                                                )}
+                                                {isReadOnly && isApprovalView && (
+                                                    <td className="px-6 py-5 text-xs font-semibold text-gray-500">
+                                                        {getStatusLabel(status)}
                                                     </td>
                                                 )}
                                             </tr>

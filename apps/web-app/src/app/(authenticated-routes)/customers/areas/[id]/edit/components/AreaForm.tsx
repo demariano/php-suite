@@ -332,6 +332,33 @@ export default function AreaForm({
         setUserHasMadeSelections(true);
     };
 
+    type TownRowStatus = 'added' | 'removed' | 'unchanged';
+
+    const buildTownApprovalRows = (): { townName: string; status: TownRowStatus }[] => {
+        const currentTowns = (selectedArea?.towns ?? []) as string[];
+        const pendingTowns = ((pendingVersion.towns as string[]) ?? []) as string[];
+
+        if (currentStatus === StatusEnum.NEW_RECORD) {
+            return currentTowns.map((town) => ({ townName: town, status: 'added' }));
+        }
+
+        const currentSet = new Set(currentTowns);
+        const pendingSet = new Set(pendingTowns);
+        const rows: { townName: string; status: TownRowStatus }[] = [];
+
+        pendingTowns.forEach((town) => {
+            rows.push({ townName: town, status: currentSet.has(town) ? 'unchanged' : 'added' });
+        });
+
+        currentTowns.forEach((town) => {
+            if (!pendingSet.has(town)) {
+                rows.push({ townName: town, status: 'removed' });
+            }
+        });
+
+        return rows;
+    };
+
     // Render details tab content
     const renderDetailsTab = () => {
         return (
@@ -552,38 +579,92 @@ export default function AreaForm({
 
                         {/* Show towns as read-only in approval UI */}
                         {showApprovalUI ? (
-                            <div className="space-y-2">
-                                <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                                    Towns ({((pendingVersion.towns as string[]) || selectedArea?.towns || []).length})
-                                </h4>
-                                {(
-                                    (currentStatus === StatusEnum.NEW_RECORD
-                                        ? selectedArea?.towns
-                                        : (pendingVersion.towns as string[])) || []
-                                ).length === 0 ? (
-                                    <div className="rounded-xl border-2 border-gray-200 bg-gray-50 p-8 text-center">
-                                        <div className="mb-3 text-4xl">🏘️</div>
-                                        <p className="font-medium text-gray-600">No towns added</p>
+                            (() => {
+                                const townRows = buildTownApprovalRows();
+                                const hasTownChanges = townRows.some((town) => town.status !== 'unchanged');
+                                const townCount =
+                                    currentStatus === StatusEnum.NEW_RECORD
+                                        ? (selectedArea?.towns ?? []).length
+                                        : ((pendingVersion.towns as string[]) ?? []).length;
+
+                                return (
+                                    <div className="space-y-2">
+                                        <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                                            Towns ({townCount})
+                                        </h4>
+                                        {hasTownChanges ? (
+                                            <div className="flex flex-wrap gap-3 text-xs mb-2">
+                                                <span className="flex items-center gap-1">
+                                                    <span className="w-3 h-3 bg-green-100 rounded border border-green-300"></span>
+                                                    <span>Added</span>
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <span className="w-3 h-3 bg-blue-100 rounded border border-blue-300"></span>
+                                                    <span>Modified</span>
+                                                </span>
+                                                <span className="flex items-center gap-1">
+                                                    <span className="w-3 h-3 bg-red-100 rounded border border-red-300"></span>
+                                                    <span>Removed</span>
+                                                </span>
+                                            </div>
+                                        ) : null}
+                                        {townRows.length === 0 ? (
+                                            <div className="text-sm text-gray-500">No pending town changes.</div>
+                                        ) : (
+                                            <div className="overflow-hidden border border-gray-200 rounded-xl">
+                                                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                                    <thead className="bg-gray-50">
+                                                        <tr>
+                                                            <th className="px-4 py-2 text-left font-semibold text-gray-600">
+                                                                Town
+                                                            </th>
+                                                            <th className="px-4 py-2 text-right font-semibold text-gray-600">
+                                                                Status
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100">
+                                                        {townRows.map((town) => (
+                                                            <tr
+                                                                key={`${town.townName}-${town.status}`}
+                                                                className={
+                                                                    town.status === 'added'
+                                                                        ? 'bg-green-50'
+                                                                        : town.status === 'removed'
+                                                                        ? 'bg-red-50'
+                                                                        : ''
+                                                                }
+                                                            >
+                                                                <td
+                                                                    className={`px-4 py-3 ${
+                                                                        town.status === 'removed'
+                                                                            ? 'line-through text-gray-500'
+                                                                            : 'text-gray-700'
+                                                                    }`}
+                                                                >
+                                                                    {town.townName || '-'}
+                                                                </td>
+                                                                <td className="px-4 py-3 text-right">
+                                                                    {town.status === 'added' && (
+                                                                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                                                            ➕ ADDED
+                                                                        </span>
+                                                                    )}
+                                                                    {town.status === 'removed' && (
+                                                                        <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                                                                            ➖ REMOVED
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
-                                ) : (
-                                    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm">
-                                        <div className="divide-y divide-gray-200">
-                                            {(
-                                                (currentStatus === StatusEnum.NEW_RECORD
-                                                    ? selectedArea?.towns
-                                                    : (pendingVersion.towns as string[])) || []
-                                            ).map((town: string, index: number) => (
-                                                <div
-                                                    key={index}
-                                                    className="px-4 py-3 flex items-center justify-between"
-                                                >
-                                                    <span className="text-sm font-medium text-gray-900">{town}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                                );
+                            })()
                         ) : (
                             <>
                                 {/* Add Town Input */}

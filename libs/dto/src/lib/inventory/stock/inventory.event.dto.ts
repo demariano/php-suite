@@ -1,3 +1,4 @@
+import { StockPurchaseOrderDto } from '@data-access';
 import { ApiProperty } from '@nestjs/swagger';
 import { InventoryEventEnum } from '../../enums/inventory.event.enum';
 
@@ -21,4 +22,6 @@ export class InventoryEventDto {
 
     @ApiProperty({ required: true, enum: InventoryEventEnum })
     inventoryEvent!: InventoryEventEnum;
+
+    stockPurchaseOrderDto?: StockPurchaseOrderDto;
 }

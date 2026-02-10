@@ -1,8 +1,9 @@
 'use client';
 
 import { CustomerTypeDto, StatusEnum } from '@data-access/index';
-import { useEffect, useState } from 'react';
-import { ChangeReasonField } from '../../../components';
+import { useEffect, useMemo, useState } from 'react';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 
 interface CustomerTypeFormProps {
     isCreateMode: boolean;
@@ -13,6 +14,9 @@ interface CustomerTypeFormProps {
     onCancel: () => void;
     isAdminUser?: boolean;
     onReactivate?: () => void;
+    onApprove?: () => void;
+    onDeny?: () => void;
+    isLoading?: boolean;
 }
 
 export default function CustomerTypeForm({
@@ -24,12 +28,80 @@ export default function CustomerTypeForm({
     onCancel,
     isAdminUser = false,
     onReactivate,
+    onApprove,
+    onDeny,
+    isLoading = false,
 }: CustomerTypeFormProps) {
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [formData, setFormData] = useState({
         customerTypeName: '',
         changeReason: '',
     });
+
+    const currentStatus = selectedCustomerType?.status ?? StatusEnum.NEW_RECORD;
+    const pendingVersion = useMemo(
+        () => (selectedCustomerType?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        [selectedCustomerType?.forApprovalVersion]
+    );
+
+    const isApprovalState = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showApprovalUI = isApprovalState && !isCreateMode;
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION;
+
+    const isFieldChanged = createFieldChangeDetector(
+        (selectedCustomerType ?? {}) as Record<string, unknown>,
+        (selectedCustomerType?.forApprovalVersion as Record<string, unknown>) ?? undefined
+    );
+
+    const renderReadOnlyField = (label: string, value: any, fieldName?: string) => {
+        const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+
+        return (
+            <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    {label}
+                </label>
+                <div
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+                        fieldChanged
+                            ? 'border-blue-500 bg-blue-50 text-gray-700'
+                            : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                >
+                    {value === undefined || value === null || value === '' ? '-' : String(value)}
+                </div>
+            </div>
+        );
+    };
+
+    const renderFieldWithInlineDiff = (label: string, fieldName: string, currentValue: any, pendingValue: any) => {
+        const hasChange = isFieldChanged(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{currentValue ?? '-'}</span>
+                        <span className="mx-2 text-blue-600">→</span>
+                        <span className="font-semibold text-blue-700">
+                            {pendingValue === undefined || pendingValue === null || pendingValue === ''
+                                ? '-'
+                                : String(pendingValue)}
+                        </span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return renderReadOnlyField(label, displayValue, fieldName);
+    };
 
     useEffect(() => {
         if (!isCreateMode && selectedCustomerType) {
@@ -107,30 +179,51 @@ export default function CustomerTypeForm({
                 </div>
             )}
 
-            {!isCreateMode &&
-                selectedCustomerType &&
-                (selectedCustomerType.status === StatusEnum.FOR_APPROVAL ||
-                    selectedCustomerType.status === StatusEnum.NEW_RECORD ||
-                    selectedCustomerType.status === StatusEnum.FOR_DELETION) && (
-                    <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
-                            ⚠
-                        </div>
-                        <span className="text-sm font-semibold">
-                            {selectedCustomerType.status === StatusEnum.FOR_DELETION
-                                ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-                                : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-                        </span>
-                    </div>
-                )}
-
             {/* Change Reason Field - First component when displayed */}
-            {!isCreateMode && !isAdminUser && (
+            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                 <ChangeReasonField
                     value={formData.changeReason}
                     onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
                     disabled={!isCreateMode && selectedCustomerType?.status !== StatusEnum.ACTIVE}
                 />
+            )}
+
+            {/* Change Reason Read-Only for approval states */}
+            {showApprovalUI && selectedCustomerType?.changeReason && (
+                <ChangeReasonReadOnly value={selectedCustomerType.changeReason} />
+            )}
+
+            {/* Deletion/Deactivation Approval Card */}
+            {showDeletionCard && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🗑️
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-red-800 m-0">
+                                {currentStatus === StatusEnum.FOR_DELETION
+                                    ? 'Record Marked for Deletion'
+                                    : 'Record Marked for Deactivation'}
+                            </h3>
+                            <p className="text-sm text-red-700">
+                                This record has been marked for{' '}
+                                {currentStatus === StatusEnum.FOR_DELETION ? 'deletion' : 'deactivation'} and is
+                                awaiting approval.
+                            </p>
+                        </div>
+                    </div>
+                    {selectedCustomerType?.changeReason && (
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-red-700">
+                                {currentStatus === StatusEnum.FOR_DELETION ? 'Deletion' : 'Deactivation'} Reason
+                            </p>
+                            <div className="bg-white border-2 border-red-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                                {selectedCustomerType.changeReason}
+                            </div>
+                        </div>
+                    )}
+                </div>
             )}
 
             <div className="space-y-6">
@@ -154,26 +247,37 @@ export default function CustomerTypeForm({
                             </div>
                             <h3 className="text-base font-bold text-blue-600">Type Information</h3>
                         </div>
-                        <div className="group">
-                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                Customer Type Name
-                            </label>
-                            <input
-                                type="text"
-                                name="customerTypeName"
-                                value={formData.customerTypeName}
-                                onChange={(e) => setFormData((prev) => ({ ...prev, customerTypeName: e.target.value }))}
-                                placeholder={isCreateMode ? 'Enter customer type name' : ''}
-                                disabled={isFormDisabled}
-                                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                    isFormDisabled
-                                        ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                        : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
-                                }`}
-                                required
-                            />
-                        </div>
+                        {showApprovalUI ? (
+                            renderFieldWithInlineDiff(
+                                'Customer Type Name',
+                                'customerTypeName',
+                                selectedCustomerType?.customerTypeName,
+                                pendingVersion.customerTypeName
+                            )
+                        ) : (
+                            <div className="group">
+                                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                    Customer Type Name
+                                </label>
+                                <input
+                                    type="text"
+                                    name="customerTypeName"
+                                    value={formData.customerTypeName}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({ ...prev, customerTypeName: e.target.value }))
+                                    }
+                                    placeholder={isCreateMode ? 'Enter customer type name' : ''}
+                                    disabled={isFormDisabled}
+                                    className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                        isFormDisabled
+                                            ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                            : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                                    }`}
+                                    required
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -237,6 +341,42 @@ export default function CustomerTypeForm({
                             </svg>
                             {isCreateMode ? 'Create Type' : 'Save Changes'}
                         </button>
+                    )}
+                    {!isCreateMode && isAdminUser && (isApprovalState || showDeletionCard) && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onDeny}
+                                disabled={isLoading}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:bg-red-300 disabled:cursor-not-allowed"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                Deny
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onApprove}
+                                disabled={isLoading}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-green-300 disabled:cursor-not-allowed"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                                Approve
+                            </button>
+                        </>
                     )}
                     <button
                         type="button"

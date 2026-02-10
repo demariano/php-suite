@@ -10,6 +10,10 @@ interface PaymentDetailsTabProps {
     onFormDataChange: (updatedData: Partial<PaymentDto>) => void;
     isCreateMode: boolean;
     isReadOnly?: boolean;
+    approvalComparison?: {
+        original: PaymentDetailsDto[];
+        pending: PaymentDetailsDto[];
+    };
 }
 
 export default function PaymentDetailsTab({
@@ -17,6 +21,7 @@ export default function PaymentDetailsTab({
     onFormDataChange,
     isCreateMode,
     isReadOnly = false,
+    approvalComparison,
 }: PaymentDetailsTabProps) {
     const [showAddModal, setShowAddModal] = useState(false);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -185,6 +190,71 @@ export default function PaymentDetailsTab({
         }
     };
 
+    type ApprovalRowStatus = 'added' | 'modified' | 'removed' | 'unchanged';
+    const isApprovalView = Boolean(approvalComparison && isReadOnly);
+    const originalDetails = approvalComparison?.original || [];
+    const pendingDetails = approvalComparison?.pending || [];
+
+    const isDetailEqual = (a: PaymentDetailsDto, b: PaymentDetailsDto) => JSON.stringify(a) === JSON.stringify(b);
+
+    const approvalRows = (() => {
+        if (!isApprovalView) return [] as Array<{ detail: PaymentDetailsDto; status: ApprovalRowStatus }>;
+
+        const rows: Array<{ detail: PaymentDetailsDto; status: ApprovalRowStatus }> = [];
+        pendingDetails.forEach((detail, index) => {
+            const originalDetail = originalDetails[index];
+            if (!originalDetail) {
+                rows.push({ detail, status: 'added' });
+                return;
+            }
+            if (!isDetailEqual(originalDetail, detail)) {
+                rows.push({ detail, status: 'modified' });
+                return;
+            }
+            rows.push({ detail, status: 'unchanged' });
+        });
+
+        if (originalDetails.length > pendingDetails.length) {
+            originalDetails.slice(pendingDetails.length).forEach((detail) => {
+                rows.push({ detail, status: 'removed' });
+            });
+        }
+
+        return rows;
+    })();
+
+    const getRowClasses = (status: ApprovalRowStatus) => {
+        switch (status) {
+            case 'added':
+                return 'bg-green-50';
+            case 'modified':
+                return 'bg-blue-50';
+            case 'removed':
+                return 'bg-red-50';
+            default:
+                return 'bg-white';
+        }
+    };
+
+    const getStatusLabel = (status: ApprovalRowStatus) => {
+        switch (status) {
+            case 'added':
+                return 'Added';
+            case 'modified':
+                return 'Modified';
+            case 'removed':
+                return 'Removed';
+            default:
+                return '-';
+        }
+    };
+
+    const rowsToRender = isApprovalView
+        ? approvalRows
+        : (formData.paymentDetails || []).map((detail) => ({ detail, status: 'unchanged' as ApprovalRowStatus }));
+
+    const showLegend = isApprovalView && approvalRows.some((row) => row.status !== 'unchanged');
+
     return (
         <div className="space-y-6">
             {/* Payment Details Section */}
@@ -228,7 +298,24 @@ export default function PaymentDetailsTab({
                         )}
                     </div>
 
-                    {formData.paymentDetails && formData.paymentDetails.length > 0 ? (
+                    {showLegend && (
+                        <div className="mb-3 flex flex-wrap gap-3 text-xs">
+                            <span className="flex items-center gap-1">
+                                <span className="h-3 w-3 rounded border border-green-300 bg-green-100" />
+                                <span>Added</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <span className="h-3 w-3 rounded border border-blue-300 bg-blue-100" />
+                                <span>Modified</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                                <span className="h-3 w-3 rounded border border-red-300 bg-red-100" />
+                                <span>Removed</span>
+                            </span>
+                        </div>
+                    )}
+
+                    {rowsToRender.length > 0 ? (
                         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
                             <div className="overflow-x-auto">
                                 <table className="w-full border-collapse min-w-[1000px]">
@@ -257,13 +344,20 @@ export default function PaymentDetailsTab({
                                                     Actions
                                                 </th>
                                             )}
+                                            {isReadOnly && isApprovalView && (
+                                                <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[120px]">
+                                                    Status
+                                                </th>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
-                                        {formData.paymentDetails.map((detail, index) => (
+                                        {rowsToRender.map(({ detail, status }, index) => (
                                             <tr
                                                 key={index}
-                                                className="transition-all duration-200 bg-white hover:bg-gray-50"
+                                                className={`transition-all duration-200 hover:bg-gray-50 ${getRowClasses(
+                                                    status
+                                                )}`}
                                             >
                                                 <td className="px-4 py-5 text-sm font-medium text-gray-900">
                                                     {getPaymentTypeLabel(detail.paymentType)}
@@ -334,6 +428,11 @@ export default function PaymentDetailsTab({
                                                                 </svg>
                                                             </button>
                                                         </div>
+                                                    </td>
+                                                )}
+                                                {isReadOnly && isApprovalView && (
+                                                    <td className="px-4 py-5 text-xs font-semibold text-gray-500">
+                                                        {getStatusLabel(status)}
                                                     </td>
                                                 )}
                                             </tr>

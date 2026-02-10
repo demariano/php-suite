@@ -222,7 +222,7 @@ export default function CollectionReceiptRangePage() {
                     }}
                     onCreateClick={handleCreateClick}
                     isLoading={isLoading}
-                    canCreate={isAdminUser}
+                    canCreate={true}
                 />
             </div>
 

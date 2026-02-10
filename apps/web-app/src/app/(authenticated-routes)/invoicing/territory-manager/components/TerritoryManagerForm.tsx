@@ -186,23 +186,6 @@ export default function TerritoryManagerForm({
                 />
             )}
 
-            {!isCreateMode &&
-                selectedTerritoryManager &&
-                (selectedTerritoryManager.status === StatusEnum.FOR_APPROVAL ||
-                    selectedTerritoryManager.status === StatusEnum.NEW_RECORD ||
-                    selectedTerritoryManager.status === StatusEnum.FOR_DELETION) && (
-                    <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
-                            ⚠
-                        </div>
-                        <span className="text-sm font-semibold">
-                            {selectedTerritoryManager.status === StatusEnum.FOR_DELETION
-                                ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-                                : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-                        </span>
-                    </div>
-                )}
-
             <div className="space-y-6">
                 <div className="space-y-4">
                     <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">

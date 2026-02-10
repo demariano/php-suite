@@ -18,7 +18,7 @@ export class ContractPaymentHandlerService {
             );
 
             // Fetch the existing contract record
-            let contract = await this.contractDatabaseService.findRecordById(contractPaymentDto.contractId);
+            const contract = await this.contractDatabaseService.findRecordById(contractPaymentDto.contractId);
 
             if (!contract) {
                 this.logger.error(`Contract not found for ID: ${contractPaymentDto.contractId}`);

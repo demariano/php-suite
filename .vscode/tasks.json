@@ -146,6 +146,28 @@
             "problemMatcher": []
         },
         {
+            "label": "Full Module",
+            "dependsOn": [
+                "Environment Initializer API Service",
+                "Product Api Service",
+                "Customer Api Service",
+                "Invoicing Api Service",
+                "Accounting Api Service",
+                "Inventory Api Service",
+                "Customer Event Handler Service",
+                "Inventory Event Handler Service",
+                "Inventory Event Handler Service",
+                "Invoicing Event Handler Service",
+                "Accounting Event Handler Service",
+                "Product Event Handler Service"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": []
+        },
+        {
             "label": "Disconnect Service",
             "type": "shell",
             "command": "npx nx serve disconnect-service --skip-nx-cache",

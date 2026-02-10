@@ -71,6 +71,81 @@ export default function ContractForm({
     const [isTypingAmount, setIsTypingAmount] = useState(false);
     const [isComputingRebate, setIsComputingRebate] = useState(false);
 
+    const currentStatus = selectedContract?.status ?? StatusEnum.ACTIVE;
+    const showApprovalView =
+        !isCreateMode &&
+        [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(currentStatus);
+    const pendingDeals = ((selectedContract?.forApprovalVersion as { contractProductDeals?: ContractDealsDetailsDto[] })
+        ?.contractProductDeals || []) as ContractDealsDetailsDto[];
+
+    type ApprovalRowStatus = 'added' | 'modified' | 'removed' | 'unchanged';
+    const getDealKey = (deal: ContractDealsDetailsDto) => `${deal.productId}|${deal.productDealId}`;
+    const isDealEqual = (a: ContractDealsDetailsDto, b: ContractDealsDetailsDto) =>
+        a.productId === b.productId &&
+        a.productDealId === b.productDealId &&
+        a.minQty === b.minQty &&
+        a.additionalQty === b.additionalQty;
+
+    const approvalRows = (() => {
+        if (!showApprovalView) {
+            return contractProductDeals.map((deal) => ({ deal, status: 'unchanged' as ApprovalRowStatus }));
+        }
+
+        const rows: Array<{ deal: ContractDealsDetailsDto; status: ApprovalRowStatus }> = [];
+        const originalByKey = new Map(contractProductDeals.map((deal) => [getDealKey(deal), deal]));
+        const pendingByKey = new Map(pendingDeals.map((deal) => [getDealKey(deal), deal]));
+
+        pendingDeals.forEach((deal) => {
+            const originalDeal = originalByKey.get(getDealKey(deal));
+            if (!originalDeal) {
+                rows.push({ deal, status: 'added' });
+                return;
+            }
+            if (!isDealEqual(originalDeal, deal)) {
+                rows.push({ deal, status: 'modified' });
+                return;
+            }
+            rows.push({ deal, status: 'unchanged' });
+        });
+
+        contractProductDeals.forEach((deal) => {
+            if (!pendingByKey.has(getDealKey(deal))) {
+                rows.push({ deal, status: 'removed' });
+            }
+        });
+
+        return rows;
+    })();
+
+    const showDealLegend = showApprovalView && approvalRows.some((row) => row.status !== 'unchanged');
+    const dealsToRender = approvalRows;
+
+    const getDealRowClasses = (status: ApprovalRowStatus) => {
+        switch (status) {
+            case 'added':
+                return 'bg-green-50';
+            case 'modified':
+                return 'bg-blue-50';
+            case 'removed':
+                return 'bg-red-50';
+            default:
+                return 'bg-white';
+        }
+    };
+
+    const getDealStatusLabel = (status: ApprovalRowStatus) => {
+        switch (status) {
+            case 'added':
+                return 'Added';
+            case 'modified':
+                return 'Modified';
+            case 'removed':
+                return 'Removed';
+            default:
+                return '-';
+        }
+    };
+
     // Form state for controlled inputs
     const [formData, setFormData] = useState<{
         contractNo: string;
@@ -522,24 +597,6 @@ export default function ContractForm({
                     />
                 )}
 
-                {/* Pending approval or deletion warning */}
-                {!isCreateMode &&
-                    selectedContract &&
-                    (selectedContract.status === StatusEnum.FOR_APPROVAL ||
-                        selectedContract.status === StatusEnum.NEW_RECORD ||
-                        selectedContract.status === StatusEnum.FOR_DELETION) && (
-                        <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
-                                ⚠
-                            </div>
-                            <span className="text-sm font-semibold">
-                                {selectedContract.status === StatusEnum.FOR_DELETION
-                                    ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-                                    : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-                            </span>
-                        </div>
-                    )}
-
                 {/* Record Fields Container */}
                 <div className="space-y-6">
                     {/* Basic Information Section */}
@@ -755,7 +812,23 @@ export default function ContractForm({
                                 </button>
                             </div>
                             <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
-                                {contractProductDeals.length === 0 ? (
+                                {showDealLegend && (
+                                    <div className="px-6 pt-4 flex flex-wrap gap-3 text-xs">
+                                        <span className="flex items-center gap-1">
+                                            <span className="h-3 w-3 rounded border border-green-300 bg-green-100" />
+                                            <span>Added</span>
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <span className="h-3 w-3 rounded border border-blue-300 bg-blue-100" />
+                                            <span>Modified</span>
+                                        </span>
+                                        <span className="flex items-center gap-1">
+                                            <span className="h-3 w-3 rounded border border-red-300 bg-red-100" />
+                                            <span>Removed</span>
+                                        </span>
+                                    </div>
+                                )}
+                                {dealsToRender.length === 0 ? (
                                     <div className="p-10 text-center text-gray-500 text-base">
                                         No contract deals added yet. Click &quot;Add Deal&quot; to get started.
                                     </div>
@@ -782,10 +855,12 @@ export default function ContractForm({
                                                 </tr>
                                             </thead>
                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                {contractProductDeals.map((deal, index) => (
+                                                {dealsToRender.map(({ deal, status }, index) => (
                                                     <tr
                                                         key={index}
-                                                        className="transition-all duration-200 bg-white hover:bg-gray-50"
+                                                        className={`transition-all duration-200 hover:bg-gray-50 ${getDealRowClasses(
+                                                            status
+                                                        )}`}
                                                     >
                                                         <td className="px-6 py-5 text-sm font-medium text-gray-900">
                                                             {deal.productName || '-'}
@@ -800,35 +875,41 @@ export default function ContractForm({
                                                             {deal.additionalQty || 0}
                                                         </td>
                                                         <td className="px-6 py-5">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => removeContractDeals(index)}
-                                                                disabled={
-                                                                    !isCreateMode &&
-                                                                    selectedContract?.status !== StatusEnum.ACTIVE
-                                                                }
-                                                                className={`p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center ${
-                                                                    !isCreateMode &&
-                                                                    selectedContract?.status !== StatusEnum.ACTIVE
-                                                                        ? 'bg-gray-500 cursor-not-allowed opacity-60'
-                                                                        : 'bg-red-600 hover:bg-red-700'
-                                                                }`}
-                                                                title="Remove"
-                                                            >
-                                                                <svg
-                                                                    className="w-5 h-5"
-                                                                    fill="none"
-                                                                    stroke="currentColor"
-                                                                    viewBox="0 0 24 24"
+                                                            {showApprovalView ? (
+                                                                <span className="text-xs font-semibold text-gray-500">
+                                                                    {getDealStatusLabel(status)}
+                                                                </span>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeContractDeals(index)}
+                                                                    disabled={
+                                                                        !isCreateMode &&
+                                                                        selectedContract?.status !== StatusEnum.ACTIVE
+                                                                    }
+                                                                    className={`p-2 text-white font-semibold rounded-lg shadow-sm transition-colors flex items-center justify-center ${
+                                                                        !isCreateMode &&
+                                                                        selectedContract?.status !== StatusEnum.ACTIVE
+                                                                            ? 'bg-gray-500 cursor-not-allowed opacity-60'
+                                                                            : 'bg-red-600 hover:bg-red-700'
+                                                                    }`}
+                                                                    title="Remove"
                                                                 >
-                                                                    <path
-                                                                        strokeLinecap="round"
-                                                                        strokeLinejoin="round"
-                                                                        strokeWidth={2}
-                                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                                    />
-                                                                </svg>
-                                                            </button>
+                                                                    <svg
+                                                                        className="w-5 h-5"
+                                                                        fill="none"
+                                                                        stroke="currentColor"
+                                                                        viewBox="0 0 24 24"
+                                                                    >
+                                                                        <path
+                                                                            strokeLinecap="round"
+                                                                            strokeLinejoin="round"
+                                                                            strokeWidth={2}
+                                                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                                        />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 ))}

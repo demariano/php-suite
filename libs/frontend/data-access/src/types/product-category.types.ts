@@ -2,6 +2,7 @@
 // These mirror the backend DTOs but without NestJS decorators
 
 import { StatusEnum } from './status.enum';
+export { StatusEnum };
 
 export interface ProductCategoryDto {
     productCategoryId: string;

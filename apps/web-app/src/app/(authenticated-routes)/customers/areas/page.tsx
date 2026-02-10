@@ -3,6 +3,7 @@
 import { StatusBadge } from '@components-web';
 import { AreaApi, AreaDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AreaHeader, AreaTable } from './components';
 
@@ -16,6 +17,7 @@ export default function CustomerAreasPage() {
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
+    const router = useRouter();
 
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -128,7 +130,7 @@ export default function CustomerAreasPage() {
         fetchCustomerAreas();
     }, [statusFilter]);
 
-    const canCreateArea = isAdminUser;
+    const canCreateArea = true;
 
     const headers = useMemo(
         () => [
@@ -163,11 +165,11 @@ export default function CustomerAreasPage() {
     );
 
     const handleRowClick = async (area: AreaDto) => {
-        window.location.href = `/customers/areas/${area.areaId}/edit`;
+        router.push(`/customers/areas/${area.areaId}/edit`);
     };
 
     const handleCreateClick = () => {
-        window.location.href = '/customers/areas/create';
+        router.push('/customers/areas/create');
     };
 
     const handlePageSizeChange = (newPageSize: number) => {

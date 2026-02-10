@@ -1,8 +1,9 @@
 'use client';
 
 import { CustomerClassificationDto, StatusEnum } from '@data-access/index';
-import { useEffect, useState } from 'react';
-import { ChangeReasonField } from '../../../components';
+import { useEffect, useMemo, useState } from 'react';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 
 interface CustomerClassificationFormProps {
     isCreateMode: boolean;
@@ -15,6 +16,7 @@ interface CustomerClassificationFormProps {
     isAdminUser?: boolean;
     onApprove?: () => void;
     onDeny?: () => void;
+    isLoading?: boolean;
 }
 
 export default function CustomerClassificationForm({
@@ -28,6 +30,7 @@ export default function CustomerClassificationForm({
     isAdminUser = false,
     onApprove,
     onDeny,
+    isLoading = false,
 }: CustomerClassificationFormProps) {
     const [userHasMadeSelections, setUserHasMadeSelections] = useState(false);
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -37,6 +40,80 @@ export default function CustomerClassificationForm({
         customerClassificationName: '',
         changeReason: '',
     });
+
+    const currentStatus = selectedCustomerClassification?.status ?? StatusEnum.NEW_RECORD;
+    const pendingVersion = useMemo(
+        () => (selectedCustomerClassification?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        [selectedCustomerClassification?.forApprovalVersion]
+    );
+
+    const isApprovalState = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showApprovalUI = isApprovalState && !isCreateMode;
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION;
+
+    const isFieldChanged = createFieldChangeDetector(
+        (selectedCustomerClassification ?? {}) as Record<string, unknown>,
+        (selectedCustomerClassification?.forApprovalVersion as Record<string, unknown>) ?? undefined
+    );
+
+    const renderReadOnlyField = (label: string, value: unknown, fieldName?: string) => {
+        const fieldChanged = fieldName ? isFieldChanged(fieldName) : false;
+
+        return (
+            <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                    {label}
+                </label>
+                <div
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+                        fieldChanged
+                            ? 'border-blue-500 bg-blue-50 text-gray-700'
+                            : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                >
+                    {value === undefined || value === null || value === '' ? '-' : String(value)}
+                </div>
+            </div>
+        );
+    };
+
+    const renderFieldWithInlineDiff = (
+        label: string,
+        fieldName: string,
+        currentValue: unknown,
+        pendingValue: unknown
+    ) => {
+        const hasChange = isFieldChanged(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">
+                            {currentValue === undefined || currentValue === null || currentValue === ''
+                                ? '-'
+                                : String(currentValue)}
+                        </span>
+                        <span className="mx-2 text-blue-600">→</span>
+                        <span className="font-semibold text-blue-700">
+                            {pendingValue === undefined || pendingValue === null || pendingValue === ''
+                                ? '-'
+                                : String(pendingValue)}
+                        </span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return renderReadOnlyField(label, displayValue, fieldName);
+    };
 
     // Set initial values when editing (only when user hasn't made selections)
     useEffect(() => {
@@ -122,7 +199,7 @@ export default function CustomerClassificationForm({
             )}
 
             {/* Change Reason Field - First component when displayed */}
-            {!isCreateMode && !isAdminUser && (
+            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                 <ChangeReasonField
                     value={formData.changeReason}
                     onChange={(e) => {
@@ -131,6 +208,44 @@ export default function CustomerClassificationForm({
                     }}
                     disabled={selectedCustomerClassification?.status !== StatusEnum.ACTIVE}
                 />
+            )}
+
+            {/* Change Reason Read-Only for approval states */}
+            {showApprovalUI && selectedCustomerClassification?.changeReason && (
+                <ChangeReasonReadOnly value={selectedCustomerClassification.changeReason} />
+            )}
+
+            {/* Deletion/Deactivation Approval Card */}
+            {showDeletionCard && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-6 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🗑️
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-red-800 m-0">
+                                {currentStatus === StatusEnum.FOR_DELETION
+                                    ? 'Record Marked for Deletion'
+                                    : 'Record Marked for Deactivation'}
+                            </h3>
+                            <p className="text-sm text-red-700">
+                                This record has been marked for{' '}
+                                {currentStatus === StatusEnum.FOR_DELETION ? 'deletion' : 'deactivation'} and is
+                                awaiting approval.
+                            </p>
+                        </div>
+                    </div>
+                    {selectedCustomerClassification?.changeReason && (
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-red-700">
+                                {currentStatus === StatusEnum.FOR_DELETION ? 'Deletion' : 'Deactivation'} Reason
+                            </p>
+                            <div className="bg-white border-2 border-red-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                                {selectedCustomerClassification.changeReason}
+                            </div>
+                        </div>
+                    )}
+                </div>
             )}
 
             {/* Details Container */}
@@ -157,35 +272,45 @@ export default function CustomerClassificationForm({
                             <h3 className="text-base font-bold text-blue-600">Classification Information</h3>
                         </div>
                         <div className="grid grid-cols-1 gap-6">
-                            {/* Classification Name */}
-                            <div className="group">
-                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                    Classification Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="customerClassificationName"
-                                    value={formData.customerClassificationName}
-                                    onChange={(e) => {
-                                        setFormData((prev) => ({
-                                            ...prev,
-                                            customerClassificationName: e.target.value,
-                                        }));
-                                        setUserHasMadeSelections(true);
-                                    }}
-                                    placeholder={isCreateMode ? 'Enter classification name' : ''}
-                                    disabled={
-                                        !isCreateMode && selectedCustomerClassification?.status !== StatusEnum.ACTIVE
-                                    }
-                                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
-                                        !isCreateMode && selectedCustomerClassification?.status !== StatusEnum.ACTIVE
-                                            ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
-                                            : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
-                                    }`}
-                                    required
-                                />
-                            </div>
+                            {showApprovalUI ? (
+                                renderFieldWithInlineDiff(
+                                    'Classification Name',
+                                    'customerClassificationName',
+                                    selectedCustomerClassification?.customerClassificationName,
+                                    pendingVersion.customerClassificationName
+                                )
+                            ) : (
+                                <div className="group">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                        Classification Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="customerClassificationName"
+                                        value={formData.customerClassificationName}
+                                        onChange={(e) => {
+                                            setFormData((prev) => ({
+                                                ...prev,
+                                                customerClassificationName: e.target.value,
+                                            }));
+                                            setUserHasMadeSelections(true);
+                                        }}
+                                        placeholder={isCreateMode ? 'Enter classification name' : ''}
+                                        disabled={
+                                            !isCreateMode &&
+                                            selectedCustomerClassification?.status !== StatusEnum.ACTIVE
+                                        }
+                                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                                            !isCreateMode &&
+                                            selectedCustomerClassification?.status !== StatusEnum.ACTIVE
+                                                ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                                        }`}
+                                        required
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -244,7 +369,8 @@ export default function CustomerClassificationForm({
                     {(isCreateMode || selectedCustomerClassification?.status === StatusEnum.ACTIVE) && (
                         <button
                             type="submit"
-                            className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                            disabled={isLoading}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:bg-blue-300 disabled:cursor-not-allowed"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -254,45 +380,42 @@ export default function CustomerClassificationForm({
                     )}
 
                     {/* Approval Buttons - shown when admin user and approval/deletion state (NOT in create mode) */}
-                    {!isCreateMode &&
-                        isAdminUser &&
-                        selectedCustomerClassification &&
-                        [StatusEnum.FOR_APPROVAL, StatusEnum.FOR_DEACTIVATION, StatusEnum.NEW_RECORD].includes(
-                            selectedCustomerClassification.status as StatusEnum
-                        ) && (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={onDeny}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                    Deny
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={onApprove}
-                                    className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-                                >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    Approve
-                                </button>
-                            </>
-                        )}
+                    {!isCreateMode && isAdminUser && (isApprovalState || showDeletionCard) && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onDeny}
+                                disabled={isLoading}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:bg-red-300 disabled:cursor-not-allowed"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                Deny
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onApprove}
+                                disabled={isLoading}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-green-300 disabled:cursor-not-allowed"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                                Approve
+                            </button>
+                        </>
+                    )}
 
                     <button
                         type="button"

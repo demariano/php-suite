@@ -245,20 +245,6 @@ export default function ReturnGoodSoldForm({
             {/* Tab Content */}
             {activeTab === 'details' && (
                 <div>
-                    {/* Show read-only warning when record is pending approval */}
-                    {!isCreateMode && formData.status !== StatusEnum.ACTIVE && (
-                        <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
-                                ⚠
-                            </div>
-                            <span className="text-sm font-semibold">
-                                {formData.status === StatusEnum.FOR_DELETION
-                                    ? 'This record is pending deletion. Editing and deletion are disabled until the record is processed.'
-                                    : 'This record is pending approval. Editing and deletion are disabled until the record is approved or denied.'}
-                            </span>
-                        </div>
-                    )}
-
                     <RecordDetailsTab
                         formData={formData}
                         onFormDataChange={handleFormDataChange}

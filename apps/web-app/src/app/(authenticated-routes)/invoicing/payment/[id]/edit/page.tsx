@@ -24,7 +24,7 @@ interface EditPaymentPageProps {
 export default function EditPaymentPage({ params }: EditPaymentPageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState<PaymentDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
     const { env } = useEnv();
@@ -48,18 +48,7 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
                 const payment = await PaymentApi.getPaymentById(params.id, userRole);
                 setSelectedPayment(payment);
 
-                // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-                if (
-                    (payment.status === StatusEnum.FOR_APPROVAL ||
-                        payment.status === StatusEnum.NEW_RECORD ||
-                        payment.status === StatusEnum.FOR_DELETION) &&
-                    isAdminUser
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    // Default to details tab
-                    setActiveTab('details');
-                }
+                setActiveTab('details');
             } catch (err) {
                 console.error('Error fetching payment:', err);
                 const errorMessage = extractErrorMessage(err, 'Failed to load payment details. Please try again.');

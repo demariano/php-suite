@@ -3,6 +3,7 @@
 import { StatusBadge } from '@components-web';
 import { StatusEnum, TermsApi, TermsDto, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { TermsHeader, TermsTable } from './components';
 
@@ -16,6 +17,7 @@ export default function TermsPage() {
     const [error, setError] = useState<string | null>(null);
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
+    const router = useRouter();
 
     const [nextCursor, setNextCursor] = useState<string | undefined>(undefined);
     const [prevCursor, setPrevCursor] = useState<string | undefined>(undefined);
@@ -168,11 +170,11 @@ export default function TermsPage() {
     );
 
     const handleRowClick = async (term: TermsDto) => {
-        window.location.href = `/customers/terms/${term.termsId}/edit`;
+        router.push(`/customers/terms/${term.termsId}/edit`);
     };
 
     const handleCreateClick = () => {
-        window.location.href = '/customers/terms/create';
+        router.push('/customers/terms/create');
     };
 
     const handlePageSizeChange = (newPageSize: number) => {
@@ -183,7 +185,7 @@ export default function TermsPage() {
         fetchTerms(undefined, undefined, newPageSize);
     };
 
-    const canCreateTerms = isAdminUser;
+    const canCreateTerms = true;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">

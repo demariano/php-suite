@@ -1,4 +1,4 @@
-import { CreateInvoiceDto, InvoiceDetailDto, InvoiceDto } from '../types/invoice.types';
+import { CreateInvoiceDto, InvoiceDetailsDto, InvoiceDto } from '../types/invoice.types';
 import { AxiosConfig } from './axiosConfig';
 
 export interface PaginatedResponse<T> {
@@ -190,7 +190,7 @@ class InvoiceApi extends AxiosConfig {
         return await this.axiosInstance.post(url);
     };
 
-    public validateStock = async (invoiceDetails: InvoiceDetailDto[]): Promise<StockValidationResult> => {
+    public validateStock = async (invoiceDetails: InvoiceDetailsDto[]): Promise<StockValidationResult> => {
         return await this.axiosInstance.post('/invoices/validate-stock', { invoiceDetails });
     };
 
@@ -233,7 +233,7 @@ class InvoiceApi extends AxiosConfig {
         console.log('InvoiceApi: Fetching invoices for contract:', contractId);
         const response = await this.axiosInstance.get(`/invoices/contract/${contractId}`);
         console.log('InvoiceApi: Response after interceptor:', response);
-        return response || [];
+        return response?.data ?? [];
     };
 }
 

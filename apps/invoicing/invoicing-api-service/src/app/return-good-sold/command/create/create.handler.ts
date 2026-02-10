@@ -1,7 +1,21 @@
-import { CreateReturnGoodSoldDto, ErrorResponseDto, ResponseDto, StatusEnum, UserRole } from '@dto';
+import {
+    CreateReturnGoodSoldDto,
+    ErrorResponseDto,
+    InvoicePaymentEventDto,
+    InvoicePaymentEventEnum,
+    ResponseDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
-import { ReturnGoodSoldDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import {
+    InvoiceDatabaseServiceAbstract,
+    PaymentInvoiceDatabaseServiceAbstractClass,
+    ReturnGoodSoldDatabaseServiceAbstractClass,
+} from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { CreateReturnGoodSoldCommand } from './create.command';
 
@@ -16,7 +30,14 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
 
     constructor(
         @Inject('ReturnGoodSoldDatabaseService')
-        private readonly returnGoodSoldDatabaseService: ReturnGoodSoldDatabaseServiceAbstractClass
+        private readonly returnGoodSoldDatabaseService: ReturnGoodSoldDatabaseServiceAbstractClass,
+        @Inject('InvoiceDatabaseService')
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        @Inject('PaymentInvoiceDatabaseService')
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
 
     async execute(
@@ -32,6 +53,26 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
 
             if (!command.returnGoodSoldDto.areaPrefixId) {
                 throw new BadRequestException('Area prefix ID is required to generate RGS document number');
+            }
+
+            //check if there are payments linked to the invoice, if yes, prevent deletion and return error message
+            const linkedPayments = await this.paymentInvoiceDatabaseService.findRecordByInvoiceId(
+                command.returnGoodSoldDto.invoiceId
+            );
+            //check if linkedPayments has a customer credit payment, if yes, prevent deletion and return error message
+            if (linkedPayments && linkedPayments.length > 0) {
+                const hasCustomerCreditPayment = linkedPayments.some((payment) =>
+                    payment.customerCreditPayment ? payment.customerCreditPayment : false
+                );
+
+                if (hasCustomerCreditPayment) {
+                    this.logger.warn(
+                        `Invoice has linked customer credit payments: ${command.returnGoodSoldDto.invoiceId}`
+                    );
+                    throw new BadRequestException(
+                        `Invoice cannot be deleted as it has linked customer credit payments`
+                    );
+                }
             }
 
             const rgsCount = await this.returnGoodSoldDatabaseService.getReturnGoodSoldCountByAreaId(
@@ -54,6 +95,7 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
             const createdRecord = await this.returnGoodSoldDatabaseService.createRecord(command.returnGoodSoldDto);
 
             this.logger.log(`Return Good Sold created successfully: ${createdRecord.returnGoodSoldId}`);
+
             return new ResponseDto<CreateReturnGoodSoldDto>(createdRecord, HTTP_STATUS_CREATED);
         } catch (error) {
             return this.handleError(error, command.returnGoodSoldDto.rgsDocno || 'unknown');
@@ -85,7 +127,7 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
     /**
      * Updates return good sold status and activity logs based on user permissions
      */
-    private updateReturnGoodSoldStatus(command: CreateReturnGoodSoldCommand): void {
+    private async updateReturnGoodSoldStatus(command: CreateReturnGoodSoldCommand): Promise<Promise<void>> {
         // Check user authorization and determine status
         const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
@@ -103,6 +145,29 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
                 command.returnGoodSoldDto.activityLogs,
                 ACTIVITY_LOGS_LIMIT
             );
+
+            // //update the invoice details based on the modifiedInvoiceDetails in the return good sold record
+            const invoiceRecord = await this.invoiceDatabaseService.findRecordById(command.returnGoodSoldDto.invoiceId);
+            if (invoiceRecord) {
+                invoiceRecord.invoiceDetails = command.returnGoodSoldDto.modifiedInvoiceDetails;
+                await this.invoiceDatabaseService.updateRecord(invoiceRecord);
+                this.logger.log(
+                    `Invoice ${invoiceRecord.invoiceId} updated successfully based on approved return good sold `
+                );
+            } else {
+                this.logger.warn(
+                    `Associated invoice not found for return good sold  ${command.returnGoodSoldDto.invoiceId}`
+                );
+            }
+
+            const invoicePayloads: InvoicePaymentEventDto[] = [];
+            const invoicePaymentDto: InvoicePaymentEventDto = {
+                invoiceId: invoiceRecord.invoiceId,
+                customerId: invoiceRecord.customerId,
+                invoicePaymentEvent: InvoicePaymentEventEnum.INVOICE_UPDATED,
+            };
+            invoicePayloads.push(invoicePaymentDto);
+            await this.sendInvoicePaymentEvent(invoicePayloads);
         } else {
             // User needs approval - set to NEW_RECORD
             command.returnGoodSoldDto.status = StatusEnum.NEW_RECORD;
@@ -163,5 +228,19 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
             const responseError = error as { response?: { body?: { errorMessage?: string } } };
             return responseError.response?.body?.errorMessage || 'Unknown error occurred';
         }
+    }
+
+    /**
+     * Sends invoice payment event to SQS queue
+     */
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
+        const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+        const eventPayload = {
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
+            paymentData,
+        };
+
+        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
     }
 }

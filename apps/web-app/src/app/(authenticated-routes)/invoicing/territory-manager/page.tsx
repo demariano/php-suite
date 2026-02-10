@@ -239,7 +239,7 @@ export default function TerritoryManagerPage() {
                     }}
                     onCreateClick={handleCreateClick}
                     isLoading={isLoading}
-                    canCreate={isAdminUser}
+                    canCreate={true}
                     isAdminUser={isAdminUser}
                 />
             </div>

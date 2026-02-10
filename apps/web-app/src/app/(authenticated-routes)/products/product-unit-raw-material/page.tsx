@@ -127,7 +127,7 @@ export default function ProductUnitRawMaterialsMainPage() {
     };
 
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
-    const canCreate = isAdminUser;
+    const canCreate = true;
 
     return (
         <div className="p-4 sm:p-6 space-y-6">

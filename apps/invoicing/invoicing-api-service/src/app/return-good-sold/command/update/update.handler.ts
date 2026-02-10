@@ -1,9 +1,22 @@
 import { UserCognito } from '@auth-guard-lib';
-import { ErrorResponseDto, ResponseDto, ReturnGoodSoldDto, StatusEnum, UserRole } from '@dto';
+import {
+    ErrorResponseDto,
+    InvoicePaymentEventDto,
+    InvoicePaymentEventEnum,
+    ResponseDto,
+    ReturnGoodSoldDto,
+    StatusEnum,
+    UserRole,
+} from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
-import { ReturnGoodSoldDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import {
+    InvoiceDatabaseServiceAbstract,
+    ReturnGoodSoldDatabaseServiceAbstractClass,
+} from '@invoicing-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { UpdateReturnGoodSoldCommand } from './update.command';
 
@@ -17,7 +30,13 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
 
     constructor(
         @Inject('ReturnGoodSoldDatabaseService')
-        private readonly returnGoodSoldDatabaseService: ReturnGoodSoldDatabaseServiceAbstractClass
+        private readonly returnGoodSoldDatabaseService: ReturnGoodSoldDatabaseServiceAbstractClass,
+
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService,
+        @Inject('InvoiceDatabaseService')
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract
     ) {}
 
     async execute(command: UpdateReturnGoodSoldCommand): Promise<ResponseDto<ReturnGoodSoldDto | ErrorResponseDto>> {
@@ -105,7 +124,29 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
         // Update record in database
         const updatedRecord = await this.returnGoodSoldDatabaseService.updateRecord(existingRecord);
 
-        this.logger.log(`Return Good Sold updated successfully: ${existingRecord.returnGoodSoldId}`);
+        // //update the invoice details based on the modifiedInvoiceDetails in the return good sold record
+        const invoiceRecord = await this.invoiceDatabaseService.findRecordById(updatedRecord.invoiceId);
+        if (invoiceRecord) {
+            invoiceRecord.invoiceDetails = updatedRecord.modifiedInvoiceDetails;
+            await this.invoiceDatabaseService.updateRecord(invoiceRecord);
+            this.logger.log(
+                `Invoice ${invoiceRecord.invoiceId} updated successfully based on approved return good sold ${updatedRecord.returnGoodSoldId}`
+            );
+        } else {
+            this.logger.warn(`Associated invoice not found for return good sold  ${updatedRecord.returnGoodSoldId}`);
+        }
+
+        this.logger.log(`Return Good Sold updated successfully: ${updatedRecord.returnGoodSoldId}`);
+
+        const invoicePayloads: InvoicePaymentEventDto[] = [];
+        const invoicePaymentDto: InvoicePaymentEventDto = {
+            invoiceId: existingRecord.invoiceId,
+            customerId: existingRecord.customerId,
+            invoicePaymentEvent: InvoicePaymentEventEnum.INVOICE_UPDATED,
+        };
+        invoicePayloads.push(invoicePaymentDto);
+        await this.sendInvoicePaymentEvent(invoicePayloads);
+
         return new ResponseDto<ReturnGoodSoldDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -206,5 +247,19 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
         }
 
         return 'An unexpected error occurred';
+    }
+
+    /**
+     * Sends invoice payment event to SQS queue
+     */
+    private async sendInvoicePaymentEvent(paymentData: InvoicePaymentEventDto[]): Promise<void> {
+        const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
+
+        const eventPayload = {
+            eventType: InvoicePaymentEventEnum.CUSTOMER_BALANCE_UPDATE, // Using CUSTOMER_BALANCE_UPDATE as a generic event type for invoice payment changes
+            paymentData,
+        };
+
+        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
     }
 }

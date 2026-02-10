@@ -21,8 +21,8 @@ interface InvoiceFormProps {
     successMessage: string | null;
     isAdminUser: boolean;
     isLoading: boolean;
-    activeTab: 'details' | 'approval' | 'logs' | 'payments';
-    onTabChange: (tab: 'details' | 'approval' | 'logs' | 'payments') => void;
+    activeTab: 'details' | 'logs' | 'payments';
+    onTabChange: (tab: 'details' | 'logs' | 'payments') => void;
     onSave: (invoice: InvoiceDto) => void;
     onDelete: () => void;
     onApprove: () => void;
@@ -237,6 +237,13 @@ export default function InvoiceForm({
         }
     };
 
+    const showApprovalView =
+        !isCreateMode &&
+        selectedInvoice &&
+        [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(
+            selectedInvoice.status as StatusEnum
+        );
+
     return (
         <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl w-full sm:max-w-6xl">
             {/* Tab Navigation */}
@@ -272,29 +279,6 @@ export default function InvoiceForm({
                             )}
                         </span>
                     </button>
-
-                    {!isCreateMode && selectedInvoice && selectedInvoice.status !== StatusEnum.ACTIVE && (
-                        <button
-                            onClick={() => onTabChange('approval')}
-                            className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
-                                activeTab === 'approval'
-                                    ? 'bg-blue-600 text-white shadow-sm'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                            }`}
-                        >
-                            <span className="flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                </svg>
-                                Pending Changes
-                            </span>
-                        </button>
-                    )}
 
                     {!isCreateMode && (
                         <button
@@ -349,82 +333,200 @@ export default function InvoiceForm({
                 {/* Details Tab */}
                 {activeTab === 'details' && (
                     <div>
-                        {/* Show read-only warning when invoice is pending approval */}
-                        {!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE && (
-                            <div className="mb-4 flex items-center gap-3 rounded-xl border-2 border-yellow-500 bg-yellow-50 p-4 text-yellow-700 shadow-sm">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-500 text-sm font-bold text-white">
-                                    ⚠
-                                </div>
-                                <span className="text-sm font-semibold">
-                                    This record is pending approval. Editing and deletion are disabled until the record
-                                    is approved or denied.
-                                </span>
-                            </div>
-                        )}
+                        {showApprovalView &&
+                            !isCreateMode &&
+                            selectedInvoice &&
+                            (() => {
+                                // Merge original invoice data with forApprovalVersion changes
+                                const approvalVersionData: InvoiceDto = {
+                                    ...selectedInvoice,
+                                    ...selectedInvoice.forApprovalVersion,
+                                };
 
-                        <RecordDetailsTab
-                            formData={formData}
-                            onFormDataChange={handleFormDataChange}
-                            isCreateMode={isCreateMode}
-                            isAdminUser={isAdminUser}
-                            onCustomerDealsChange={handleCustomerDealsChange}
-                            onContractProductDealsChange={handleContractProductDealsChange}
-                            isReadOnly={
-                                !isCreateMode &&
-                                selectedInvoice?.status !== StatusEnum.ACTIVE &&
-                                selectedInvoice?.status !== StatusEnum.DRAFT
-                            }
-                        />
-                        <InvoiceDetailsTab
-                            formData={formData}
-                            onFormDataChange={handleFormDataChange}
-                            isCreateMode={isCreateMode}
-                            customerDeals={customerDeals}
-                            contractProductDeals={contractProductDeals}
-                            contractSales={formData.contractSales}
-                            isReadOnly={
-                                !isCreateMode &&
-                                selectedInvoice?.status !== StatusEnum.ACTIVE &&
-                                selectedInvoice?.status !== StatusEnum.DRAFT
-                            }
-                            onAutoSave={onAutoSave}
-                            currentInvoiceId={currentInvoiceId}
-                        />
+                                return (
+                                    <div>
+                                        <div className="mb-5">
+                                            {(selectedInvoice.status === StatusEnum.FOR_APPROVAL ||
+                                                selectedInvoice.status === StatusEnum.NEW_RECORD) && (
+                                                <div className="mb-4 flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3">
+                                                    <span className="text-base text-yellow-600">ℹ️</span>
+                                                    <span className="text-sm text-yellow-800">
+                                                        These are the proposed changes awaiting approval
+                                                    </span>
+                                                </div>
+                                            )}
 
-                        {/* Action Buttons for Details Tab */}
-                        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                            {!isCreateMode && selectedInvoice?.status === StatusEnum.ACTIVE ? (
-                                <button
-                                    type="button"
-                                    onClick={onDelete}
-                                    disabled={isLoading}
-                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                            {/* Change Reason - Highlighted field */}
+                                            {selectedInvoice?.changeReason && (
+                                                <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
+                                                    <div className="mb-4 flex items-center gap-3">
+                                                        <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                                                            <svg
+                                                                className="h-5 w-5"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                                />
+                                                            </svg>
+                                                        </div>
+                                                        <h3 className="m-0 text-base font-bold text-blue-600">
+                                                            Change Reason
+                                                        </h3>
+                                                    </div>
+                                                    <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium leading-relaxed text-gray-500 shadow-sm whitespace-pre-wrap font-mono cursor-not-allowed">
+                                                        {selectedInvoice.changeReason}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Use the same components as Details tab but with merged data and read-only */}
+                                        <RecordDetailsTab
+                                            formData={approvalVersionData}
+                                            onFormDataChange={() => {}} // No-op since read-only
+                                            isCreateMode={false}
+                                            isAdminUser={isAdminUser}
+                                            onCustomerDealsChange={() => {}} // No-op since read-only
+                                            isReadOnly={true}
                                         />
-                                    </svg>
-                                    {isLoading ? 'Processing...' : 'Delete'}
-                                </button>
-                            ) : (
-                                <div className="hidden sm:block" />
-                            )}
+                                        <InvoiceDetailsTab
+                                            formData={approvalVersionData}
+                                            onFormDataChange={() => {}} // No-op since read-only
+                                            isCreateMode={false}
+                                            customerDeals={[]} // Not needed for read-only display
+                                            isReadOnly={true}
+                                            approvalComparison={{
+                                                original: selectedInvoice.invoiceDetails || [],
+                                                pending: approvalVersionData.invoiceDetails || [],
+                                            }}
+                                        />
 
-                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                                {/* Submit Draft Button - only for DRAFT status */}
-                                {!isCreateMode &&
-                                    selectedInvoice?.status === StatusEnum.DRAFT &&
-                                    formData.invoiceDetails &&
-                                    formData.invoiceDetails.length > 0 && (
+                                        <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                                            {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
+                                            {isAdminUser &&
+                                            (selectedInvoice?.status === StatusEnum.FOR_APPROVAL ||
+                                                selectedInvoice?.status === StatusEnum.NEW_RECORD ||
+                                                selectedInvoice?.status === StatusEnum.FOR_DELETION) ? (
+                                                <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                                    <button
+                                                        type="button"
+                                                        onClick={onDeny}
+                                                        disabled={isLoading}
+                                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                                                    >
+                                                        <svg
+                                                            className="h-5 w-5"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M6 18L18 6M6 6l12 12"
+                                                            />
+                                                        </svg>
+                                                        {isLoading ? 'Processing...' : 'Deny Changes'}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={onApprove}
+                                                        disabled={isLoading}
+                                                        className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                                                    >
+                                                        <svg
+                                                            className="h-5 w-5"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M5 13l4 4L19 7"
+                                                            />
+                                                        </svg>
+                                                        {isLoading ? 'Processing...' : 'Approve Changes'}
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="hidden sm:block" />
+                                            )}
+
+                                            {/* Cancel button */}
+                                            <div>
+                                                <button
+                                                    type="button"
+                                                    onClick={onCancel}
+                                                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                                                >
+                                                    <svg
+                                                        className="h-5 w-5"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M6 18L18 6M6 6l12 12"
+                                                        />
+                                                    </svg>
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        {!showApprovalView && (
+                            <>
+                                <RecordDetailsTab
+                                    formData={formData}
+                                    onFormDataChange={handleFormDataChange}
+                                    isCreateMode={isCreateMode}
+                                    isAdminUser={isAdminUser}
+                                    onCustomerDealsChange={handleCustomerDealsChange}
+                                    onContractProductDealsChange={handleContractProductDealsChange}
+                                    isReadOnly={
+                                        !isCreateMode &&
+                                        selectedInvoice?.status !== StatusEnum.ACTIVE &&
+                                        selectedInvoice?.status !== StatusEnum.DRAFT
+                                    }
+                                />
+                                <InvoiceDetailsTab
+                                    formData={formData}
+                                    onFormDataChange={handleFormDataChange}
+                                    isCreateMode={isCreateMode}
+                                    customerDeals={customerDeals}
+                                    contractProductDeals={contractProductDeals}
+                                    contractSales={formData.contractSales}
+                                    isReadOnly={
+                                        !isCreateMode &&
+                                        selectedInvoice?.status !== StatusEnum.ACTIVE &&
+                                        selectedInvoice?.status !== StatusEnum.DRAFT
+                                    }
+                                    onAutoSave={onAutoSave}
+                                    currentInvoiceId={currentInvoiceId}
+                                />
+
+                                {/* Action Buttons for Details Tab */}
+                                <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                                    {!isCreateMode && selectedInvoice?.status === StatusEnum.ACTIVE ? (
                                         <button
                                             type="button"
-                                            onClick={onSubmitDraft}
+                                            onClick={onDelete}
                                             disabled={isLoading}
-                                            className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
                                         >
                                             <svg
                                                 className="h-5 w-5"
@@ -436,104 +538,27 @@ export default function InvoiceForm({
                                                     strokeLinecap="round"
                                                     strokeLinejoin="round"
                                                     strokeWidth={2}
-                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                                                 />
                                             </svg>
-                                            {isLoading ? 'Submitting...' : 'Submit Invoice'}
+                                            {isLoading ? 'Processing...' : 'Delete'}
                                         </button>
+                                    ) : (
+                                        <div className="hidden sm:block" />
                                     )}
 
-                                {/* Save to Draft Button - for create mode or DRAFT status */}
-                                {(isCreateMode || selectedInvoice?.status === StatusEnum.DRAFT) && (
-                                    <button
-                                        type="button"
-                                        onClick={onSaveToDraft}
-                                        disabled={isLoading || formData.invoiceDetails.length === 0}
-                                        className="flex items-center justify-center gap-2 rounded-xl bg-gray-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                                    >
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                                            />
-                                        </svg>
-                                        Save to Draft
-                                    </button>
-                                )}
-
-                                {/* Save/Create Button - for create mode or ACTIVE status */}
-                                {(isCreateMode || selectedInvoice?.status === StatusEnum.ACTIVE) && (
-                                    <button
-                                        type="button"
-                                        onClick={handleSave}
-                                        disabled={
-                                            isLoading ||
-                                            (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)
-                                        }
-                                        className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
-                                    >
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M5 13l4 4L19 7"
-                                            />
-                                        </svg>
-                                        {isLoading ? 'Saving...' : isCreateMode ? 'Create Invoice' : 'Save Changes'}
-                                    </button>
-                                )}
-                                <button
-                                    type="button"
-                                    onClick={onCancel}
-                                    className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Approval Version Tab */}
-                {activeTab === 'approval' &&
-                    !isCreateMode &&
-                    selectedInvoice &&
-                    (() => {
-                        // Merge original invoice data with forApprovalVersion changes
-                        const approvalVersionData: InvoiceDto = {
-                            ...selectedInvoice,
-                            ...selectedInvoice.forApprovalVersion,
-                        };
-
-                        return (
-                            <div>
-                                <div className="mb-5">
-                                    {(selectedInvoice.status === StatusEnum.FOR_APPROVAL ||
-                                        selectedInvoice.status === StatusEnum.NEW_RECORD) && (
-                                        <div className="mb-4 flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3">
-                                            <span className="text-base text-yellow-600">ℹ️</span>
-                                            <span className="text-sm text-yellow-800">
-                                                These are the proposed changes awaiting approval
-                                            </span>
-                                        </div>
-                                    )}
-
-                                    {/* Change Reason - Highlighted field */}
-                                    {selectedInvoice?.changeReason && (
-                                        <div className="mb-6 rounded-xl border-2 border-gray-200 bg-white p-5 shadow-sm">
-                                            <div className="mb-4 flex items-center gap-3">
-                                                <div className="rounded-lg bg-blue-600 p-2 text-white shadow-sm">
+                                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                                        {/* Submit Draft Button - only for DRAFT status */}
+                                        {!isCreateMode &&
+                                            selectedInvoice?.status === StatusEnum.DRAFT &&
+                                            formData.invoiceDetails &&
+                                            formData.invoiceDetails.length > 0 && (
+                                                <button
+                                                    type="button"
+                                                    onClick={onSubmitDraft}
+                                                    disabled={isLoading}
+                                                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                                                >
                                                     <svg
                                                         className="h-5 w-5"
                                                         fill="none"
@@ -544,48 +569,20 @@ export default function InvoiceForm({
                                                             strokeLinecap="round"
                                                             strokeLinejoin="round"
                                                             strokeWidth={2}
-                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                                                            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                                                         />
                                                     </svg>
-                                                </div>
-                                                <h3 className="m-0 text-base font-bold text-blue-600">Change Reason</h3>
-                                            </div>
-                                            <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium leading-relaxed text-gray-500 shadow-sm whitespace-pre-wrap font-mono cursor-not-allowed">
-                                                {selectedInvoice.changeReason}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
+                                                    {isLoading ? 'Submitting...' : 'Submit Invoice'}
+                                                </button>
+                                            )}
 
-                                {/* Use the same components as Details tab but with merged data and read-only */}
-                                <RecordDetailsTab
-                                    formData={approvalVersionData}
-                                    onFormDataChange={() => {}} // No-op since read-only
-                                    isCreateMode={false}
-                                    isAdminUser={isAdminUser}
-                                    onCustomerDealsChange={() => {}} // No-op since read-only
-                                    isReadOnly={true}
-                                />
-                                <InvoiceDetailsTab
-                                    formData={approvalVersionData}
-                                    onFormDataChange={() => {}} // No-op since read-only
-                                    isCreateMode={false}
-                                    customerDeals={[]} // Not needed for read-only display
-                                    isReadOnly={true}
-                                />
-
-                                <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                                    {/* Approve/Deny buttons for admin users when status is FOR_APPROVAL or NEW_RECORD */}
-                                    {isAdminUser &&
-                                    (selectedInvoice?.status === StatusEnum.FOR_APPROVAL ||
-                                        selectedInvoice?.status === StatusEnum.NEW_RECORD ||
-                                        selectedInvoice?.status === StatusEnum.FOR_DELETION) ? (
-                                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                        {/* Save to Draft Button - for create mode or DRAFT status */}
+                                        {(isCreateMode || selectedInvoice?.status === StatusEnum.DRAFT) && (
                                             <button
                                                 type="button"
-                                                onClick={onDeny}
-                                                disabled={isLoading}
-                                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                                                onClick={onSaveToDraft}
+                                                disabled={isLoading || formData.invoiceDetails.length === 0}
+                                                className="flex items-center justify-center gap-2 rounded-xl bg-gray-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
                                             >
                                                 <svg
                                                     className="h-5 w-5"
@@ -597,16 +594,23 @@ export default function InvoiceForm({
                                                         strokeLinecap="round"
                                                         strokeLinejoin="round"
                                                         strokeWidth={2}
-                                                        d="M6 18L18 6M6 6l12 12"
+                                                        d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
                                                     />
                                                 </svg>
-                                                {isLoading ? 'Processing...' : 'Deny Changes'}
+                                                Save to Draft
                                             </button>
+                                        )}
+
+                                        {/* Save/Create Button - for create mode or ACTIVE status */}
+                                        {(isCreateMode || selectedInvoice?.status === StatusEnum.ACTIVE) && (
                                             <button
                                                 type="button"
-                                                onClick={onApprove}
-                                                disabled={isLoading}
-                                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                                                onClick={handleSave}
+                                                disabled={
+                                                    isLoading ||
+                                                    (!isCreateMode && selectedInvoice?.status !== StatusEnum.ACTIVE)
+                                                }
+                                                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
                                             >
                                                 <svg
                                                     className="h-5 w-5"
@@ -621,19 +625,17 @@ export default function InvoiceForm({
                                                         d="M5 13l4 4L19 7"
                                                     />
                                                 </svg>
-                                                {isLoading ? 'Processing...' : 'Approve Changes'}
+                                                {isLoading
+                                                    ? 'Saving...'
+                                                    : isCreateMode
+                                                    ? 'Create Invoice'
+                                                    : 'Save Changes'}
                                             </button>
-                                        </div>
-                                    ) : (
-                                        <div className="hidden sm:block" />
-                                    )}
-
-                                    {/* Cancel button */}
-                                    <div>
+                                        )}
                                         <button
                                             type="button"
                                             onClick={onCancel}
-                                            className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                                            className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                         >
                                             <svg
                                                 className="h-5 w-5"
@@ -652,9 +654,10 @@ export default function InvoiceForm({
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })()}
+                            </>
+                        )}
+                    </div>
+                )}
 
                 {/* Activity Logs Tab */}
                 {activeTab === 'logs' && !isCreateMode && selectedInvoice && (
@@ -677,23 +680,75 @@ export default function InvoiceForm({
                             {renderActivityLogsTable(selectedInvoice?.activityLogs)}
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center justify-end border-t-2 border-gray-200 pt-6">
-                            <button
-                                type="button"
-                                onClick={onCancel}
-                                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
-                            >
-                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        strokeWidth={2}
-                                        d="M6 18L18 6M6 6l12 12"
-                                    />
-                                </svg>
-                                Cancel
-                            </button>
+                        <div className="mt-6 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="hidden sm:block" />
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                                {isAdminUser &&
+                                    selectedInvoice &&
+                                    [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(
+                                        selectedInvoice.status as StatusEnum
+                                    ) && (
+                                        <>
+                                            <button
+                                                type="button"
+                                                onClick={onDeny}
+                                                disabled={isLoading}
+                                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                                            >
+                                                <svg
+                                                    className="h-5 w-5"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M6 18L18 6M6 6l12 12"
+                                                    />
+                                                </svg>
+                                                {isLoading ? 'Processing...' : 'Deny'}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={onApprove}
+                                                disabled={isLoading}
+                                                className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed sm:w-auto"
+                                            >
+                                                <svg
+                                                    className="h-5 w-5"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M5 13l4 4L19 7"
+                                                    />
+                                                </svg>
+                                                {isLoading ? 'Processing...' : 'Approve'}
+                                            </button>
+                                        </>
+                                    )}
+                                <button
+                                    type="button"
+                                    onClick={onCancel}
+                                    className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
+                                    </svg>
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}

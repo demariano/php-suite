@@ -1,6 +1,8 @@
 import { UserCognito } from '@auth-guard-lib';
 import {
     ErrorResponseDto,
+    InventoryEventDto,
+    InventoryEventEnum,
     ResponseDto,
     StatusEnum,
     StockPurchaseOrderDto,
@@ -9,7 +11,9 @@ import {
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { StockDatabaseServiceAbstract, StockPurchaseOrderDatabaseServiceAbstract } from '@inventory-database-service';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ApproveStockPurchaseOrderCommand } from './approve.command';
 
@@ -24,7 +28,10 @@ export class ApproveStockPurchaseOrderHandler implements ICommandHandler<Approve
         @Inject('StockPurchaseOrderDatabaseService')
         private readonly stockPurchaseOrderDatabaseService: StockPurchaseOrderDatabaseServiceAbstract,
         @Inject('StockDatabaseService')
-        private readonly stockDatabaseService: StockDatabaseServiceAbstract
+        private readonly stockDatabaseService: StockDatabaseServiceAbstract,
+        private readonly configService: ConfigService,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract
     ) {}
 
     async execute(
@@ -112,6 +119,12 @@ export class ApproveStockPurchaseOrderHandler implements ICommandHandler<Approve
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const updatedRecord = await this.stockPurchaseOrderDatabaseService.updateRecord(existingRecord);
+
+        const inventoryEvent: InventoryEventDto = {
+            inventoryEvent: InventoryEventEnum.STOCK_PURCHASE_ORDER_CREATED,
+            stockPurchaseOrderDto: updatedRecord,
+        };
+        await this.sendInventoryEventMessage(inventoryEvent);
         return new ResponseDto<StockPurchaseOrderDto>(updatedRecord, HTTP_STATUS_OK);
     }
 
@@ -191,5 +204,10 @@ export class ApproveStockPurchaseOrderHandler implements ICommandHandler<Approve
         }
 
         return 'An unexpected error occurred';
+    }
+
+    private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
+        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
+        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
     }
 }
