@@ -6,7 +6,7 @@ export interface RawMaterialDto {
     description?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }

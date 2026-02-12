@@ -12,7 +12,7 @@ type TabType = 'details' | 'deliveries' | 'logs';
 export default function EditStockPurchaseOrderPage() {
     const params = useParams();
     const router = useRouter();
-    const id = params.id as string;
+    const id = params?.id as string;
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
     const { setFlashNotification } = useSessionStore();
@@ -60,7 +60,7 @@ export default function EditStockPurchaseOrderPage() {
                     ? authedUser?.userRole
                     : undefined;
 
-            await StockPurchaseOrderApi.updateStockPurchaseOrder(id, formData, userRole);
+            await (StockPurchaseOrderApi as any).updateStockPurchaseOrder(id, formData, userRole);
             setFlashNotification({
                 title: 'Success',
                 message: 'Purchase order updated successfully!',
@@ -87,7 +87,7 @@ export default function EditStockPurchaseOrderPage() {
                     ? authedUser?.userRole
                     : undefined;
 
-            await StockPurchaseOrderApi.transitionSystemGeneratedToPending(id, userRole);
+            await (StockPurchaseOrderApi as any).transitionSystemGeneratedToPending(id, userRole);
             setFlashNotification({
                 title: 'Success',
                 message: 'Purchase order status updated to PENDING!',

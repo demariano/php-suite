@@ -69,7 +69,7 @@ export default function RawMaterialsMainPage() {
             }
             // Branch 4: Show all records (no filters)
             else {
-                response = await RawMaterialApi.getRawMaterials(pageSize, validDirection, validCursor, userRole);
+                response = await (RawMaterialApi as any).getRawMaterials(pageSize, validDirection, validCursor, userRole);
             }
 
             if (response?.data) {

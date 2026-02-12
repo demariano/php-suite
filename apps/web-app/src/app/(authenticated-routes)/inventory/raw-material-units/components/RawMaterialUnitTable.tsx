@@ -80,7 +80,7 @@ export function RawMaterialUnitTable({
                                 tableData.map((record) => (
                                     <tr
                                         key={record.rawMaterialUnitId}
-                                        onClick={() => onRowClick(record.rawMaterialUnitId)}
+                                        onClick={() => onRowClick(record.rawMaterialUnitId!)}
                                         className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
                                     >
                                         <td className="px-6 py-5 text-sm font-medium text-gray-900">
@@ -129,7 +129,7 @@ export function RawMaterialUnitTable({
                         <button
                             key={record.rawMaterialUnitId}
                             type="button"
-                            onClick={() => onRowClick(record.rawMaterialUnitId)}
+                            onClick={() => onRowClick(record.rawMaterialUnitId!)}
                             className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                         >
                             <div className="flex items-start justify-between gap-4">

@@ -14,7 +14,7 @@ import {
 } from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useEffect, useMemo, useState } from 'react';
-import { ChangeReasonField } from '../../../../../components';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../../../components';
 import ProductSearchableSelectionModal from '../../../../../search-modals/ProductSearchableSelectionModal';
 import ProductUnitSearchableSelectionModal from '../../../../../search-modals/ProductUnitSearchableSelectionModal';
 import RawMaterialSearchableSelectionModal from '../../../../../search-modals/RawMaterialSearchableSelectionModal';
@@ -37,7 +37,7 @@ interface ProductUnitRawMaterialFormProps {
     onTabChange: (tab: 'details' | 'logs') => void;
 }
 
-const STATUS_TAB_CLASSES: Record<StatusEnum, string> = {
+const STATUS_TAB_CLASSES: Partial<Record<StatusEnum, string>> = {
     [StatusEnum.ACTIVE]: 'bg-green-600 text-white shadow-sm',
     [StatusEnum.FOR_APPROVAL]: 'bg-yellow-500 text-white shadow-sm',
     [StatusEnum.FOR_DELETION]: 'bg-red-600 text-white shadow-sm',
@@ -65,7 +65,7 @@ const getTabClassName = (status: StatusEnum, isActive: boolean): string => {
         return 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900';
     }
 
-    return STATUS_TAB_CLASSES[status] ?? STATUS_TAB_CLASSES[StatusEnum.NEW_RECORD];
+    return STATUS_TAB_CLASSES[status] ?? 'bg-blue-600 text-white shadow-sm';
 };
 
 const normalizeValue = (val: any): string => {
@@ -142,16 +142,21 @@ export default function ProductUnitRawMaterialForm({
 
     const currentStatus = selectedRecord?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = useMemo(
-        () => (selectedRecord?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        () => (selectedRecord?.forApprovalVersion ?? {}) as any,
         [selectedRecord?.forApprovalVersion]
     );
     const showApprovalButtons =
         isAdminUser && (currentStatus === StatusEnum.FOR_APPROVAL || currentStatus === StatusEnum.FOR_DELETION);
 
+    // Helper to check if we're in an approval state (FOR_APPROVAL or NEW_RECORD)
+    const isApprovalState = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showApprovalUI = isApprovalState && !isCreateMode;
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION;
+
     // Use shared field change detection utility
     const isFieldChanged = createFieldChangeDetector(
-        selectedRecord as Record<string, unknown>,
-        (selectedRecord?.forApprovalVersion as Record<string, unknown>) ?? undefined
+        selectedRecord as any,
+        (selectedRecord?.forApprovalVersion as any) ?? undefined
     );
 
     // Helper function to check if arrays have changes
@@ -208,6 +213,38 @@ export default function ProductUnitRawMaterialForm({
     };
 
     const canEditDetails = isCreateMode || currentStatus === StatusEnum.ACTIVE;
+
+    // Helper to render inline field diff
+    const renderFieldWithInlineDiff = (
+        label: string,
+        fieldName: string,
+        currentValue: any,
+        pendingValue: any,
+        colorClass: string = 'bg-blue-500'
+    ) => {
+        const hasChange = isFieldChanged(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentValue)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingValue)}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return renderReadOnlyField(label, displayValue, colorClass, fieldName);
+    };
+
     const detailsTabLabel = `Product Unit Raw Material - ${getStatusText(currentStatus)}`;
     const deleteDisabled = isCreateMode || currentStatus !== StatusEnum.ACTIVE;
 
@@ -218,9 +255,9 @@ export default function ProductUnitRawMaterialForm({
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
                 const [productsRes, unitsRes, rawMaterialsRes] = await Promise.all([
-                    ProductApi.getProducts(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
-                    ProductApi.getProductUnits(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
-                    ProductApi.getProducts(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
+                    (ProductApi as any).getProducts(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
+                    (ProductApi as any).getProductUnits(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
+                    (ProductApi as any).getProducts(100, StatusEnum.ACTIVE, undefined, undefined, userRole),
                 ]);
 
                 if (productsRes?.statusCode === 200) setProducts(productsRes.data);
@@ -399,8 +436,8 @@ export default function ProductUnitRawMaterialForm({
             rawMaterial.rawMaterialName = selectedRM?.productName ?? '';
         } else if (field === 'rawMaterialUnitId') {
             const selectedUnit = productUnits.find((u) => u.productUnitId === value);
-            rawMaterial.rawMaterialUnitId = value;
-            rawMaterial.rawMaterialUnitName = selectedUnit?.productUnitName ?? '';
+            (rawMaterial as any).rawMaterialUnitId = value;
+            (rawMaterial as any).rawMaterialUnitName = selectedUnit?.productUnitName ?? '';
         } else if (field === 'quantity') {
             rawMaterial.quantity = Number(value);
         }
@@ -439,7 +476,7 @@ export default function ProductUnitRawMaterialForm({
             ...newRawMaterialItem,
             [unitIndex]: {
                 ...newRawMaterialItem[unitIndex],
-                rawMaterialId: rawMaterial.rawMaterialId,
+                rawMaterialId: rawMaterial.rawMaterialId || '',
                 rawMaterialName: rawMaterial.rawMaterialName ?? '',
             },
         });
@@ -452,7 +489,7 @@ export default function ProductUnitRawMaterialForm({
             ...newRawMaterialItem,
             [unitIndex]: {
                 ...newRawMaterialItem[unitIndex],
-                rawMaterialUnitId: unit.rawMaterialUnitId,
+                rawMaterialUnitId: unit.rawMaterialUnitId || '',
                 rawMaterialUnitName: unit.rawMaterialUnitName ?? '',
             },
         });
@@ -526,7 +563,8 @@ export default function ProductUnitRawMaterialForm({
 
     const renderDetailsTab = () => (
         <div className="space-y-6">
-            {!isCreateMode && !isAdminUser && (
+            {/* Change Reason for Users Editing ACTIVE records */}
+            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                 <ChangeReasonField
                     value={changeReason}
                     onChange={(e) => setChangeReason(e.target.value)}
@@ -534,8 +572,42 @@ export default function ProductUnitRawMaterialForm({
                 />
             )}
 
+            {/* Change Reason Read-Only for approval states */}
+            {showApprovalUI && selectedRecord?.changeReason && (
+                <ChangeReasonReadOnly value={selectedRecord.changeReason} />
+            )}
+
+            {/* Deletion Approval Card */}
+            {showDeletionCard && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🗑️
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-800 m-0">Record Marked for Deletion</h3>
+                            <p className="text-sm text-red-700">
+                                This record has been marked for deletion and is awaiting approval.
+                            </p>
+                        </div>
+                    </div>
+                    {selectedRecord?.changeReason && (
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-red-700">Deletion Reason</p>
+                            <div className="bg-white border-2 border-red-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                                {selectedRecord.changeReason}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Product Information Section */}
-            <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6">
+            <div
+                className={`border-2 rounded-xl p-4 sm:p-6 ${
+                    showApprovalUI ? 'border-green-400 bg-white' : 'border-gray-200'
+                }`}
+            >
                 <div className="flex items-center gap-3 mb-4">
                     <div className="p-2 bg-blue-600 rounded-lg shadow-md">
                         <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -550,13 +622,25 @@ export default function ProductUnitRawMaterialForm({
                     <h3 className="text-base font-bold text-blue-600 m-0">Product Information</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <SelectionField
-                        label="Product *"
-                        selectedItem={selectedProduct}
-                        onSelect={() => setShowProductModal(true)}
-                        onClear={handleProductClear}
-                        disabled={!canEditDetails || isLoading}
-                    />
+                    {showApprovalUI ? (
+                        <>
+                            {renderFieldWithInlineDiff(
+                                'Product',
+                                'productName',
+                                selectedRecord?.productName,
+                                pendingVersion.productName,
+                                'bg-blue-500'
+                            )}
+                        </>
+                    ) : (
+                        <SelectionField
+                            label="Product *"
+                            selectedItem={selectedProduct}
+                            onSelect={() => setShowProductModal(true)}
+                            onClear={handleProductClear}
+                            disabled={!canEditDetails || isLoading}
+                        />
+                    )}
                 </div>
             </div>
 
@@ -573,18 +657,299 @@ export default function ProductUnitRawMaterialForm({
                             />
                         </svg>
                     </div>
-                    <h3 className="text-base font-bold text-blue-600 m-0 flex-1">Raw Materials Per Unit</h3>
-                    <button
-                        type="button"
-                        onClick={handleAddUnit}
-                        disabled={!canEditDetails || isLoading}
-                        className="px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-200 disabled:text-gray-400"
+                    <h3
+                        className={`text-base font-bold flex-1 ${
+                            showApprovalUI && hasArrayChanges('rawMaterialsPerUnit')
+                                ? 'px-3 py-1 rounded-lg border-2 border-blue-500 bg-blue-50 text-blue-700'
+                                : 'text-blue-600 m-0'
+                        }`}
                     >
-                        Add Unit
-                    </button>
+                        Raw Materials Per Unit
+                    </h3>
+                    {!showApprovalUI && (
+                        <button
+                            type="button"
+                            onClick={handleAddUnit}
+                            disabled={!canEditDetails || isLoading}
+                            className="px-3 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md shadow-sm hover:bg-blue-700 transition-colors duration-200 disabled:bg-gray-200 disabled:text-gray-400"
+                        >
+                            Add Unit
+                        </button>
+                    )}
                 </div>
 
-                {rawMaterialsPerUnit.length === 0 ? (
+                {/* Legend for approval state */}
+                {showApprovalUI && hasArrayChanges('rawMaterialsPerUnit') && (
+                    <div className="flex flex-wrap gap-3 text-xs mb-2">
+                        <span className="flex items-center gap-1">
+                            <span className="w-3 h-3 bg-green-100 rounded border border-green-300"></span>
+                            <span>Added</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <span className="w-3 h-3 bg-blue-100 rounded border border-blue-300"></span>
+                            <span>Modified</span>
+                        </span>
+                        <span className="flex items-center gap-1">
+                            <span className="w-3 h-3 bg-red-100 rounded border border-red-300"></span>
+                            <span>Removed</span>
+                        </span>
+                    </div>
+                )}
+
+                {showApprovalUI ? (
+                    /* Approval state: show row status indicators for units and raw materials */
+                    (() => {
+                        const originalUnits = selectedRecord?.rawMaterialsPerUnit ?? [];
+                        const pendingUnits = (pendingVersion.rawMaterialsPerUnit as RawMaterialsPerUnitDto[]) ?? [];
+                        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+                        const displayUnits = isNewRecord ? originalUnits : pendingUnits;
+
+                        const originalUnitIds = new Set(originalUnits.map((u) => u.productUnitId));
+                        const pendingUnitIds = new Set(displayUnits.map((u) => u.productUnitId));
+
+                        type UnitRow = {
+                            unit: RawMaterialsPerUnitDto;
+                            status: 'unchanged' | 'added' | 'modified' | 'removed';
+                        };
+
+                        const unitRows: UnitRow[] = [];
+
+                        // Added/Modified/Unchanged units (from display/pending)
+                        displayUnits.forEach((newUnit) => {
+                            const originalUnit = originalUnits.find(
+                                (u) => u.productUnitId === newUnit.productUnitId
+                            );
+                            if (!originalUnit) {
+                                unitRows.push({ unit: newUnit, status: 'added' });
+                            } else {
+                                // Compare raw materials
+                                const origRMs = JSON.stringify(
+                                    (originalUnit.rawMaterials ?? [])
+                                        .map((rm) => ({
+                                            rawMaterialId: rm.rawMaterialId,
+                                            rawMaterialUnitId: rm.rawMaterialUnitId,
+                                            quantity: rm.quantity,
+                                        }))
+                                        .sort((a, b) => (a.rawMaterialId || '').localeCompare(b.rawMaterialId || ''))
+                                );
+                                const newRMs = JSON.stringify(
+                                    (newUnit.rawMaterials ?? [])
+                                        .map((rm) => ({
+                                            rawMaterialId: rm.rawMaterialId,
+                                            rawMaterialUnitId: rm.rawMaterialUnitId,
+                                            quantity: rm.quantity,
+                                        }))
+                                        .sort((a, b) => (a.rawMaterialId || '').localeCompare(b.rawMaterialId || ''))
+                                );
+                                if (origRMs !== newRMs) {
+                                    unitRows.push({ unit: newUnit, status: 'modified' });
+                                } else {
+                                    unitRows.push({ unit: newUnit, status: 'unchanged' });
+                                }
+                            }
+                        });
+
+                        // Removed units (in original but not in pending)
+                        if (!isNewRecord) {
+                            originalUnits.forEach((originalUnit) => {
+                                if (!pendingUnitIds.has(originalUnit.productUnitId)) {
+                                    unitRows.push({ unit: originalUnit, status: 'removed' });
+                                }
+                            });
+                        }
+
+                        if (unitRows.length === 0) {
+                            return (
+                                <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 sm:p-6 text-center text-sm text-gray-500">
+                                    No units configured yet
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div className="space-y-4">
+                                {unitRows.map((unitRow) => {
+                                    const unitBgClass =
+                                        unitRow.status === 'added'
+                                            ? 'border-green-300 bg-green-50'
+                                            : unitRow.status === 'modified'
+                                            ? 'border-blue-300 bg-blue-50'
+                                            : unitRow.status === 'removed'
+                                            ? 'border-red-300 bg-red-50'
+                                            : 'border-gray-200';
+
+                                    // For modified units, compute inner raw material changes
+                                    const originalUnit = originalUnits.find(
+                                        (u) => u.productUnitId === unitRow.unit.productUnitId
+                                    );
+
+                                    type RMRow = {
+                                        rm: any;
+                                        status: 'unchanged' | 'added' | 'modified' | 'removed';
+                                    };
+
+                                    let rmRows: RMRow[] = [];
+                                    const displayRMs = unitRow.unit.rawMaterials ?? [];
+                                    const origRMs = originalUnit?.rawMaterials ?? [];
+
+                                    if (unitRow.status === 'added' || unitRow.status === 'unchanged') {
+                                        rmRows = displayRMs.map((rm) => ({ rm, status: unitRow.status === 'added' ? 'added' : 'unchanged' }));
+                                    } else if (unitRow.status === 'removed') {
+                                        rmRows = displayRMs.map((rm) => ({ rm, status: 'removed' }));
+                                    } else {
+                                        // Modified unit - diff the raw materials
+                                        const origRMIds = new Set(origRMs.map((rm) => rm.rawMaterialId));
+                                        const newRMIds = new Set(displayRMs.map((rm) => rm.rawMaterialId));
+
+                                        displayRMs.forEach((newRM) => {
+                                            const origRM = origRMs.find(
+                                                (rm) => rm.rawMaterialId === newRM.rawMaterialId
+                                            );
+                                            if (!origRM) {
+                                                rmRows.push({ rm: newRM, status: 'added' });
+                                            } else if (
+                                                origRM.quantity !== newRM.quantity ||
+                                                origRM.rawMaterialUnitId !== newRM.rawMaterialUnitId
+                                            ) {
+                                                rmRows.push({ rm: newRM, status: 'modified' });
+                                            } else {
+                                                rmRows.push({ rm: newRM, status: 'unchanged' });
+                                            }
+                                        });
+
+                                        origRMs.forEach((origRM) => {
+                                            if (!newRMIds.has(origRM.rawMaterialId)) {
+                                                rmRows.push({ rm: origRM, status: 'removed' });
+                                            }
+                                        });
+                                    }
+
+                                    return (
+                                        <div
+                                            key={unitRow.unit.productUnitId}
+                                            className={`border-2 rounded-xl p-4 sm:p-6 space-y-4 ${unitBgClass}`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                                                    <h4
+                                                        className={`text-sm font-bold ${
+                                                            unitRow.status === 'removed'
+                                                                ? 'line-through text-gray-500'
+                                                                : 'text-gray-700'
+                                                        }`}
+                                                    >
+                                                        Unit:{' '}
+                                                        {unitRow.unit.productUnitName || 'Unknown'}
+                                                    </h4>
+                                                </div>
+                                                {unitRow.status === 'added' && (
+                                                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                                        ➕ ADDED
+                                                    </span>
+                                                )}
+                                                {unitRow.status === 'modified' && (
+                                                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                        ✏️ MODIFIED
+                                                    </span>
+                                                )}
+                                                {unitRow.status === 'removed' && (
+                                                    <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                                                        ➖ REMOVED
+                                                    </span>
+                                                )}
+                                            </div>
+
+                                            {rmRows.length > 0 && (
+                                                <div className="overflow-hidden border border-gray-200 rounded-xl">
+                                                    <table className="min-w-full divide-y divide-gray-200 text-sm">
+                                                        <thead className="bg-gray-50">
+                                                            <tr>
+                                                                <th className="px-4 py-2 text-left font-semibold text-gray-600">
+                                                                    Raw Material
+                                                                </th>
+                                                                <th className="px-4 py-2 text-left font-semibold text-gray-600">
+                                                                    Unit
+                                                                </th>
+                                                                <th className="px-4 py-2 text-left font-semibold text-gray-600">
+                                                                    Quantity
+                                                                </th>
+                                                                <th className="px-4 py-2 text-right font-semibold text-gray-600">
+                                                                    Status
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-100">
+                                                            {rmRows.map((rmRow, rmIdx) => (
+                                                                <tr
+                                                                    key={rmIdx}
+                                                                    className={
+                                                                        rmRow.status === 'added'
+                                                                            ? 'bg-green-50'
+                                                                            : rmRow.status === 'modified'
+                                                                            ? 'bg-blue-50'
+                                                                            : rmRow.status === 'removed'
+                                                                            ? 'bg-red-50'
+                                                                            : ''
+                                                                    }
+                                                                >
+                                                                    <td
+                                                                        className={`px-4 py-3 ${
+                                                                            rmRow.status === 'removed'
+                                                                                ? 'line-through text-gray-500'
+                                                                                : 'text-gray-700'
+                                                                        }`}
+                                                                    >
+                                                                        {rmRow.rm.rawMaterialName || '-'}
+                                                                    </td>
+                                                                    <td
+                                                                        className={`px-4 py-3 ${
+                                                                            rmRow.status === 'removed'
+                                                                                ? 'line-through text-gray-500'
+                                                                                : 'text-gray-600'
+                                                                        }`}
+                                                                    >
+                                                                        {rmRow.rm.rawMaterialUnitName || '-'}
+                                                                    </td>
+                                                                    <td
+                                                                        className={`px-4 py-3 ${
+                                                                            rmRow.status === 'removed'
+                                                                                ? 'line-through text-gray-500'
+                                                                                : 'text-gray-700'
+                                                                        }`}
+                                                                    >
+                                                                        {rmRow.rm.quantity ?? 0}
+                                                                    </td>
+                                                                    <td className="px-4 py-3 text-right">
+                                                                        {rmRow.status === 'added' && (
+                                                                            <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                                                                                ➕ ADDED
+                                                                            </span>
+                                                                        )}
+                                                                        {rmRow.status === 'modified' && (
+                                                                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                                                                ✏️ MODIFIED
+                                                                            </span>
+                                                                        )}
+                                                                        {rmRow.status === 'removed' && (
+                                                                            <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                                                                                ➖ REMOVED
+                                                                            </span>
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        );
+                    })()
+                ) : rawMaterialsPerUnit.length === 0 ? (
                     <div className="border-2 border-dashed border-gray-200 rounded-xl p-4 sm:p-6 text-center text-sm text-gray-500">
                         No units configured yet
                     </div>
@@ -841,24 +1206,8 @@ export default function ProductUnitRawMaterialForm({
 
     const renderLogsTab = () => (
         <div className="border-2 border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
-            <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-gray-600 p-2 text-white shadow-sm">
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                    </svg>
-                </div>
-                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Activity Logs</h3>
-            </div>
-            {selectedRecord?.activityLogs && selectedRecord.activityLogs.length > 0 ? (
-                renderActivityLogsTable(selectedRecord.activityLogs)
-            ) : (
-                <p className="text-gray-500 text-sm">No activity logs available.</p>
-            )}
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Activity Logs</h3>
+            {renderActivityLogsTable(selectedRecord?.activityLogs, 'No activity logs available.')}
         </div>
     );
 
@@ -950,45 +1299,6 @@ export default function ProductUnitRawMaterialForm({
                                 </svg>
                                 Delete
                             </button>
-                        ) : !isCreateMode &&
-                          isAdminUser &&
-                          (currentStatus === StatusEnum.FOR_APPROVAL ||
-                              currentStatus === StatusEnum.NEW_RECORD ||
-                              currentStatus === StatusEnum.FOR_DELETION) ? (
-                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                                <button
-                                    type="button"
-                                    onClick={onDeny}
-                                    disabled={isLoading}
-                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                    {currentStatus === StatusEnum.FOR_DELETION ? 'Deny Deletion' : 'Deny'}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={onApprove}
-                                    disabled={isLoading}
-                                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:w-auto disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                    {currentStatus === StatusEnum.FOR_DELETION ? 'Approve Deletion' : 'Approve'}
-                                </button>
-                            </div>
                         ) : (
                             <div className="hidden sm:block" />
                         )}
@@ -1010,6 +1320,43 @@ export default function ProductUnitRawMaterialForm({
                                     </svg>
                                     {isCreateMode ? 'Create' : 'Save Changes'}
                                 </button>
+                            )}
+                            {/* Approval Buttons - shown when admin user and approval/deletion state (NOT in create mode) */}
+                            {!isCreateMode && isAdminUser && (isApprovalState || showDeletionCard) && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={onDeny}
+                                        disabled={isLoading}
+                                        className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:bg-red-300 disabled:cursor-not-allowed"
+                                    >
+                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M6 18L18 6M6 6l12 12"
+                                            />
+                                        </svg>
+                                        Deny
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={onApprove}
+                                        disabled={isLoading}
+                                        className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-green-300 disabled:cursor-not-allowed"
+                                    >
+                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M5 13l4 4L19 7"
+                                            />
+                                        </svg>
+                                        Approve
+                                    </button>
+                                </>
                             )}
                             <button
                                 type="button"

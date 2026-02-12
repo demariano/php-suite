@@ -22,7 +22,7 @@ export default function CreateSalesTypePage() {
         ? authedUser?.userRole
         : undefined;
 
-      await SalesTypeApi.createSalesType({
+      await (SalesTypeApi as any).createSalesType({
         salesTypeName: salesType.salesTypeName,
         allowDiscount: salesType.allowDiscount,
         contractSales: salesType.contractSales,

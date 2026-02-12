@@ -2,8 +2,6 @@ import { UserCognito } from '@auth-guard-lib';
 import {
     ContractInvoiceEventEnum,
     ErrorResponseDto,
-    InventoryEventDto,
-    InventoryEventEnum,
     InvoiceDetailsDto,
     InvoiceDto,
     InvoicePaymentEventDto,
@@ -19,6 +17,7 @@ import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InvoiceStockDeltaService } from '../../../shared/invoice-stock-delta.service';
 import { ApproveInvoiceCommand } from './approve.command';
 
 // Constants
@@ -39,7 +38,8 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         private readonly stockDatabaseService: StockDatabaseServiceAbstract,
         private readonly configService: ConfigService,
         @Inject('MessageQueueAwsLibService')
-        private readonly messageQueueService: MessageQueueServiceAbstract
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
     ) {}
 
     async execute(command: ApproveInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -171,10 +171,10 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         const invoicePayloads: InvoicePaymentEventDto[] = [];
         if (originalStatus === StatusEnum.ACTIVE) {
             // ACTIVE → FOR_APPROVAL → ACTIVE: Calculate and apply stock deltas
-            await this.applyStockDeltas(
+            await this.invoiceStockDeltaService.applyStockDeltas(
                 originalInvoiceDetails,
                 updatedRecord.invoiceDetails || [],
-                updatedRecord.invoiceId
+                `INV-APPROVE-UPDATE-${updatedRecord.invoiceId}`
             );
 
             const invoicePaymentDto: InvoicePaymentEventDto = {
@@ -185,16 +185,10 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
             invoicePayloads.push(invoicePaymentDto);
         } else {
             // NEW_RECORD or DRAFT → FOR_APPROVAL → ACTIVE: Deduct all stock (first time)
-            const stockItems = updatedRecord.invoiceDetails?.map((detail) => ({
-                stockId: detail.stockId as string,
-                qty: detail.qty as number,
-            }));
-
-            const inventoryEvent: InventoryEventDto = {
-                inventoryEvent: InventoryEventEnum.INVOICE_APPROVED,
-                stockItems: stockItems,
-            };
-            await this.sendInventoryEventMessage(inventoryEvent);
+            await this.invoiceStockDeltaService.sendFullDeduction(
+                updatedRecord.invoiceDetails || [],
+                `INV-APPROVE-NEW-${updatedRecord.invoiceId}`
+            );
 
             const invoicePaymentDto: InvoicePaymentEventDto = {
                 invoiceId: existingRecord.invoiceId,
@@ -230,20 +224,11 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         const originalStatus = existingRecord.forApprovalVersion?.originalStatus as StatusEnum | undefined;
 
         if (originalStatus === StatusEnum.ACTIVE) {
-            //get stock items for inventory event
-            const stockItems = existingRecord.invoiceDetails?.map((detail) => {
-                return {
-                    stockId: detail.stockId as string,
-                    qty: detail.qty as number,
-                };
-            });
-
-            //send inventory event to restore stock quantities
-            const inventoryEvent: InventoryEventDto = {
-                inventoryEvent: InventoryEventEnum.INVOICE_DELETED,
-                stockItems: stockItems,
-            };
-            await this.sendInventoryEventMessage(inventoryEvent);
+            // Restore stock for deleted invoice
+            await this.invoiceStockDeltaService.sendFullRestoration(
+                existingRecord.invoiceDetails || [],
+                `INV-DELETE-APPROVE-${existingRecord.invoiceId}`
+            );
         }
 
         this.logger.log(`Invoice deletion approved: ${existingRecord.invoiceId}`);
@@ -264,82 +249,6 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         }
 
         return new ResponseDto<InvoiceDto>(existingRecord, HTTP_STATUS_OK);
-    }
-
-    /**
-     * Applies stock deltas by comparing old and new invoice details
-     */
-    private async applyStockDeltas(oldDetails: any[], newDetails: any[], invoiceId: string): Promise<void> {
-        // Build maps of stock quantities grouped by stockId
-        const oldStockMap = this.buildStockMap(oldDetails);
-        const newStockMap = this.buildStockMap(newDetails);
-
-        const itemsToDeduct: { stockId: string; qty: number }[] = [];
-        const itemsToRestore: { stockId: string; qty: number }[] = [];
-
-        // Check all stock items in new details
-        for (const [stockId, newQty] of newStockMap.entries()) {
-            const oldQty = oldStockMap.get(stockId) || 0;
-            const delta = newQty - oldQty;
-
-            if (delta > 0) {
-                // Quantity increased - deduct more
-                itemsToDeduct.push({ stockId, qty: delta });
-            } else if (delta < 0) {
-                // Quantity decreased - restore some
-                itemsToRestore.push({ stockId, qty: Math.abs(delta) });
-            }
-            // If delta === 0, no change needed
-        }
-
-        // Check for items that were completely removed
-        for (const [stockId, oldQty] of oldStockMap.entries()) {
-            if (!newStockMap.has(stockId)) {
-                // Item removed - restore all
-                itemsToRestore.push({ stockId, qty: oldQty });
-            }
-        }
-
-        // Send deduction events
-        if (itemsToDeduct.length > 0) {
-            const deductEvent: InventoryEventDto = {
-                inventoryEvent: InventoryEventEnum.INVOICE_APPROVED,
-                stockItems: itemsToDeduct,
-            };
-            await this.sendInventoryEventMessage(deductEvent);
-            this.logger.log(`Deducting stock for ${itemsToDeduct.length} items in invoice: ${invoiceId}`);
-        }
-
-        // Send restoration events
-        if (itemsToRestore.length > 0) {
-            const restoreEvent: InventoryEventDto = {
-                inventoryEvent: InventoryEventEnum.INVOICE_DELETED,
-                stockItems: itemsToRestore,
-            };
-            await this.sendInventoryEventMessage(restoreEvent);
-            this.logger.log(`Restoring stock for ${itemsToRestore.length} items in invoice: ${invoiceId}`);
-        }
-
-        if (itemsToDeduct.length === 0 && itemsToRestore.length === 0) {
-            this.logger.log(`No stock adjustments needed for invoice: ${invoiceId}`);
-        }
-    }
-
-    /**
-     * Builds a map of stockId to total quantity from invoice details
-     * Handles cases where same stockId appears multiple times
-     */
-    private buildStockMap(details: any[]): Map<string, number> {
-        const stockMap = new Map<string, number>();
-
-        for (const detail of details) {
-            if (detail.stockId && detail.qty !== undefined) {
-                const currentQty = stockMap.get(detail.stockId) || 0;
-                stockMap.set(detail.stockId, currentQty + detail.qty);
-            }
-        }
-
-        return stockMap;
     }
 
     /**
@@ -413,11 +322,6 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         }
 
         return 'An unexpected error occurred';
-    }
-
-    private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
-        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
-        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
     }
 
     /**

@@ -1,8 +1,6 @@
 import {
     ContractInvoiceEventEnum,
     ErrorResponseDto,
-    InventoryEventDto,
-    InventoryEventEnum,
     InvoiceDto,
     InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
@@ -19,6 +17,7 @@ import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InvoiceStockDeltaService } from '../../../shared/invoice-stock-delta.service';
 import { DeleteInvoiceCommand } from './delete.command';
 
 // Constants
@@ -36,7 +35,8 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
         private readonly messageQueueService: MessageQueueServiceAbstract,
         private readonly configService: ConfigService,
         @Inject('PaymentInvoiceDatabaseService')
-        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
     ) {}
 
     async execute(command: DeleteInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -174,7 +174,10 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
 
             // Only restore stock if invoice was approved (not DRAFT or NEW_RECORD)
             if (originalStatus === StatusEnum.ACTIVE) {
-                await this.restoreStockQuantities(existingRecord);
+                await this.invoiceStockDeltaService.sendFullRestoration(
+                    existingRecord.invoiceDetails,
+                    existingRecord.invoiceId
+                );
 
                 const invoicePaymentDto: InvoicePaymentEventDto = {
                     invoiceId: existingRecord.invoiceId,
@@ -202,45 +205,6 @@ export class DeleteInvoiceHandler implements ICommandHandler<DeleteInvoiceComman
         }
 
         return result;
-    }
-
-    /**
-     * Restores stock quantities by publishing inventory event
-     */
-    private async restoreStockQuantities(invoice: InvoiceDto): Promise<void> {
-        if (!invoice.invoiceDetails || invoice.invoiceDetails.length === 0) {
-            this.logger.log('No invoice details to restore stock for');
-            return;
-        }
-
-        const stockItems = invoice.invoiceDetails
-            .filter((detail) => detail.stockId && detail.qty)
-            .map((detail) => ({
-                stockId: detail.stockId as string,
-                qty: detail.qty as number,
-            }));
-
-        if (stockItems.length === 0) {
-            this.logger.log('No stock items found in invoice details');
-            return;
-        }
-
-        const inventoryEvent: InventoryEventDto = {
-            inventoryEvent: InventoryEventEnum.INVOICE_DELETED,
-            stockItems: stockItems,
-        };
-
-        await this.sendInventoryEventMessage(inventoryEvent);
-        this.logger.log(`Published inventory event to restore ${stockItems.length} stock items`);
-    }
-
-    /**
-     * Sends inventory event to SQS queue
-     */
-    private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
-        console.log('Sending inventory event message:', inventoryEvent);
-        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
-        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
     }
 
     /**

@@ -45,7 +45,7 @@ export default function EditRawMaterialsStockPage({ params }: EditRawMaterialsSt
                 // SECURITY: Only get user role if BYPASS_AUTH is enabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const stock = await RawMaterialsStockApi.getRawMaterialsStockById(params.id, userRole);
+                const stock = await (RawMaterialsStockApi as any).getRawMaterialsStockById(params.id, userRole);
                 setSelectedStock(stock);
 
                 // Always default to details tab
@@ -147,7 +147,7 @@ export default function EditRawMaterialsStockPage({ params }: EditRawMaterialsSt
                     ? authedUser?.userRole
                     : undefined;
 
-            await RawMaterialsStockApi.deleteRawMaterialsStock(selectedStock, userRole);
+            await (RawMaterialsStockApi as any).deleteRawMaterialsStock(selectedStock, userRole);
 
             setFlashNotification({
                 title: 'Success!',

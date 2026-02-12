@@ -75,7 +75,7 @@ export default function CreateInvoicePage() {
             // Validation passed - now proceed with deletion and creation
             // Delete draft invoice first if it exists (to prevent duplicate invoices)
             if (createdDraftId && createdInvoice) {
-                await InvoiceApi.deleteInvoice(createdInvoice, userRole);
+                await (InvoiceApi as any).deleteInvoice(createdInvoice, userRole);
                 // Clear draft state immediately after deletion
                 setCreatedDraftId(null);
                 setCreatedInvoice(null);
@@ -109,7 +109,7 @@ export default function CreateInvoicePage() {
                     invoiceDetails: invoice.invoiceDetails,
                     contractSales: invoice.contractSales,
                     changeReason: invoice.changeReason,
-                },
+                } as any,
                 userRole
             );
 
@@ -205,7 +205,7 @@ export default function CreateInvoicePage() {
                     ? authedUser?.userRole
                     : undefined;
 
-            const submittedInvoice = await InvoiceApi.submitDraft(createdDraftId, userRole);
+            const submittedInvoice = await (InvoiceApi as any).submitDraft(createdDraftId, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -258,7 +258,7 @@ export default function CreateInvoicePage() {
                     : undefined;
 
             // Delete the draft invoice (this will restore stock)
-            await InvoiceApi.deleteInvoice(createdInvoice, userRole);
+            await (InvoiceApi as any).deleteInvoice(createdInvoice, userRole);
 
             setFlashNotification({
                 title: 'Draft Deleted',
@@ -362,7 +362,7 @@ export default function CreateInvoicePage() {
                                     {
                                         ...invoice,
                                         status: StatusEnum.DRAFT,
-                                    },
+                                    } as any,
                                     userRole
                                 );
 

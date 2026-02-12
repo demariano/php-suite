@@ -37,7 +37,7 @@ export default function EditSalesTypePage({ params }: EditSalesTypePageProps) {
                 setError(null);
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-                const salesType = await SalesTypeApi.getSalesTypeById(params.id, userRole);
+                const salesType = await (SalesTypeApi as any).getSalesTypeById(params.id, userRole);
                 setSelectedSalesType(salesType);
                 setActiveTab('details');
             } catch (err: any) {
@@ -113,7 +113,7 @@ export default function EditSalesTypePage({ params }: EditSalesTypePageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await SalesTypeApi.deleteSalesType(selectedSalesType, userRole);
+            await (SalesTypeApi as any).deleteSalesType(selectedSalesType, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -147,7 +147,7 @@ export default function EditSalesTypePage({ params }: EditSalesTypePageProps) {
             setError(null);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            await SalesTypeApi.approveSalesType(selectedSalesType.salesTypeId, userRole);
+            await (SalesTypeApi as any).approveSalesType(selectedSalesType.salesTypeId, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -181,7 +181,7 @@ export default function EditSalesTypePage({ params }: EditSalesTypePageProps) {
             setShowDenyDialog(false);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            await SalesTypeApi.denySalesType(selectedSalesType.salesTypeId, approverMessage, userRole);
+            await (SalesTypeApi as any).denySalesType(selectedSalesType.salesTypeId, approverMessage, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -288,7 +288,7 @@ export default function EditSalesTypePage({ params }: EditSalesTypePageProps) {
                                 <>
                                     <button
                                         type="button"
-                                        onClick={handleDeny}
+                                        onClick={handleDenyRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                     >
                                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -303,7 +303,7 @@ export default function EditSalesTypePage({ params }: EditSalesTypePageProps) {
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={handleApprove}
+                                        onClick={handleApproveRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                                     >
                                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

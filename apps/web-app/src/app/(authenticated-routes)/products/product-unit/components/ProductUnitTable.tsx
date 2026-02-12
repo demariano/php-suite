@@ -15,7 +15,7 @@ interface ProductUnitTableProps {
     tableData: ProductUnitTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (productUnit: ProductUnitDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;

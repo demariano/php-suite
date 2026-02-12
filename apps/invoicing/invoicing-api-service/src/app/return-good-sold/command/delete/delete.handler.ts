@@ -17,6 +17,7 @@ import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InvoiceStockDeltaService } from '../../../shared/invoice-stock-delta.service';
 import { DeleteReturnGoodSoldCommand } from './delete.command';
 
 // Constants
@@ -34,7 +35,8 @@ export class DeleteReturnGoodSoldHandler implements ICommandHandler<DeleteReturn
         private readonly messageQueueService: MessageQueueServiceAbstract,
         private readonly configService: ConfigService,
         @Inject('InvoiceDatabaseService')
-        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
     ) {}
 
     async execute(command: DeleteReturnGoodSoldCommand): Promise<ResponseDto<ReturnGoodSoldDto | ErrorResponseDto>> {
@@ -101,6 +103,14 @@ export class DeleteReturnGoodSoldHandler implements ICommandHandler<DeleteReturn
         }
         // Hard delete the record
         await this.returnGoodSoldDatabaseService.deleteRecord(existingRecord);
+
+        // Send stock adjustment: modified → original (deletion reverts the RGS changes)
+        await this.invoiceStockDeltaService.applyStockDeltas(
+            existingRecord.modifiedInvoiceDetails || [],
+            existingRecord.originalInvoiceDetails || [],
+            `RGS-DELETE-${existingRecord.returnGoodSoldId}`
+        );
+
         const invoicePayloads: InvoicePaymentEventDto[] = [];
         const invoicePaymentDto: InvoicePaymentEventDto = {
             invoiceId: existingRecord.invoiceId,

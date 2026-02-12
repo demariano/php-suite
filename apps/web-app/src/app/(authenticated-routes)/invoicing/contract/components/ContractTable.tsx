@@ -4,7 +4,7 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { ContractDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type ContractTableRow = ContractDto & {
+type ContractTableRow = Omit<ContractDto, 'status'> & {
     status: ReactNode;
     latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
 };
@@ -14,7 +14,7 @@ interface ContractTableProps {
     tableData: ContractTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (contract: ContractDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;
@@ -130,7 +130,6 @@ export default function ContractTable({
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
 
@@ -200,7 +199,6 @@ export default function ContractTable({
                         onNext={onNext}
                         hasPrevious={!!prevCursor}
                         hasNext={!!nextCursor}
-                        variant="mobile"
                     />
                 </div>
             )}

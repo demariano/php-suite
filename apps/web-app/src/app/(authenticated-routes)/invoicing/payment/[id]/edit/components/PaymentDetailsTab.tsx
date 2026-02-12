@@ -30,6 +30,7 @@ export default function PaymentDetailsTab({
         chequeNo: '',
         chequeDate: '',
         bankName: '',
+        bankAccountNo: '',
         paymentType: PaymentTypeEnum.CASH,
         amount: 0,
     });
@@ -73,6 +74,7 @@ export default function PaymentDetailsTab({
             chequeNo: '',
             chequeDate: '',
             bankName: '',
+            bankAccountNo: '',
             paymentType: PaymentTypeEnum.CASH,
             amount: 0,
         });
@@ -133,6 +135,7 @@ export default function PaymentDetailsTab({
             chequeNo: '',
             chequeDate: '',
             bankName: '',
+            bankAccountNo: '',
             paymentType: PaymentTypeEnum.CASH,
             amount: 0,
         });
@@ -168,6 +171,7 @@ export default function PaymentDetailsTab({
             chequeNo: '',
             chequeDate: '',
             bankName: '',
+            bankAccountNo: '',
             paymentType: PaymentTypeEnum.CASH,
             amount: 0,
         });

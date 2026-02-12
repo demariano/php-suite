@@ -1,0 +1,71 @@
+
+🌱 Global Setup: seeding all module data...
+
+
+📦 Seeding products...
+[seed] Creating dependency entities...
+  ✓ Category: 01KH8HRGVJSP0V21K46XJ5PNCX
+  ✓ Class: 01KH8HRGWZD70TBZQ4XGDCPHM6
+  ✓ Unit: 01KH8HRGY1TB54J0NRPGFZJB9A
+  ✓ PriceType: 01KH8HRGZ2WWNCFDSVPZG7CGVV
+  ✓ Deal: 01KH8HRH031088QQ9Z29CWY9W2
+[seed] Creating products in different statuses...
+  ✓ ACTIVE product: 01KH8HRH11BQT73140WK7EV2Z5
+  ✓ FOR_APPROVAL product: 01KH8HRH1YT1YCR5ES2TR2WWT4
+  ✓ INACTIVE product: 01KH8HRH42EZ77YSG8JEBXDHSH
+  ✓ FOR_DELETION product: 01KH8HRH61X9S0PCPMF43DB9M3
+  ✓ SCRATCH product: 01KH8HRH825EW95JMJ01G17VV3
+[seed] Done. All test data created successfully.
+✅ products seeded successfully.
+
+📦 Seeding customers...
+[customer-seed] Creating dependency entities...
+  ✓ Classification: 01KH8HRH9ENDAQ3BVR54NVR7N6
+  ✓ Terms: 01KH8HRHANDPSXVA8XVBN6AFNW
+  ✓ TerritoryManager: 01KH8HRHCGZAEH1HBEBG391NEC
+  ✓ Area: 01KH8HRHE5R7C9KNREGACVKHHD
+[customer-seed] Creating customer types...
+  ✓ ACTIVE customer type: 01KH8HRHF4ZNKKHWKM1Y0XGMR9
+  ✓ FOR_APPROVAL customer type: 01KH8HRHG2Q20N9CHT7BKTWM7S
+  ✓ INACTIVE customer type: 01KH8HRHJGYKYRNCJATT35TJVZ
+  ✓ SCRATCH customer type: 01KH8HRHMGKR8E8AEVTYGYP1QS
+[customer-seed] Done.
+✅ customers seeded successfully.
+
+📦 Seeding inventory...
+[inventory-seed] Creating dependency entities...
+  ✓ StockType: 01KH8HRHP1S0A4X73YRWDFGWDQ
+  ✓ RawMaterialUnit: 01KH8HRHPV95ZJQHB6G6V7NWCB
+  ✓ RawMaterialsLocation: 01KH8HRHQP7SNTAX3SSK8JYC7H
+  ✓ RawMaterialSupplier: 01KH8HRHRQ4VKNVDKYZ9F56TAF
+  ✓ RawMaterial: 01KH8HRHSYNWMVTMKRDHSJ83F6
+[inventory-seed] Creating suppliers...
+  ✓ ACTIVE supplier: 01KH8HRHV97XP5K3MSG36Q0SA2
+  ✓ FOR_APPROVAL supplier: 01KH8HRHWJX0E4N9G8264MGQWJ
+  ✓ INACTIVE supplier: 01KH8HRHZWG5QAGRESKX30W9Y3
+  ✓ SCRATCH supplier: 01KH8HRJ2ECSDRA0924D2RJYPX
+[inventory-seed] Done.
+✅ inventory seeded successfully.
+
+📦 Seeding invoicing...
+[invoicing-seed] Creating dependency entities...
+  ✓ TerritoryManager: 01KH8HRJ3M6ZCVN172XG8ZASCP
+[invoicing-seed] Creating sales types...
+  ✓ ACTIVE sales type: 01KH8HRJ4WWNMH1B9HE9NF10CA
+  ✓ FOR_APPROVAL sales type: 01KH8HRJ62848ATC78YR4QFW0F
+  ✓ INACTIVE sales type: 01KH8HRJ8SZR8NMPG4DY021EAV
+  ✓ SCRATCH sales type: 01KH8HRJAXD76X8WJ96GX51033
+[invoicing-seed] Done.
+✅ invoicing seeded successfully.
+
+📦 Seeding accounting...
+[accounting-seed] Creating accounts...
+  ✓ ACTIVE account: 01KH8HRJCD6FSFRAEJ7ZED698Y
+  ✓ FOR_APPROVAL account: 01KH8HRJDBQYH3G6WEDBAWHNY7
+  ✓ INACTIVE account: 01KH8HRJFG7KKEEN0GTSD1NNPV
+  ✓ SCRATCH account: 01KH8HRJHNKYVSVSZ7Y0KVV0N8
+[accounting-seed] Done.
+✅ accounting seeded successfully.
+
+✅ All seed data written to D:\other_coding_projects\php\e2e\.seed-data.json
+

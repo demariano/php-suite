@@ -9,7 +9,7 @@ export interface TermsDto {
     days?: number;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -19,5 +19,5 @@ export interface CreateTermsDto {
     days?: number;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }

@@ -48,7 +48,7 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
                 if (record.invoiceId) {
                     try {
                         const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-                        const invoice = await InvoiceApi.getInvoiceById(record.invoiceId, userRole);
+                        const invoice = await (InvoiceApi as any).getInvoiceById(record.invoiceId, userRole);
 
                         // Update the record with invoice product price type data
                         const enrichedRecord = {
@@ -109,7 +109,7 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
                     invoiceId: record.invoiceId,
                     customerId: record.customerId,
                     customerName: record.customerName,
-                    docno: record.docno,
+                    docno: (record as any).docno,
                     dateReturned: record.dateReturned,
                     originalInvoiceDetails: record.originalInvoiceDetails,
                     modifiedInvoiceDetails: record.modifiedInvoiceDetails,
@@ -117,7 +117,7 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
                     activityLogs: record.activityLogs,
                     forApprovalVersion: record.forApprovalVersion,
                     changeReason: record.changeReason,
-                },
+                } as any,
                 userRole
             );
 
@@ -172,7 +172,7 @@ export default function EditReturnGoodSoldPage({ params }: EditReturnGoodSoldPag
                     ? authedUser?.userRole
                     : undefined;
 
-            await ReturnGoodSoldApi.deleteReturnGoodSold(selectedRecord, userRole);
+            await (ReturnGoodSoldApi as any).deleteReturnGoodSold(selectedRecord, userRole);
 
             setFlashNotification({
                 title: 'Success!',

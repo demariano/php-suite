@@ -1,8 +1,9 @@
 'use client';
 
 import { ProductPriceTypeDto, StatusEnum } from '@data-access/index';
-import { useEffect, useState } from 'react';
-import { ChangeReasonField } from '../../../components';
+import { useEffect, useMemo, useState } from 'react';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 
 interface ProductPriceTypeFormProps {
     isCreateMode: boolean;
@@ -12,7 +13,18 @@ interface ProductPriceTypeFormProps {
     onDelete: () => void;
     onCancel: () => void;
     isAdminUser?: boolean;
+    onApprove?: () => void;
+    onDeny?: () => void;
 }
+
+// Helper function to format display value
+const formatValue = (value: unknown): string => {
+    if (value === null || value === undefined) return '-';
+    if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+    if (typeof value === 'number') return value.toString();
+    if (typeof value === 'object') return JSON.stringify(value);
+    return String(value);
+};
 
 export default function ProductPriceTypeForm({
     isCreateMode,
@@ -22,12 +34,24 @@ export default function ProductPriceTypeForm({
     onDelete,
     onCancel,
     isAdminUser = false,
+    onApprove,
+    onDeny,
 }: ProductPriceTypeFormProps) {
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [formData, setFormData] = useState({
         productPriceTypeName: '',
         changeReason: '',
     });
+
+    const currentStatus = selectedProductPriceType?.status ?? StatusEnum.NEW_RECORD;
+    const pendingVersion = useMemo(
+        () => (selectedProductPriceType?.forApprovalVersion ?? {}) as any,
+        [selectedProductPriceType?.forApprovalVersion]
+    );
+
+    const isApprovalState = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showApprovalUI = isApprovalState && !isCreateMode;
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION;
 
     useEffect(() => {
         if (!isCreateMode && selectedProductPriceType) {
@@ -38,16 +62,70 @@ export default function ProductPriceTypeForm({
         }
     }, [isCreateMode, selectedProductPriceType]);
 
+    // Use shared field change detection utility
+    const isFieldChanged = createFieldChangeDetector(
+        (selectedProductPriceType ?? {}) as any,
+        (selectedProductPriceType?.forApprovalVersion as any) ?? undefined
+    );
+
+    // Helper to render inline field diff
+    const renderFieldWithInlineDiff = (
+        label: string,
+        fieldName: string,
+        currentValue: unknown,
+        pendingValue: unknown,
+        colorClass = 'bg-blue-500'
+    ) => {
+        const hasChange = isFieldChanged(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentValue)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingValue)}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        // Normal read-only display
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return (
+            <div className="group">
+                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                    {label}
+                </label>
+                <div
+                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm cursor-not-allowed ${
+                        hasChange
+                            ? 'border-blue-500 bg-blue-50 text-gray-700'
+                            : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                >
+                    {formatValue(displayValue)}
+                </div>
+            </div>
+        );
+    };
+
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         const errors: string[] = [];
 
-        if (!formData.productPriceTypeName.trim()) {
+        if (!formData.productPriceTypeName?.trim()) {
             errors.push('Product Price Type Name is required.');
         }
 
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -72,7 +150,7 @@ export default function ProductPriceTypeForm({
                 ...selectedProductPriceType,
                 productPriceTypeName: formData.productPriceTypeName,
                 status: newStatus,
-                changeReason: formData.changeReason.trim() || undefined,
+                changeReason: formData.changeReason?.trim() || undefined,
             } as ProductPriceTypeDto;
             onSave(updatedProductPriceType);
         }
@@ -105,7 +183,8 @@ export default function ProductPriceTypeForm({
                 </div>
             )}
 
-            {!isCreateMode && !isAdminUser && (
+            {/* Change Reason for Users Editing ACTIVE records */}
+            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                 <ChangeReasonField
                     value={formData.changeReason}
                     onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
@@ -113,9 +192,39 @@ export default function ProductPriceTypeForm({
                 />
             )}
 
+            {/* Change Reason Read-Only for approval states */}
+            {showApprovalUI && selectedProductPriceType?.changeReason && (
+                <ChangeReasonReadOnly value={selectedProductPriceType.changeReason} />
+            )}
+
+            {/* Deletion Approval Card */}
+            {showDeletionCard && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🗑️
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-800 m-0">Record Marked for Deletion</h3>
+                            <p className="text-sm text-red-700">
+                                This record has been marked for deletion and is awaiting approval.
+                            </p>
+                        </div>
+                    </div>
+                    {selectedProductPriceType?.changeReason && (
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold text-red-700">Deletion Reason</p>
+                            <div className="bg-white border-2 border-red-200 rounded-lg p-4 text-sm text-gray-700 whitespace-pre-wrap">
+                                {selectedProductPriceType.changeReason}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <div className="space-y-6">
                 <div className="space-y-4">
-                    <div className="rounded-xl border-2 border-gray-200 p-4 sm:p-6">
+                    <div className={`rounded-xl border-2 p-4 sm:p-6 ${showApprovalUI ? 'border-green-400 bg-white' : 'border-gray-200'}`}>
                         <div className="mb-4 flex items-center gap-3">
                             <div className="rounded-lg bg-blue-600 p-2 shadow-md">
                                 <svg
@@ -134,34 +243,49 @@ export default function ProductPriceTypeForm({
                             </div>
                             <h3 className="text-base font-bold text-blue-600">Product Price Type Information</h3>
                         </div>
-                        <div className="group">
-                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                Product Price Type Name
-                            </label>
-                            <input
-                                type="text"
-                                name="productPriceTypeName"
-                                value={formData.productPriceTypeName}
-                                onChange={(e) =>
-                                    setFormData((prev) => ({ ...prev, productPriceTypeName: e.target.value }))
-                                }
-                                placeholder={isCreateMode ? 'Enter product price type name' : ''}
-                                disabled={isFormDisabled}
-                                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                    isFormDisabled
-                                        ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                        : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
-                                }`}
-                                required
-                            />
+
+                        <div className="grid grid-cols-1 gap-6">
+                            {showApprovalUI ? (
+                                <>
+                                    {renderFieldWithInlineDiff(
+                                        'Product Price Type Name',
+                                        'productPriceTypeName',
+                                        selectedProductPriceType?.productPriceTypeName,
+                                        pendingVersion.productPriceTypeName,
+                                        'bg-blue-500'
+                                    )}
+                                </>
+                            ) : (
+                                <div className="group">
+                                    <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                        Product Price Type Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="productPriceTypeName"
+                                        value={formData.productPriceTypeName}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({ ...prev, productPriceTypeName: e.target.value }))
+                                        }
+                                        placeholder={isCreateMode ? 'Enter product price type name' : ''}
+                                        disabled={isFormDisabled}
+                                        className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                            isFormDisabled
+                                                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                                        }`}
+                                        required
+                                    />
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
             </div>
 
             <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                {!isCreateMode && selectedProductPriceType?.status === StatusEnum.ACTIVE ? (
+                {!isCreateMode && currentStatus === StatusEnum.ACTIVE ? (
                     <button
                         type="button"
                         onClick={(e) => {
@@ -186,7 +310,8 @@ export default function ProductPriceTypeForm({
                 )}
 
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    {(isCreateMode || selectedProductPriceType?.status === StatusEnum.ACTIVE) && (
+                    {/* Save/Create button - only when editable */}
+                    {(isCreateMode || currentStatus === StatusEnum.ACTIVE) && (
                         <button
                             type="submit"
                             className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -197,6 +322,43 @@ export default function ProductPriceTypeForm({
                             {isCreateMode ? 'Create Product Price Type' : 'Save Changes'}
                         </button>
                     )}
+
+                    {/* Approval Buttons - shown when admin user and approval/deletion state */}
+                    {!isCreateMode && isAdminUser && (isApprovalState || showDeletionCard) && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={onDeny}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                Deny
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onApprove}
+                                className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M5 13l4 4L19 7"
+                                    />
+                                </svg>
+                                Approve
+                            </button>
+                        </>
+                    )}
+
                     <button
                         type="button"
                         onClick={onCancel}

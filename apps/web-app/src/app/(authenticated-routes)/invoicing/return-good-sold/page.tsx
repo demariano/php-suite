@@ -30,7 +30,7 @@ export default function ReturnGoodSoldPage() {
         ? JSON.stringify(cursor) 
         : cursor;
       
-      let response;
+      let response: any;
       
       // Use custom page size if provided, otherwise use state page size
       const currentPageSize = customPageSize ?? pageSize;

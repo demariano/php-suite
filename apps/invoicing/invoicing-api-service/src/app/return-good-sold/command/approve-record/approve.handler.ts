@@ -17,6 +17,7 @@ import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InvoiceStockDeltaService } from '../../../shared/invoice-stock-delta.service';
 import { ApproveReturnGoodSoldCommand } from './approve.command';
 
 // Constants
@@ -35,7 +36,8 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
         private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
     ) {}
 
     async execute(command: ApproveReturnGoodSoldCommand): Promise<ResponseDto<ReturnGoodSoldDto | ErrorResponseDto>> {
@@ -155,6 +157,13 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
             );
         }
 
+        // Send stock adjustment: original → modified (approval applies the RGS changes)
+        await this.invoiceStockDeltaService.applyStockDeltas(
+            existingRecord.originalInvoiceDetails || [],
+            existingRecord.modifiedInvoiceDetails || [],
+            `RGS-APPROVE-${existingRecord.returnGoodSoldId}`
+        );
+
         const invoicePayloads: InvoicePaymentEventDto[] = [];
         const invoicePaymentDto: InvoicePaymentEventDto = {
             invoiceId: existingRecord.invoiceId,
@@ -186,6 +195,13 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
                 `Associated invoice not found for return good sold ${existingRecord.returnGoodSoldId}: ${existingRecord.invoiceId}`
             );
         }
+
+        // Send stock adjustment: modified → original (deletion reverts the RGS changes)
+        await this.invoiceStockDeltaService.applyStockDeltas(
+            existingRecord.modifiedInvoiceDetails || [],
+            existingRecord.originalInvoiceDetails || [],
+            `RGS-DELETE-APPROVE-${existingRecord.returnGoodSoldId}`
+        );
 
         await this.returnGoodSoldDatabaseService.deleteRecord(existingRecord);
         const invoicePayloads: InvoicePaymentEventDto[] = [];

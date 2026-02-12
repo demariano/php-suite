@@ -153,6 +153,7 @@ export class UpdateVoucherHandler implements ICommandHandler<UpdateVoucherComman
 
             // Detect field changes
             const fieldChanges = detectFieldChanges(existingRecord, command.voucherDto, {
+                excludeFields: ['voucherId'],
                 arrayIdFields: {
                     voucherDetails: 'subAccount',
                 },

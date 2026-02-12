@@ -48,7 +48,7 @@ export default function CustomerClassificationsPage() {
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
             const currentPageSize = customPageSize ?? pageSize;
 
-            let response;
+            let response: any;
             const hasSearch = searchQuery && searchQuery.trim() !== '';
             const hasStatus = statusFilter !== 'ALL';
 

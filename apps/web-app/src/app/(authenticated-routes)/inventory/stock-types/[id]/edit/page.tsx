@@ -37,7 +37,7 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
                 setError(null);
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-                const stockType = await StockTypeApi.getStockTypeById(params.id, userRole);
+                const stockType = await (StockTypeApi as any).getStockTypeById(params.id, userRole);
                 setSelectedStockType(stockType);
                 setActiveTab('details');
             } catch (err: any) {
@@ -113,7 +113,7 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await StockTypeApi.deleteStockType(selectedStockType, userRole);
+            await (StockTypeApi as any).deleteStockType(selectedStockType, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -147,7 +147,7 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
             setError(null);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            await StockTypeApi.approveStockType(selectedStockType.stockTypeId!, userRole);
+            await (StockTypeApi as any).approveStockType(selectedStockType.stockTypeId!, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -172,6 +172,7 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
         setShowDenyDialog(true);
     };
 
+
     const handleDenyConfirm = async (approverMessage: string) => {
         if (!selectedStockType) return;
 
@@ -181,7 +182,7 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
             setShowDenyDialog(false);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            await StockTypeApi.denyStockType(selectedStockType.stockTypeId!, approverMessage, userRole);
+            await (StockTypeApi as any).denyStockType(selectedStockType.stockTypeId!, approverMessage, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -278,14 +279,14 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
                                 <>
                                     <button
                                         type="button"
-                                        onClick={handleDeny}
+                                        onClick={handleDenyRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                     >
                                         Deny
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={handleApprove}
+                                        onClick={handleApproveRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                                     >
                                         Approve

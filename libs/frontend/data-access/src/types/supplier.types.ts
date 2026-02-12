@@ -12,7 +12,7 @@ export interface SupplierDto {
     supplierContactPerson?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
 }
 
@@ -24,7 +24,7 @@ export interface CreateSupplierDto {
     supplierContactPerson?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
 }
 

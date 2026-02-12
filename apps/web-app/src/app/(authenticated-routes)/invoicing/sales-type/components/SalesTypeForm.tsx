@@ -2,7 +2,8 @@
 
 import { SalesTypeDto, StatusEnum } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import { ChangeReasonField } from '../../../components';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import NumberInput from '../../../components/NumberInput';
 
 interface SalesTypeFormProps {
@@ -13,6 +14,8 @@ interface SalesTypeFormProps {
     onDelete: () => void;
     onCancel: () => void;
     isAdminUser?: boolean;
+  onApprove?: () => void;
+  onDeny?: () => void;
 }
 
 export default function SalesTypeForm({
@@ -23,6 +26,8 @@ export default function SalesTypeForm({
     onDelete,
     onCancel,
     isAdminUser = false,
+    onApprove,
+    onDeny,
 }: SalesTypeFormProps) {
     const [validationErrors, setValidationErrors] = useState<string[]>([]);
     const [formData, setFormData] = useState({
@@ -56,11 +61,11 @@ export default function SalesTypeForm({
 
         const errors: string[] = [];
 
-        if (!formData.salesTypeName.trim()) {
+        if (!formData.salesTypeName?.trim()) {
             errors.push('Sales Type Name is required.');
         }
 
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -97,13 +102,73 @@ export default function SalesTypeForm({
                 incomeGenerating: formData.incomeGenerating,
                 taxable: formData.taxable,
                 status: newStatus,
-                changeReason: formData.changeReason.trim() || undefined,
+                changeReason: formData.changeReason?.trim() || undefined,
             } as SalesTypeDto;
             onSave(updatedSalesType);
         }
     };
 
     const isFormDisabled = !isCreateMode && selectedSalesType?.status !== StatusEnum.ACTIVE;
+
+    const currentStatus = selectedSalesType?.status ?? StatusEnum.ACTIVE;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pendingVersion = (selectedSalesType?.forApprovalVersion || {}) as Record<string, any>;
+    const isFieldChanged = createFieldChangeDetector(selectedSalesType, selectedSalesType?.forApprovalVersion);
+    const showApprovalUI = !isCreateMode && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showDeletionCard = !isCreateMode && currentStatus === StatusEnum.FOR_DELETION;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const formatValue = (value: any): string => {
+        if (value === null || value === undefined || value === '') return '-';
+        if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+        if (typeof value === 'number') return String(value);
+        return String(value);
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderReadOnlyField = (label: string, value: any, colorClass = 'bg-blue-500') => (
+        <div className="space-y-1">
+            <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                {label}
+            </label>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500">
+                {formatValue(value)}
+            </div>
+        </div>
+    );
+
+    const renderFieldWithInlineDiff = (
+        label: string,
+        fieldName: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        currentValue: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pendingValue: any,
+        colorClass = 'bg-blue-500'
+    ) => {
+        const hasChange = isFieldChanged(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentValue)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingValue)}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return renderReadOnlyField(label, displayValue, colorClass);
+    };
 
     return (
         <form onSubmit={handleSubmit}>
@@ -130,13 +195,35 @@ export default function SalesTypeForm({
                 </div>
             )}
 
-            {/* Change Reason Field - First component when displayed */}
-            {!isCreateMode && !isAdminUser && (
+            {/* Change Reason for Users Editing ACTIVE records */}
+            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                 <ChangeReasonField
                     value={formData.changeReason}
                     onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
-                    disabled={selectedSalesType?.status !== StatusEnum.ACTIVE}
+                    disabled={false}
                 />
+            )}
+
+            {/* Change Reason Read-Only for approval states */}
+            {(showApprovalUI || showDeletionCard) && selectedSalesType?.changeReason && (
+                <ChangeReasonReadOnly value={selectedSalesType.changeReason} />
+            )}
+
+            {/* Deletion Approval Card */}
+            {showDeletionCard && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4 mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🗑️
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-800 m-0">Record Marked for Deletion</h3>
+                            <p className="text-sm text-red-700">
+                                This record has been marked for deletion and is awaiting approval.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             )}
 
             <div className="space-y-6">
@@ -155,6 +242,13 @@ export default function SalesTypeForm({
                             </div>
                             <h3 className="text-base font-bold text-blue-600 m-0">Sales Type Information</h3>
                         </header>
+                        {showApprovalUI ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {renderFieldWithInlineDiff('Sales Type Name', 'salesTypeName', selectedSalesType?.salesTypeName, pendingVersion.salesTypeName)}
+                                {renderFieldWithInlineDiff('Default Discount (%)', 'defaultDiscount', selectedSalesType?.defaultDiscount, pendingVersion.defaultDiscount)}
+                                {renderFieldWithInlineDiff('Default Tax (%)', 'defaultTax', selectedSalesType?.defaultTax, pendingVersion.defaultTax)}
+                            </div>
+                        ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="group">
                                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
@@ -219,6 +313,7 @@ export default function SalesTypeForm({
                                 />
                             </div>
                         </div>
+                        )}
                     </div>
                 </section>
 
@@ -237,6 +332,14 @@ export default function SalesTypeForm({
                             </div>
                             <h3 className="text-base font-bold text-blue-600 m-0">Sales Type Options</h3>
                         </header>
+                        {showApprovalUI ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {renderFieldWithInlineDiff('Allow Discount', 'allowDiscount', selectedSalesType?.allowDiscount, pendingVersion.allowDiscount)}
+                                {renderFieldWithInlineDiff('Contract Sales', 'contractSales', selectedSalesType?.contractSales, pendingVersion.contractSales)}
+                                {renderFieldWithInlineDiff('Income Generating', 'incomeGenerating', selectedSalesType?.incomeGenerating, pendingVersion.incomeGenerating)}
+                                {renderFieldWithInlineDiff('Taxable', 'taxable', selectedSalesType?.taxable, pendingVersion.taxable)}
+                            </div>
+                        ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="group">
                                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
@@ -318,6 +421,7 @@ export default function SalesTypeForm({
                                 </label>
                             </div>
                         </div>
+                        )}
                     </div>
                 </section>
             </div>
@@ -343,6 +447,29 @@ export default function SalesTypeForm({
                         </svg>
                         Delete
                     </button>
+                ) : !isCreateMode && isAdminUser && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(currentStatus) ? (
+                    <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                        <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeny?.(); }}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                        >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                            Deny
+                        </button>
+                        <button
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onApprove?.(); }}
+                            className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                        >
+                            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Approve
+                        </button>
+                    </div>
                 ) : (
                     <div className="hidden sm:block" />
                 )}

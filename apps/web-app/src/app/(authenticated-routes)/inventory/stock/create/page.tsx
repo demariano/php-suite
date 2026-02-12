@@ -38,7 +38,7 @@ export default function CreateStockPage() {
                     stockTypeId: stock.stockTypeId,
                     stockTypeName: stock.stockTypeName,
                     changeReason: stock.changeReason,
-                },
+                } as any,
                 userRole
             );
 

@@ -30,7 +30,7 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
     const [selectedTerritoryManager, setSelectedTerritoryManager] = useState<TerritoryManagerDto | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs' | 'areas'>('details');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
@@ -49,7 +49,10 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
                 setError(null);
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-                const territoryManager = await TerritoryManagerApi.getTerritoryManagerById(params.id, userRole);
+                const territoryManager = await (TerritoryManagerApi as any).getTerritoryManagerById(
+                    params.id,
+                    userRole
+                );
                 setSelectedTerritoryManager(territoryManager);
                 setActiveTab('details');
             } catch (err: any) {
@@ -90,7 +93,7 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
                             ? response
                             : [];
 
-                    setAreas(areasData || []);
+                    setAreas((areasData as any) || []);
                 } catch (error) {
                     console.error('Error fetching areas:', error);
                     setAreasError('Failed to load areas. Please try again.');
@@ -161,7 +164,11 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
                     ? authedUser?.userRole
                     : undefined;
 
-            await TerritoryManagerApi.deleteTerritoryManager(selectedTerritoryManager, deletionReason, userRole);
+            await (TerritoryManagerApi as any).deleteTerritoryManager(
+                selectedTerritoryManager,
+                deletionReason,
+                userRole
+            );
 
             setFlashNotification({
                 title: 'Success!',
@@ -245,7 +252,10 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
             setError(null);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            await TerritoryManagerApi.approveTerritoryManager(selectedTerritoryManager.territoryManagerId, userRole);
+            await (TerritoryManagerApi as any).approveTerritoryManager(
+                selectedTerritoryManager.territoryManagerId,
+                userRole
+            );
 
             setFlashNotification({
                 title: 'Success!',
@@ -427,14 +437,14 @@ export default function EditTerritoryManagerPage({ params }: EditTerritoryManage
                                 <>
                                     <button
                                         type="button"
-                                        onClick={handleDeny}
+                                        onClick={handleDenyRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                     >
                                         Deny
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={handleApprove}
+                                        onClick={handleApproveRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                                     >
                                         Approve

@@ -61,7 +61,7 @@ export default function SuppliersMainPage() {
             }
             // Branch 3: Show all records
             else {
-                response = await SupplierApi.getSuppliers(pageSize, undefined, validDirection, validCursor, userRole);
+                response = await (SupplierApi as any).getSuppliers(pageSize, undefined, validDirection, validCursor, userRole);
             }
 
             if (response?.statusCode === 200 && Array.isArray(response.data)) {

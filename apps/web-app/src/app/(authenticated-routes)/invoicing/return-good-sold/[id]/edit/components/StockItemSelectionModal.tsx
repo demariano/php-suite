@@ -116,26 +116,31 @@ export default function StockItemSelectionModal({
                         </div>
                     ) : (
                         <div>
-                            {filteredStocks.map((stock, index) => (
-                                <div
-                                    key={stock.stockId}
-                                    onClick={() => handleSelect(stock)}
-                                    className={`cursor-pointer px-5 py-4 transition hover:bg-gray-50 ${
-                                        index < filteredStocks.length - 1 ? 'border-b border-gray-100' : ''
-                                    }`}
-                                >
-                                    <div className="mb-1 text-base font-medium text-gray-800">{stock.productName}</div>
-                                    <div className="mb-1 text-sm text-gray-500">
-                                        {stock.productUnitName} | {stock.stockTypeName}
+                            {filteredStocks.map((stockItem, index) => {
+                                const stock = stockItem as any;
+                                return (
+                                    <div
+                                        key={stock.stockId}
+                                        onClick={() => handleSelect(stock)}
+                                        className={`cursor-pointer px-5 py-4 transition hover:bg-gray-50 ${
+                                            index < filteredStocks.length - 1 ? 'border-b border-gray-100' : ''
+                                        }`}
+                                    >
+                                        <div className="mb-1 text-base font-medium text-gray-800">
+                                            {stock.productName}
+                                        </div>
+                                        <div className="mb-1 text-sm text-gray-500">
+                                            {stock.productUnitName} | {stock.stockTypeName}
+                                        </div>
+                                        <div className="flex gap-4 text-sm text-gray-500">
+                                            <div>Lot: {stock.lotNo || '-'}</div>
+                                            <div>Expiry: {stock.expiryDate || '-'}</div>
+                                            <div>Qty: {stock.qty || 0}</div>
+                                            <div>Price: ₱{(stock.price || 0).toFixed(2)}</div>
+                                        </div>
                                     </div>
-                                    <div className="flex gap-4 text-sm text-gray-500">
-                                        <div>Lot: {stock.lotNo || '-'}</div>
-                                        <div>Expiry: {stock.expiryDate || '-'}</div>
-                                        <div>Qty: {stock.qty || 0}</div>
-                                        <div>Price: ₱{(stock.price || 0).toFixed(2)}</div>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

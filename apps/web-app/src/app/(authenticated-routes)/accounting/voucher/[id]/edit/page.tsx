@@ -3,12 +3,11 @@
 import { DeleteConfirmationModal, DenyReasonDialog } from '@components-web';
 import {
     extractErrorMessage,
-    StatusEnum,
     useEnv,
     useLocalStore,
     useSessionStore,
     VoucherApi,
-    VoucherDto,
+    VoucherDto
 } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -23,7 +22,7 @@ interface EditVoucherPageProps {
 export default function EditVoucherPage({ params }: EditVoucherPageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedVoucher, setSelectedVoucher] = useState<VoucherDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDenyDialog, setShowDenyDialog] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const { env } = useEnv();
@@ -46,19 +45,7 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
 
                 const voucher = await VoucherApi.getVoucherById(params.id);
                 setSelectedVoucher(voucher);
-
-                // If the record is in FOR_APPROVAL or NEW_RECORD status and user is admin, open the approval tab
-                if (
-                    (voucher.status === StatusEnum.FOR_APPROVAL ||
-                        voucher.status === StatusEnum.NEW_RECORD ||
-                        voucher.status === StatusEnum.FOR_DELETION) &&
-                    isAdminUser
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    // Default to details tab
-                    setActiveTab('details');
-                }
+                setActiveTab('details');
             } catch (err) {
                 console.error('Error fetching voucher:', err);
                 const errorMessage = extractErrorMessage(err, 'Failed to load voucher details. Please try again.');
@@ -167,7 +154,7 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
                 deletionReason: deleteReason,
             };
 
-            await VoucherApi.deleteVoucher(voucherWithReason, userRole);
+            await (VoucherApi as any).deleteVoucher(voucherWithReason, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -205,7 +192,7 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            const approvedVoucher = await VoucherApi.approveVoucher(selectedVoucher.voucherId, userRole);
+            const approvedVoucher = await (VoucherApi as any).approveVoucher(selectedVoucher.voucherId, userRole);
             setSelectedVoucher(approvedVoucher);
             setFlashNotification({
                 title: 'Success!',
@@ -244,7 +231,11 @@ export default function EditVoucherPage({ params }: EditVoucherPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            const deniedVoucher = await VoucherApi.denyVoucher(selectedVoucher.voucherId, approverMessage, userRole);
+            const deniedVoucher = await (VoucherApi as any).denyVoucher(
+                selectedVoucher.voucherId,
+                approverMessage,
+                userRole
+            );
             setSelectedVoucher(deniedVoucher);
             setFlashNotification({
                 title: 'Success!',

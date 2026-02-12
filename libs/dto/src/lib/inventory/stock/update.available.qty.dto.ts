@@ -9,5 +9,5 @@ export class UpdateAvailableQtyDto {
         type: Number,
     })
     @IsNumber()
-    qty: number;
+    qty!: number;
 }

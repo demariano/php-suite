@@ -278,7 +278,7 @@ export default function CreateStockPurchaseOrderPage() {
         if (!formData.purchaseOrderDetails || formData.purchaseOrderDetails.length === 0) {
             errors.push('At least one product must be added to the purchase order.');
         }
-        if (!isAdminUser && (!formData.changeReason || !formData.changeReason.trim())) {
+        if (!isAdminUser && (!formData.changeReason || !formData.changeReason?.trim())) {
             errors.push('Please provide a reason for creating this purchase order.');
         }
 

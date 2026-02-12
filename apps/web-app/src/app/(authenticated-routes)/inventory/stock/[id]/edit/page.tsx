@@ -49,7 +49,7 @@ export default function EditStockPage({ params }: EditStockPageProps) {
                 // SECURITY: Only get user role if BYPASS_AUTH is enabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const stock = await StockApi.getStockById(params.id, userRole);
+                const stock = await (StockApi as any).getStockById(params.id, userRole);
                 setSelectedStock(stock);
                 setActiveTab('details');
             } catch (err) {
@@ -147,7 +147,7 @@ export default function EditStockPage({ params }: EditStockPageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await StockApi.deleteStock(selectedStock, userRole);
+            await (StockApi as any).deleteStock(selectedStock, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -180,7 +180,7 @@ export default function EditStockPage({ params }: EditStockPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            const approvedStock = await StockApi.approveStock(selectedStock.stockId!, userRole);
+            const approvedStock = await (StockApi as any).approveStock(selectedStock.stockId!, userRole);
             setSelectedStock(approvedStock);
             setFlashNotification({
                 title: 'Success!',
@@ -218,7 +218,7 @@ export default function EditStockPage({ params }: EditStockPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            const deniedStock = await StockApi.denyStock(selectedStock.stockId!, approverMessage, userRole);
+            const deniedStock = await (StockApi as any).denyStock(selectedStock.stockId!, approverMessage, userRole);
             setSelectedStock(deniedStock);
             setFlashNotification({
                 title: 'Success!',
@@ -260,7 +260,7 @@ export default function EditStockPage({ params }: EditStockPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to convert the stock
-            const result = await StockApi.convertStock(selectedStock.stockId!, convertDto, userRole);
+            const result = await (StockApi as any).convertStock(selectedStock.stockId!, convertDto, userRole);
 
             // Update local state with the source stock (which has been updated)
             setSelectedStock(result.sourceStock);

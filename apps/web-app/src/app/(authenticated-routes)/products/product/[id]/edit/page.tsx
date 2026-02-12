@@ -24,7 +24,7 @@ interface EditProductPageProps {
 export default function EditProductPage({ params }: EditProductPageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedProduct, setSelectedProduct] = useState<ProductDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [showReactivateConfirm, setShowReactivateConfirm] = useState(false);
     const [showDenyDialog, setShowDenyDialog] = useState(false);
@@ -46,7 +46,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
                 // This prevents role parameter leakage when bypass auth is disabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const product = await ProductApi.getProductById(params.id, userRole);
+                const product = await (ProductApi as any).getProductById(params.id, userRole);
                 setSelectedProduct(product);
             } catch (err) {
                 console.error('Error fetching product:', err);
@@ -137,7 +137,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await ProductApi.deleteProduct(selectedProduct, deletionReason, userRole);
+            await (ProductApi as any).deleteProduct(selectedProduct, deletionReason, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -224,7 +224,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            await ProductApi.approveProduct(selectedProduct.productId, userRole);
+            await (ProductApi as any).approveProduct(selectedProduct.productId, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -262,7 +262,7 @@ export default function EditProductPage({ params }: EditProductPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            await ProductApi.denyProduct(selectedProduct.productId, approverMessage, userRole);
+            await (ProductApi as any).denyProduct(selectedProduct.productId, approverMessage, userRole);
 
             setFlashNotification({
                 title: 'Success!',

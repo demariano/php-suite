@@ -42,7 +42,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const terms = await TermsApi.getTermsById(params.id, userRole);
+                const terms = await (TermsApi as any).getTermsById(params.id, userRole);
                 setSelectedTerms(terms);
                 setActiveTab('details');
             } catch (err) {
@@ -125,7 +125,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await TermsApi.deleteTerms(selectedTerms.termsId, deletionReason, userRole);
+            await (TermsApi as any).deleteTerms(selectedTerms.termsId, deletionReason, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -154,7 +154,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-            const approvedTerms = await TermsApi.approveTerms(selectedTerms.termsId, userRole);
+            const approvedTerms = await (TermsApi as any).approveTerms(selectedTerms.termsId, userRole);
             setSelectedTerms(approvedTerms);
             setFlashNotification({
                 title: 'Success!',
@@ -188,7 +188,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-            const deniedTerms = await TermsApi.denyTerms(selectedTerms.termsId, approverMessage, userRole);
+            const deniedTerms = await (TermsApi as any).denyTerms(selectedTerms.termsId, approverMessage, userRole);
             setSelectedTerms(deniedTerms);
             setFlashNotification({
                 title: 'Success!',
@@ -234,7 +234,7 @@ export default function EditTermsPage({ params }: EditTermsPageProps) {
                 changeReason: selectedTerms.changeReason,
             };
 
-            const updatedTerms = await TermsApi.updateTerms(params.id, reactivatedTerms, userRole);
+            const updatedTerms = await (TermsApi as any).updateTerms(params.id, reactivatedTerms, userRole);
             setSelectedTerms(updatedTerms);
             setFlashNotification({
                 title: 'Success!',

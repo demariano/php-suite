@@ -47,7 +47,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                 // This prevents role parameter leakage when bypass auth is disabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const invoice = await InvoiceApi.getInvoiceById(params.id, userRole);
+                const invoice = await (InvoiceApi as any).getInvoiceById(params.id, userRole);
                 setSelectedInvoice(invoice);
 
                 setActiveTab('details');
@@ -157,7 +157,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await InvoiceApi.deleteInvoice(selectedInvoice, userRole);
+            await (InvoiceApi as any).deleteInvoice(selectedInvoice, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -195,7 +195,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            const approvedInvoice = await InvoiceApi.approveInvoice(selectedInvoice.invoiceId, userRole);
+            const approvedInvoice = await (InvoiceApi as any).approveInvoice(selectedInvoice.invoiceId, userRole);
             setSelectedInvoice(approvedInvoice);
             setFlashNotification({
                 title: 'Success!',
@@ -234,7 +234,11 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            const deniedInvoice = await InvoiceApi.denyInvoice(selectedInvoice.invoiceId, approverMessage, userRole);
+            const deniedInvoice = await (InvoiceApi as any).denyInvoice(
+                selectedInvoice.invoiceId,
+                approverMessage,
+                userRole
+            );
             setSelectedInvoice(deniedInvoice);
             setFlashNotification({
                 title: 'Success!',
@@ -292,7 +296,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                     : undefined;
 
             // Delete the draft invoice (this will restore stock)
-            await InvoiceApi.deleteInvoice(selectedInvoice, userRole);
+            await (InvoiceApi as any).deleteInvoice(selectedInvoice, userRole);
 
             setFlashNotification({
                 title: 'Draft Deleted',
@@ -510,7 +514,7 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
                                         ? authedUser?.userRole
                                         : undefined;
 
-                                const submittedInvoice = await InvoiceApi.submitDraft(params.id, userRole);
+                                const submittedInvoice = await (InvoiceApi as any).submitDraft(params.id, userRole);
 
                                 setFlashNotification({
                                     title: 'Success!',

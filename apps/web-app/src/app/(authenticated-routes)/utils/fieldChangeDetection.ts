@@ -83,7 +83,8 @@ export function isFieldChanged(
     fieldName: string,
     originalValue: any,
     newValue: any,
-    forApprovalVersion?: Record<string, unknown>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    forApprovalVersion?: any
 ): boolean {
     // Exclude metadata/ID fields from change detection
     if (isExcludedField(fieldName)) {
@@ -122,8 +123,10 @@ export function isFieldChanged(
  * @returns A function that can be called with a field name to check if it changed
  */
 export function createFieldChangeDetector(
-    originalRecord: Record<string, unknown> | null | undefined,
-    forApprovalVersion?: Record<string, unknown>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    originalRecord: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    forApprovalVersion?: any
 ): (fieldName: string) => boolean {
     return (fieldName: string): boolean => {
         // Return false (no changes) if originalRecord is null/undefined (create mode)

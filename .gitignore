@@ -69,3 +69,7 @@ my-localstack-data/*
 *.local
 # Playwright MCP
 .playwright-mcp/
+# Playwright E2E
+e2e/.seed-data.json
+playwright-report/
+test-results/

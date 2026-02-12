@@ -41,7 +41,7 @@ export default function TermsForm({
 
     const currentStatus = selectedTerms?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = useMemo(
-        () => (selectedTerms?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        () => (selectedTerms?.forApprovalVersion ?? {}) as any,
         [selectedTerms?.forApprovalVersion]
     );
 
@@ -50,8 +50,8 @@ export default function TermsForm({
     const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION;
 
     const isFieldChanged = createFieldChangeDetector(
-        (selectedTerms ?? {}) as Record<string, unknown>,
-        (selectedTerms?.forApprovalVersion as Record<string, unknown>) ?? undefined
+        (selectedTerms ?? {}) as any,
+        (selectedTerms?.forApprovalVersion as any) ?? undefined
     );
 
     const renderReadOnlyField = (label: string, value: any, fieldName?: string) => {
@@ -119,11 +119,11 @@ export default function TermsForm({
 
         const errors: string[] = [];
 
-        if (!formData.termsName.trim()) {
+        if (!formData.termsName?.trim()) {
             errors.push('Terms Name is required.');
         }
 
-        if (!formData.days || formData.days.trim() === '') {
+        if (!formData.days || formData.days?.trim() === '') {
             errors.push('Days is required.');
         } else {
             const daysNum = parseInt(formData.days);
@@ -132,7 +132,7 @@ export default function TermsForm({
             }
         }
 
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -159,7 +159,7 @@ export default function TermsForm({
                 termsName: formData.termsName,
                 days: parseInt(formData.days),
                 status: newStatus,
-                changeReason: formData.changeReason.trim() || undefined,
+                changeReason: formData.changeReason?.trim() || undefined,
             } as TermsDto;
             onSave(updatedTerms);
         }

@@ -5,14 +5,13 @@ import { ILayout } from '../types/layout';
 import './global.scss';
 
 export const metadata = DEFAULT_METADATA;
+export const dynamic = 'force-dynamic';
 
 const RootLayout: NextPage<ILayout> = async ({ children }) => {
     return (
         <html lang="en">
-            <body>
-                {children}
-            </body>
+            <body>{children}</body>
         </html>
     );
-}
+};
 export default RootLayout;

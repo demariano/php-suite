@@ -24,12 +24,12 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
     const [isTransitioned, setIsTransitioned] = useState(false);
 
     useEffect(() => {
-        // on initial load - run auth check 
-        authCheck(pathname);
+        // on initial load - run auth check
+        authCheck(pathname || '');
 
         const handleRouteChange = () => {
             handleTransition();
-            authCheck(pathname);
+            authCheck(pathname || '');
         };
 
         handleRouteChange();
@@ -48,8 +48,7 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
             const decoded = JSON.parse(atob(token.split('.')[1]));
 
             return decoded.exp * 1000 < Date.now();
-        }
-        catch(err) {
+        } catch (err) {
             return true;
         }
     };
@@ -60,7 +59,7 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 
     function authCheck(url: string) {
         setIsTransitioned(false);
-        // redirect to login page if accessing a private page and not logged in 
+        // redirect to login page if accessing a private page and not logged in
         const publicPaths = [ROUTES.AUTH_LOGIN, ROUTES.AUTH_SIGNUP];
 
         const path = url.split('?')[0];
@@ -71,14 +70,11 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
         }
     }
 
-    return isTransitioned
-        ? null
-        : <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }} >
+    return isTransitioned ? null : (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             {children}
-        </motion.div>;
-}
+        </motion.div>
+    );
+};
 
 export default ProtectedRoute;

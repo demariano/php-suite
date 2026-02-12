@@ -9,7 +9,7 @@ export interface TerritoryManagerDto {
     contactNo?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     deletionReason?: string;
     approverMessage?: string;
@@ -20,5 +20,5 @@ export interface CreateTerritoryManagerDto {
     contactNo?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }

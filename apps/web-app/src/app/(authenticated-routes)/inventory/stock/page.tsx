@@ -56,7 +56,7 @@ export default function StocksMainPage() {
             }
             // Branch 3: Show all records
             else {
-                response = await StockApi.getStocks(pageSize, validDirection, validCursor, userRole);
+                response = await (StockApi as any).getStocks(pageSize, validDirection, validCursor, userRole);
             }
 
             setStocks(response.data || []);

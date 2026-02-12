@@ -42,7 +42,7 @@ export default function EditProductPriceTypePage({ params }: EditProductPriceTyp
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const productPriceType = await ProductPriceTypeApi.getProductPriceTypeById(params.id, userRole);
+                const productPriceType = await (ProductPriceTypeApi as any).getProductPriceTypeById(params.id, userRole);
                 setSelectedProductPriceType(productPriceType);
                 setActiveTab('details');
             } catch (err) {
@@ -130,7 +130,7 @@ export default function EditProductPriceTypePage({ params }: EditProductPriceTyp
                     ? authedUser?.userRole
                     : undefined;
 
-            await ProductPriceTypeApi.deleteProductPriceType(selectedProductPriceType, userRole);
+            await (ProductPriceTypeApi as any).deleteProductPriceType(selectedProductPriceType, userRole);
 
             setFlashNotification({
                 title: 'Success!',

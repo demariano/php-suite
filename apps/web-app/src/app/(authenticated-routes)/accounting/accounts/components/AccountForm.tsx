@@ -10,10 +10,12 @@ interface AccountFormProps {
     successMessage: string | null;
     onSave: (account: AccountsDto) => void;
     onDelete: () => void;
-    onReactivate: () => void;
+    onReactivate?: () => void;
     onCancel: () => void;
     isAdminUser: boolean;
     isReadOnly?: boolean;
+    onApprove?: () => void;
+    onDeny?: () => void;
 }
 
 const initialFormState = {
@@ -95,7 +97,7 @@ export default function AccountForm({
     const validateForm = () => {
         const errors: string[] = [];
 
-        if (!formData.accountName.trim()) {
+        if (!formData.accountName?.trim()) {
             errors.push('Account name is required.');
         }
 
@@ -103,7 +105,7 @@ export default function AccountForm({
             errors.push('Account type is required.');
         }
 
-        if (requiresChangeReason && !formData.changeReason.trim()) {
+        if (requiresChangeReason && !formData.changeReason?.trim()) {
             errors.push('Change reason is required when updating this account.');
         }
 
@@ -119,10 +121,10 @@ export default function AccountForm({
         event.preventDefault();
         if (!validateForm()) return;
 
-        const changeReasonValue = formData.changeReason.trim();
+        const changeReasonValue = formData.changeReason?.trim();
         const payload: AccountsDto = {
             accountingId: selectedAccount?.accountingId || '',
-            accountName: formData.accountName.trim(),
+            accountName: formData.accountName?.trim(),
             accountType: formData.accountType as AccountTypeEnum,
             subAccounts: formData.subAccounts,
             status: isCreateMode

@@ -92,7 +92,7 @@ export default function CategoryForm({
 
     const currentStatus = selectedCategory?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = useMemo(
-        () => (selectedCategory?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        () => (selectedCategory?.forApprovalVersion ?? {}) as any,
         [selectedCategory?.forApprovalVersion]
     );
 
@@ -120,8 +120,8 @@ export default function CategoryForm({
 
     // Use shared field change detection utility
     const isFieldChanged = createFieldChangeDetector(
-        (selectedCategory ?? {}) as Record<string, unknown>,
-        (selectedCategory?.forApprovalVersion as Record<string, unknown>) ?? undefined
+        (selectedCategory ?? {}) as any,
+        (selectedCategory?.forApprovalVersion as any) ?? undefined
     );
 
     // Helper function to render read-only field with highlighting
@@ -194,7 +194,7 @@ export default function CategoryForm({
             const updatedCategory = {
                 ...selectedCategory,
                 productCategoryName: formData.productCategoryName,
-                changeReason: !isAdminUser ? formData.changeReason.trim() || undefined : selectedCategory?.changeReason,
+                changeReason: !isAdminUser ? formData.changeReason?.trim() || undefined : selectedCategory?.changeReason,
             };
             onSave(updatedCategory as ProductCategoryDto);
         }

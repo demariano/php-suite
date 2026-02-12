@@ -46,7 +46,7 @@ export default function CreatePaymentPage() {
                     chequeClearStatus: payment.chequeClearStatus,
                     paymentDetails: payment.paymentDetails,
                     paymentInvoiceDetails: payment.paymentInvoiceDetails,
-                },
+                } as any,
                 userRole
             );
 
@@ -127,7 +127,7 @@ export default function CreatePaymentPage() {
                     isLoading={isLoading}
                     activeTab="details"
                     onTabChange={() => {}} // Not used in create mode
-                    onSave={handleSave}
+                    onSave={handleSave as any}
                     onDelete={handleDelete}
                     onApprove={handleApprove}
                     onDeny={handleDeny}

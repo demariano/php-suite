@@ -45,7 +45,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
                 // This prevents role parameter leakage when bypass auth is disabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const category = await ProductApi.getProductCategoryById(params.id, userRole);
+                const category = await (ProductApi as any).getProductCategoryById(params.id, userRole);
                 setSelectedCategory(category);
             } catch (err) {
                 console.error('Error fetching category:', err);
@@ -126,7 +126,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
             // This prevents role parameter leakage in production
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-            await ProductApi.deleteProductCategory(selectedCategory, deletionReason, userRole);
+            await (ProductApi as any).deleteProductCategory(selectedCategory, deletionReason, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -208,7 +208,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            await ProductApi.approveProductCategory(selectedCategory.productCategoryId, userRole);
+            await (ProductApi as any).approveProductCategory(selectedCategory.productCategoryId, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -246,7 +246,7 @@ export default function EditCategoryPage({ params }: EditCategoryPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            await ProductApi.denyProductCategory(selectedCategory.productCategoryId, approverMessage, userRole);
+            await (ProductApi as any).denyProductCategory(selectedCategory.productCategoryId, approverMessage, userRole);
 
             setFlashNotification({
                 title: 'Success!',

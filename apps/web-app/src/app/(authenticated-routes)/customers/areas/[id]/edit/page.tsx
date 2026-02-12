@@ -44,7 +44,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                 // SECURITY: Only get user role if BYPASS_AUTH is enabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const area = await AreaApi.getAreaById(params.id, userRole);
+                const area = await (AreaApi as any).getAreaById(params.id, userRole);
                 setSelectedArea(area);
             } catch (err) {
                 console.error('Error fetching area:', err);
@@ -133,7 +133,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await AreaApi.deleteArea(selectedArea, userRole);
+            await (AreaApi as any).deleteArea(selectedArea, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -164,7 +164,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            await AreaApi.approveArea(selectedArea.areaId, userRole);
+            await (AreaApi as any).approveArea(selectedArea.areaId, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -200,7 +200,7 @@ export default function EditAreaPage({ params }: EditAreaPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            await AreaApi.denyArea(selectedArea.areaId, approverMessage, userRole);
+            await (AreaApi as any).denyArea(selectedArea.areaId, approverMessage, userRole);
 
             setFlashNotification({
                 title: 'Success!',

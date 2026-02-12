@@ -1,17 +1,17 @@
 'use client';
 
 import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } from '@components-web';
-import { SupplierDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
 interface SupplierTableRow {
-    supplierId: string;
-    supplierName: string;
-    email: string;
-    phone: string;
-    contactPerson: string;
+    supplierId?: string;
+    supplierName?: string;
+    email?: string;
+    phone?: string;
+    contactPerson?: string;
     status: ReactNode;
-    latestActivity: ReactNode;
+    latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
+    [key: string]: unknown;
 }
 
 interface SupplierTableProps {
@@ -19,7 +19,7 @@ interface SupplierTableProps {
     tableData: SupplierTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (supplier: SupplierDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;
@@ -80,7 +80,20 @@ export default function SupplierTable({
                                             {supplier.contactPerson || '-'}
                                         </td>
                                         <td className="px-6 py-5">{supplier.status}</td>
-                                        <td className="px-6 py-5 text-sm">{supplier.latestActivity}</td>
+                                        <td className="px-6 py-5 text-sm">
+                                            {supplier.latestActivity ? (
+                                                <span
+                                                    className={`px-2 py-1 rounded ${supplier.latestActivity.style.bgColor} ${supplier.latestActivity.style.textColor}`}
+                                                    title={supplier.latestActivity.text}
+                                                >
+                                                    {supplier.latestActivity.text.length > 50
+                                                        ? `${supplier.latestActivity.text.substring(0, 50)}...`
+                                                        : supplier.latestActivity.text}
+                                                </span>
+                                            ) : (
+                                                '-'
+                                            )}
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
@@ -132,10 +145,20 @@ export default function SupplierTable({
                                     <dt className="font-medium text-gray-500">Contact Person</dt>
                                     <dd className="mt-1 text-gray-900">{supplier.contactPerson || '-'}</dd>
                                 </div>
-                                <div>
-                                    <dt className="font-medium text-gray-500">Latest Activity</dt>
-                                    <dd className="mt-1">{supplier.latestActivity}</dd>
-                                </div>
+                                {supplier.latestActivity && (
+                                    <div>
+                                        <dt className="font-medium text-gray-500">Latest Activity</dt>
+                                        <dd className="mt-1">
+                                            <span
+                                                className={`px-2 py-1 rounded text-xs ${supplier.latestActivity.style.bgColor} ${supplier.latestActivity.style.textColor}`}
+                                            >
+                                                {supplier.latestActivity.text.length > 60
+                                                    ? `${supplier.latestActivity.text.substring(0, 60)}...`
+                                                    : supplier.latestActivity.text}
+                                            </span>
+                                        </dd>
+                                    </div>
+                                )}
                             </dl>
                         </button>
                     ))

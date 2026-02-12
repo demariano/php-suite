@@ -1,8 +1,10 @@
 import {
     InventoryEventDto,
+    PageDto,
     RawMaterialsPurchaseOrderDetailDto,
     RawMaterialsPurchaseOrderDto,
     RawMaterialsPurchaseOrderStatusEnum,
+    RawMaterialsStockDto,
 } from '@dto';
 import {
     RawMaterialsPurchaseOrderDatabaseServiceAbstract,
@@ -52,12 +54,36 @@ export class RawMaterialsAutoOrderService {
             }
 
             for (const rawMaterial of rawMaterialsPerUnit.rawMaterials) {
-                const rawMaterialStock = await this.rawMaterialsStockDatabaseService.findRecordById(
-                    rawMaterial.rawMaterialId
-                );
-                if (!rawMaterialStock || (rawMaterialStock.qty || 0) < rawMaterial.quantity) {
+                // Sum total stock across ALL stock records for this raw material (paginated)
+                let totalStock = 0;
+                let cursorPointer = '';
+                let hasMore = true;
+
+                while (hasMore) {
+                    const stockPage: PageDto<RawMaterialsStockDto> =
+                        await this.rawMaterialsStockDatabaseService.findRecordsByRawMaterialIdPagination(
+                            100,
+                            rawMaterial.rawMaterialId,
+                            'next',
+                            cursorPointer
+                        );
+
+                    totalStock += stockPage.data.reduce((sum, s) => sum + (s.qty || 0), 0);
+
+                    if (stockPage.nextCursorPointer) {
+                        cursorPointer = JSON.stringify(stockPage.nextCursorPointer);
+                    } else {
+                        hasMore = false;
+                    }
+                }
+
+                // Calculate total needed: per-unit requirement × ordered quantity
+                const totalNeeded = rawMaterial.quantity * (detail.qty || 0);
+
+                if (totalStock < totalNeeded) {
+                    const shortfall = totalNeeded - totalStock;
                     this.logger.log(
-                        `Raw material ${rawMaterial.rawMaterialName} is below threshold. Creating purchase order.`
+                        `Raw material ${rawMaterial.rawMaterialName} stock insufficient (have: ${totalStock}, need: ${totalNeeded}). Ordering shortfall: ${shortfall}.`
                     );
                     const rawMaterialPurchaseOrder: RawMaterialsPurchaseOrderDetailDto =
                         new RawMaterialsPurchaseOrderDetailDto();
@@ -65,11 +91,11 @@ export class RawMaterialsAutoOrderService {
                     rawMaterialPurchaseOrder.rawMaterialName = rawMaterial.rawMaterialName;
                     rawMaterialPurchaseOrder.rawMaterialUnitId = rawMaterial.rawMaterialUnitId;
                     rawMaterialPurchaseOrder.rawMaterialUnitName = rawMaterial.rawMaterialUnitName;
-                    rawMaterialPurchaseOrder.qty = rawMaterial.quantity * (detail.qty || 0);
+                    rawMaterialPurchaseOrder.qty = shortfall;
                     rawMaterialToOrder.push(rawMaterialPurchaseOrder);
                 } else {
                     this.logger.log(
-                        `Raw material ${rawMaterial.rawMaterialName} has sufficient stock. No purchase order needed.`
+                        `Raw material ${rawMaterial.rawMaterialName} has sufficient stock (have: ${totalStock}, need: ${totalNeeded}). No purchase order needed.`
                     );
                 }
             }

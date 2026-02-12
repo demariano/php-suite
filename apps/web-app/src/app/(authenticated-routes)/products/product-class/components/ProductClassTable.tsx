@@ -4,7 +4,7 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { ProductClassDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type ProductClassTableRow = ProductClassDto & {
+type ProductClassTableRow = Omit<ProductClassDto, 'status'> & {
     status: ReactNode;
     className: string;
     latestActivity: string;
@@ -15,7 +15,7 @@ interface ProductClassTableProps {
     tableData: ProductClassTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (productClass: ProductClassDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;
@@ -136,7 +136,6 @@ export default function ProductClassTable({
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
         </>

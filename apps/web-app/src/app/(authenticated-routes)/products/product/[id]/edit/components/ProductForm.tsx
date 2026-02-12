@@ -40,8 +40,8 @@ interface ProductFormProps {
     onDeny?: () => void;
     isAdminUser: boolean;
     isLoading: boolean;
-    activeTab: 'details' | 'logs';
-    onTabChange: (tab: 'details' | 'logs') => void;
+    activeTab: 'details' | 'approval' | 'logs';
+    onTabChange: (tab: 'details' | 'approval' | 'logs') => void;
 }
 
 const STATUS_TAB_CLASSES: Record<StatusEnum, string> = {
@@ -141,7 +141,7 @@ export default function ProductForm({
 
     const currentStatus = selectedProduct?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = useMemo(
-        () => (selectedProduct?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        () => (selectedProduct?.forApprovalVersion ?? {}) as any,
         [selectedProduct?.forApprovalVersion]
     );
 
@@ -199,7 +199,7 @@ export default function ProductForm({
 
         const errors: string[] = [];
 
-        if (!formData.productName.trim()) {
+        if (!formData.productName?.trim()) {
             errors.push('Product name is required.');
         }
 
@@ -211,7 +211,7 @@ export default function ProductForm({
             errors.push('Product class is required.');
         }
 
-        if (!isCreateMode && !isAdminUser && !formData.changeReason.trim()) {
+        if (!isCreateMode && !isAdminUser && !formData.changeReason?.trim()) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -235,7 +235,7 @@ export default function ProductForm({
         const payload: ProductDto = {
             ...(selectedProduct ?? {}),
             productId: selectedProduct?.productId ?? '',
-            productName: formData.productName.trim(),
+            productName: formData.productName?.trim(),
             productCategoryId: selectedCategory?.id ?? '',
             productCategoryName: selectedCategory?.name ?? '',
             productClassId: selectedClass?.id ?? '',
@@ -246,7 +246,7 @@ export default function ProductForm({
             status: selectedProduct?.status ?? StatusEnum.NEW_RECORD,
             changeReason:
                 !isCreateMode && !isAdminUser
-                    ? formData.changeReason.trim() || undefined
+                    ? formData.changeReason?.trim() || undefined
                     : selectedProduct?.changeReason,
         };
 
@@ -376,8 +376,8 @@ export default function ProductForm({
 
     // Use shared field change detection utility
     const isFieldChanged = createFieldChangeDetector(
-        selectedProduct as Record<string, unknown>,
-        (selectedProduct?.forApprovalVersion as Record<string, unknown>) ?? undefined
+        selectedProduct as any,
+        (selectedProduct?.forApprovalVersion as any) ?? undefined
     );
 
     // Helper function to render read-only field with highlighting

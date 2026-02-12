@@ -41,7 +41,7 @@ export interface CreateVoucherDto {
     voucherDate: string;
     voucherAmount: number;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     deletionReason?: string;
     status?: StatusEnum;

@@ -86,8 +86,11 @@ export default function TerritoryManagerTable({
                                     <tr>
                                         <td colSpan={headers.length}>
                                             <EmptyTableState
-                                                searchQuery={searchQuery}
-                                                entityName="territory managers"
+                                                message={
+                                                    searchQuery
+                                                        ? `No territory managers found matching "${searchQuery}"`
+                                                        : 'No territory managers found'
+                                                }
                                             />
                                         </td>
                                     </tr>

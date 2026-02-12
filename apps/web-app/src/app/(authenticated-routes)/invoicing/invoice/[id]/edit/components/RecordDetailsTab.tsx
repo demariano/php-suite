@@ -16,7 +16,7 @@ import {
     SalesTypeDto,
     StatusEnum,
     TermsDto,
-    useSessionStore
+    useSessionStore,
 } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../../../components';
@@ -418,13 +418,13 @@ export default function RecordDetailsTab({
         [StatusEnum.DRAFT]: 'bg-blue-100 text-blue-800',
     };
 
-    const PAYMENT_STATUS_BADGE_CLASSES: Record<PaymentStatusEnum, string> = {
+    const PAYMENT_STATUS_BADGE_CLASSES: Partial<Record<PaymentStatusEnum, string>> = {
         [PaymentStatusEnum.PENDING]: 'bg-yellow-100 text-yellow-800',
         [PaymentStatusEnum.PARTIAL]: 'bg-orange-100 text-orange-800',
         [PaymentStatusEnum.PAID]: 'bg-green-100 text-green-800',
     };
 
-    const PRINT_STATUS_BADGE_CLASSES: Record<PrintStatusEnum, string> = {
+    const PRINT_STATUS_BADGE_CLASSES: Partial<Record<PrintStatusEnum, string>> = {
         [PrintStatusEnum.COMPLETED]: 'bg-green-100 text-green-800',
         [PrintStatusEnum.PENDING]: 'bg-gray-100 text-gray-800',
     };

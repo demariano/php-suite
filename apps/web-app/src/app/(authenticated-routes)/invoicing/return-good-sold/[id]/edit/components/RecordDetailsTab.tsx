@@ -73,7 +73,7 @@ export default function RecordDetailsTab({
             const userRole = (env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development')
               ? authedUser?.userRole
               : undefined;
-            const area = await AreaApi.getAreaById(invoice.areaId, userRole);
+            const area = await (AreaApi as any).getAreaById(invoice.areaId, userRole);
             areaPrefixId = area.idPrefix;
           } catch (error) {
             console.error('Failed to fetch area prefix:', error);

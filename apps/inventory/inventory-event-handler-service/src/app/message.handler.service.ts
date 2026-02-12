@@ -148,32 +148,14 @@ export class MessageHandlerService {
                 }
                 break;
 
-            case InventoryEventEnum.INVOICE_APPROVED:
-                // Handle batch stock quantity updates from invoice approval (deduct quantities)
-                if (inventoryEvent.stockItems && inventoryEvent.stockItems.length > 0) {
-                    this.logger.log(
-                        `Handling invoice approval with ${inventoryEvent.stockItems.length} stock items to update`
-                    );
+            case InventoryEventEnum.STOCK_ADJUSTMENT:
+                // Handle atomic stock adjustment: restore first, then deduct (guaranteed order within single message)
+                this.logger.log('Handling stock adjustment event');
 
-                    for (const item of inventoryEvent.stockItems) {
-                        if (item.stockId && item.qty !== undefined) {
-                            this.logger.log(`Processing stock deduction - Stock ID: ${item.stockId}, Qty: ${item.qty}`);
-                            await this.stockQtyHandlerService.handle(item.stockId, item.qty, false);
-                        }
-                    }
-
-                    this.logger.log('Completed processing all stock deductions for invoice approval');
-                }
-                break;
-
-            case InventoryEventEnum.INVOICE_DELETED:
-                // Handle batch stock quantity updates from invoice deletion (restore quantities)
-                if (inventoryEvent.stockItems && inventoryEvent.stockItems.length > 0) {
-                    this.logger.log(
-                        `Handling invoice deletion with ${inventoryEvent.stockItems.length} stock items to restore`
-                    );
-
-                    for (const item of inventoryEvent.stockItems) {
+                // Step 1: Restore stock items (add back to stock)
+                if (inventoryEvent.stockItemsToRestore && inventoryEvent.stockItemsToRestore.length > 0) {
+                    this.logger.log(`Restoring ${inventoryEvent.stockItemsToRestore.length} stock items`);
+                    for (const item of inventoryEvent.stockItemsToRestore) {
                         if (item.stockId && item.qty !== undefined) {
                             this.logger.log(
                                 `Processing stock restoration - Stock ID: ${item.stockId}, Qty: ${item.qty}`
@@ -181,9 +163,20 @@ export class MessageHandlerService {
                             await this.stockQtyHandlerService.handle(item.stockId, item.qty, true);
                         }
                     }
-
-                    this.logger.log('Completed processing all stock restorations for invoice deletion');
                 }
+
+                // Step 2: Deduct stock items (subtract from stock)
+                if (inventoryEvent.stockItemsToDeduct && inventoryEvent.stockItemsToDeduct.length > 0) {
+                    this.logger.log(`Deducting ${inventoryEvent.stockItemsToDeduct.length} stock items`);
+                    for (const item of inventoryEvent.stockItemsToDeduct) {
+                        if (item.stockId && item.qty !== undefined) {
+                            this.logger.log(`Processing stock deduction - Stock ID: ${item.stockId}, Qty: ${item.qty}`);
+                            await this.stockQtyHandlerService.handle(item.stockId, item.qty, false);
+                        }
+                    }
+                }
+
+                this.logger.log('Completed processing stock adjustment event');
                 break;
 
             default:

@@ -16,6 +16,8 @@ interface AreaFormProps {
     isAdminUser?: boolean;
     areaId?: string;
     onReactivate?: () => void;
+  onApprove?: () => void;
+  onDeny?: () => void;
 }
 
 export default function AreaForm({
@@ -153,12 +155,12 @@ export default function AreaForm({
         }
 
         // Validate idPrefix - must be at least 3 characters if provided
-        if (formData.idPrefix && formData.idPrefix.trim().length > 0 && formData.idPrefix.trim().length < 3) {
+        if (formData.idPrefix && formData.idPrefix?.trim().length > 0 && formData.idPrefix?.trim().length < 3) {
             errors.push('ID Prefix must be at least 3 letters.');
         }
 
         // Validate change reason for non-create mode (only required for non-admin users)
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -179,11 +181,11 @@ export default function AreaForm({
                 status,
                 changeReason: '',
                 towns: towns.filter((town) => town.trim() !== ''),
-                idPrefix: formData.idPrefix.trim() || undefined,
+                idPrefix: formData.idPrefix?.trim() || undefined,
             };
             onSave(newArea as AreaDto);
         } else {
-            const trimmedReason = formData.changeReason.trim();
+            const trimmedReason = formData.changeReason?.trim();
             const updatedArea = {
                 ...selectedArea,
                 areaName: areaName.trim(),
@@ -192,7 +194,7 @@ export default function AreaForm({
                 status: selectedArea?.status ?? StatusEnum.ACTIVE,
                 changeReason: trimmedReason,
                 towns: towns.filter((town) => town.trim() !== ''),
-                idPrefix: formData.idPrefix.trim() || undefined,
+                idPrefix: formData.idPrefix?.trim() || undefined,
             };
             onSave(updatedArea as AreaDto);
         }

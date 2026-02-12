@@ -17,6 +17,7 @@ import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InvoiceStockDeltaService } from '../../../shared/invoice-stock-delta.service';
 import { CreateReturnGoodSoldCommand } from './create.command';
 
 // Constants
@@ -37,7 +38,8 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
         private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
     ) {}
 
     async execute(
@@ -153,6 +155,13 @@ export class CreateReturnGoodSoldHandler implements ICommandHandler<CreateReturn
                 await this.invoiceDatabaseService.updateRecord(invoiceRecord);
                 this.logger.log(
                     `Invoice ${invoiceRecord.invoiceId} updated successfully based on approved return good sold `
+                );
+
+                // Send stock adjustment event: restore original items, deduct modified items
+                await this.invoiceStockDeltaService.applyStockDeltas(
+                    command.returnGoodSoldDto.originalInvoiceDetails || [],
+                    command.returnGoodSoldDto.modifiedInvoiceDetails || [],
+                    `RGS-CREATE-${invoiceRecord.invoiceId}`
                 );
             } else {
                 this.logger.warn(

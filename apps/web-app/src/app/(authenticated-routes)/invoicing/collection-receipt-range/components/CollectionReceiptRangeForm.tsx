@@ -15,6 +15,8 @@ interface CollectionReceiptRangeFormProps {
   isAdminUser?: boolean;
   onCancelReceipt?: () => void;
   showCancelReceiptButton?: boolean;
+  onApprove?: () => void;
+  onDeny?: () => void;
 }
 
 export default function CollectionReceiptRangeForm({
@@ -58,11 +60,11 @@ export default function CollectionReceiptRangeForm({
 
     const errors: string[] = [];
 
-    if (!formData.areaId.trim()) {
+    if (!formData.areaId?.trim()) {
       errors.push('Area is required.');
     }
 
-    if (!formData.areaName.trim()) {
+    if (!formData.areaName?.trim()) {
       errors.push('Area name is required.');
     }
 

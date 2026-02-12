@@ -16,7 +16,8 @@ import {
     useLocalStore,
 } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import { ChangeReasonField } from '../../../components';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import DatePicker from '../../../components/DatePicker';
 import SelectionField from '../../../customers/customer/components/SelectionField';
 import CustomerSearchableSelectionModal from '../../../search-modals/CustomerSearchableSelectionModal';
@@ -77,6 +78,12 @@ export default function ContractForm({
         [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(currentStatus);
     const pendingDeals = ((selectedContract?.forApprovalVersion as { contractProductDeals?: ContractDealsDetailsDto[] })
         ?.contractProductDeals || []) as ContractDealsDetailsDto[];
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pendingVersion = (selectedContract?.forApprovalVersion || {}) as Record<string, any>;
+    const isFieldChangedFn = createFieldChangeDetector(selectedContract, selectedContract?.forApprovalVersion);
+    const showApprovalUI = !isCreateMode && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showDeletionCard = !isCreateMode && currentStatus === StatusEnum.FOR_DELETION;
 
     type ApprovalRowStatus = 'added' | 'modified' | 'removed' | 'unchanged';
     const getDealKey = (deal: ContractDealsDetailsDto) => `${deal.productId}|${deal.productDealId}`;
@@ -256,11 +263,11 @@ export default function ContractForm({
         }
 
         // Contract number validation - only required in update mode (it's auto-generated in create mode)
-        if (!isCreateMode && !formData.contractNo.trim()) {
+        if (!isCreateMode && !formData.contractNo?.trim()) {
             errors.push('Contract number is required.');
         }
 
-        if (!formData.contractName.trim()) {
+        if (!formData.contractName?.trim()) {
             errors.push('Contract name is required.');
         }
 
@@ -277,7 +284,7 @@ export default function ContractForm({
         }
 
         // Validate change reason for non-admin users when not in create mode
-        if (!isCreateMode && !isAdminUser && !formData.changeReason.trim()) {
+        if (!isCreateMode && !isAdminUser && !formData.changeReason?.trim()) {
             errors.push('Change reason is required.');
         }
 
@@ -382,7 +389,7 @@ export default function ContractForm({
                     env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
                         ? authedUser?.userRole
                         : undefined;
-                const area = await AreaApi.getAreaById(customer.areaId, userRole);
+                const area = await (AreaApi as any).getAreaById(customer.areaId, userRole);
                 setAreaPrefixId(area.idPrefix);
             } catch (error) {
                 console.error('Failed to fetch area prefix:', error);
@@ -460,7 +467,7 @@ export default function ContractForm({
                     ? authedUser?.userRole
                     : undefined;
 
-            const updatedContract = await ContractApi.computeRebate(selectedContract.contractId, userRole);
+            const updatedContract = await (ContractApi as any).computeRebate(selectedContract.contractId, userRole);
 
             // Update form data with the updated contract
             if (updatedContract) {
@@ -560,6 +567,60 @@ export default function ContractForm({
         return false;
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const formatValue = (value: any): string => {
+        if (value === null || value === undefined || value === '') return '-';
+        if (typeof value === 'number') {
+            return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        return String(value);
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderReadOnlyField = (label: string, value: any, colorClass = 'bg-blue-500') => (
+        <div className="space-y-1">
+            <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                {label}
+            </label>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500">
+                {formatValue(value)}
+            </div>
+        </div>
+    );
+
+    const renderFieldWithInlineDiff = (
+        label: string,
+        fieldName: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        currentValue: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pendingValue: any,
+        colorClass = 'bg-blue-500'
+    ) => {
+        const hasChange = isFieldChangedFn(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentValue)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingValue)}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return renderReadOnlyField(label, displayValue, colorClass);
+    };
+
     return (
         <>
             <form onSubmit={handleSubmit}>
@@ -588,13 +649,35 @@ export default function ContractForm({
                     </div>
                 )}
 
-                {/* Change Reason Field - First component when displayed */}
-                {!isCreateMode && !isAdminUser && (
+                {/* Change Reason for Users Editing ACTIVE records */}
+                {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                     <ChangeReasonField
                         value={formData.changeReason}
                         onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
-                        disabled={selectedContract?.status !== StatusEnum.ACTIVE}
+                        disabled={false}
                     />
+                )}
+
+                {/* Change Reason Read-Only for approval states */}
+                {(showApprovalUI || showDeletionCard) && selectedContract?.changeReason && (
+                    <ChangeReasonReadOnly value={selectedContract.changeReason} />
+                )}
+
+                {/* Deletion Approval Card */}
+                {showDeletionCard && (
+                    <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                                🗑️
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-red-800 m-0">Record Marked for Deletion</h3>
+                                <p className="text-sm text-red-700">
+                                    This record has been marked for deletion and is awaiting approval.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Record Fields Container */}
@@ -620,6 +703,18 @@ export default function ContractForm({
                                 </div>
                                 <h3 className="text-base font-bold text-blue-600">Basic Information</h3>
                             </div>
+                            {showApprovalUI ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {renderFieldWithInlineDiff('Customer', 'customerName', selectedContract?.customerName, pendingVersion.customerName)}
+                                    {renderFieldWithInlineDiff('Contract Name', 'contractName', selectedContract?.contractName, pendingVersion.contractName)}
+                                    {renderReadOnlyField('Contract Number', selectedContract?.contractNo)}
+                                    {renderFieldWithInlineDiff('Contract Amount', 'contractAmount', selectedContract?.contractAmount, pendingVersion.contractAmount)}
+                                    {renderFieldWithInlineDiff('Start Date', 'startDate', selectedContract?.startDate, pendingVersion.startDate)}
+                                    {renderFieldWithInlineDiff('End Date', 'endDate', selectedContract?.endDate, pendingVersion.endDate)}
+                                    {renderFieldWithInlineDiff('Contract Type', 'contractType', selectedContract?.contractType, pendingVersion.contractType)}
+                                </div>
+                            ) : (
+                            <>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Customer */}
                                 <div className="group">
@@ -765,6 +860,8 @@ export default function ContractForm({
                                     </select>
                                 </div>
                             </div>
+                            </>
+                            )}
                         </div>
                     </div>
 
@@ -1033,6 +1130,16 @@ export default function ContractForm({
                                 </div>
                                 <h3 className="text-base font-bold text-blue-600">Rebate Information</h3>
                             </div>
+                            {showApprovalUI ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {renderFieldWithInlineDiff('Rebate Type', 'rebateType', selectedContract?.rebateType, pendingVersion.rebateType)}
+                                    {renderFieldWithInlineDiff('Rebate Percentage', 'rebatePercentage', selectedContract?.rebatePercentage, pendingVersion.rebatePercentage)}
+                                    {renderFieldWithInlineDiff('Rebate Amount', 'rebateAmount', selectedContract?.rebateAmount, pendingVersion.rebateAmount)}
+                                    {renderReadOnlyField('Rebate Claimed Amount', selectedContract?.rebateClaimedAmount)}
+                                    {renderReadOnlyField('Rebate Claimed Status', selectedContract?.rebateClaimedStatus || '-')}
+                                </div>
+                            ) : (
+                            <>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Rebate Type */}
                                 <div className="group">
@@ -1262,6 +1369,8 @@ export default function ContractForm({
                                     </button>
                                 </div>
                             )}
+                            </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -1311,9 +1420,7 @@ export default function ContractForm({
                                         d="M6 18L18 6M6 6l12 12"
                                     />
                                 </svg>
-                                {selectedContract?.status === StatusEnum.FOR_DELETION
-                                    ? 'Deny Deletion'
-                                    : 'Deny Changes'}
+                                Deny
                             </button>
                             <button
                                 type="button"
@@ -1332,9 +1439,7 @@ export default function ContractForm({
                                         d="M5 13l4 4L19 7"
                                     />
                                 </svg>
-                                {selectedContract?.status === StatusEnum.FOR_DELETION
-                                    ? 'Approve Deletion'
-                                    : 'Approve Changes'}
+                                Approve
                             </button>
                         </div>
                     ) : (

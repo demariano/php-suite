@@ -55,7 +55,7 @@ export default function CreateRawMaterialsLocationPage() {
     setError(null);
     try {
       await RawMaterialsLocationApi.createRawMaterialsLocation({
-        rawMaterialsLocationName: formData.rawMaterialsLocationName.trim(),
+        rawMaterialsLocationName: formData.rawMaterialsLocationName?.trim(),
         changeReason: formData.changeReason?.trim() || undefined,
         status: StatusEnum.NEW_RECORD
       } as RawMaterialsLocationDto, userRole);

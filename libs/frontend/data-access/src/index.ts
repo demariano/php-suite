@@ -56,6 +56,7 @@ export * from './types/return-good-sold.types';
 export * from './types/sales-type.types';
 export * from './types/status.enum';
 export * from './types/stock-delivery.types';
+export * from './types/stock-location.types';
 export * from './types/stock-purchase-order.types';
 export * from './types/stock-type.types';
 export * from './types/stock.types';
@@ -95,3 +96,4 @@ export * from './config/env';
 
 // Export utilities
 export * from './utils/errorExtraction';
+

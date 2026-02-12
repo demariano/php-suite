@@ -4,14 +4,18 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { CustomerDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type CustomerTableRow = CustomerDto & { status: ReactNode };
+type CustomerTableRow = Omit<CustomerDto, 'status'> & {
+    status: ReactNode;
+    latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
+    [key: string]: unknown;
+};
 
 interface CustomerTableProps {
     isLoading: boolean;
     tableData: CustomerTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (customer: CustomerDto) => void;
+    onRowClick: (customer: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: any;
@@ -43,10 +47,7 @@ export default function CustomerTable({
             ) : (
                 <div className="hidden sm:block bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
                     {tableData.length === 0 ? (
-                        <EmptyTableState
-                            message="No customers found. Try adjusting your search or filters."
-                            variant="desktop"
-                        />
+                        <EmptyTableState message="No customers found. Try adjusting your search or filters." />
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full border-collapse">
@@ -105,13 +106,12 @@ export default function CustomerTable({
 
             {/* Pagination */}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">
-                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} variant="desktop" />
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                 <PaginationButtons
                     onPrevious={onPrevious}
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
 
@@ -123,10 +123,7 @@ export default function CustomerTable({
             ) : (
                 <div className="sm:hidden space-y-4">
                     {tableData.length === 0 ? (
-                        <EmptyTableState
-                            message="No customers found. Try adjusting your search or filters."
-                            variant="mobile"
-                        />
+                        <EmptyTableState message="No customers found. Try adjusting your search or filters." />
                     ) : (
                         <>
                             {tableData.map((customer) => (
@@ -176,13 +173,12 @@ export default function CustomerTable({
                                 </button>
                             ))}
                             <div className="space-y-3 bg-gray-50 border-t border-gray-200 px-4 py-5 rounded-xl">
-                                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} variant="mobile" />
+                                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                                 <PaginationButtons
                                     onPrevious={onPrevious}
                                     onNext={onNext}
                                     hasPrevious={!!prevCursor}
                                     hasNext={!!nextCursor}
-                                    variant="mobile"
                                 />
                             </div>
                         </>

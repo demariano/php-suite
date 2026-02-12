@@ -11,6 +11,7 @@ import { MessageQueueAwsLibService, MessageQueueLibModule } from '@message-queue
 import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 
+import { InvoiceStockDeltaService } from '../shared/invoice-stock-delta.service';
 import { ApproveReturnGoodSoldHandler } from './command/approve-record/approve.handler';
 import { CreateReturnGoodSoldHandler } from './command/create/create.handler';
 import { DeleteReturnGoodSoldHandler } from './command/delete/delete.handler';
@@ -62,6 +63,7 @@ import { ReturnGoodSoldController } from './return.good.sold.controller';
         DeleteReturnGoodSoldHandler,
         ApproveReturnGoodSoldHandler,
         DenyReturnGoodSoldHandler,
+        InvoiceStockDeltaService,
     ],
 })
 export class ReturnGoodSoldModule {}

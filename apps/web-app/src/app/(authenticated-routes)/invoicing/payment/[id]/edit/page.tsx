@@ -45,7 +45,7 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
                 // This prevents role parameter leakage when bypass auth is disabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const payment = await PaymentApi.getPaymentById(params.id, userRole);
+                const payment = await (PaymentApi as any).getPaymentById(params.id, userRole);
                 setSelectedPayment(payment);
 
                 setActiveTab('details');
@@ -150,7 +150,7 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await PaymentApi.deletePayment(selectedPayment, userRole);
+            await (PaymentApi as any).deletePayment(selectedPayment, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -184,7 +184,7 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            const approvedPayment = await PaymentApi.approvePayment(selectedPayment.paymentId, userRole);
+            const approvedPayment = await (PaymentApi as any).approvePayment(selectedPayment.paymentId, userRole);
             setSelectedPayment(approvedPayment);
             setFlashNotification({
                 title: 'Success!',
@@ -223,7 +223,7 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            const deniedPayment = await PaymentApi.denyPayment(selectedPayment.paymentId, approverMessage, userRole);
+            const deniedPayment = await (PaymentApi as any).denyPayment(selectedPayment.paymentId, approverMessage, userRole);
             setSelectedPayment(deniedPayment);
             setFlashNotification({
                 title: 'Success!',

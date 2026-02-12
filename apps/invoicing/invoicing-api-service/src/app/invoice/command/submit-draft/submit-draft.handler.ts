@@ -1,20 +1,12 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
-import {
-    ContractInvoiceEventEnum,
-    ErrorResponseDto,
-    InventoryEventDto,
-    InventoryEventEnum,
-    InvoiceDto,
-    ResponseDto,
-    StatusEnum,
-    UserRole,
-} from '@dto';
+import { ContractInvoiceEventEnum, ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { ContractDatabaseServiceAbstract, InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InvoiceStockDeltaService } from '../../../shared/invoice-stock-delta.service';
 import { SubmitDraftCommand } from './submit-draft.command';
 
 // Constants
@@ -34,7 +26,8 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
         private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
     ) {}
 
     async execute(command: SubmitDraftCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -90,16 +83,10 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
             // Send events if status is ACTIVE (GAP #2 fix)
             if (updatedInvoice.status === StatusEnum.ACTIVE) {
                 // Send inventory event to deduct stock
-                const stockItems = updatedInvoice.invoiceDetails?.map((detail) => ({
-                    stockId: detail.stockId as string,
-                    qty: detail.qty as number,
-                }));
-
-                const inventoryEvent: InventoryEventDto = {
-                    inventoryEvent: InventoryEventEnum.INVOICE_APPROVED,
-                    stockItems: stockItems,
-                };
-                await this.sendInventoryEventMessage(inventoryEvent);
+                await this.invoiceStockDeltaService.sendFullDeduction(
+                    updatedInvoice.invoiceDetails,
+                    updatedInvoice.invoiceId
+                );
                 this.logger.log(`Inventory event sent for submitted draft invoice: ${updatedInvoice.invoiceId}`);
 
                 // Send contract event if invoice has contract
@@ -248,14 +235,6 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
                 `Current: ${currentInvoicedAmount}, New invoice: ${newInvoiceAmount}, ` +
                 `Projected: ${projectedInvoicedAmount}`
         );
-    }
-
-    /**
-     * Sends inventory event to SQS queue
-     */
-    private async sendInventoryEventMessage(inventoryEvent: InventoryEventDto): Promise<void> {
-        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
-        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
     }
 
     /**

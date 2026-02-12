@@ -22,7 +22,7 @@ export default function CreateTerritoryManagerPage() {
         ? authedUser?.userRole
         : undefined;
 
-      await TerritoryManagerApi.createTerritoryManager({
+      await (TerritoryManagerApi as any).createTerritoryManager({
         territoryManagerName: territoryManager.territoryManagerName,
         contactNo: territoryManager.contactNo,
         status: territoryManager.status

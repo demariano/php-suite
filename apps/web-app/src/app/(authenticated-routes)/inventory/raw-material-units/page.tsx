@@ -76,7 +76,7 @@ export default function RawMaterialUnitsMainPage() {
             }
             // Branch 4: Show all records (no filters)
             else {
-                response = await RawMaterialUnitApi.getRawMaterialUnits(size, validDirection, validCursor, userRole);
+                response = await (RawMaterialUnitApi as any).getRawMaterialUnits(size, validDirection, validCursor, userRole);
             }
 
             if (response && response.data) {

@@ -45,7 +45,7 @@ export default function StockPurchaseOrderPage() {
             const paginationCursor = direction && serializedCursor ? serializedCursor : undefined;
 
             const trimmedQuery = searchQuery.trim();
-            let response;
+            let response: any;
 
             // 4-branch API logic: all filtering done on backend
             if (statusFilter !== 'ALL' && trimmedQuery.length > 0) {
@@ -224,7 +224,7 @@ export default function StockPurchaseOrderPage() {
                     stockPurchaseOrderId: purchaseOrder.stockPurchaseOrderId,
                     docNo: purchaseOrder.docNo,
                     poDate: purchaseOrder.poDate,
-                    stockSupplierName: purchaseOrder.stockSupplierName,
+                    stockSupplierName: purchaseOrder.supplierName,
                     status: purchaseOrder.status || StatusEnum.ACTIVE,
                     poStatus: purchaseOrder.poStatus || StockPurchaseOrderStatusEnum.PENDING,
                     latestActivity: parsed && activityStyle ? { text: parsed.activity, style: activityStyle } : null,

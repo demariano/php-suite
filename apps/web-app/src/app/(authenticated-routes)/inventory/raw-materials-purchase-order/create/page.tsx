@@ -5,7 +5,6 @@ import { RawMaterialsPurchaseOrderApi } from '@data-access/api/raw-materials-pur
 import {
     RawMaterialApi,
     RawMaterialDto,
-    RawMaterialsPurchaseOrderDto,
     RawMaterialsPurchaseOrderStatusEnum,
     RawMaterialSupplierApi,
     RawMaterialSupplierDto,
@@ -37,7 +36,7 @@ export default function CreateRawMaterialsPurchaseOrderPage() {
     const [selectedRawMaterial, setSelectedRawMaterial] = useState<RawMaterialDto | null>(null);
     const [selectedUnit, setSelectedUnit] = useState<RawMaterialUnitDto | null>(null);
 
-    const [formData, setFormData] = useState<RawMaterialsPurchaseOrderDto>({
+    const [formData, setFormData] = useState<any>({
         docNo: '',
         poDate: new Date().toISOString().split('T')[0],
         rawMaterialSupplierId: '',
@@ -67,10 +66,10 @@ export default function CreateRawMaterialsPurchaseOrderPage() {
             setIsLoadingSuppliers(true);
             const response = await RawMaterialSupplierApi.getRawMaterialSuppliers(100);
             if (response?.statusCode === 200 && response.data) {
-                const pageData = response.data as { data: RawMaterialSupplierDto[] };
-                const activeSuppliers = (Array.isArray(pageData.data) ? pageData.data : (pageData as any)).filter(
-                    (s: RawMaterialSupplierDto) => s.status === StatusEnum.ACTIVE
-                );
+                const pageData = response.data as any;
+                const activeSuppliers = (
+                    Array.isArray(pageData.data) ? pageData.data : Array.isArray(pageData) ? pageData : []
+                ).filter((s: RawMaterialSupplierDto) => s.status === StatusEnum.ACTIVE);
                 setSuppliers(activeSuppliers);
             }
         } catch (error) {
@@ -85,7 +84,7 @@ export default function CreateRawMaterialsPurchaseOrderPage() {
             setIsLoadingRawMaterials(true);
             const response = await RawMaterialApi.getRawMaterials(100);
             if (response?.statusCode === 200 && response.data) {
-                const pageData = response.data as { data: RawMaterialDto[] };
+                const pageData = response.data as any;
                 const activeRawMaterials = (Array.isArray(pageData.data) ? pageData.data : (pageData as any)).filter(
                     (rm: RawMaterialDto) => rm.status === StatusEnum.ACTIVE
                 );
@@ -121,16 +120,16 @@ export default function CreateRawMaterialsPurchaseOrderPage() {
         setSelectedRawMaterial(rawMaterial);
         // Auto-populate unit from raw material but allow override
         const defaultUnit: RawMaterialUnitDto = {
-            rawMaterialUnitId: rawMaterial.rawMaterialUnitId || '',
-            rawMaterialUnitName: rawMaterial.rawMaterialUnitName || '',
+            rawMaterialUnitId: (rawMaterial as any).rawMaterialUnitId || '',
+            rawMaterialUnitName: (rawMaterial as any).rawMaterialUnitName || '',
         };
         setSelectedUnit(defaultUnit);
         setNewOrderItem({
             ...newOrderItem,
             rawMaterialId: rawMaterial.rawMaterialId || '',
             rawMaterialName: rawMaterial.rawMaterialName || '',
-            rawMaterialUnitId: rawMaterial.rawMaterialUnitId || '',
-            rawMaterialUnitName: rawMaterial.rawMaterialUnitName || '',
+            rawMaterialUnitId: (rawMaterial as any).rawMaterialUnitId || '',
+            rawMaterialUnitName: (rawMaterial as any).rawMaterialUnitName || '',
         });
         setShowRawMaterialModal(false);
     };
@@ -184,7 +183,7 @@ export default function CreateRawMaterialsPurchaseOrderPage() {
         }
 
         const duplicate = formData.purchaseOrderDetails?.some(
-            (item) => item.rawMaterialId === newOrderItem.rawMaterialId
+            (item: any) => item.rawMaterialId === newOrderItem.rawMaterialId
         );
 
         if (duplicate) {
@@ -219,7 +218,7 @@ export default function CreateRawMaterialsPurchaseOrderPage() {
     const handleRemoveOrderItem = (index: number) => {
         setFormData({
             ...formData,
-            purchaseOrderDetails: formData.purchaseOrderDetails?.filter((_, i) => i !== index) || [],
+            purchaseOrderDetails: formData.purchaseOrderDetails?.filter((_: any, i: number) => i !== index) || [],
         });
     };
 
@@ -238,7 +237,7 @@ export default function CreateRawMaterialsPurchaseOrderPage() {
         if (!formData.purchaseOrderDetails || formData.purchaseOrderDetails.length === 0) {
             errors.push('At least one raw material must be added to the purchase order.');
         }
-        if (!isAdminUser && (!formData.changeReason || !formData.changeReason.trim())) {
+        if (!isAdminUser && (!formData.changeReason || !formData.changeReason?.trim())) {
             errors.push('Please provide a reason for creating this purchase order.');
         }
 
@@ -522,7 +521,7 @@ export default function CreateRawMaterialsPurchaseOrderPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {formData.purchaseOrderDetails.map((item, index) => (
+                                    {formData.purchaseOrderDetails.map((item: any, index: number) => (
                                         <tr key={index} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                                 {item.rawMaterialName}

@@ -44,7 +44,7 @@ export default function InvoicesTab({ contractId, invoicedAmount }: InvoicesTabP
     };
 
     const getStatusBadge = (status?: StatusEnum) => {
-        const statusColors: Record<StatusEnum, string> = {
+        const statusColors: Partial<Record<StatusEnum, string>> = {
             [StatusEnum.ACTIVE]: 'bg-green-100 text-green-800',
             [StatusEnum.DRAFT]: 'bg-gray-100 text-gray-800',
             [StatusEnum.FOR_APPROVAL]: 'bg-yellow-100 text-yellow-800',
@@ -55,7 +55,7 @@ export default function InvoicesTab({ contractId, invoicedAmount }: InvoicesTabP
         return (
             <span
                 className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                    statusColors[status || StatusEnum.ACTIVE]
+                    statusColors[status || StatusEnum.ACTIVE] || 'bg-gray-100 text-gray-800'
                 }`}
             >
                 {status || 'ACTIVE'}
@@ -64,7 +64,7 @@ export default function InvoicesTab({ contractId, invoicedAmount }: InvoicesTabP
     };
 
     const getPaymentStatusBadge = (paymentStatus?: PaymentStatusEnum) => {
-        const paymentStatusColors: Record<PaymentStatusEnum, string> = {
+        const paymentStatusColors: Partial<Record<PaymentStatusEnum, string>> = {
             [PaymentStatusEnum.PENDING]: 'bg-orange-100 text-orange-800',
             [PaymentStatusEnum.PARTIAL]: 'bg-yellow-100 text-yellow-800',
             [PaymentStatusEnum.PAID]: 'bg-green-100 text-green-800',
@@ -73,7 +73,7 @@ export default function InvoicesTab({ contractId, invoicedAmount }: InvoicesTabP
         return (
             <span
                 className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                    paymentStatusColors[paymentStatus || PaymentStatusEnum.PENDING]
+                    paymentStatusColors[paymentStatus || PaymentStatusEnum.PENDING] || 'bg-gray-100 text-gray-800'
                 }`}
             >
                 {paymentStatus || 'PENDING'}

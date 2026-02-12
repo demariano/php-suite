@@ -13,6 +13,8 @@ import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../../components/ChangeReasonField';
+import { ChangeReasonReadOnly } from '../../../../components/ChangeReasonReadOnly';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 
 type ActiveTab = 'details' | 'logs';
 
@@ -73,7 +75,7 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
         if (!selectedSupplier.rawMaterialSupplierName?.trim()) {
             errors.push('Supplier Name is required.');
         }
-        if (!isAdminUser && (!selectedSupplier.changeReason || !selectedSupplier.changeReason.trim())) {
+        if (!isAdminUser && (!selectedSupplier.changeReason || !selectedSupplier.changeReason?.trim())) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -90,7 +92,7 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
 
             const updatedPayload: RawMaterialSupplierDto = {
                 ...selectedSupplier,
-                rawMaterialSupplierName: selectedSupplier.rawMaterialSupplierName.trim(),
+                rawMaterialSupplierName: selectedSupplier.rawMaterialSupplierName?.trim(),
                 changeReason: selectedSupplier.changeReason?.trim() || undefined,
                 status: isAdminUser ? StatusEnum.ACTIVE : StatusEnum.FOR_APPROVAL,
             };
@@ -127,7 +129,10 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
 
         try {
             setIsSaving(true);
-            await RawMaterialSupplierApi.approveRawMaterialSupplier(selectedSupplier.rawMaterialSupplierId, userRole);
+            await (RawMaterialSupplierApi as any).approveRawMaterialSupplier(
+                selectedSupplier.rawMaterialSupplierId,
+                userRole
+            );
             setFlashNotification({
                 title: 'Success!',
                 message: 'Raw material supplier approved successfully!',
@@ -155,7 +160,7 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
 
         try {
             setIsSaving(true);
-            await RawMaterialSupplierApi.deleteRawMaterialSupplier(selectedSupplier, userRole);
+            await (RawMaterialSupplierApi as any).deleteRawMaterialSupplier(selectedSupplier, userRole);
             setFlashNotification({
                 title: 'Success!',
                 message: 'Raw material supplier deleted successfully!',
@@ -176,6 +181,10 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
     };
 
     const handleDeleteCancel = () => setShowDeleteDialog(false);
+
+    const handleDeny = () => {
+        setShowDenyDialog(true);
+    };
 
     const handleDenyConfirm = async (reason: string) => {
         if (!selectedSupplier?.rawMaterialSupplierId) return;
@@ -245,6 +254,61 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
     };
 
     const isFormDisabled = !isAdminUser && selectedSupplier?.status !== StatusEnum.ACTIVE;
+
+    const currentStatus = selectedSupplier?.status ?? StatusEnum.ACTIVE;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pendingVersion = (selectedSupplier?.forApprovalVersion || {}) as Record<string, any>;
+    const isFieldChangedFn = createFieldChangeDetector(selectedSupplier, selectedSupplier?.forApprovalVersion);
+    const showApprovalUI = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const formatValue = (value: any): string => {
+        if (value === null || value === undefined || value === '') return '-';
+        return String(value);
+    };
+
+    const renderFieldWithInlineDiff = (
+        label: string,
+        fieldName: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        currentValue: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pendingValue: any,
+        colorClass = 'bg-blue-500'
+    ) => {
+        const hasChange = isFieldChangedFn(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentValue)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingValue)}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return (
+            <div className="space-y-1">
+                <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                    <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                    {label}
+                </label>
+                <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500">
+                    {formatValue(displayValue)}
+                </div>
+            </div>
+        );
+    };
 
     const renderLogsTab = () => (
         <div className="space-y-6 animate-fadeIn">
@@ -458,7 +522,8 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
                                         </div>
                                     )}
 
-                                    {!isAdminUser && (
+                                    {/* Change Reason for Users Editing ACTIVE records */}
+                                    {!isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                                         <ChangeReasonField
                                             value={selectedSupplier.changeReason || ''}
                                             onChange={(e) =>
@@ -466,8 +531,30 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
                                                     prev ? { ...prev, changeReason: e.target.value } : prev
                                                 )
                                             }
-                                            disabled={isFormDisabled}
+                                            disabled={false}
                                         />
+                                    )}
+
+                                    {/* Change Reason Read-Only for approval states */}
+                                    {(showApprovalUI || showDeletionCard) && selectedSupplier?.changeReason && (
+                                        <ChangeReasonReadOnly value={selectedSupplier.changeReason} />
+                                    )}
+
+                                    {/* Deletion Approval Card */}
+                                    {showDeletionCard && (
+                                        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4 mb-6">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                                                    🗑️
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-lg font-bold text-red-800 m-0">Record Marked for Deletion</h3>
+                                                    <p className="text-sm text-red-700">
+                                                        This record has been marked for deletion and is awaiting approval.
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     )}
 
                                     <div className="space-y-6">
@@ -494,35 +581,41 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
                                                     </h3>
                                                 </div>
 
-                                                <div className="grid grid-cols-1 gap-6">
-                                                    <div className="group">
-                                                        <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                                                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                                            Supplier Name
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            value={selectedSupplier.rawMaterialSupplierName || ''}
-                                                            onChange={(e) =>
-                                                                setSelectedSupplier((prev) =>
-                                                                    prev
-                                                                        ? {
-                                                                              ...prev,
-                                                                              rawMaterialSupplierName: e.target.value,
-                                                                          }
-                                                                        : prev
-                                                                )
-                                                            }
-                                                            placeholder="Enter supplier name"
-                                                            disabled={isFormDisabled}
-                                                            className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                                                isFormDisabled
-                                                                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                                                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-md'
-                                                            }`}
-                                                        />
+                                                {showApprovalUI ? (
+                                                    <div className="grid grid-cols-1 gap-6">
+                                                        {renderFieldWithInlineDiff('Supplier Name', 'rawMaterialSupplierName', selectedSupplier?.rawMaterialSupplierName, pendingVersion.rawMaterialSupplierName)}
                                                     </div>
-                                                </div>
+                                                ) : (
+                                                    <div className="grid grid-cols-1 gap-6">
+                                                        <div className="group">
+                                                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                                                Supplier Name
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={selectedSupplier.rawMaterialSupplierName || ''}
+                                                                onChange={(e) =>
+                                                                    setSelectedSupplier((prev) =>
+                                                                        prev
+                                                                            ? {
+                                                                                  ...prev,
+                                                                                  rawMaterialSupplierName: e.target.value,
+                                                                              }
+                                                                            : prev
+                                                                    )
+                                                                }
+                                                                placeholder="Enter supplier name"
+                                                                disabled={isFormDisabled}
+                                                                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                                    isFormDisabled
+                                                                        ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                                        : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-md'
+                                                                }`}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -549,12 +642,35 @@ export default function EditRawMaterialSupplierPage({ params }: { params: { rawM
                                                 </svg>
                                                 Delete
                                             </button>
+                                        ) : isAdminUser && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(currentStatus) ? (
+                                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDeny(); }}
+                                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                                >
+                                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                    Deny
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleApprove(); }}
+                                                    className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                                >
+                                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    Approve
+                                                </button>
+                                            </div>
                                         ) : (
                                             <div className="hidden sm:block" />
                                         )}
 
                                         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                                            {(selectedSupplier.status === StatusEnum.ACTIVE || isAdminUser) && (
+                                            {selectedSupplier.status === StatusEnum.ACTIVE && (
                                                 <button
                                                     type="button"
                                                     onClick={handleSave}

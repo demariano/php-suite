@@ -4,7 +4,7 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { StockDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type StockTableRow = StockDto & {
+type StockTableRow = Omit<StockDto, 'status'> & {
     status: ReactNode;
     latestActivity: string;
 };
@@ -14,7 +14,7 @@ interface StockTableProps {
     tableData: StockTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (stock: StockDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;

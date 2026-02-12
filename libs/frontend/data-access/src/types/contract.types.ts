@@ -28,7 +28,7 @@ export interface ContractDto {
     paymentStatus?: PaymentStatusEnum;
     deliveredAmount?: number;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
     status?: StatusEnum;
@@ -59,7 +59,7 @@ export interface CreateContractDto {
     paymentStatus?: PaymentStatusEnum;
     deliveredAmount?: number;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     status?: StatusEnum;
     invoicedAmount?: number;

@@ -46,7 +46,7 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
                 // This prevents role parameter leakage when bypass auth is disabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const customer = await CustomerApi.getCustomerById(params.id, userRole);
+                const customer = await (CustomerApi as any).getCustomerById(params.id, userRole);
                 setSelectedCustomer(customer);
 
                 // Always default to details tab (approval is now handled inline)
@@ -168,7 +168,7 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
                 changeReason: deletionReason,
             };
 
-            await CustomerApi.deleteCustomer(customerWithReason, userRole);
+            await (CustomerApi as any).deleteCustomer(customerWithReason, userRole);
 
             const isAdmin = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
             setFlashNotification({
@@ -261,7 +261,7 @@ export default function EditCustomerPage({ params }: EditCustomerPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            const approvedCustomer = await CustomerApi.approveCustomer(selectedCustomer.customerId, userRole);
+            const approvedCustomer = await (CustomerApi as any).approveCustomer(selectedCustomer.customerId, userRole);
             setSelectedCustomer(approvedCustomer);
             setFlashNotification({
                 title: 'Success!',

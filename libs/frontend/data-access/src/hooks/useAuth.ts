@@ -107,9 +107,13 @@ const useAuth = () => {
         const bypassToken = 'bypass-auth-token';
         const publicPaths = [ROUTES.AUTH_LOGIN, ROUTES.AUTH_SIGNUP];
 
+        // Preserve existing role from localStorage hydration (e.g. from role selector).
+        // This allows the selected role to persist across page reloads in dev mode.
+        const currentRole = useLocalStore.getState().authedUser?.userRole;
+
         updateAuthedUser({
             email: bypassEmail,
-            userRole: 'SUPER_ADMIN' as any,
+            userRole: currentRole || ('SUPER_ADMIN' as any),
         });
 
         Cookies.set(STORAGE_KEY.ACCESS_TOKEN, bypassToken);
@@ -117,7 +121,7 @@ const useAuth = () => {
         Cookies.set(STORAGE_KEY.ID_TOKEN, bypassToken);
 
         // redirect to dashboard if on public path
-        if (publicPaths.includes(pathname.split('?')[0])) {
+        if (publicPaths.includes((pathname || '').split('?')[0])) {
             router.replace(ROUTES.DASHBOARD);
         }
     };

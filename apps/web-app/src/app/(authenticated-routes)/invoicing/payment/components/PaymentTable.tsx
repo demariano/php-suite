@@ -4,7 +4,7 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { PaymentDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type PaymentTableRow = PaymentDto & {
+type PaymentTableRow = Omit<PaymentDto, 'status' | 'paymentAmount'> & {
     status: ReactNode;
     paymentAmount: string;
     latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
@@ -15,7 +15,7 @@ interface PaymentTableProps {
     tableData: PaymentTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (payment: PaymentDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;
@@ -124,7 +124,6 @@ export default function PaymentTable({
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
 
@@ -187,7 +186,6 @@ export default function PaymentTable({
                         onNext={onNext}
                         hasPrevious={!!prevCursor}
                         hasNext={!!nextCursor}
-                        variant="mobile"
                     />
                 </div>
             )}

@@ -9,7 +9,7 @@ export interface AreaDto {
     status?: StatusEnum;
     towns?: string[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     territoryManagerId?: string;
     territoryManagerName?: string;
     changeReason?: string;
@@ -20,9 +20,11 @@ export interface AreaDto {
 export interface CreateAreaDto {
     areaName?: string;
     status?: StatusEnum;
+    towns?: string[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     territoryManagerId?: string;
     territoryManagerName?: string;
+    changeReason?: string;
     idPrefix?: string;
 }

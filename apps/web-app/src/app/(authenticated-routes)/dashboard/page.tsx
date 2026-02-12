@@ -8,7 +8,8 @@ import { useState } from 'react';
 const DashboardPage = () => {
     const [message, setMessage] = useState('test message');
     // const { sendMessage, isConnected } = useWebsocket(); // DISABLED: WebSocket integration temporarily disabled
-    const sendMessage = () => {}; // Placeholder function
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const sendMessage = (_msg?: string) => {}; // Placeholder function
     const isConnected = false; // Placeholder value
     const { getSecret } = useSecrets();
 
@@ -20,37 +21,36 @@ const DashboardPage = () => {
     };
 
     return (
-        <div className='space-y-10'>
-            <Typography variant='h2'>
-                DashboardPage
-            </Typography>
+        <div className="space-y-10">
+            <Typography variant="h2">DashboardPage</Typography>
 
             <div>
                 <Tab
                     options={[
                         { label: 'Athletes', value: 'athletes' },
-                        { label: 'Coaches', value: 'coaches' }
+                        { label: 'Coaches', value: 'coaches' },
                     ]}
-                    activeTab='athletes'
+                    activeTab="athletes"
                     onChange={() => {
                         // TODO: Implement tab change
-                    }} />
+                    }}
+                />
             </div>
 
-            <div className='flex gap-2 items-center'>
-                <Input
-                    value={message}
-                    onChange={(val) => setMessage(val as string)}
+            <div className="flex gap-2 items-center">
+                <Input value={message} onChange={(val) => setMessage(val as string)} />
+                <Button
+                    onClick={() => {
+                        sendMessage(message);
+                    }}
+                    label="Send WebSocket Message"
                 />
-                <Button onClick={() => {
-                    sendMessage(message);
-                }} label='Send WebSocket Message' />
             </div>
             <Typography>WebSocket Connected: {isConnected ? '✅ Yes' : '❌ No'} (DISABLED)</Typography>
 
-            <Button onClick={handleClick} label='Get Secret' />
+            <Button onClick={handleClick} label="Get Secret" />
         </div>
-    )
-}
+    );
+};
 
 export default DashboardPage;

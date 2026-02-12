@@ -13,6 +13,8 @@ import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { FormEvent, useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../../components';
+import { ChangeReasonReadOnly } from '../../../../components/ChangeReasonReadOnly';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 
 type ActiveTab = 'details' | 'logs';
 
@@ -135,6 +137,41 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
     const isFormDisabled = !isAdminUser && selectedRawMaterial?.status !== StatusEnum.ACTIVE;
 
+    const currentStatus = selectedRawMaterial?.status as StatusEnum;
+    const forApprovalVersion = (selectedRawMaterial as any)?.forApprovalVersion;
+    const isFieldChanged = createFieldChangeDetector(selectedRawMaterial, forApprovalVersion);
+    const showApprovalUI = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION;
+
+    const formatValue = (val: any): string => {
+        if (val === null || val === undefined || val === '') return '(empty)';
+        return String(val);
+    };
+
+    const renderFieldWithInlineDiff = (label: string, currentVal: any, fieldName: string) => {
+        const changed = isFieldChanged(fieldName);
+        const pendingVal = changed ? forApprovalVersion?.[fieldName] : undefined;
+        return (
+            <div className="group">
+                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                    {label}
+                </label>
+                {changed ? (
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentVal)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingVal)}</span>
+                    </div>
+                ) : (
+                    <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500">
+                        {formatValue(currentVal)}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     useEffect(() => {
         const fetchRawMaterial = async () => {
             if (!params.rawMaterialId) return;
@@ -143,7 +180,7 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                 setIsLoading(true);
                 setError(null);
 
-                const rawMaterial = await RawMaterialApi.getRawMaterialById(params.rawMaterialId, userRole);
+                const rawMaterial = await (RawMaterialApi as any).getRawMaterialById(params.rawMaterialId, userRole);
                 setSelectedRawMaterial(rawMaterial);
                 setActiveTab('details');
             } catch (err: any) {
@@ -201,7 +238,7 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
 
         try {
             setIsSaving(true);
-            await RawMaterialApi.approveRawMaterial(selectedRawMaterial.rawMaterialId, userRole);
+            await (RawMaterialApi as any).approveRawMaterial(selectedRawMaterial.rawMaterialId, userRole);
             setFlashNotification({
                 title: 'Success!',
                 message: 'Raw material approved successfully!',
@@ -250,7 +287,7 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
         try {
             setIsSaving(true);
             setError(null);
-            await RawMaterialApi.deleteRawMaterial(selectedRawMaterial.rawMaterialId, userRole);
+            await (RawMaterialApi as any).deleteRawMaterial(selectedRawMaterial.rawMaterialId, userRole);
             setFlashNotification({
                 title: 'Success!',
                 message: 'Raw material deleted successfully!',
@@ -574,7 +611,7 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                                             </div>
 
                                             <div className="grid grid-cols-1 gap-6">
-                                                {!isAdminUser && (
+                                                {!isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                                                     <ChangeReasonField
                                                         value={selectedRawMaterial.changeReason || ''}
                                                         onChange={(e) =>
@@ -586,6 +623,26 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                                                     />
                                                 )}
 
+                                                {(showApprovalUI || showDeletionCard) && selectedRawMaterial.changeReason && (
+                                                    <ChangeReasonReadOnly value={selectedRawMaterial.changeReason} />
+                                                )}
+
+                                                {showDeletionCard && (
+                                                    <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
+                                                        <div className="flex items-center gap-2 text-sm font-bold text-red-700">
+                                                            <span className="text-base">🗑️</span>
+                                                            This record is marked for deletion and is awaiting admin approval.
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {showApprovalUI ? (
+                                                    <>
+                                                        {renderFieldWithInlineDiff('Raw Material Name', selectedRawMaterial.rawMaterialName, 'rawMaterialName')}
+                                                        {renderFieldWithInlineDiff('Description', selectedRawMaterial.description, 'description')}
+                                                    </>
+                                                ) : (
+                                                <>
                                                 <div className="group">
                                                     <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
                                                         <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
@@ -624,12 +681,14 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                                                         className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md"
                                                     />
                                                 </div>
+                                                </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 pt-4">
-                                        {!isFormDisabled && (
+                                        {!isFormDisabled && !showApprovalUI && !showDeletionCard && (
                                             <button
                                                 type="button"
                                                 onClick={() => setShowDeleteConfirm(true)}
@@ -651,9 +710,28 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                                                 Delete
                                             </button>
                                         )}
-                                        {!!isFormDisabled && <div className="hidden sm:block" />}
+                                        {(isFormDisabled || showApprovalUI || showDeletionCard) && <div className="hidden sm:block" />}
 
                                         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                                            {isAdminUser && (showApprovalUI || showDeletionCard) && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDeny}
+                                                        className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                                    >
+                                                        Deny
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleApprove}
+                                                        className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                </>
+                                            )}
+                                            {!showApprovalUI && !showDeletionCard && (
                                             <button
                                                 type="submit"
                                                 disabled={isSaving}
@@ -674,6 +752,7 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                                                 </svg>
                                                 {isSaving ? 'Saving...' : 'Save Changes'}
                                             </button>
+                                            )}
                                             <button
                                                 type="button"
                                                 onClick={handleCancel}

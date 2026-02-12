@@ -8,7 +8,7 @@ export interface CustomerTypeDto {
     customerTypeName?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -17,5 +17,5 @@ export interface CreateCustomerTypeDto {
     customerTypeName?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }

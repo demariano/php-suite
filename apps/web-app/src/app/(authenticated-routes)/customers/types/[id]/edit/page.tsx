@@ -42,7 +42,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const customerType = await CustomerTypeApi.getCustomerTypeById(params.id, userRole);
+                const customerType = await (CustomerTypeApi as any).getCustomerTypeById(params.id, userRole);
                 setSelectedCustomerType(customerType);
                 setActiveTab('details');
             } catch (err) {
@@ -127,7 +127,7 @@ export default function EditCustomerTypePage({ params }: EditCustomerTypePagePro
                     ? authedUser?.userRole
                     : undefined;
 
-            await CustomerTypeApi.deleteCustomerType(selectedCustomerType.customerTypeId, deletionReason, userRole);
+            await (CustomerTypeApi as any).deleteCustomerType(selectedCustomerType.customerTypeId, deletionReason, userRole);
 
             setFlashNotification({
                 title: 'Success!',

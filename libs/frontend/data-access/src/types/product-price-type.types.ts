@@ -9,7 +9,7 @@ export interface ProductPriceTypeDto {
     description?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -19,5 +19,5 @@ export interface CreateProductPriceTypeDto {
     description?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }

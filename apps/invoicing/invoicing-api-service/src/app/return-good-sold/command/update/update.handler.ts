@@ -18,6 +18,7 @@ import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, ForbiddenException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
+import { InvoiceStockDeltaService } from '../../../shared/invoice-stock-delta.service';
 import { UpdateReturnGoodSoldCommand } from './update.command';
 
 // Constants
@@ -36,7 +37,8 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
         private readonly messageQueueService: MessageQueueServiceAbstract,
         private readonly configService: ConfigService,
         @Inject('InvoiceDatabaseService')
-        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract
+        private readonly invoiceDatabaseService: InvoiceDatabaseServiceAbstract,
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
     ) {}
 
     async execute(command: UpdateReturnGoodSoldCommand): Promise<ResponseDto<ReturnGoodSoldDto | ErrorResponseDto>> {
@@ -92,6 +94,9 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
         updateDto: ReturnGoodSoldDto,
         user: UserCognito
     ): Promise<ResponseDto<ReturnGoodSoldDto>> {
+        // Capture the old modifiedInvoiceDetails before overwriting (this is what the invoice currently has)
+        const previousModifiedDetails = existingRecord.modifiedInvoiceDetails || [];
+
         // Apply changes directly
         existingRecord.invoiceId = updateDto.invoiceId;
         existingRecord.customerId = updateDto.customerId;
@@ -137,6 +142,13 @@ export class UpdateReturnGoodSoldHandler implements ICommandHandler<UpdateReturn
         }
 
         this.logger.log(`Return Good Sold updated successfully: ${updatedRecord.returnGoodSoldId}`);
+
+        // Send stock adjustment: previous modified details → new modified details
+        await this.invoiceStockDeltaService.applyStockDeltas(
+            previousModifiedDetails,
+            updatedRecord.modifiedInvoiceDetails || [],
+            `RGS-UPDATE-${updatedRecord.returnGoodSoldId}`
+        );
 
         const invoicePayloads: InvoicePaymentEventDto[] = [];
         const invoicePaymentDto: InvoicePaymentEventDto = {

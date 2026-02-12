@@ -4,7 +4,7 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { StockTypeDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type StockTypeTableRow = StockTypeDto & {
+type StockTypeTableRow = Omit<StockTypeDto, 'status'> & {
     status: ReactNode;
     latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
 };
@@ -14,7 +14,7 @@ interface StockTypeTableProps {
     tableData: StockTypeTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (stockType: StockTypeDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;
@@ -130,7 +130,6 @@ export default function StockTypeTable({
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
 
@@ -184,7 +183,6 @@ export default function StockTypeTable({
                         onNext={onNext}
                         hasPrevious={!!prevCursor}
                         hasNext={!!nextCursor}
-                        variant="mobile"
                     />
                 </div>
             )}

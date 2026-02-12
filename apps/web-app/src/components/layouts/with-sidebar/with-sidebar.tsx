@@ -41,7 +41,7 @@ const WithSidebar = ({ children }: { children: React.ReactNode }) => {
         const mediaQuery = window.matchMedia('(min-width: 640px)');
 
         const handleBreakpointChange = (event: MediaQueryListEvent | MediaQueryList) => {
-            const matches = 'matches' in event ? event.matches : event.matches;
+            const matches = event.matches;
             setIsDesktop(matches);
             setIsSidebarOpen(matches);
         };
@@ -69,15 +69,15 @@ const WithSidebar = ({ children }: { children: React.ReactNode }) => {
 
     const profile = {
         name: authedUser?.userId || 'User',
-        email: authedUser?.email || 'user@example.com'
+        email: authedUser?.email || 'user@example.com',
     };
 
     const navigationMenu = getSidebarNavigation(handleNavigation);
 
     return (
         <div className={styles['sidebar-layout']} data-sidebar-open={isSidebarOpen}>
-            <SimpleSidebar 
-                isToggleDisabled={isDesktop} 
+            <SimpleSidebar
+                isToggleDisabled={isDesktop}
                 isOpen={isDesktop || isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
                 version={version}
@@ -96,7 +96,12 @@ const WithSidebar = ({ children }: { children: React.ReactNode }) => {
                             className="relative z-[80] inline-flex items-center justify-center rounded-md border border-gray-200 bg-white p-2 text-gray-600 shadow-sm transition-colors duration-200 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                         >
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M4 6h16M4 12h16M4 18h16"
+                                />
                             </svg>
                         </button>
                         <div className="relative z-[80]">
@@ -109,12 +114,10 @@ const WithSidebar = ({ children }: { children: React.ReactNode }) => {
                     <Header rightAction={<ProfileHeaderMenu />} />
                 </div>
 
-                <div className="pt-20 sm:pt-8">
-                    {children}
-                </div>
+                <div className="pt-20 sm:pt-8">{children}</div>
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default WithSidebar;

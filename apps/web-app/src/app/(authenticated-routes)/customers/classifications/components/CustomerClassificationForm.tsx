@@ -43,7 +43,7 @@ export default function CustomerClassificationForm({
 
     const currentStatus = selectedCustomerClassification?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = useMemo(
-        () => (selectedCustomerClassification?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        () => (selectedCustomerClassification?.forApprovalVersion ?? {}) as any,
         [selectedCustomerClassification?.forApprovalVersion]
     );
 
@@ -52,8 +52,8 @@ export default function CustomerClassificationForm({
     const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION;
 
     const isFieldChanged = createFieldChangeDetector(
-        (selectedCustomerClassification ?? {}) as Record<string, unknown>,
-        (selectedCustomerClassification?.forApprovalVersion as Record<string, unknown>) ?? undefined
+        (selectedCustomerClassification ?? {}) as any,
+        (selectedCustomerClassification?.forApprovalVersion as any) ?? undefined
     );
 
     const renderReadOnlyField = (label: string, value: unknown, fieldName?: string) => {
@@ -128,7 +128,7 @@ export default function CustomerClassificationForm({
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const customerClassificationName = formData.customerClassificationName.trim();
+        const customerClassificationName = formData.customerClassificationName?.trim();
 
         // Validate required fields
         const errors: string[] = [];
@@ -138,7 +138,7 @@ export default function CustomerClassificationForm({
         }
 
         // Validate change reason for non-create mode (only required for non-admin users)
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -165,7 +165,7 @@ export default function CustomerClassificationForm({
                 ...selectedCustomerClassification,
                 customerClassificationName: customerClassificationName,
                 status: newStatus,
-                changeReason: formData.changeReason.trim() || undefined,
+                changeReason: formData.changeReason?.trim() || undefined,
             } as CustomerClassificationDto;
             onSave(updatedCustomerClassification);
         }

@@ -42,7 +42,7 @@ export default function EditProductClassPage({ params }: EditProductClassPagePro
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const productClass = await ProductClassApi.getProductClassById(params.id, userRole);
+                const productClass = await (ProductClassApi as any).getProductClassById(params.id, userRole);
                 setSelectedProductClass(productClass);
                 setActiveTab('details');
             } catch (err) {
@@ -130,7 +130,7 @@ export default function EditProductClassPage({ params }: EditProductClassPagePro
                     ? authedUser?.userRole
                     : undefined;
 
-            await ProductClassApi.deleteProductClass(selectedProductClass, userRole);
+            await (ProductClassApi as any).deleteProductClass(selectedProductClass, userRole);
 
             setFlashNotification({
                 title: 'Success!',

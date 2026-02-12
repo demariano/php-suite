@@ -31,7 +31,7 @@ export interface ProductDto {
     productDeals?: ProductDealDetailsDto[];
     productUnitPrice?: ProductUnitPriceDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -79,7 +79,7 @@ export interface ProductUnitRawMaterialDto {
     productName?: string;
     rawMaterialsPerUnit?: RawMaterialsPerUnitDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }

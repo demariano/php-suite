@@ -28,7 +28,7 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
 
     const [isLoading, setIsLoading] = useState(false);
     const [selectedAccount, setSelectedAccount] = useState<AccountsDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'approval' | 'logs'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs'>('details');
     const [showDenyDialog, setShowDenyDialog] = useState(false);
 
     const isAdminUser = authedUser?.userRole === 'ADMIN' || authedUser?.userRole === 'SUPER_ADMIN';
@@ -40,21 +40,7 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
                 setIsLoading(true);
                 const account = await AccountApi.getAccountById(params.id, userRoleParam);
                 setSelectedAccount(account);
-
-                if (
-                    isAdminUser &&
-                    account.status &&
-                    [
-                        StatusEnum.FOR_APPROVAL,
-                        StatusEnum.NEW_RECORD,
-                        StatusEnum.FOR_DELETION,
-                        StatusEnum.FOR_DEACTIVATION,
-                    ].includes(account.status)
-                ) {
-                    setActiveTab('approval');
-                } else {
-                    setActiveTab('details');
-                }
+                setActiveTab('details');
             } catch (error) {
                 console.error('Error fetching account details', error);
                 setFlashNotification({
@@ -187,7 +173,11 @@ export default function EditAccountPage({ params }: EditAccountPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            const deniedAccount = await AccountApi.denyAccount(selectedAccount.accountingId, approverMessage, userRole);
+            const deniedAccount = await (AccountApi as any).denyAccount(
+                selectedAccount.accountingId,
+                approverMessage,
+                userRole
+            );
             setSelectedAccount(deniedAccount);
             setFlashNotification({
                 title: 'Success!',

@@ -17,7 +17,7 @@ export interface AccountsDto {
     subAccounts?: string[];
     changeReason?: string;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }
 
 export interface CreateAccountsDto {
@@ -27,5 +27,5 @@ export interface CreateAccountsDto {
     subAccounts?: string[];
     changeReason?: string;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }

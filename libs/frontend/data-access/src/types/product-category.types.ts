@@ -9,7 +9,7 @@ export interface ProductCategoryDto {
     productCategoryName?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -18,5 +18,5 @@ export interface CreateProductCategoryDto {
     productCategoryName?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }

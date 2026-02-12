@@ -42,7 +42,7 @@ export default function EditProductDealPage({ params }: EditProductDealPageProps
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const productDeal = await ProductDealApi.getProductDealById(params.id, userRole);
+                const productDeal = await (ProductDealApi as any).getProductDealById(params.id, userRole);
                 setSelectedProductDeal(productDeal);
                 setActiveTab('details');
             } catch (err) {
@@ -129,7 +129,7 @@ export default function EditProductDealPage({ params }: EditProductDealPageProps
                     ? authedUser?.userRole
                     : undefined;
 
-            await ProductDealApi.deleteProductDeal(selectedProductDeal, userRole);
+            await (ProductDealApi as any).deleteProductDeal(selectedProductDeal, userRole);
 
             setFlashNotification({
                 title: 'Success!',

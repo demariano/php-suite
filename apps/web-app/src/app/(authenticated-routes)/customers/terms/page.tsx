@@ -38,7 +38,7 @@ export default function TermsPage() {
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
             const currentPageSize = customPageSize ?? pageSize;
 
-            let response;
+            let response: any;
             const hasSearch = searchQuery && searchQuery.trim() !== '';
             const hasStatus = statusFilter !== 'ALL';
 
@@ -73,7 +73,7 @@ export default function TermsPage() {
                 );
             } else {
                 // Branch 4: Show all
-                response = await TermsApi.getTerms(currentPageSize, undefined, direction, serializedCursor, userRole);
+                response = await (TermsApi as any).getTerms(currentPageSize, undefined, direction, serializedCursor, userRole);
             }
 
             if (response && response.statusCode === 200 && response.data) {

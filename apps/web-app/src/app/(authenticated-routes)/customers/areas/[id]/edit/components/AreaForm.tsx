@@ -99,7 +99,7 @@ export default function AreaForm({
 
     const currentStatus = selectedArea?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = useMemo(
-        () => (selectedArea?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        () => (selectedArea?.forApprovalVersion ?? {}) as any,
         [selectedArea?.forApprovalVersion]
     );
 
@@ -124,8 +124,8 @@ export default function AreaForm({
 
     // Use shared field change detection utility
     const isFieldChanged = createFieldChangeDetector(
-        (selectedArea ?? {}) as Record<string, unknown>,
-        (selectedArea?.forApprovalVersion as Record<string, unknown>) ?? undefined
+        (selectedArea ?? {}) as any,
+        (selectedArea?.forApprovalVersion as any) ?? undefined
     );
 
     // Helper function to render read-only field with highlighting
@@ -276,11 +276,11 @@ export default function AreaForm({
             errors.push('Please select a territory manager.');
         }
 
-        if (formData.idPrefix && formData.idPrefix.trim().length > 0 && formData.idPrefix.trim().length < 3) {
+        if (formData.idPrefix && formData.idPrefix?.trim().length > 0 && formData.idPrefix?.trim().length < 3) {
             errors.push('ID Prefix must be at least 3 letters.');
         }
 
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -300,11 +300,11 @@ export default function AreaForm({
                 status,
                 changeReason: '',
                 towns: towns.filter((town) => town.trim() !== ''),
-                idPrefix: formData.idPrefix.trim() || undefined,
+                idPrefix: formData.idPrefix?.trim() || undefined,
             };
             onSave(newArea as AreaDto);
         } else {
-            const trimmedReason = formData.changeReason.trim();
+            const trimmedReason = formData.changeReason?.trim();
             const updatedArea = {
                 ...selectedArea,
                 areaName: areaName.trim(),
@@ -313,7 +313,7 @@ export default function AreaForm({
                 status: selectedArea?.status ?? StatusEnum.ACTIVE,
                 changeReason: trimmedReason,
                 towns: towns.filter((town) => town.trim() !== ''),
-                idPrefix: formData.idPrefix.trim() || undefined,
+                idPrefix: formData.idPrefix?.trim() || undefined,
             };
             onSave(updatedArea as AreaDto);
         }

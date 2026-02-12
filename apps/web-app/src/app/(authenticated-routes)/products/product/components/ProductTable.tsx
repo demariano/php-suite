@@ -4,14 +4,14 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { ProductDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type ProductTableRow = ProductDto & { status: ReactNode };
+type ProductTableRow = Omit<ProductDto, 'status'> & { status: ReactNode; latestActivity?: any; [key: string]: unknown };
 
 interface ProductTableProps {
     isLoading: boolean;
     tableData: ProductTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (product: ProductDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: any;
@@ -128,7 +128,6 @@ export default function ProductTable({
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
 
@@ -190,7 +189,6 @@ export default function ProductTable({
                         onNext={onNext}
                         hasPrevious={!!prevCursor}
                         hasNext={!!nextCursor}
-                        variant="mobile"
                     />
                 </div>
             )}

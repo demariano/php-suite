@@ -34,7 +34,7 @@ export default function ProductDealsMainPage() {
             const validDirection = direction && serializedCursor ? direction : undefined;
             const validCursor = direction && serializedCursor ? serializedCursor : undefined;
 
-            let response;
+            let response: any;
 
             // Branch 1: Search query is active (takes priority, can combine with status)
             if (searchQuery && searchQuery.trim() !== '') {

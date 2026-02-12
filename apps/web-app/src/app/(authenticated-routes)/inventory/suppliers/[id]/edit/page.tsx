@@ -45,7 +45,7 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
                 setError(null);
 
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-                const supplier = await SupplierApi.getSupplierById(params.id, userRole);
+                const supplier = await (SupplierApi as any).getSupplierById(params.id, userRole);
                 setSelectedSupplier(supplier);
                 setActiveTab('details');
             } catch (err: any) {
@@ -121,7 +121,7 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await SupplierApi.deleteSupplier(selectedSupplier, userRole);
+            await (SupplierApi as any).deleteSupplier(selectedSupplier, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -155,7 +155,7 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
             setError(null);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            await SupplierApi.approveSupplier(selectedSupplier.supplierId!, userRole);
+            await (SupplierApi as any).approveSupplier(selectedSupplier.supplierId!, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -174,10 +174,6 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleDeny = () => {
-        setShowDenyDialog(true);
     };
 
     const handleDenyConfirm = async (approverMessage: string) => {
@@ -295,14 +291,14 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
                                 <>
                                     <button
                                         type="button"
-                                        onClick={handleDeny}
+                                        onClick={() => setShowDenyDialog(true)}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                     >
                                         Deny
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={handleApprove}
+                                        onClick={handleApproveRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                                     >
                                         Approve
@@ -456,7 +452,7 @@ export default function EditSupplierPage({ params }: EditSupplierPageProps) {
                                     onCancel={handleCancel}
                                     isAdminUser={isAdminUser}
                                     onApprove={handleApproveRecord}
-                                    onDeny={handleDeny}
+                                    onDeny={() => setShowDenyDialog(true)}
                                 />
                             )}
 

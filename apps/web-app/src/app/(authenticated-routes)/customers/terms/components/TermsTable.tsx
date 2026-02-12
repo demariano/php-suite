@@ -4,11 +4,12 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { TermsDto } from '@data-access/index';
 
 interface TableRowData {
-    termsId: string;
-    termsName: string;
-    days: number;
+    termsId?: string;
+    termsName?: string;
+    days?: number;
     status: React.ReactNode;
     latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
+    [key: string]: unknown;
 }
 
 interface TermsTableProps {
@@ -100,7 +101,7 @@ export default function TermsTable({
             {/* Mobile Cards */}
             <div className="sm:hidden">
                 {isLoading ? (
-                    <TableSkeleton rows={pageSize} columns={1} variant="mobile" />
+                    <TableSkeleton rows={pageSize} columns={1} />
                 ) : tableData.length > 0 ? (
                     <div className="space-y-4">
                         {tableData.map((terms) => (
@@ -137,20 +138,18 @@ export default function TermsTable({
                 ) : (
                     <EmptyTableState
                         message={searchQuery ? `No terms found matching "${searchQuery}"` : 'No terms found'}
-                        variant="mobile"
                     />
                 )}
             </div>
 
             {/* Pagination */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <PageSizeSelector pageSize={pageSize} onPageSizeChange={onPageSizeChange} variant="desktop" />
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                 <PaginationButtons
                     onPrevious={onPrevious}
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
         </>

@@ -4,7 +4,7 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { ProductUnitRawMaterialDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type ProductUnitRawMaterialTableRow = ProductUnitRawMaterialDto & {
+type ProductUnitRawMaterialTableRow = Omit<ProductUnitRawMaterialDto, 'status'> & {
     status: ReactNode;
     latestActivity: string;
 };
@@ -14,7 +14,7 @@ interface ProductUnitRawMaterialTableProps {
     tableData: ProductUnitRawMaterialTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (item: ProductUnitRawMaterialDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;

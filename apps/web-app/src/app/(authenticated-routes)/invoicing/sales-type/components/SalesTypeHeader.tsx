@@ -37,11 +37,7 @@ export default function SalesTypeHeader({
                             leftIcon={Search}
                         />
                     </div>
-                    <StatusFilterDropdown
-                        value={statusFilter}
-                        onChange={onStatusFilterChange}
-                        isAdminUser={isAdminUser}
-                    />
+                    <StatusFilterDropdown value={statusFilter} onChange={onStatusFilterChange} />
                     <RefreshButton onClick={onRefresh} isLoading={isLoading} />
                 </div>
                 {canCreate && (

@@ -1,5 +1,5 @@
 import { EmptyTableState, PageSizeSelector, PaginationButtons, StatusBadge, TableSkeleton } from '@components-web';
-import { StockPurchaseOrderStatusEnum } from '@data-access/index';
+import { StatusEnum, StockPurchaseOrderStatusEnum } from '@data-access/index';
 import { ReactNode } from 'react';
 
 interface TableHeader {
@@ -8,13 +8,14 @@ interface TableHeader {
 }
 
 interface TableRowData {
-    stockPurchaseOrderId: string;
+    stockPurchaseOrderId?: string;
     docNo?: string;
     poDate?: string;
     stockSupplierName?: string;
-    status: string;
+    status?: StatusEnum;
     poStatus: StockPurchaseOrderStatusEnum;
     latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
+    [key: string]: unknown;
 }
 
 interface StockPurchaseOrderTableProps {

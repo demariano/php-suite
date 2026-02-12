@@ -105,7 +105,7 @@ export default function CustomerForm({
 
     const currentStatus = selectedCustomer?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = useMemo(
-        () => (selectedCustomer?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        () => (selectedCustomer?.forApprovalVersion ?? {}) as any,
         [selectedCustomer?.forApprovalVersion]
     );
 
@@ -114,8 +114,8 @@ export default function CustomerForm({
     const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION;
 
     const isFieldChanged = createFieldChangeDetector(
-        (selectedCustomer ?? {}) as Record<string, unknown>,
-        (selectedCustomer?.forApprovalVersion as Record<string, unknown>) ?? undefined
+        (selectedCustomer ?? {}) as any,
+        (selectedCustomer?.forApprovalVersion as any) ?? undefined
     );
 
     const formatValue = (value: any): string => {
@@ -340,7 +340,7 @@ export default function CustomerForm({
         // Validate required fields
         const errors: string[] = [];
 
-        if (!formData.customerName.trim()) {
+        if (!formData.customerName?.trim()) {
             errors.push('Customer name is required.');
         }
 
@@ -359,7 +359,7 @@ export default function CustomerForm({
         }
 
         // Validate change reason for non-create mode (only required for non-admin users)
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 

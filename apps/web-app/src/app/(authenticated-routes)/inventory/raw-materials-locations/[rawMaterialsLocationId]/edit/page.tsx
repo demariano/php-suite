@@ -13,6 +13,8 @@ import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../../components/ChangeReasonField';
+import { ChangeReasonReadOnly } from '../../../../components/ChangeReasonReadOnly';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 
 type ActiveTab = 'details' | 'logs';
 
@@ -73,7 +75,7 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
         if (!selectedLocation.rawMaterialsLocationName?.trim()) {
             errors.push('Location Name is required.');
         }
-        if (!isAdminUser && (!selectedLocation.changeReason || !selectedLocation.changeReason.trim())) {
+        if (!isAdminUser && (!selectedLocation.changeReason || !selectedLocation.changeReason?.trim())) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -90,7 +92,7 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
 
             const updatedPayload: RawMaterialsLocationDto = {
                 ...selectedLocation,
-                rawMaterialsLocationName: selectedLocation.rawMaterialsLocationName.trim(),
+                rawMaterialsLocationName: selectedLocation.rawMaterialsLocationName?.trim(),
                 changeReason: selectedLocation.changeReason?.trim() || undefined,
                 status: isAdminUser ? StatusEnum.ACTIVE : StatusEnum.FOR_APPROVAL,
             };
@@ -156,7 +158,7 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
 
         try {
             setIsSaving(true);
-            await RawMaterialsLocationApi.deleteRawMaterialsLocation(selectedLocation, userRole);
+            await (RawMaterialsLocationApi as any).deleteRawMaterialsLocation(selectedLocation, userRole);
             setFlashNotification({
                 title: 'Success!',
                 message: 'Raw materials location deleted successfully!',
@@ -177,6 +179,10 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
     };
 
     const handleDeleteCancel = () => setShowDeleteDialog(false);
+
+    const handleDeny = () => {
+        setShowDenyDialog(true);
+    };
 
     const handleDenyConfirm = async (reason: string) => {
         if (!selectedLocation?.rawMaterialsLocationId) return;
@@ -249,6 +255,41 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
     };
 
     const isFormDisabled = !isAdminUser && selectedLocation?.status !== StatusEnum.ACTIVE;
+
+    const currentStatus = selectedLocation?.status as StatusEnum;
+    const forApprovalVersion = (selectedLocation as any)?.forApprovalVersion;
+    const isFieldChangedFn = createFieldChangeDetector(selectedLocation, forApprovalVersion);
+    const showApprovalUI = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION;
+
+    const formatValue = (val: any): string => {
+        if (val === null || val === undefined || val === '') return '(empty)';
+        return String(val);
+    };
+
+    const renderFieldWithInlineDiff = (label: string, currentVal: any, fieldName: string) => {
+        const changed = isFieldChangedFn(fieldName);
+        const pendingVal = changed ? forApprovalVersion?.[fieldName] : undefined;
+        return (
+            <div className="group">
+                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                    {label}
+                </label>
+                {changed ? (
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentVal)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingVal)}</span>
+                    </div>
+                ) : (
+                    <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500">
+                        {formatValue(currentVal)}
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const renderLogsTab = () => (
         <div className="space-y-6 animate-fadeIn">
@@ -431,7 +472,7 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
                                         </div>
                                     )}
 
-                                    {!isAdminUser && (
+                                    {!isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                                         <ChangeReasonField
                                             value={selectedLocation.changeReason || ''}
                                             onChange={(e) =>
@@ -441,6 +482,19 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
                                             }
                                             disabled={isFormDisabled}
                                         />
+                                    )}
+
+                                    {(showApprovalUI || showDeletionCard) && selectedLocation.changeReason && (
+                                        <ChangeReasonReadOnly value={selectedLocation.changeReason} />
+                                    )}
+
+                                    {showDeletionCard && (
+                                        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
+                                            <div className="flex items-center gap-2 text-sm font-bold text-red-700">
+                                                <span className="text-base">\uD83D\uDDD1\uFE0F</span>
+                                                This record is marked for deletion and is awaiting admin approval.
+                                            </div>
+                                        </div>
                                     )}
 
                                     <div className="space-y-6">
@@ -468,6 +522,9 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
                                                 </div>
 
                                                 <div className="grid grid-cols-1 gap-6">
+                                                    {showApprovalUI ? (
+                                                        renderFieldWithInlineDiff('Location Name', selectedLocation.rawMaterialsLocationName, 'rawMaterialsLocationName')
+                                                    ) : (
                                                     <div className="group">
                                                         <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
                                                             <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
@@ -495,13 +552,14 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
                                                             }`}
                                                         />
                                                     </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 pt-4">
-                                        {selectedLocation.status === StatusEnum.ACTIVE ? (
+                                        {!showApprovalUI && !showDeletionCard && selectedLocation.status === StatusEnum.ACTIVE ? (
                                             <button
                                                 type="button"
                                                 onClick={handleDelete}
@@ -527,11 +585,29 @@ export default function EditRawMaterialsLocationPage({ params }: { params: { raw
                                         )}
 
                                         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                                            {(selectedLocation.status === StatusEnum.ACTIVE || isAdminUser) && (
+                                            {isAdminUser && (showApprovalUI || showDeletionCard) && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDeny}
+                                                        className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                                    >
+                                                        Deny
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleApprove}
+                                                        className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                </>
+                                            )}
+                                            {!showApprovalUI && !showDeletionCard && (
                                                 <button
                                                     type="button"
                                                     onClick={handleSave}
-                                                    disabled={(isFormDisabled && !isAdminUser) || isSaving}
+                                                    disabled={isFormDisabled || isSaving}
                                                     className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
                                                     <svg

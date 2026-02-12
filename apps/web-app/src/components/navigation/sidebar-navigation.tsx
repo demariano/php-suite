@@ -323,7 +323,7 @@ export const useNavigationState = () => {
 
     const isRouteActive = (route: string) => {
         if (pathname === route) return true;
-        if (route !== '/dashboard' && pathname.startsWith(route + '/')) return true;
+        if (route !== '/dashboard' && (pathname || '').startsWith(route + '/')) return true;
         return false;
     };
 

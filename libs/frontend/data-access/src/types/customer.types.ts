@@ -26,7 +26,7 @@ export interface CustomerDto {
     customerTypeId?: string;
     customerTypeName?: string;
     status?: StatusEnum;
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
     activityLogs?: string[];

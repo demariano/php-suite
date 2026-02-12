@@ -43,7 +43,7 @@ export interface RawMaterialsPurchaseOrderDto {
     purchaseOrderDetails?: RawMaterialsPurchaseOrderDetailDto[];
     deliveredPurchaseOrderDetails?: DeliveredRawMaterialsPurchaseOrderDeliveryDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -58,7 +58,7 @@ export interface CreateRawMaterialsPurchaseOrderDto {
     purchaseOrderDetails?: RawMaterialsPurchaseOrderDetailDto[];
     deliveredPurchaseOrderDetails?: DeliveredRawMaterialsPurchaseOrderDeliveryDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }

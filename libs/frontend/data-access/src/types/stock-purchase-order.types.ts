@@ -47,7 +47,7 @@ export interface StockPurchaseOrderDto {
     purchaseOrderDetails?: StockPurchaseOrderDetailDto[];
     deliveredPurchaseOrderDetails?: DeliveredStockPurchaseOrderDeliveryDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -62,7 +62,7 @@ export interface CreateStockPurchaseOrderDto {
     purchaseOrderDetails?: StockPurchaseOrderDetailDto[];
     deliveredPurchaseOrderDetails?: DeliveredStockPurchaseOrderDeliveryDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }

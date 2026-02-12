@@ -40,7 +40,7 @@ export default function CustomerTypeForm({
 
     const currentStatus = selectedCustomerType?.status ?? StatusEnum.NEW_RECORD;
     const pendingVersion = useMemo(
-        () => (selectedCustomerType?.forApprovalVersion ?? {}) as Record<string, unknown>,
+        () => (selectedCustomerType?.forApprovalVersion ?? {}) as any,
         [selectedCustomerType?.forApprovalVersion]
     );
 
@@ -49,8 +49,8 @@ export default function CustomerTypeForm({
     const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION;
 
     const isFieldChanged = createFieldChangeDetector(
-        (selectedCustomerType ?? {}) as Record<string, unknown>,
-        (selectedCustomerType?.forApprovalVersion as Record<string, unknown>) ?? undefined
+        (selectedCustomerType ?? {}) as any,
+        (selectedCustomerType?.forApprovalVersion as any) ?? undefined
     );
 
     const renderReadOnlyField = (label: string, value: any, fieldName?: string) => {
@@ -117,11 +117,11 @@ export default function CustomerTypeForm({
 
         const errors: string[] = [];
 
-        if (!formData.customerTypeName.trim()) {
+        if (!formData.customerTypeName?.trim()) {
             errors.push('Customer Type Name is required.');
         }
 
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -146,7 +146,7 @@ export default function CustomerTypeForm({
                 ...selectedCustomerType,
                 customerTypeName: formData.customerTypeName,
                 status: newStatus,
-                changeReason: formData.changeReason.trim() || undefined,
+                changeReason: formData.changeReason?.trim() || undefined,
             } as CustomerTypeDto;
             onSave(updatedCustomerType);
         }

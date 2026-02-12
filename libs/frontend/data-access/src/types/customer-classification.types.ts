@@ -8,7 +8,7 @@ export interface CustomerClassificationDto {
     customerClassificationName?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -17,5 +17,5 @@ export interface CreateCustomerClassificationDto {
     customerClassificationName?: string;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }

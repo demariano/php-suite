@@ -80,6 +80,7 @@ export default function InvoiceForm({
         invoiceDetails: [],
         activityLogs: [],
         forApprovalVersion: {},
+        contractSales: false,
     });
 
     // State for customer deals
@@ -127,6 +128,7 @@ export default function InvoiceForm({
                 invoiceDetails: [],
                 activityLogs: [],
                 forApprovalVersion: {},
+                contractSales: false,
             });
         }
     }, [selectedInvoice, isCreateMode]);
@@ -581,7 +583,7 @@ export default function InvoiceForm({
                                             <button
                                                 type="button"
                                                 onClick={onSaveToDraft}
-                                                disabled={isLoading || formData.invoiceDetails.length === 0}
+                                                disabled={isLoading || (formData.invoiceDetails?.length ?? 0) === 0}
                                                 className="flex items-center justify-center gap-2 rounded-xl bg-gray-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-70 disabled:cursor-not-allowed"
                                             >
                                                 <svg

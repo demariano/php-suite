@@ -5,9 +5,10 @@ import { ProductPriceTypeDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
 type ProductPriceTypeTableRow = Omit<ProductPriceTypeDto, 'status'> & {
-    priceTypeName: string;
+    priceTypeName?: string;
     status: ReactNode;
-    latestActivity: string;
+    latestActivity: any;
+    [key: string]: unknown;
 };
 
 interface ProductPriceTypeTableProps {
@@ -15,7 +16,7 @@ interface ProductPriceTypeTableProps {
     tableData: ProductPriceTypeTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (productPriceType: ProductPriceTypeDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;

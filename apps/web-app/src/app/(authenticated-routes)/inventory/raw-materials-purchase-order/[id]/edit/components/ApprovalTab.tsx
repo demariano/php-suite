@@ -126,8 +126,8 @@ export function ApprovalTab({
 
   const approvalData = forApprovalVersion;
   const isFieldChanged = createFieldChangeDetector(
-    purchaseOrderData as Record<string, unknown>,
-    forApprovalVersion as Record<string, unknown> | undefined
+    purchaseOrderData as any,
+    forApprovalVersion as any
   );
 
   const hasArrayChanges = (fieldName: string): boolean => {

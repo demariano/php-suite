@@ -4,10 +4,11 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { AreaDto } from '@data-access/index';
 
 interface TableRowData {
-    areaId: string;
-    areaName: string;
+    areaId?: string;
+    areaName?: string;
     status: React.ReactNode;
     latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
+    [key: string]: unknown;
 }
 
 interface AreaTableProps {
@@ -102,7 +103,7 @@ export default function AreaTable({
             {/* Mobile Cards */}
             <div className="sm:hidden">
                 {isLoading ? (
-                    <TableSkeleton rows={pageSize} columns={1} variant="mobile" />
+                    <TableSkeleton rows={pageSize} columns={1} />
                 ) : tableData.length > 0 ? (
                     <div className="space-y-4">
                         {tableData.map((area) => (
@@ -142,20 +143,18 @@ export default function AreaTable({
                                 ? `No customer areas found matching "${searchQuery}"`
                                 : 'No customer areas found'
                         }
-                        variant="mobile"
                     />
                 )}
             </div>
 
             {/* Pagination */}
             <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <PageSizeSelector pageSize={pageSize} onPageSizeChange={onPageSizeChange} variant="desktop" />
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                 <PaginationButtons
                     onPrevious={onPrevious}
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
         </>

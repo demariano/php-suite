@@ -2,7 +2,8 @@
 
 import { ProductDto, ProductUnitDto, StatusEnum, StockDto, StockTypeDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import { ChangeReasonField } from '../../../components';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import {
     ProductSearchableSelectionModal,
     ProductUnitSearchableSelectionModal,
@@ -122,12 +123,73 @@ export default function StockForm({
     const [formData, setFormData] = useState({
         lotNo: selectedStock?.lotNo || '',
         totalQuantity: selectedStock?.totalQuantity?.toString() || '0',
+        quantityOnHand: selectedStock?.quantityOnHand?.toString() || '0',
+        availableQuantity: selectedStock?.availableQuantity?.toString() || '0',
         expirationDate: selectedStock?.expirationDate || '',
         changeReason: selectedStock?.changeReason || '',
     });
 
     // Whole number formatting hooks for numeric fields (no decimals)
     const totalQuantityFormatting = useWholeNumberFormatting(formData.totalQuantity);
+
+    const currentStatus = selectedStock?.status ?? StatusEnum.ACTIVE;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pendingVersion = (selectedStock?.forApprovalVersion || {}) as Record<string, any>;
+    const isFieldChangedFn = createFieldChangeDetector(selectedStock, selectedStock?.forApprovalVersion);
+    const showApprovalUI = !isCreateMode && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showDeletionCard = !isCreateMode && currentStatus === StatusEnum.FOR_DELETION;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const formatValue = (value: any): string => {
+        if (value === null || value === undefined || value === '') return '-';
+        if (typeof value === 'number') return value.toLocaleString('en-US');
+        return String(value);
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderReadOnlyField = (label: string, value: any, colorClass = 'bg-blue-500') => (
+        <div className="space-y-1">
+            <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                {label}
+            </label>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500">
+                {formatValue(value)}
+            </div>
+        </div>
+    );
+
+    const renderFieldWithInlineDiff = (
+        label: string,
+        fieldName: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        currentValue: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pendingValue: any,
+        colorClass = 'bg-blue-500'
+    ) => {
+        const hasChange = isFieldChangedFn(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentValue)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingValue)}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return renderReadOnlyField(label, displayValue, colorClass);
+    };
 
     // Set initial values when editing (only when user hasn't made selections)
     useEffect(() => {
@@ -153,6 +215,7 @@ export default function StockForm({
             // Initialize form data
             setFormData({
                 lotNo: selectedStock.lotNo || '',
+                totalQuantity: selectedStock.totalQuantity?.toString() || '0',
                 quantityOnHand: selectedStock.quantityOnHand?.toString() || '0',
                 availableQuantity: selectedStock.availableQuantity?.toString() || '0',
                 expirationDate: selectedStock.expirationDate || '',
@@ -167,7 +230,7 @@ export default function StockForm({
         // Validate required fields
         const errors: string[] = [];
 
-        if (!formData.lotNo.trim()) {
+        if (!formData.lotNo?.trim()) {
             errors.push('Lot number is required.');
         }
 
@@ -184,7 +247,7 @@ export default function StockForm({
         }
 
         // Validate change reason for non-create mode (only required for non-admin users)
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -243,7 +306,7 @@ export default function StockForm({
     };
 
     const handleStockTypeSelect = (stockType: StockTypeDto) => {
-        setSelectedStockType({ id: stockType.stockTypeId, name: stockType.stockTypeName || '' });
+        setSelectedStockType({ id: stockType.stockTypeId || '', name: stockType.stockTypeName || '' });
         setUserHasMadeSelections(true);
     };
 
@@ -347,12 +410,35 @@ export default function StockForm({
                     </div>
                 )}
 
-                {!isCreateMode && !isAdminUser && (
+                {/* Change Reason for Users Editing ACTIVE records */}
+                {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                     <ChangeReasonField
                         value={formData.changeReason}
                         onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
-                        disabled={!isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE}
+                        disabled={false}
                     />
+                )}
+
+                {/* Change Reason Read-Only for approval states */}
+                {(showApprovalUI || showDeletionCard) && selectedStock?.changeReason && (
+                    <ChangeReasonReadOnly value={selectedStock.changeReason} />
+                )}
+
+                {/* Deletion Approval Card */}
+                {showDeletionCard && (
+                    <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4 mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                                🗑️
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-red-800 m-0">Record Marked for Deletion</h3>
+                                <p className="text-sm text-red-700">
+                                    This record has been marked for deletion and is awaiting approval.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Details Container */}
@@ -378,6 +464,12 @@ export default function StockForm({
                                 </div>
                                 <h3 className="text-base font-bold text-blue-600">Basic Information</h3>
                             </div>
+                            {showApprovalUI ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {renderFieldWithInlineDiff('Lot Number', 'lotNo', selectedStock?.lotNo, pendingVersion.lotNo)}
+                                    {renderFieldWithInlineDiff('Expiration Date', 'expirationDate', selectedStock?.expirationDate, pendingVersion.expirationDate)}
+                                </div>
+                            ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {/* Lot Number */}
                                 <div className="group">
@@ -422,6 +514,7 @@ export default function StockForm({
                                     />
                                 </div>
                             </div>
+                            )}
                         </div>
                     </div>
 
@@ -446,6 +539,13 @@ export default function StockForm({
                                 </div>
                                 <h3 className="text-base font-bold text-blue-600">Product & Type</h3>
                             </div>
+                            {showApprovalUI ? (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {renderFieldWithInlineDiff('Product', 'productName', selectedStock?.productName, pendingVersion.productName)}
+                                    {renderFieldWithInlineDiff('Product Unit', 'productUnitName', selectedStock?.productUnitName, pendingVersion.productUnitName)}
+                                    {renderFieldWithInlineDiff('Stock Type', 'stockTypeName', selectedStock?.stockTypeName, pendingVersion.stockTypeName)}
+                                </div>
+                            ) : (
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <SelectionField
                                     label="Product"
@@ -474,6 +574,7 @@ export default function StockForm({
                                     disabled={!isCreateMode}
                                 />
                             </div>
+                            )}
                         </div>
                     </div>
 
@@ -498,6 +599,11 @@ export default function StockForm({
                                 </div>
                                 <h3 className="text-base font-bold text-blue-600">Quantity Information</h3>
                             </div>
+                            {showApprovalUI ? (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {renderFieldWithInlineDiff('Total Quantity', 'totalQuantity', selectedStock?.totalQuantity, pendingVersion.totalQuantity)}
+                                </div>
+                            ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="group">
                                     <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
@@ -533,6 +639,7 @@ export default function StockForm({
                                     />
                                 </div>
                             </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -583,9 +690,32 @@ export default function StockForm({
                                     </button>
                                 )}
                             </div>
+                        ) : !isCreateMode && isAdminUser && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(currentStatus) ? (
+                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeny?.(); }}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                    Deny
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onApprove?.(); }}
+                                    className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                >
+                                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    Approve
+                                </button>
+                            </div>
                         ) : (
                             <div className="hidden sm:block" />
-                        )}}
+                        )}
 
                         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                             {(isCreateMode || selectedStock?.status === StatusEnum.ACTIVE) && (

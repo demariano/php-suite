@@ -2,8 +2,6 @@ import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-se
 import {
     ContractInvoiceEventEnum,
     ErrorResponseDto,
-    InventoryEventDto,
-    InventoryEventEnum,
     InvoiceDto,
     InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
@@ -18,6 +16,7 @@ import { BadRequestException, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ulid } from 'ulid';
+import { InvoiceStockDeltaService } from '../../../shared/invoice-stock-delta.service';
 import { CreateInvoiceCommand } from './create.command';
 
 // Constants
@@ -37,7 +36,8 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
         private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly configService: ConfigService
+        private readonly configService: ConfigService,
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
     ) {}
 
     async execute(command: CreateInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -124,7 +124,10 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
 
             // Send inventory event to deduct stock if invoice is ACTIVE
             if (createdRecord.status === StatusEnum.ACTIVE) {
-                await this.sendInventoryApprovedEvent(createdRecord);
+                await this.invoiceStockDeltaService.sendFullDeduction(
+                    createdRecord.invoiceDetails,
+                    createdRecord.invoiceId
+                );
 
                 // If invoice has a contractId, trigger recalculation of contract invoiced amount
                 if (createdRecord.contractId) {
@@ -255,29 +258,6 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
         }
 
         return 'An unexpected error occurred';
-    }
-
-    /**
-     * Sends INVOICE_APPROVED event to deduct stock quantities
-     */
-    private async sendInventoryApprovedEvent(invoice: InvoiceDto): Promise<void> {
-        if (!invoice.invoiceDetails || invoice.invoiceDetails.length === 0) {
-            return;
-        }
-
-        const stockItems = invoice.invoiceDetails.map((detail) => ({
-            stockId: detail.stockId as string,
-            qty: detail.qty as number,
-        }));
-
-        const inventoryEvent: InventoryEventDto = {
-            inventoryEvent: InventoryEventEnum.INVOICE_APPROVED,
-            stockItems: stockItems,
-        };
-
-        const inventorySQSUrl = this.configService.get<string>('INVENTORY_EVENT_SQS');
-        await this.messageQueueService.sendMessageToSQS(inventorySQSUrl, JSON.stringify(inventoryEvent));
-        this.logger.log(`INVOICE_APPROVED event sent for invoice: ${invoice.invoiceId}`);
     }
 
     /**

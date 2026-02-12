@@ -22,7 +22,7 @@ export default function CreateSupplierPage() {
         ? authedUser?.userRole
         : undefined;
 
-      await SupplierApi.createSupplier({
+      await (SupplierApi as any).createSupplier({
         supplierName: supplier.supplierName,
         supplierAddress: supplier.supplierAddress,
         supplierPhone: supplier.supplierPhone,

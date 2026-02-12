@@ -2,7 +2,8 @@
 
 import { StatusEnum, TerritoryManagerDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
-import { ChangeReasonField } from '../../../components';
+import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 
 interface TerritoryManagerFormProps {
     isCreateMode: boolean;
@@ -53,11 +54,11 @@ export default function TerritoryManagerForm({
 
         const errors: string[] = [];
 
-        if (!formData.territoryManagerName.trim()) {
+        if (!formData.territoryManagerName?.trim()) {
             errors.push('Territory Manager Name is required.');
         }
 
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -84,13 +85,71 @@ export default function TerritoryManagerForm({
                 territoryManagerName: formData.territoryManagerName,
                 contactNo: formData.contactNo,
                 status: newStatus,
-                changeReason: formData.changeReason.trim() || undefined,
+                changeReason: formData.changeReason?.trim() || undefined,
             } as TerritoryManagerDto;
             onSave(updatedTerritoryManager);
         }
     };
 
     const isFormDisabled = !isCreateMode && selectedTerritoryManager?.status !== StatusEnum.ACTIVE;
+
+    const currentStatus = selectedTerritoryManager?.status ?? StatusEnum.ACTIVE;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pendingVersion = (selectedTerritoryManager?.forApprovalVersion || {}) as Record<string, any>;
+    const isFieldChanged = createFieldChangeDetector(selectedTerritoryManager, selectedTerritoryManager?.forApprovalVersion);
+    const showApprovalUI = !isCreateMode && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showDeletionCard = !isCreateMode && (currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const formatValue = (value: any): string => {
+        if (value === null || value === undefined || value === '') return '-';
+        return String(value);
+    };
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const renderReadOnlyField = (label: string, value: any, colorClass = 'bg-blue-500') => (
+        <div className="space-y-1">
+            <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                {label}
+            </label>
+            <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500">
+                {formatValue(value)}
+            </div>
+        </div>
+    );
+
+    const renderFieldWithInlineDiff = (
+        label: string,
+        fieldName: string,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        currentValue: any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pendingValue: any,
+        colorClass = 'bg-blue-500'
+    ) => {
+        const hasChange = isFieldChanged(fieldName);
+
+        if (showApprovalUI && hasChange) {
+            return (
+                <div className="space-y-1">
+                    <label className="block text-sm font-bold text-gray-700 flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 ${colorClass} rounded-full`}></span>
+                        {label}
+                    </label>
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentValue)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingValue)}</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const isNewRecord = currentStatus === StatusEnum.NEW_RECORD;
+        const displayValue = showApprovalUI && !isNewRecord ? pendingValue : currentValue;
+        return renderReadOnlyField(label, displayValue, colorClass);
+    };
 
     return (
         <form onSubmit={handleSubmit}>
@@ -177,13 +236,37 @@ export default function TerritoryManagerForm({
                 </div>
             )}
 
-            {/* Change Reason Field - First component when displayed */}
-            {!isCreateMode && !isAdminUser && (
+            {/* Change Reason for Users Editing ACTIVE records */}
+            {!isCreateMode && !isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                 <ChangeReasonField
                     value={formData.changeReason}
                     onChange={(e) => setFormData((prev) => ({ ...prev, changeReason: e.target.value }))}
-                    disabled={selectedTerritoryManager?.status !== StatusEnum.ACTIVE}
+                    disabled={false}
                 />
+            )}
+
+            {/* Change Reason Read-Only for approval states */}
+            {(showApprovalUI || showDeletionCard) && selectedTerritoryManager?.changeReason && (
+                <ChangeReasonReadOnly value={selectedTerritoryManager.changeReason} />
+            )}
+
+            {/* Deletion/Deactivation Approval Card */}
+            {showDeletionCard && (
+                <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4 sm:p-8 space-y-4 mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-red-600 rounded-full flex items-center justify-center text-white text-lg">
+                            🗑️
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-red-800 m-0">
+                                {currentStatus === StatusEnum.FOR_DELETION ? 'Record Marked for Deletion' : 'Record Marked for Deactivation'}
+                            </h3>
+                            <p className="text-sm text-red-700">
+                                This record has been marked for {currentStatus === StatusEnum.FOR_DELETION ? 'deletion' : 'deactivation'} and is awaiting approval.
+                            </p>
+                        </div>
+                    </div>
+                </div>
             )}
 
             <div className="space-y-6">
@@ -202,6 +285,12 @@ export default function TerritoryManagerForm({
                             </div>
                             <h3 className="text-base font-bold text-blue-600 m-0">Territory Manager Information</h3>
                         </div>
+                        {showApprovalUI ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {renderFieldWithInlineDiff('Territory Manager Name', 'territoryManagerName', selectedTerritoryManager?.territoryManagerName, pendingVersion.territoryManagerName)}
+                                {renderFieldWithInlineDiff('Contact Number', 'contactNo', selectedTerritoryManager?.contactNo, pendingVersion.contactNo)}
+                            </div>
+                        ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="group">
                                 <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
@@ -249,6 +338,7 @@ export default function TerritoryManagerForm({
                                 />
                             </div>
                         </div>
+                        )}
                     </div>
                 </div>
             </div>
@@ -321,7 +411,9 @@ export default function TerritoryManagerForm({
                             </svg>
                             {selectedTerritoryManager?.status === StatusEnum.FOR_DELETION
                                 ? 'Deny Deletion'
-                                : 'Deny Changes'}
+                                : selectedTerritoryManager?.status === StatusEnum.FOR_DEACTIVATION
+                                ? 'Deny Deactivation'
+                                : 'Deny'}
                         </button>
                         <button
                             type="button"
@@ -337,7 +429,9 @@ export default function TerritoryManagerForm({
                             </svg>
                             {selectedTerritoryManager?.status === StatusEnum.FOR_DELETION
                                 ? 'Approve Deletion'
-                                : 'Approve Changes'}
+                                : selectedTerritoryManager?.status === StatusEnum.FOR_DEACTIVATION
+                                ? 'Approve Deactivation'
+                                : 'Approve'}
                         </button>
                     </div>
                 ) : (

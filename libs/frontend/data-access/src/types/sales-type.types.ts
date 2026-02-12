@@ -14,7 +14,7 @@ export interface SalesTypeDto {
     incomeGenerating?: boolean;
     taxable?: boolean;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -29,5 +29,5 @@ export interface CreateSalesTypeDto {
     incomeGenerating?: boolean;
     taxable?: boolean;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }

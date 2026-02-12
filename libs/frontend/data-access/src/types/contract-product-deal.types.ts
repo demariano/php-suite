@@ -9,6 +9,6 @@ export interface ContractProductDealDto {
     minQty?: number;
     status?: StatusEnum;
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
 }
 

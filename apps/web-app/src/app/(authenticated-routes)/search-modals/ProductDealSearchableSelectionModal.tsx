@@ -91,7 +91,7 @@ export default function ProductDealSearchableSelectionModal({
       const direction = currentPage > 1 ? (isGoingBack ? 'prev' : 'next') : undefined;
       const cursor = currentCursor ? JSON.stringify(currentCursor) : undefined;
       
-      let response;
+      let response: any;
       
       if (searchQuery?.trim()) {
         response = await ProductDealApi.getProductDealsByName(

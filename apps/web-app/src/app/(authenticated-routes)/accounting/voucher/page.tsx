@@ -37,7 +37,7 @@ export default function VoucherPage() {
             // Serialize cursor object to JSON string if it's an object
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
 
-            let response;
+            let response: any;
 
             // Use custom page size if provided, otherwise use state page size
             const currentPageSize = customPageSize ?? pageSize;

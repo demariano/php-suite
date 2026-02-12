@@ -12,7 +12,7 @@ type TabType = 'details' | 'deliveries' | 'logs';
 export default function EditRawMaterialsPurchaseOrderPage() {
     const params = useParams();
     const router = useRouter();
-    const id = params.id as string;
+    const id = params?.id as string;
     const { env } = useEnv();
     const { authedUser } = useLocalStore();
     const { setFlashNotification } = useSessionStore();
@@ -60,7 +60,7 @@ export default function EditRawMaterialsPurchaseOrderPage() {
                     ? authedUser?.userRole
                     : undefined;
 
-            await RawMaterialsPurchaseOrderApi.updateRawMaterialsPurchaseOrder(id, formData, userRole);
+            await (RawMaterialsPurchaseOrderApi as any).updateRawMaterialsPurchaseOrder(id, formData, userRole);
             setFlashNotification({
                 title: 'Success',
                 message: 'Purchase order updated successfully!',
@@ -87,7 +87,7 @@ export default function EditRawMaterialsPurchaseOrderPage() {
                     ? authedUser?.userRole
                     : undefined;
 
-            await RawMaterialsPurchaseOrderApi.transitionSystemGeneratedToPending(id, userRole);
+            await (RawMaterialsPurchaseOrderApi as any).transitionSystemGeneratedToPending(id, userRole);
             setFlashNotification({
                 title: 'Success',
                 message: 'Purchase order status updated to PENDING!',

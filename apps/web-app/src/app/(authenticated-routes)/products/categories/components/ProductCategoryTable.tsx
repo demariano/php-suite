@@ -4,7 +4,7 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { ProductCategoryDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type ProductCategoryTableRow = ProductCategoryDto & {
+type ProductCategoryTableRow = Omit<ProductCategoryDto, 'status'> & {
     status: ReactNode;
     categoryName: string;
     latestActivity: string;
@@ -15,7 +15,7 @@ interface ProductCategoryTableProps {
     tableData: ProductCategoryTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (category: ProductCategoryDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;
@@ -136,7 +136,6 @@ export default function ProductCategoryTable({
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
         </>

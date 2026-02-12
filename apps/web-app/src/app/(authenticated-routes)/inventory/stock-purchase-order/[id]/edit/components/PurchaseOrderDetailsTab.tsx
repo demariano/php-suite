@@ -241,7 +241,7 @@ export function PurchaseOrderDetailsTab({
     };
 
     const handleSubmit = () => {
-        if (!formData.docNo.trim()) {
+        if (!formData.docNo?.trim()) {
             setFlashNotification({
                 title: 'Validation Error',
                 message: 'Document No is required.',
@@ -273,7 +273,7 @@ export function PurchaseOrderDetailsTab({
             });
             return;
         }
-        if (!isAdminUser && !formData.changeReason.trim()) {
+        if (!isAdminUser && !formData.changeReason?.trim()) {
             setFlashNotification({
                 title: 'Validation Error',
                 message: 'Change reason is required.',

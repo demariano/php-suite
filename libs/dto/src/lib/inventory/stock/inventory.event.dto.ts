@@ -24,4 +24,10 @@ export class InventoryEventDto {
     inventoryEvent!: InventoryEventEnum;
 
     stockPurchaseOrderDto?: StockPurchaseOrderDto;
+
+    @ApiProperty({ required: false, type: [StockItemUpdateDto] })
+    stockItemsToRestore?: StockItemUpdateDto[];
+
+    @ApiProperty({ required: false, type: [StockItemUpdateDto] })
+    stockItemsToDeduct?: StockItemUpdateDto[];
 }

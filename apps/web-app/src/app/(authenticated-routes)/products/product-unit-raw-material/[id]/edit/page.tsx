@@ -45,7 +45,7 @@ export default function EditProductUnitRawMaterialPage({ params }: EditProductUn
                 // This prevents role parameter leakage when bypass auth is disabled
                 const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
-                const record = await ProductApi.getProductUnitRawMaterialById(params.id, userRole);
+                const record = await (ProductApi as any).getProductUnitRawMaterialById(params.id, userRole);
                 setSelectedRecord(record);
                 // Always default to details tab
                 setActiveTab('details');
@@ -135,7 +135,7 @@ export default function EditProductUnitRawMaterialPage({ params }: EditProductUn
                     ? authedUser?.userRole
                     : undefined;
 
-            await ProductApi.deleteProductUnitRawMaterial(selectedRecord, userRole);
+            await (ProductApi as any).deleteProductUnitRawMaterial(selectedRecord, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -174,7 +174,7 @@ export default function EditProductUnitRawMaterialPage({ params }: EditProductUn
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to approve the record
-            await ProductApi.approveProductUnitRawMaterial(selectedRecord.productUnitRawMaterialId, userRole);
+            await (ProductApi as any).approveProductUnitRawMaterial(selectedRecord.productUnitRawMaterialId, userRole);
 
             setFlashNotification({
                 title: 'Success!',

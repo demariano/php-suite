@@ -4,7 +4,7 @@ import { EmptyTableState, PageSizeSelector, PaginationButtons, TableSkeleton } f
 import { InvoiceDto } from '@data-access/index';
 import { ReactNode } from 'react';
 
-type InvoiceTableRow = InvoiceDto & {
+type InvoiceTableRow = Omit<InvoiceDto, 'status'> & {
     status: ReactNode;
     invoiceNumber: string;
     totalAmount: string;
@@ -17,7 +17,7 @@ interface InvoiceTableProps {
     tableData: InvoiceTableRow[];
     headers: { key: string; label: string }[];
     searchQuery: string;
-    onRowClick: (invoice: InvoiceDto) => void;
+    onRowClick: (row: any) => void;
     pageSize: number;
     onPageSizeChange: (size: number) => void;
     prevCursor: string | undefined;
@@ -162,13 +162,12 @@ export default function InvoiceTable({
 
             {/* Pagination - OUTSIDE table container */}
             <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">
-                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} variant="desktop" />
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                 <PaginationButtons
                     onPrevious={onPrevious}
                     onNext={onNext}
                     hasPrevious={!!prevCursor}
                     hasNext={!!nextCursor}
-                    variant="desktop"
                 />
             </div>
         </>

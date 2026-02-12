@@ -14,6 +14,13 @@ import { CustomerProductDealDto } from '@data-access/types/customer-product-deal
 import { useState } from 'react';
 import StockSearchableSelectionModal from '../../../../../search-modals/StockSearchableSelectionModal';
 
+interface StockSelectionState {
+    selectedStock: StockDto | null;
+    selectedProductDeal: CustomerProductDealDto | ContractProductDealDto | null;
+    quantity: number;
+    showStockModal: boolean;
+}
+
 interface InvoiceDetailsTabProps {
     formData: InvoiceDto;
     onFormDataChange: (updatedData: Partial<InvoiceDto>) => void;
@@ -254,8 +261,8 @@ export default function InvoiceDetailsTab({
                 return;
             }
 
-            const cost = Math.round((foundStock.cost || 0) * 100) / 100;
-            const price = Math.round((foundStock.price || 0) * 100) / 100;
+            const cost = Math.round(((foundStock as any).cost || 0) * 100) / 100;
+            const price = Math.round(((foundStock as any).price || 0) * 100) / 100;
             const amount = Math.round(stockSelection.quantity * price * 100) / 100;
 
             const newDetail: InvoiceDetailsDto = {
@@ -323,7 +330,7 @@ export default function InvoiceDetailsTab({
             }
 
             // Check for low stock and show warning
-            const remainingStock = foundStock.totalQuantity - totalQuantityNeeded;
+            const remainingStock = (foundStock.totalQuantity || 0) - totalQuantityNeeded;
             if (remainingStock < 10 && remainingStock >= 0) {
                 setFlashNotification({
                     title: 'Low Stock Warning',

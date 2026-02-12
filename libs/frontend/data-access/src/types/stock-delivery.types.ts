@@ -24,7 +24,7 @@ export interface StockDeliveryDto {
     docno?: string;
     deliveryDetails?: DeliveryDetailsDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
 }
 
@@ -36,7 +36,7 @@ export interface CreateStockDeliveryDto {
     docno?: string;
     deliveryDetails?: DeliveryDetailsDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
 }
 

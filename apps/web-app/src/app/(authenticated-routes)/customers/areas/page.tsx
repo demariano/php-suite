@@ -38,7 +38,7 @@ export default function CustomerAreasPage() {
             const serializedCursor = cursor && typeof cursor === 'object' ? JSON.stringify(cursor) : cursor;
             const currentPageSize = customPageSize ?? pageSize;
 
-            let response;
+            let response: any;
             const hasSearch = searchQuery && searchQuery.trim() !== '';
             const hasStatus = statusFilter !== 'ALL';
 
@@ -64,10 +64,10 @@ export default function CustomerAreasPage() {
                 );
             } else if (hasStatus) {
                 // Branch 3: Status only
-                response = await AreaApi.getAreas(currentPageSize, statusFilter, direction, serializedCursor, userRole);
+                response = await (AreaApi as any).getAreas(currentPageSize, statusFilter, direction, serializedCursor, userRole);
             } else {
                 // Branch 4: Show all
-                response = await AreaApi.getAreas(currentPageSize, undefined, direction, serializedCursor, userRole);
+                response = await (AreaApi as any).getAreas(currentPageSize, undefined, direction, serializedCursor, userRole);
             }
 
             if (response && response.statusCode === 200 && response.data) {

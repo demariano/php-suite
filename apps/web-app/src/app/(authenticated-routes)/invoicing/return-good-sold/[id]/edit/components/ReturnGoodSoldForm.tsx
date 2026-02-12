@@ -130,7 +130,7 @@ export default function ReturnGoodSoldForm({
 
         // Rule: Change reason required for non-admin users when editing (not creating)
         if (!isCreateMode && !isAdminUser) {
-            if (!formData.changeReason || formData.changeReason.trim() === '') {
+            if (!formData.changeReason || formData.changeReason?.trim() === '') {
                 setFlashNotification({
                     title: 'Validation Error',
                     message: 'Change reason is required when modifying a return good sold record.',
@@ -138,7 +138,7 @@ export default function ReturnGoodSoldForm({
                 });
                 return;
             }
-            if (formData.changeReason.trim().length < 10) {
+            if (formData.changeReason?.trim().length < 10) {
                 setFlashNotification({
                     title: 'Validation Error',
                     message: 'Change reason must be at least 10 characters when modifying a return good sold record.',
@@ -154,8 +154,8 @@ export default function ReturnGoodSoldForm({
 
     // Use shared field change detection utility
     const isFieldChanged = createFieldChangeDetector(
-        selectedRecord as Record<string, unknown>,
-        selectedRecord?.forApprovalVersion as Record<string, unknown> | undefined
+        selectedRecord as any,
+        selectedRecord?.forApprovalVersion as any
     );
 
     // Helper function to format display value

@@ -22,7 +22,7 @@ export default function CreateStockTypePage() {
         ? authedUser?.userRole
         : undefined;
 
-      await StockTypeApi.createStockType({
+      await (StockTypeApi as any).createStockType({
         stockTypeName: stockType.stockTypeName,
         status: stockType.status
       }, userRole);

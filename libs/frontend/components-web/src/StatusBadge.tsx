@@ -3,11 +3,12 @@
 import { StatusEnum } from '@data-access/index';
 
 interface StatusBadgeProps {
-    status: StatusEnum;
+    status: StatusEnum | undefined;
     className?: string;
 }
 
-const getStatusConfig = (status: StatusEnum): { bgColor: string; textColor: string; label: string } => {
+const getStatusConfig = (status: StatusEnum | undefined): { bgColor: string; textColor: string; label: string } => {
+    if (!status) return { bgColor: 'bg-gray-100', textColor: 'text-gray-800', label: 'Unknown' };
     switch (status) {
         case StatusEnum.ACTIVE:
             return { bgColor: 'bg-green-100', textColor: 'text-green-800', label: 'Active' };

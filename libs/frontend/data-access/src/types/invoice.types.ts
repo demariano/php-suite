@@ -54,7 +54,7 @@ export interface InvoiceDto {
     contractSales: boolean;
     invoiceDetails?: InvoiceDetailsDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
     approverMessage?: string;
 }
@@ -86,6 +86,6 @@ export interface CreateInvoiceDto {
     contractSales: boolean;
     invoiceDetails?: InvoiceDetailsDto[];
     activityLogs?: string[];
-    forApprovalVersion?: Record<string, unknown>;
+    forApprovalVersion?: Record<string, any>;
     changeReason?: string;
 }

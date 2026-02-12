@@ -13,6 +13,8 @@ import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../../components/ChangeReasonField';
+import { ChangeReasonReadOnly } from '../../../../components/ChangeReasonReadOnly';
+import { createFieldChangeDetector } from '../../../../utils/fieldChangeDetection';
 
 type ActiveTab = 'details' | 'logs';
 
@@ -42,7 +44,10 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
             try {
                 setIsLoading(true);
                 setError(null);
-                const unit = await RawMaterialUnitApi.getRawMaterialUnitById(params.rawMaterialUnitId, userRole);
+                const unit = await (RawMaterialUnitApi as any).getRawMaterialUnitById(
+                    params.rawMaterialUnitId,
+                    userRole
+                );
                 setSelectedUnit(unit);
                 setActiveTab('details');
             } catch (err: any) {
@@ -69,7 +74,7 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
         if (!selectedUnit.rawMaterialUnitName?.trim()) {
             errors.push('Unit Name is required.');
         }
-        if (!isAdminUser && (!selectedUnit.changeReason || !selectedUnit.changeReason.trim())) {
+        if (!isAdminUser && (!selectedUnit.changeReason || !selectedUnit.changeReason?.trim())) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -86,7 +91,7 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
 
             const updatedPayload: RawMaterialUnitDto = {
                 ...selectedUnit,
-                rawMaterialUnitName: selectedUnit.rawMaterialUnitName.trim(),
+                rawMaterialUnitName: selectedUnit.rawMaterialUnitName?.trim(),
                 changeReason: selectedUnit.changeReason?.trim() || undefined,
                 status: isAdminUser ? StatusEnum.ACTIVE : StatusEnum.FOR_APPROVAL,
             };
@@ -123,7 +128,7 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
 
         try {
             setIsSaving(true);
-            await RawMaterialUnitApi.approveRawMaterialUnit(selectedUnit.rawMaterialUnitId, userRole);
+            await (RawMaterialUnitApi as any).approveRawMaterialUnit(selectedUnit.rawMaterialUnitId, userRole);
             setFlashNotification({
                 title: 'Success!',
                 message: 'Raw material unit approved successfully!',
@@ -147,7 +152,7 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
 
         try {
             setIsSaving(true);
-            await RawMaterialUnitApi.denyRawMaterialUnit(selectedUnit.rawMaterialUnitId, reason, userRole);
+            await (RawMaterialUnitApi as any).denyRawMaterialUnit(selectedUnit.rawMaterialUnitId, reason, userRole);
             setFlashNotification({
                 title: 'Success!',
                 message: 'Raw material unit changes denied successfully!',
@@ -165,6 +170,10 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
             setIsSaving(false);
             setShowDenyDialog(false);
         }
+    };
+
+    const handleDeny = () => {
+        setShowDenyDialog(true);
     };
 
     const handleCancel = () => {
@@ -207,11 +216,40 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
 
     const isFormDisabled = !isAdminUser && selectedUnit?.status !== StatusEnum.ACTIVE;
 
-    const isPendingApproval =
-        selectedUnit &&
-        ([StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION] as StatusEnum[]).includes(
-            selectedUnit.status || StatusEnum.ACTIVE
+    const currentStatus = selectedUnit?.status as StatusEnum;
+    const forApprovalVersion = selectedUnit?.forApprovalVersion;
+    const isFieldChangedFn = createFieldChangeDetector(selectedUnit, forApprovalVersion);
+    const showApprovalUI = [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
+    const showDeletionCard = currentStatus === StatusEnum.FOR_DELETION;
+
+    const formatValue = (val: any): string => {
+        if (val === null || val === undefined || val === '') return '(empty)';
+        return String(val);
+    };
+
+    const renderFieldWithInlineDiff = (label: string, currentVal: any, fieldName: string) => {
+        const changed = isFieldChangedFn(fieldName);
+        const pendingVal = changed ? forApprovalVersion?.[fieldName] : undefined;
+        return (
+            <div className="group">
+                <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                    <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                    {label}
+                </label>
+                {changed ? (
+                    <div className="px-4 py-3 border-2 border-blue-300 bg-blue-50 rounded-xl text-sm font-medium">
+                        <span className="line-through text-gray-500">{formatValue(currentVal)}</span>
+                        <span className="mx-2 text-blue-600">&rarr;</span>
+                        <span className="font-semibold text-blue-700">{formatValue(pendingVal)}</span>
+                    </div>
+                ) : (
+                    <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500">
+                        {formatValue(currentVal)}
+                    </div>
+                )}
+            </div>
         );
+    };
 
     const renderLogsTab = () => (
         <div className="space-y-6 animate-fadeIn">
@@ -234,7 +272,7 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
             <div className="mt-6 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <div className="hidden sm:block" />
                 <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                    {isAdminUser && isPendingApproval && (
+                    {isAdminUser && (showApprovalUI || showDeletionCard) && (
                         <>
                             <button
                                 type="button"
@@ -390,7 +428,7 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
                                         </div>
                                     )}
 
-                                    {!isAdminUser && (
+                                    {!isAdminUser && currentStatus === StatusEnum.ACTIVE && (
                                         <ChangeReasonField
                                             value={selectedUnit.changeReason || ''}
                                             onChange={(e) =>
@@ -400,6 +438,19 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
                                             }
                                             disabled={isFormDisabled}
                                         />
+                                    )}
+
+                                    {(showApprovalUI || showDeletionCard) && selectedUnit.changeReason && (
+                                        <ChangeReasonReadOnly value={selectedUnit.changeReason} />
+                                    )}
+
+                                    {showDeletionCard && (
+                                        <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
+                                            <div className="flex items-center gap-2 text-sm font-bold text-red-700">
+                                                <span className="text-base">🗑️</span>
+                                                This record is marked for deletion and is awaiting admin approval.
+                                            </div>
+                                        </div>
                                     )}
 
                                     <div className="space-y-6">
@@ -427,6 +478,9 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
                                                 </div>
 
                                                 <div className="grid grid-cols-1 gap-6">
+                                                    {showApprovalUI ? (
+                                                        renderFieldWithInlineDiff('Unit Name', selectedUnit.rawMaterialUnitName, 'rawMaterialUnitName')
+                                                    ) : (
                                                     <div className="group">
                                                         <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
                                                             <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
@@ -454,41 +508,43 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
                                                             }`}
                                                         />
                                                     </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 pt-4">
-                                        {isAdminUser && isPendingApproval ? (
-                                            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setShowDenyDialog(true)}
-                                                    disabled={isSaving}
-                                                    className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                >
-                                                    {isSaving ? 'Processing...' : 'Deny Changes'}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={handleApprove}
-                                                    disabled={isSaving}
-                                                    className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                >
-                                                    {isSaving ? 'Processing...' : 'Approve Changes'}
-                                                </button>
-                                            </div>
+                                        {!showApprovalUI && !showDeletionCard && selectedUnit.status === StatusEnum.ACTIVE ? (
+                                            <div className="hidden sm:block" />
                                         ) : (
                                             <div className="hidden sm:block" />
                                         )}
 
                                         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-                                            {(selectedUnit.status === StatusEnum.ACTIVE || isAdminUser) && (
+                                            {isAdminUser && (showApprovalUI || showDeletionCard) && (
+                                                <>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleDeny}
+                                                        className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+                                                    >
+                                                        Deny
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleApprove}
+                                                        className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                                                    >
+                                                        Approve
+                                                    </button>
+                                                </>
+                                            )}
+                                            {!showApprovalUI && !showDeletionCard && (
                                                 <button
                                                     type="button"
                                                     onClick={handleSave}
-                                                    disabled={(isFormDisabled && !isAdminUser) || isSaving}
+                                                    disabled={isFormDisabled || isSaving}
                                                     className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
                                                     <svg

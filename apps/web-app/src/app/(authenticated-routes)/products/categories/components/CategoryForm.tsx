@@ -13,6 +13,8 @@ interface CategoryFormProps {
     onReactivate?: () => void;
     onCancel: () => void;
     isAdminUser?: boolean;
+  onApprove?: () => void;
+  onDeny?: () => void;
 }
 
 export default function CategoryForm({
@@ -47,7 +49,7 @@ export default function CategoryForm({
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        const productCategoryName = formData.productCategoryName.trim();
+        const productCategoryName = formData.productCategoryName?.trim();
 
         // Validate required fields
         const errors: string[] = [];
@@ -57,7 +59,7 @@ export default function CategoryForm({
         }
 
         // Validate change reason for non-create mode (only required for non-admin users)
-        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason.trim() === '')) {
+        if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
         }
 
@@ -84,7 +86,7 @@ export default function CategoryForm({
                 ...selectedCategory,
                 productCategoryName: productCategoryName,
                 status: newStatus,
-                changeReason: formData.changeReason.trim() || undefined,
+                changeReason: formData.changeReason?.trim() || undefined,
             } as ProductCategoryDto;
             onSave(updatedCategory);
         }

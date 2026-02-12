@@ -55,7 +55,7 @@ export default function CreateRawMaterialUnitPage() {
     setError(null);
     try {
       await RawMaterialUnitApi.createRawMaterialUnit({
-        rawMaterialUnitName: formData.rawMaterialUnitName.trim(),
+        rawMaterialUnitName: formData.rawMaterialUnitName?.trim(),
         changeReason: formData.changeReason?.trim() || undefined,
         status: StatusEnum.NEW_RECORD
       } as RawMaterialUnitDto, userRole);

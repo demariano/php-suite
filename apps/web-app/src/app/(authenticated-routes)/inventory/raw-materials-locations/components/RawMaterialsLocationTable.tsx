@@ -80,7 +80,7 @@ export function RawMaterialsLocationTable({
                                 tableData.map((record) => (
                                     <tr
                                         key={record.rawMaterialsLocationId}
-                                        onClick={() => onRowClick(record.rawMaterialsLocationId)}
+                                        onClick={() => onRowClick(record.rawMaterialsLocationId!)}
                                         className="cursor-pointer bg-white transition-all duration-200 hover:bg-gray-50"
                                     >
                                         <td className="px-6 py-5 text-sm font-medium text-gray-900">
@@ -129,7 +129,7 @@ export function RawMaterialsLocationTable({
                         <button
                             key={record.rawMaterialsLocationId}
                             type="button"
-                            onClick={() => onRowClick(record.rawMaterialsLocationId)}
+                            onClick={() => onRowClick(record.rawMaterialsLocationId!)}
                             className="w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition-all duration-200 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                         >
                             <div className="flex items-start justify-between gap-4">

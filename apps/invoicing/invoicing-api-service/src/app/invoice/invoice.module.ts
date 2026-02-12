@@ -13,6 +13,7 @@ import { Module } from '@nestjs/common';
 import { CqrsModule } from '@nestjs/cqrs';
 
 import { ConfigurationDatabaseService, ConfigurationDatabaseServiceModule } from '@configuration-database-service';
+import { InvoiceStockDeltaService } from '../shared/invoice-stock-delta.service';
 import { ApproveInvoiceHandler } from './command/approve-record/approve.handler';
 import { CreateInvoiceHandler } from './command/create/create.handler';
 import { DeleteInvoiceHandler } from './command/delete/delete.handler';
@@ -80,6 +81,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         SubmitDraftHandler,
         ValidateStockHandler,
         ValidateInvoiceHandler,
+        InvoiceStockDeltaService,
     ],
 })
 export class InvoiceModule {}

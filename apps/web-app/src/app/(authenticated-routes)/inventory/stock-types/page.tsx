@@ -61,7 +61,7 @@ export default function StockTypesMainPage() {
             }
             // Branch 3: Show all records
             else {
-                response = await StockTypeApi.getStockTypes(pageSize, undefined, validDirection, validCursor, userRole);
+                response = await (StockTypeApi as any).getStockTypes(pageSize, undefined, validDirection, validCursor, userRole);
             }
 
             if (response?.statusCode === 200 && Array.isArray(response.data)) {

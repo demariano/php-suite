@@ -42,7 +42,8 @@ export default function RawMaterialsPurchaseOrderPage() {
                 validCursor = undefined;
             }
 
-            let response;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let response: any;
 
             // Branch 1: Both search query and status filter
             if (searchQuery.trim() && statusFilter !== 'ALL') {
@@ -81,11 +82,7 @@ export default function RawMaterialsPurchaseOrderPage() {
 
             if (response && response.statusCode === 200 && response.data) {
                 if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-                    const pageData = response.data as {
-                        data: RawMaterialsPurchaseOrderDto[];
-                        nextCursorPointer?: string;
-                        prevCursorPointer?: string;
-                    };
+                    const pageData = response.data as any;
                     setPurchaseOrders(pageData.data || []);
                     setNextCursor(pageData.nextCursorPointer || undefined);
                     setPrevCursor(pageData.prevCursorPointer || undefined);

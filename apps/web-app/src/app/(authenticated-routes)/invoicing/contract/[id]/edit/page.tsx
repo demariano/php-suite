@@ -125,7 +125,7 @@ export default function EditContractPage({ params }: EditContractPageProps) {
                     ? authedUser?.userRole
                     : undefined;
 
-            await ContractApi.deleteContract(selectedContract, userRole);
+            await (ContractApi as any).deleteContract(selectedContract, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -160,7 +160,7 @@ export default function EditContractPage({ params }: EditContractPageProps) {
             setError(null);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            await ContractApi.approveContract(selectedContract.contractId, userRole);
+            await (ContractApi as any).approveContract(selectedContract.contractId, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -195,7 +195,7 @@ export default function EditContractPage({ params }: EditContractPageProps) {
             setShowDenyDialog(false);
 
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
-            await ContractApi.denyContract(selectedContract.contractId, approverMessage, userRole);
+            await (ContractApi as any).denyContract(selectedContract.contractId, approverMessage, userRole);
 
             setFlashNotification({
                 title: 'Success!',
@@ -303,14 +303,14 @@ export default function EditContractPage({ params }: EditContractPageProps) {
                                 <>
                                     <button
                                         type="button"
-                                        onClick={handleDeny}
+                                        onClick={handleDenyRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                     >
                                         Deny
                                     </button>
                                     <button
                                         type="button"
-                                        onClick={handleApprove}
+                                        onClick={handleApproveRecord}
                                         className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                                     >
                                         Approve
