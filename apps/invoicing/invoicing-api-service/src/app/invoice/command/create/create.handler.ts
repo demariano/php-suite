@@ -1,6 +1,7 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
 import {
     ContractInvoiceEventEnum,
+    CreateInvoiceDto,
     ErrorResponseDto,
     InvoiceDto,
     InvoicePaymentEventDto,
@@ -42,6 +43,9 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
 
     async execute(command: CreateInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
         try {
+            // Recompute totals from invoice details to ensure consistency
+            this.recomputeInvoiceTotals(command.invoiceDto);
+
             // Check if creating a DRAFT invoice
             if (command.invoiceDto.status === StatusEnum.DRAFT) {
                 // Generate DRAFT docno with ulid
@@ -225,6 +229,8 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
             command.invoiceDto.forApprovalVersion.totalAmountPaid = 0;
             command.invoiceDto.forApprovalVersion.invoiceDetails = command.invoiceDto.invoiceDetails;
             command.invoiceDto.forApprovalVersion.contractSales = command.invoiceDto.contractSales;
+            command.invoiceDto.forApprovalVersion.taxRate = command.invoiceDto.taxRate;
+            command.invoiceDto.forApprovalVersion.taxable = command.invoiceDto.taxable;
         }
     }
 
@@ -242,6 +248,24 @@ export class CreateInvoiceHandler implements ICommandHandler<CreateInvoiceComman
         // Handle unknown errors
         const errorMessage = this.extractErrorMessage(error);
         throw new BadRequestException(errorMessage);
+    }
+
+    /**
+     * Recomputes invoiceAmount, taxAmount, and finalAmount from invoiceDetails
+     * to ensure the stored totals are always consistent with line items
+     */
+    private recomputeInvoiceTotals(invoice: CreateInvoiceDto): void {
+        const details = invoice.invoiceDetails || [];
+        if (details.length === 0) return;
+
+        const invoiceAmount = Math.round(details.reduce((sum, d) => sum + (d.amount || 0), 0) * 100) / 100;
+        const effectiveTaxRate = invoice.taxable ? (invoice.taxRate ?? 0) / 100 : 0;
+        const taxAmount = Math.round(invoiceAmount * effectiveTaxRate * 100) / 100;
+        const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
+
+        invoice.invoiceAmount = invoiceAmount;
+        invoice.taxAmount = taxAmount;
+        invoice.finalAmount = finalAmount;
     }
 
     /**

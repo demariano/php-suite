@@ -1,4 +1,4 @@
-import { CreatePaymentDto, PaymentDto } from '../types/payment.types';
+import { CreatePaymentDto, PaymentDto, PaymentInvoiceDetailsDto } from '../types/payment.types';
 import { AxiosConfig } from './axiosConfig';
 
 export interface PaginatedResponse<T> {
@@ -60,6 +60,10 @@ class PaymentApi extends AxiosConfig {
 
     public getPaymentById = async (id: string): Promise<PaymentDto> => {
         return await this.axiosInstance.get(`/payment/${id}`);
+    };
+
+    public getPaymentInvoicesByInvoiceId = async (invoiceId: string): Promise<PaymentInvoiceDetailsDto[]> => {
+        return await this.axiosInstance.get(`/payment/invoice/${invoiceId}`);
     };
 
     public getPaymentByReceiptNo = async (receiptNo: string): Promise<PaymentDto> => {
@@ -150,6 +154,27 @@ class PaymentApi extends AxiosConfig {
         const url = queryString ? `/payment/${id}/deny?${queryString}` : `/payment/${id}/deny`;
 
         return await this.axiosInstance.post(url, { approverMessage });
+    };
+
+    public getPaymentsByCustomerId = async (
+        customerId: string,
+        limit = 10,
+        direction?: string,
+        cursorPointer?: string
+    ): Promise<PaymentsResponse> => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+        });
+
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
+        return await this.axiosInstance.get(`/payment/customer/${customerId}?${params.toString()}`);
     };
 }
 

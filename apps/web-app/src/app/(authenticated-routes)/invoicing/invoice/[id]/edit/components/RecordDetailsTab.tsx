@@ -88,6 +88,17 @@ export default function RecordDetailsTab({
         loadCustomerData();
     }, [formData.customerId, isCreateMode, customerTerms.length, onCustomerDealsChange]);
 
+    // Recompute invoice totals when tax parameters change
+    const recomputeInvoiceTotals = (taxRate: number, taxable: boolean) => {
+        const details = formData.invoiceDetails || [];
+        if (details.length === 0) return;
+        const invoiceAmount = Math.round(details.reduce((sum, d) => sum + (d.amount || 0), 0) * 100) / 100;
+        const effectiveTaxRate = taxable ? (taxRate ?? 0) / 100 : 0;
+        const taxAmount = Math.round(invoiceAmount * effectiveTaxRate * 100) / 100;
+        const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
+        onFormDataChange({ invoiceAmount, taxAmount, finalAmount });
+    };
+
     // Set contractSales flag when salesTypeId changes
     useEffect(() => {
         const updateContractSalesFlag = async () => {
@@ -95,6 +106,8 @@ export default function RecordDetailsTab({
                 try {
                     const salesType = await SalesTypeApi.getSalesTypeById(formData.salesTypeId);
                     const newContractSales = salesType.contractSales || false;
+                    const newTaxRate = salesType.defaultTax ?? 0;
+                    const newTaxable = salesType.taxable ?? false;
 
                     // If changing from contractSales=true to false, clear contract and show confirmation if items exist
                     if (formData.contractSales === true && newContractSales === false) {
@@ -108,19 +121,30 @@ export default function RecordDetailsTab({
                                 contractSales: newContractSales,
                                 contractId: '',
                                 contractName: '',
+                                taxRate: newTaxRate,
+                                taxable: newTaxable,
                             });
                             onContractProductDealsChange?.(null);
                             return;
                         }
                     }
 
-                    onFormDataChange({ contractSales: newContractSales });
+                    onFormDataChange({
+                        contractSales: newContractSales,
+                        taxRate: newTaxRate,
+                        taxable: newTaxable,
+                    });
+
+                    // Recompute totals with the new tax parameters
+                    recomputeInvoiceTotals(newTaxRate, newTaxable);
                 } catch (error) {
                     console.error('Error fetching sales type details:', error);
-                    onFormDataChange({ contractSales: false });
+                    onFormDataChange({ contractSales: false, taxRate: 0, taxable: false });
+                    recomputeInvoiceTotals(0, false);
                 }
             } else {
-                onFormDataChange({ contractSales: false });
+                onFormDataChange({ contractSales: false, taxRate: 0, taxable: false });
+                recomputeInvoiceTotals(0, false);
             }
         };
 
@@ -207,6 +231,8 @@ export default function RecordDetailsTab({
         onFormDataChange({
             salesTypeId: salesType.salesTypeId,
             salesTypeName: salesType.salesTypeName,
+            taxRate: salesType.defaultTax ?? 0,
+            taxable: salesType.taxable ?? false,
         });
     };
 
@@ -464,7 +490,7 @@ export default function RecordDetailsTab({
 
     return (
         <div className="space-y-6">
-            {!isCreateMode && !isAdminUser && (
+            {!isCreateMode && !isAdminUser && !isReadOnly && (
                 <ChangeReasonField
                     value={formData.changeReason || ''}
                     onChange={(e) => onFormDataChange({ changeReason: e.target.value })}
@@ -501,6 +527,18 @@ export default function RecordDetailsTab({
                                 className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500"
                                 placeholder="Document number (auto-generated)"
                             />
+                        </div>
+                    )}
+
+                    {!isCreateMode && (
+                        <div className="group">
+                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                Payment Status
+                            </label>
+                            <div className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed">
+                                {getPaymentStatusBadge(formData.paymentStatus as PaymentStatusEnum)}
+                            </div>
                         </div>
                     )}
 

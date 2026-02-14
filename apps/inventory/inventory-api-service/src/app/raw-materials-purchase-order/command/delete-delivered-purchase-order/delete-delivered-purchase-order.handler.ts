@@ -72,7 +72,9 @@ export class DeleteDeliveredPurchaseOrderHandler implements ICommandHandler<Dele
         user: UserCognito
     ): Promise<void> {
         po.deliveredPurchaseOrderDetails = po.deliveredPurchaseOrderDetails || [];
-        const target = po.deliveredPurchaseOrderDetails.find((d) => d.deliveryDate === delivery.deliveryDate);
+        const target = po.deliveredPurchaseOrderDetails.find(
+            (d) => d.deliveryDate === delivery.deliveryDate && d.deliveryNo === delivery.deliveryNo
+        );
         if (!target) {
             return;
         }
@@ -112,7 +114,7 @@ export class DeleteDeliveredPurchaseOrderHandler implements ICommandHandler<Dele
 
         if ((target.rawMaterials || []).length === 0) {
             po.deliveredPurchaseOrderDetails = po.deliveredPurchaseOrderDetails.filter(
-                (d) => d.deliveryDate !== delivery.deliveryDate
+                (d) => !(d.deliveryDate === delivery.deliveryDate && d.deliveryNo === delivery.deliveryNo)
             );
         }
     }

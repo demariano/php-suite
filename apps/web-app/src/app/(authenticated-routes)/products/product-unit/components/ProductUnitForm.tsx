@@ -225,7 +225,11 @@ export default function ProductUnitForm({
 
             <div className="space-y-6">
                 <div className="space-y-4">
-                    <div className={`rounded-xl border-2 p-4 sm:p-6 ${showApprovalUI ? 'border-green-400 bg-white' : 'border-gray-200'}`}>
+                    <div
+                        className={`rounded-xl border-2 p-4 sm:p-6 ${
+                            showApprovalUI ? 'border-green-400 bg-white' : 'border-gray-200'
+                        }`}
+                    >
                         <div className="mb-4 flex items-center gap-3">
                             <div className="rounded-lg bg-blue-600 p-2 shadow-md">
                                 <svg
@@ -266,7 +270,9 @@ export default function ProductUnitForm({
                                         type="text"
                                         name="productUnitName"
                                         value={formData.productUnitName}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, productUnitName: e.target.value }))}
+                                        onChange={(e) =>
+                                            setFormData((prev) => ({ ...prev, productUnitName: e.target.value }))
+                                        }
                                         placeholder={isCreateMode ? 'Enter product unit name' : ''}
                                         disabled={isFormDisabled}
                                         className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${

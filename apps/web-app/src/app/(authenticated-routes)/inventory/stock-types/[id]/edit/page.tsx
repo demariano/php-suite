@@ -172,7 +172,6 @@ export default function EditStockTypePage({ params }: EditStockTypePageProps) {
         setShowDenyDialog(true);
     };
 
-
     const handleDenyConfirm = async (approverMessage: string) => {
         if (!selectedStockType) return;
 

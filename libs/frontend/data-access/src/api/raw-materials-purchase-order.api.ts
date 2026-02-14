@@ -53,8 +53,17 @@ class RawMaterialsPurchaseOrderApiClass extends AxiosConfig {
         return this.axiosInstance.get(`/raw-materials-purchase-order/${id}`);
     };
 
-    public createRawMaterialsPurchaseOrder = async (data: any) => {
-        return this.axiosInstance.post('/raw-materials-purchase-order', data);
+    public createRawMaterialsPurchaseOrder = async (data: any, userRole?: string) => {
+        const params = new URLSearchParams();
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString ? `/raw-materials-purchase-order?${queryString}` : '/raw-materials-purchase-order';
+
+        return this.axiosInstance.post(url, data);
     };
 
     public updateRawMaterialsPurchaseOrder = async (id: string, data: any, userRole?: string) => {
@@ -72,8 +81,19 @@ class RawMaterialsPurchaseOrderApiClass extends AxiosConfig {
         return this.axiosInstance.put(url, data);
     };
 
-    public deletePurchaseOrder = async (id: string, data: any) => {
-        return this.axiosInstance.delete(`/raw-materials-purchase-order/${id}`, { data });
+    public deletePurchaseOrder = async (id: string, data: any, userRole?: string) => {
+        const params = new URLSearchParams();
+
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+
+        const queryString = params.toString();
+        const url = queryString
+            ? `/raw-materials-purchase-order/${id}?${queryString}`
+            : `/raw-materials-purchase-order/${id}`;
+
+        return this.axiosInstance.delete(url, { data });
     };
 
     public approvePurchaseOrder = async (id: string) => {
@@ -98,6 +118,7 @@ class RawMaterialsPurchaseOrderApiClass extends AxiosConfig {
         const dto = {
             deliveredPurchaseOrderDetails: [
                 {
+                    deliveryNo: data.deliveryNo,
                     deliveryDate: data.deliveryDate,
                     rawMaterialsLocationId: data.rawMaterialsLocationId,
                     rawMaterialsLocationName: data.rawMaterialsLocationName,
@@ -113,6 +134,7 @@ class RawMaterialsPurchaseOrderApiClass extends AxiosConfig {
         const dto = {
             deliveredPurchaseOrderDetails: [
                 {
+                    deliveryNo: delivery.deliveryNo,
                     deliveryDate: delivery.deliveryDate,
                     rawMaterials: delivery.rawMaterials,
                 },

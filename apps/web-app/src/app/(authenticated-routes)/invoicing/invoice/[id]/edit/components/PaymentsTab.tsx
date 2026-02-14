@@ -1,16 +1,34 @@
 'use client';
 
-import { InvoiceDto } from '@data-access/index';
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type InvoicePaymentDto = any;
+import { InvoiceDto, PaymentApi, PaymentInvoiceDetailsDto } from '@data-access/index';
+import { useEffect, useState } from 'react';
 
 interface PaymentsTabProps {
     formData: InvoiceDto;
 }
 
 export default function PaymentsTab({ formData }: PaymentsTabProps) {
-    const payments = (formData as any).payments || [];
+    const [payments, setPayments] = useState<PaymentInvoiceDetailsDto[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        const fetchPaymentInvoices = async () => {
+            if (!formData.invoiceId) return;
+
+            try {
+                setIsLoading(true);
+                const records = await PaymentApi.getPaymentInvoicesByInvoiceId(formData.invoiceId);
+                setPayments(records || []);
+            } catch (error) {
+                console.error('Error fetching payment invoices:', error);
+                setPayments([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchPaymentInvoices();
+    }, [formData.invoiceId]);
 
     return (
         <div className="space-y-6">
@@ -25,130 +43,107 @@ export default function PaymentsTab({ formData }: PaymentsTabProps) {
 
             {/* Payment Table */}
             <div className="overflow-x-auto rounded-xl border-2 border-gray-200 shadow-sm">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gradient-to-r from-blue-600 to-blue-700">
-                        <tr>
-                            <th
-                                scope="col"
-                                className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-white"
-                            >
-                                Receipt No
-                            </th>
-                            <th
-                                scope="col"
-                                className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-white"
-                            >
-                                Payment Date
-                            </th>
-                            <th
-                                scope="col"
-                                className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-white"
-                            >
-                                Amount
-                            </th>
-                            <th
-                                scope="col"
-                                className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-white"
-                            >
-                                Contract Payment
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200 bg-white">
-                        {payments.length === 0 ? (
+                {isLoading ? (
+                    <div className="flex items-center justify-center py-12">
+                        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
+                        <span className="ml-3 text-sm text-gray-500">Loading payment records...</span>
+                    </div>
+                ) : (
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gradient-to-r from-blue-600 to-blue-700">
                             <tr>
-                                <td colSpan={4} className="px-6 py-12 text-center">
-                                    <div className="flex flex-col items-center justify-center gap-3">
-                                        <svg
-                                            className="h-16 w-16 text-gray-300"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                strokeLinecap="round"
-                                                strokeLinejoin="round"
-                                                strokeWidth={2}
-                                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
-                                            />
-                                        </svg>
-                                        <p className="text-lg font-semibold text-gray-500">No payments recorded</p>
-                                        <p className="text-sm text-gray-400">
-                                            Payments will appear here when they are applied to this invoice
-                                        </p>
-                                    </div>
-                                </td>
-                            </tr>
-                        ) : (
-                            payments.map((payment: InvoicePaymentDto, index: number) => (
-                                <tr
-                                    key={`${payment.paymentId}-${index}`}
-                                    className="transition-colors hover:bg-blue-50"
+                                <th
+                                    scope="col"
+                                    className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-white"
                                 >
-                                    <td className="whitespace-nowrap px-6 py-4">
-                                        <div className="flex items-center gap-2">
-                                            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
-                                                {index + 1}
-                                            </span>
-                                            <span className="font-medium text-gray-900">{payment.receiptNo}</span>
+                                    Receipt No
+                                </th>
+                                <th
+                                    scope="col"
+                                    className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-white"
+                                >
+                                    Doc No
+                                </th>
+                                <th
+                                    scope="col"
+                                    className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-white"
+                                >
+                                    Date Created
+                                </th>
+                                <th
+                                    scope="col"
+                                    className="px-6 py-4 text-right text-xs font-bold uppercase tracking-wider text-white"
+                                >
+                                    Amount Applied
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-200 bg-white">
+                            {payments.length === 0 ? (
+                                <tr>
+                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                        <div className="flex flex-col items-center justify-center gap-3">
+                                            <svg
+                                                className="h-16 w-16 text-gray-300"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    strokeWidth={2}
+                                                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                                                />
+                                            </svg>
+                                            <p className="text-lg font-semibold text-gray-500">No payments recorded</p>
+                                            <p className="text-sm text-gray-400">
+                                                Payments will appear here when they are applied to this invoice
+                                            </p>
                                         </div>
-                                    </td>
-                                    <td className="whitespace-nowrap px-6 py-4">
-                                        <div className="text-sm text-gray-900">
-                                            {new Date(payment.paymentDate).toLocaleDateString('en-US', {
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric',
-                                            })}
-                                        </div>
-                                    </td>
-                                    <td className="whitespace-nowrap px-6 py-4 text-right">
-                                        <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">
-                                            ₱{payment.paymentAmount.toFixed(2)}
-                                        </span>
-                                    </td>
-                                    <td className="whitespace-nowrap px-6 py-4 text-center">
-                                        {payment.contractPayment ? (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-800">
-                                                <svg
-                                                    className="h-4 w-4"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                                    />
-                                                </svg>
-                                                Yes
-                                            </span>
-                                        ) : (
-                                            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
-                                                <svg
-                                                    className="h-4 w-4"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M6 18L18 6M6 6l12 12"
-                                                    />
-                                                </svg>
-                                                No
-                                            </span>
-                                        )}
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
+                            ) : (
+                                payments.map((payment: PaymentInvoiceDetailsDto, index: number) => (
+                                    <tr
+                                        key={`${payment.paymentId}-${index}`}
+                                        className="transition-colors hover:bg-blue-50"
+                                    >
+                                        <td className="whitespace-nowrap px-6 py-4">
+                                            <div className="flex items-center gap-2">
+                                                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700">
+                                                    {index + 1}
+                                                </span>
+                                                <span className="font-medium text-gray-900">
+                                                    {payment.receiptNo || '-'}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="whitespace-nowrap px-6 py-4">
+                                            <span className="font-medium text-gray-900">{payment.docno || '-'}</span>
+                                        </td>
+                                        <td className="whitespace-nowrap px-6 py-4">
+                                            <div className="text-sm text-gray-900">
+                                                {payment.dateCreated
+                                                    ? new Date(payment.dateCreated).toLocaleDateString('en-US', {
+                                                          year: 'numeric',
+                                                          month: 'short',
+                                                          day: 'numeric',
+                                                      })
+                                                    : '-'}
+                                            </div>
+                                        </td>
+                                        <td className="whitespace-nowrap px-6 py-4 text-right">
+                                            <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-sm font-semibold text-green-800">
+                                                ₱{(payment.amountApplied || 0).toFixed(2)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                )}
             </div>
 
             {/* Summary Footer */}

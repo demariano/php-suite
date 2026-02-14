@@ -46,6 +46,8 @@ export const InvoicingSchema = {
             productPriceTypeId: { type: String },
             productPriceTypeName: { type: String },
             contractSales: { type: Boolean, required: false },
+            taxRate: { type: Number, required: false, default: 0 },
+            taxable: { type: Boolean, required: false, default: false },
             status: {
                 type: String,
                 enum: ['ACTIVE', 'INACTIVE', 'FOR_APPROVAL', 'FOR_DELETION', 'FOR_DEACTIVATION', 'NEW_RECORD', 'DRAFT'],

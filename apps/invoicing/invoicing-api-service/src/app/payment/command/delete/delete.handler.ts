@@ -49,6 +49,8 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
             // Check user authorization
             const hasApprovalPermission = this.hasApprovalPermission(command.user.roles);
 
+            console.log('hasApprovalPermission', hasApprovalPermission);
+
             // Update status and activity logs based on permissions
             this.updatePaymentStatus(command, existingRecord, hasApprovalPermission);
 
@@ -142,21 +144,23 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
      * Performs the actual deletion based on user permissions
      */
     private async performDeletion(command: DeletePaymentCommand, hasApprovalPermission: boolean): Promise<PaymentDto> {
+        console.log('Performing deletion. hasApprovalPermission:', hasApprovalPermission);
         if (hasApprovalPermission) {
             // Hard delete
-            const paymentInvoiceRecors = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
+            const paymentInvoiceRecords = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
                 command.paymentDto.paymentId
             );
-            if (paymentInvoiceRecors && paymentInvoiceRecors.length > 0) {
-                for (const record of paymentInvoiceRecors) {
+            if (paymentInvoiceRecords && paymentInvoiceRecords.length > 0) {
+                for (const record of paymentInvoiceRecords) {
                     await this.paymentInvoiceDatabaseService.deleteRecord(record);
                 }
             }
 
             // Send PAYMENT_DELETED events after hard delete of invoice details
             const paymentInvoicePayloads: InvoicePaymentEventDto[] = [];
-            if (command.paymentDto.paymentInvoiceDetails && command.paymentDto.paymentInvoiceDetails.length > 0) {
-                for (const detail of command.paymentDto.paymentInvoiceDetails) {
+            if (paymentInvoiceRecords && paymentInvoiceRecords.length > 0) {
+                console.log('here');
+                for (const detail of paymentInvoiceRecords) {
                     const invoicePaymentDto: InvoicePaymentEventDto = {
                         invoiceId: detail.invoiceId,
                         receiptNo: command.paymentDto.receiptNo,
@@ -172,10 +176,12 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
                     paymentInvoicePayloads.push(invoicePaymentDto);
                 }
 
+                console.log('paymentInvoicePayloadsfor deletion:', paymentInvoicePayloads);
+
                 await this.sendInvoicePaymentEvent(paymentInvoicePayloads);
 
                 this.logger.log(
-                    `Sent PAYMENT_DELETED events for ${command.paymentDto.paymentInvoiceDetails.length} invoices in payment ${command.paymentDto.paymentId}`
+                    `Sent PAYMENT_DELETED events for ${paymentInvoiceRecords.length} invoices in payment ${command.paymentDto.paymentId}`
                 );
             }
 

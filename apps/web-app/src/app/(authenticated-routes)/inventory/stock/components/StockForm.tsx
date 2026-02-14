@@ -3,12 +3,13 @@
 import { ProductDto, ProductUnitDto, StatusEnum, StockDto, StockTypeDto } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
-import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
+import DatePicker from '../../../components/DatePicker';
 import {
     ProductSearchableSelectionModal,
     ProductUnitSearchableSelectionModal,
     StockTypeSearchableSelectionModal,
 } from '../../../search-modals';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import SelectionField from './SelectionField';
 
 // Custom hook for whole number formatting (no decimals)
@@ -246,6 +247,10 @@ export default function StockForm({
             errors.push('Please select a stock type.');
         }
 
+        if (!formData.expirationDate?.trim()) {
+            errors.push('Expiration date is required.');
+        }
+
         // Validate change reason for non-create mode (only required for non-admin users)
         if (!isCreateMode && !isAdminUser && (!formData.changeReason || formData.changeReason?.trim() === '')) {
             errors.push('Please provide a reason for the change.');
@@ -466,54 +471,62 @@ export default function StockForm({
                             </div>
                             {showApprovalUI ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {renderFieldWithInlineDiff('Lot Number', 'lotNo', selectedStock?.lotNo, pendingVersion.lotNo)}
-                                    {renderFieldWithInlineDiff('Expiration Date', 'expirationDate', selectedStock?.expirationDate, pendingVersion.expirationDate)}
+                                    {renderFieldWithInlineDiff(
+                                        'Lot Number',
+                                        'lotNo',
+                                        selectedStock?.lotNo,
+                                        pendingVersion.lotNo
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Expiration Date',
+                                        'expirationDate',
+                                        selectedStock?.expirationDate,
+                                        pendingVersion.expirationDate
+                                    )}
                                 </div>
                             ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Lot Number */}
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Lot Number
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="lotNo"
-                                        value={formData.lotNo}
-                                        onChange={(e) => setFormData((prev) => ({ ...prev, lotNo: e.target.value }))}
-                                        placeholder={isCreateMode ? 'Enter lot number' : ''}
-                                        disabled={!isCreateMode}
-                                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
-                                            !isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE
-                                                ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
-                                        }`}
-                                    />
-                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Lot Number */}
+                                    <div className="group">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                            Lot Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="lotNo"
+                                            value={formData.lotNo}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({ ...prev, lotNo: e.target.value }))
+                                            }
+                                            placeholder={isCreateMode ? 'Enter lot number' : ''}
+                                            disabled={!isCreateMode}
+                                            className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                !isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE
+                                                    ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                                                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                                            }`}
+                                        />
+                                    </div>
 
-                                {/* Expiration Date */}
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Expiration Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        name="expirationDate"
-                                        value={formData.expirationDate}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({ ...prev, expirationDate: e.target.value }))
-                                        }
-                                        disabled={!isCreateMode}
-                                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
-                                            !isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE
-                                                ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
-                                        }`}
-                                    />
+                                    {/* Expiration Date */}
+                                    <div className="group">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                            Expiration Date
+                                            <span className="text-red-500">*</span>
+                                        </label>
+                                        <DatePicker
+                                            value={formData.expirationDate}
+                                            onChange={(date) =>
+                                                setFormData((prev) => ({ ...prev, expirationDate: date }))
+                                            }
+                                            placeholder="Select expiration date"
+                                            disabled={!isCreateMode}
+                                            required
+                                        />
+                                    </div>
                                 </div>
-                            </div>
                             )}
                         </div>
                     </div>
@@ -541,39 +554,54 @@ export default function StockForm({
                             </div>
                             {showApprovalUI ? (
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    {renderFieldWithInlineDiff('Product', 'productName', selectedStock?.productName, pendingVersion.productName)}
-                                    {renderFieldWithInlineDiff('Product Unit', 'productUnitName', selectedStock?.productUnitName, pendingVersion.productUnitName)}
-                                    {renderFieldWithInlineDiff('Stock Type', 'stockTypeName', selectedStock?.stockTypeName, pendingVersion.stockTypeName)}
+                                    {renderFieldWithInlineDiff(
+                                        'Product',
+                                        'productName',
+                                        selectedStock?.productName,
+                                        pendingVersion.productName
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Product Unit',
+                                        'productUnitName',
+                                        selectedStock?.productUnitName,
+                                        pendingVersion.productUnitName
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Stock Type',
+                                        'stockTypeName',
+                                        selectedStock?.stockTypeName,
+                                        pendingVersion.stockTypeName
+                                    )}
                                 </div>
                             ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                <SelectionField
-                                    label="Product"
-                                    selectedItem={selectedProduct}
-                                    onSelect={() => setShowProductModal(true)}
-                                    onClear={handleClearProduct}
-                                    buttonText="Select Product"
-                                    disabled={!isCreateMode}
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <SelectionField
+                                        label="Product"
+                                        selectedItem={selectedProduct}
+                                        onSelect={() => setShowProductModal(true)}
+                                        onClear={handleClearProduct}
+                                        buttonText="Select Product"
+                                        disabled={!isCreateMode}
+                                    />
 
-                                <SelectionField
-                                    label="Product Unit"
-                                    selectedItem={selectedProductUnit}
-                                    onSelect={() => setShowProductUnitModal(true)}
-                                    onClear={handleClearProductUnit}
-                                    buttonText="Select Unit"
-                                    disabled={!isCreateMode}
-                                />
+                                    <SelectionField
+                                        label="Product Unit"
+                                        selectedItem={selectedProductUnit}
+                                        onSelect={() => setShowProductUnitModal(true)}
+                                        onClear={handleClearProductUnit}
+                                        buttonText="Select Unit"
+                                        disabled={!isCreateMode}
+                                    />
 
-                                <SelectionField
-                                    label="Stock Type"
-                                    selectedItem={selectedStockType}
-                                    onSelect={() => setShowStockTypeModal(true)}
-                                    onClear={handleClearStockType}
-                                    buttonText="Select Type"
-                                    disabled={!isCreateMode}
-                                />
-                            </div>
+                                    <SelectionField
+                                        label="Stock Type"
+                                        selectedItem={selectedStockType}
+                                        onSelect={() => setShowStockTypeModal(true)}
+                                        onClear={handleClearStockType}
+                                        buttonText="Select Type"
+                                        disabled={!isCreateMode}
+                                    />
+                                </div>
                             )}
                         </div>
                     </div>
@@ -601,44 +629,49 @@ export default function StockForm({
                             </div>
                             {showApprovalUI ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {renderFieldWithInlineDiff('Total Quantity', 'totalQuantity', selectedStock?.totalQuantity, pendingVersion.totalQuantity)}
+                                    {renderFieldWithInlineDiff(
+                                        'Total Quantity',
+                                        'totalQuantity',
+                                        selectedStock?.totalQuantity,
+                                        pendingVersion.totalQuantity
+                                    )}
                                 </div>
                             ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Total Quantity
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="totalQuantity"
-                                        value={totalQuantityFormatting.value}
-                                        onChange={(e) => {
-                                            totalQuantityFormatting.onChange(e);
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                totalQuantity: e.target.value.replace(/,/g, ''),
-                                            }));
-                                        }}
-                                        onFocus={totalQuantityFormatting.onFocus}
-                                        onBlur={(e) => {
-                                            totalQuantityFormatting.onBlur(e);
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                totalQuantity: totalQuantityFormatting.numericValue.toString(),
-                                            }));
-                                        }}
-                                        placeholder={isCreateMode ? 'Enter total quantity' : ''}
-                                        disabled={!isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE}
-                                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
-                                            !isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE
-                                                ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
-                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
-                                        }`}
-                                    />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="group">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                            Total Quantity
+                                        </label>
+                                        <input
+                                            type="text"
+                                            name="totalQuantity"
+                                            value={totalQuantityFormatting.value}
+                                            onChange={(e) => {
+                                                totalQuantityFormatting.onChange(e);
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    totalQuantity: e.target.value.replace(/,/g, ''),
+                                                }));
+                                            }}
+                                            onFocus={totalQuantityFormatting.onFocus}
+                                            onBlur={(e) => {
+                                                totalQuantityFormatting.onBlur(e);
+                                                setFormData((prev) => ({
+                                                    ...prev,
+                                                    totalQuantity: totalQuantityFormatting.numericValue.toString(),
+                                                }));
+                                            }}
+                                            placeholder={isCreateMode ? 'Enter total quantity' : ''}
+                                            disabled={!isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE}
+                                            className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                !isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE
+                                                    ? 'border-gray-200 bg-white text-gray-500 cursor-not-allowed'
+                                                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md'
+                                            }`}
+                                        />
+                                    </div>
                                 </div>
-                            </div>
                             )}
                         </div>
                     </div>
@@ -690,25 +723,47 @@ export default function StockForm({
                                     </button>
                                 )}
                             </div>
-                        ) : !isCreateMode && isAdminUser && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(currentStatus) ? (
+                        ) : !isCreateMode &&
+                          isAdminUser &&
+                          [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(
+                              currentStatus
+                          ) ? (
                             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                                 <button
                                     type="button"
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeny?.(); }}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onDeny?.();
+                                    }}
                                     className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                                 >
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M6 18L18 6M6 6l12 12"
+                                        />
                                     </svg>
                                     Deny
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); onApprove?.(); }}
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        onApprove?.();
+                                    }}
                                     className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                                 >
                                     <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M5 13l4 4L19 7"
+                                        />
                                     </svg>
                                     Approve
                                 </button>
@@ -761,6 +816,7 @@ export default function StockForm({
                 selectedValue={selectedProduct?.id || null}
                 onSelect={handleProductSelect}
                 onClose={() => setShowProductModal(false)}
+                skipDealSelection={true}
             />
 
             <ProductUnitSearchableSelectionModal

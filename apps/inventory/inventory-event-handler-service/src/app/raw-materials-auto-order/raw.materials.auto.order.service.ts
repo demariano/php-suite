@@ -64,7 +64,7 @@ export class RawMaterialsAutoOrderService {
                         await this.rawMaterialsStockDatabaseService.findRecordsByRawMaterialIdPagination(
                             100,
                             rawMaterial.rawMaterialId,
-                            'next',
+                            cursorPointer ? 'next' : '',
                             cursorPointer
                         );
 

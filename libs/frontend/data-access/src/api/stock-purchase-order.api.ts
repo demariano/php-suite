@@ -72,8 +72,14 @@ class StockPurchaseOrderApiClass extends AxiosConfig {
         return this.axiosInstance.get(`/stock-purchase-order/${id}`);
     };
 
-    public createStockPurchaseOrder = async (data: any) => {
-        return this.axiosInstance.post('/stock-purchase-order', data);
+    public createStockPurchaseOrder = async (data: any, userRole?: string) => {
+        const params = new URLSearchParams();
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+        const queryString = params.toString();
+        const url = queryString ? `/stock-purchase-order?${queryString}` : '/stock-purchase-order';
+        return this.axiosInstance.post(url, data);
     };
 
     public updateStockPurchaseOrder = async (id: string, data: any, userRole?: string) => {
@@ -89,8 +95,14 @@ class StockPurchaseOrderApiClass extends AxiosConfig {
         return this.axiosInstance.put(url, data);
     };
 
-    public deleteStockPurchaseOrder = async (id: string, data: any) => {
-        return this.axiosInstance.delete(`/stock-purchase-order/${id}`, { data });
+    public deleteStockPurchaseOrder = async (id: string, data: any, userRole?: string) => {
+        const params = new URLSearchParams();
+        if (userRole) {
+            params.append('userRole', userRole);
+        }
+        const queryString = params.toString();
+        const url = queryString ? `/stock-purchase-order/${id}?${queryString}` : `/stock-purchase-order/${id}`;
+        return this.axiosInstance.delete(url, { data });
     };
 
     public approveStockPurchaseOrder = async (id: string) => {
@@ -121,6 +133,7 @@ class StockPurchaseOrderApiClass extends AxiosConfig {
         const dto = {
             deliveredPurchaseOrderDetails: [
                 {
+                    deliveryNo: data.deliveryNo,
                     deliveryDate: data.deliveryDate,
                     stockLocationId: data.stockLocationId,
                     stockLocationName: data.stockLocationName,
@@ -136,6 +149,7 @@ class StockPurchaseOrderApiClass extends AxiosConfig {
         const dto = {
             deliveredPurchaseOrderDetails: [
                 {
+                    deliveryNo: delivery.deliveryNo,
                     deliveryDate: delivery.deliveryDate,
                     stockItems: delivery.stockItems,
                 },

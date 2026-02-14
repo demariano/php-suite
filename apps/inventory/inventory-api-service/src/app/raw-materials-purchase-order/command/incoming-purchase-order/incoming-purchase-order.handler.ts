@@ -55,6 +55,26 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
             throw new BadRequestException('No deliveredPurchaseOrderDetails supplied');
         }
 
+        // Validate deliveryNo is provided for all deliveries
+        for (const delivery of incomingDeliveries) {
+            if (!delivery.deliveryNo || !delivery.deliveryNo.trim()) {
+                throw new BadRequestException('Delivery No is required for all deliveries');
+            }
+        }
+
+        // Validate deliveryNo + deliveryDate uniqueness within the PO
+        const existingDeliveries = existing.deliveredPurchaseOrderDetails || [];
+        for (const delivery of incomingDeliveries) {
+            const duplicate = existingDeliveries.find(
+                (d) => d.deliveryNo === delivery.deliveryNo && d.deliveryDate === delivery.deliveryDate
+            );
+            if (duplicate) {
+                throw new BadRequestException(
+                    `Delivery No '${delivery.deliveryNo}' on ${delivery.deliveryDate} already exists on this purchase order`
+                );
+            }
+        }
+
         // Validate delivered quantities do not exceed ordered quantities
         this.validateDeliveryQuantities(existing, incomingDeliveries);
 
@@ -135,7 +155,7 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
             existingStock.activityLogs.push(
                 `Date: ${deliveryDate || 'N/A'}, Added ${qtyDelta} from PO ${
                     po.docNo || po.rawMaterialsPurchaseOrderId
-                } by ${user.username}`
+                } (Delivery No: ${delivery?.deliveryNo || 'N/A'}) by ${user.username}`
             );
             existingStock.activityLogs = reduceArrayContents(existingStock.activityLogs, ACTIVITY_LOGS_LIMIT);
 
@@ -161,9 +181,9 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
                 qty: qtyDelta,
                 lotNo: lotNo || undefined,
                 activityLogs: [
-                    `Date: ${deliveryDate || 'N/A'}, Created from PO ${po.docNo || po.rawMaterialsPurchaseOrderId} by ${
-                        user.username
-                    }`,
+                    `Date: ${deliveryDate || 'N/A'}, Created from PO ${
+                        po.docNo || po.rawMaterialsPurchaseOrderId
+                    } (Delivery No: ${delivery?.deliveryNo || 'N/A'}) by ${user.username}`,
                 ],
                 forApprovalVersion: undefined,
                 changeReason: undefined,
@@ -178,7 +198,9 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
         delivery: RawMaterialsPurchaseOrderDto['deliveredPurchaseOrderDetails'][number]
     ): void {
         po.deliveredPurchaseOrderDetails = po.deliveredPurchaseOrderDetails || [];
-        const existing = po.deliveredPurchaseOrderDetails.find((d) => d.deliveryDate === delivery.deliveryDate);
+        const existing = po.deliveredPurchaseOrderDetails.find(
+            (d) => d.deliveryDate === delivery.deliveryDate && d.deliveryNo === delivery.deliveryNo
+        );
         if (existing) {
             existing.rawMaterials = [...(existing.rawMaterials || []), ...(delivery.rawMaterials || [])];
         } else {

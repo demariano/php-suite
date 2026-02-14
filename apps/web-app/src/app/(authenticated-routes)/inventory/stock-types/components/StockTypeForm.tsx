@@ -14,8 +14,8 @@ interface StockTypeFormProps {
     onCancel: () => void;
     isAdminUser?: boolean;
     activeTab?: 'details' | 'approval';
-  onApprove?: () => void;
-  onDeny?: () => void;
+    onApprove?: () => void;
+    onDeny?: () => void;
 }
 
 export default function StockTypeForm({
@@ -221,7 +221,12 @@ export default function StockTypeForm({
                         </div>
                         {showApprovalUI ? (
                             <div className="grid grid-cols-1 gap-6">
-                                {renderFieldWithInlineDiff('Stock Type Name', 'stockTypeName', selectedStockType?.stockTypeName, pendingVersion.stockTypeName)}
+                                {renderFieldWithInlineDiff(
+                                    'Stock Type Name',
+                                    'stockTypeName',
+                                    selectedStockType?.stockTypeName,
+                                    pendingVersion.stockTypeName
+                                )}
                             </div>
                         ) : (
                             <div className="group">
@@ -233,7 +238,9 @@ export default function StockTypeForm({
                                     type="text"
                                     name="stockTypeName"
                                     value={formData.stockTypeName}
-                                    onChange={(e) => setFormData((prev) => ({ ...prev, stockTypeName: e.target.value }))}
+                                    onChange={(e) =>
+                                        setFormData((prev) => ({ ...prev, stockTypeName: e.target.value }))
+                                    }
                                     placeholder={isCreateMode ? 'Enter stock type name' : ''}
                                     disabled={isFormDisabled}
                                     className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
@@ -270,21 +277,36 @@ export default function StockTypeForm({
                         </svg>
                         Delete
                     </button>
-                ) : !isCreateMode && isAdminUser && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(currentStatus) ? (
+                ) : !isCreateMode &&
+                  isAdminUser &&
+                  [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD, StatusEnum.FOR_DELETION].includes(currentStatus) ? (
                     <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
                         <button
                             type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDeny?.(); }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onDeny?.();
+                            }}
                             className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                         >
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
                             </svg>
                             Deny
                         </button>
                         <button
                             type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onApprove?.(); }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                onApprove?.();
+                            }}
                             className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                         >
                             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

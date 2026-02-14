@@ -17,11 +17,11 @@ import {
 } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
-import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import DatePicker from '../../../components/DatePicker';
 import SelectionField from '../../../customers/customer/components/SelectionField';
 import CustomerSearchableSelectionModal from '../../../search-modals/CustomerSearchableSelectionModal';
 import ProductSearchableSelectionModal from '../../../search-modals/ProductSearchableSelectionModal';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 
 interface ContractDealsDetailsDto {
     productId: string;
@@ -705,162 +705,194 @@ export default function ContractForm({
                             </div>
                             {showApprovalUI ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {renderFieldWithInlineDiff('Customer', 'customerName', selectedContract?.customerName, pendingVersion.customerName)}
-                                    {renderFieldWithInlineDiff('Contract Name', 'contractName', selectedContract?.contractName, pendingVersion.contractName)}
+                                    {renderFieldWithInlineDiff(
+                                        'Customer',
+                                        'customerName',
+                                        selectedContract?.customerName,
+                                        pendingVersion.customerName
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Contract Name',
+                                        'contractName',
+                                        selectedContract?.contractName,
+                                        pendingVersion.contractName
+                                    )}
                                     {renderReadOnlyField('Contract Number', selectedContract?.contractNo)}
-                                    {renderFieldWithInlineDiff('Contract Amount', 'contractAmount', selectedContract?.contractAmount, pendingVersion.contractAmount)}
-                                    {renderFieldWithInlineDiff('Start Date', 'startDate', selectedContract?.startDate, pendingVersion.startDate)}
-                                    {renderFieldWithInlineDiff('End Date', 'endDate', selectedContract?.endDate, pendingVersion.endDate)}
-                                    {renderFieldWithInlineDiff('Contract Type', 'contractType', selectedContract?.contractType, pendingVersion.contractType)}
+                                    {renderFieldWithInlineDiff(
+                                        'Contract Amount',
+                                        'contractAmount',
+                                        selectedContract?.contractAmount,
+                                        pendingVersion.contractAmount
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Start Date',
+                                        'startDate',
+                                        selectedContract?.startDate,
+                                        pendingVersion.startDate
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'End Date',
+                                        'endDate',
+                                        selectedContract?.endDate,
+                                        pendingVersion.endDate
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Contract Type',
+                                        'contractType',
+                                        selectedContract?.contractType,
+                                        pendingVersion.contractType
+                                    )}
                                 </div>
                             ) : (
-                            <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Customer */}
-                                <div className="group">
-                                    <SelectionField
-                                        label="Customer"
-                                        selectedItem={selectedCustomer}
-                                        onSelect={() => setShowCustomerModal(true)}
-                                        onClear={handleClearCustomer}
-                                        buttonText="Select Customer"
-                                        disabled={isFieldDisabled('customer')}
-                                    />
-                                </div>
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Customer */}
+                                        <div className="group">
+                                            <SelectionField
+                                                label="Customer"
+                                                selectedItem={selectedCustomer}
+                                                onSelect={() => setShowCustomerModal(true)}
+                                                onClear={handleClearCustomer}
+                                                buttonText="Select Customer"
+                                                disabled={isFieldDisabled('customer')}
+                                            />
+                                        </div>
 
-                                {/* Contract Name */}
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Contract Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="contractName"
-                                        value={formData.contractName}
-                                        onChange={(e) =>
-                                            setFormData((prev) => ({ ...prev, contractName: e.target.value }))
-                                        }
-                                        placeholder={isCreateMode ? 'Enter contract name' : ''}
-                                        disabled={isFieldDisabled()}
-                                        className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                            isFieldDisabled()
-                                                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                                        }`}
-                                        required
-                                    />
-                                </div>
+                                        {/* Contract Name */}
+                                        <div className="group">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                Contract Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="contractName"
+                                                value={formData.contractName}
+                                                onChange={(e) =>
+                                                    setFormData((prev) => ({ ...prev, contractName: e.target.value }))
+                                                }
+                                                placeholder={isCreateMode ? 'Enter contract name' : ''}
+                                                disabled={isFieldDisabled()}
+                                                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                    isFieldDisabled()
+                                                        ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                        : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                                                }`}
+                                                required
+                                            />
+                                        </div>
 
-                                {/* Contract Number - Only shown in update mode, read-only */}
-                                {!isCreateMode && (
-                                    <div className="group">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                            Contract Number
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="contractNo"
-                                            value={formData.contractNo}
-                                            readOnly
-                                            className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500"
-                                        />
-                                        <p className="mt-1 text-xs text-gray-500">
-                                            Contract number is auto-generated and cannot be modified.
-                                        </p>
+                                        {/* Contract Number - Only shown in update mode, read-only */}
+                                        {!isCreateMode && (
+                                            <div className="group">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                    Contract Number
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="contractNo"
+                                                    value={formData.contractNo}
+                                                    readOnly
+                                                    className="w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500"
+                                                />
+                                                <p className="mt-1 text-xs text-gray-500">
+                                                    Contract number is auto-generated and cannot be modified.
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Contract Amount */}
+                                        <div className="group">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                Contract Amount
+                                            </label>
+                                            <input
+                                                type="text"
+                                                name="contractAmount"
+                                                value={getContractAmountDisplayValue()}
+                                                onChange={handleContractAmountChange}
+                                                onFocus={handleContractAmountFocus}
+                                                onBlur={handleContractAmountBlur}
+                                                placeholder={isCreateMode ? 'Enter contract amount' : ''}
+                                                disabled={isFieldDisabled()}
+                                                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                    isFieldDisabled()
+                                                        ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                        : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                                                }`}
+                                                required
+                                            />
+                                        </div>
                                     </div>
-                                )}
 
-                                {/* Contract Amount */}
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Contract Amount
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="contractAmount"
-                                        value={getContractAmountDisplayValue()}
-                                        onChange={handleContractAmountChange}
-                                        onFocus={handleContractAmountFocus}
-                                        onBlur={handleContractAmountBlur}
-                                        placeholder={isCreateMode ? 'Enter contract amount' : ''}
-                                        disabled={isFieldDisabled()}
-                                        className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                            isFieldDisabled()
-                                                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                                        }`}
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Start Date and End Date - Full width row */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Start Date
-                                    </label>
-                                    <DatePicker
-                                        value={formData.startDate}
-                                        onChange={(date) => setFormData((prev) => ({ ...prev, startDate: date }))}
-                                        placeholder="Select start date"
-                                        disabled={isFieldDisabled()}
-                                        maxDate={formData.endDate || undefined}
-                                        required
-                                    />
-                                </div>
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        End Date
-                                    </label>
-                                    <DatePicker
-                                        value={formData.endDate}
-                                        onChange={(date) => setFormData((prev) => ({ ...prev, endDate: date }))}
-                                        placeholder="Select end date"
-                                        disabled={isFieldDisabled()}
-                                        minDate={formData.startDate || undefined}
-                                        required
-                                    />
-                                </div>
-                            </div>
-                            {/* Contract Type - Full width row */}
-                            <div className="grid grid-cols-1 gap-6 mt-6">
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Contract Type
-                                    </label>
-                                    <select
-                                        name="contractType"
-                                        value={formData.contractType || ContractTypeEnum.REGULAR}
-                                        onChange={(e) => {
-                                            const newContractType = (e.target.value ||
-                                                ContractTypeEnum.REGULAR) as ContractTypeEnum;
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                contractType: newContractType,
-                                            }));
-                                        }}
-                                        disabled={isFieldDisabled()}
-                                        className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                            isFieldDisabled()
-                                                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                                        }`}
-                                    >
-                                        <option value={ContractTypeEnum.REGULAR}>Regular</option>
-                                        <option value={ContractTypeEnum.CONTRACT_PER_INVOICE}>
-                                            Contract Per Invoice
-                                        </option>
-                                    </select>
-                                </div>
-                            </div>
-                            </>
+                                    {/* Start Date and End Date - Full width row */}
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                                        <div className="group">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                Start Date
+                                            </label>
+                                            <DatePicker
+                                                value={formData.startDate}
+                                                onChange={(date) =>
+                                                    setFormData((prev) => ({ ...prev, startDate: date }))
+                                                }
+                                                placeholder="Select start date"
+                                                disabled={isFieldDisabled()}
+                                                maxDate={formData.endDate || undefined}
+                                                required
+                                            />
+                                        </div>
+                                        <div className="group">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                End Date
+                                            </label>
+                                            <DatePicker
+                                                value={formData.endDate}
+                                                onChange={(date) => setFormData((prev) => ({ ...prev, endDate: date }))}
+                                                placeholder="Select end date"
+                                                disabled={isFieldDisabled()}
+                                                minDate={formData.startDate || undefined}
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    {/* Contract Type - Full width row */}
+                                    <div className="grid grid-cols-1 gap-6 mt-6">
+                                        <div className="group">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                Contract Type
+                                            </label>
+                                            <select
+                                                name="contractType"
+                                                value={formData.contractType || ContractTypeEnum.REGULAR}
+                                                onChange={(e) => {
+                                                    const newContractType = (e.target.value ||
+                                                        ContractTypeEnum.REGULAR) as ContractTypeEnum;
+                                                    setFormData((prev) => ({
+                                                        ...prev,
+                                                        contractType: newContractType,
+                                                    }));
+                                                }}
+                                                disabled={isFieldDisabled()}
+                                                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                    isFieldDisabled()
+                                                        ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                        : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                                                }`}
+                                            >
+                                                <option value={ContractTypeEnum.REGULAR}>Regular</option>
+                                                <option value={ContractTypeEnum.CONTRACT_PER_INVOICE}>
+                                                    Contract Per Invoice
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </>
                             )}
                         </div>
                     </div>
@@ -1132,244 +1164,282 @@ export default function ContractForm({
                             </div>
                             {showApprovalUI ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    {renderFieldWithInlineDiff('Rebate Type', 'rebateType', selectedContract?.rebateType, pendingVersion.rebateType)}
-                                    {renderFieldWithInlineDiff('Rebate Percentage', 'rebatePercentage', selectedContract?.rebatePercentage, pendingVersion.rebatePercentage)}
-                                    {renderFieldWithInlineDiff('Rebate Amount', 'rebateAmount', selectedContract?.rebateAmount, pendingVersion.rebateAmount)}
-                                    {renderReadOnlyField('Rebate Claimed Amount', selectedContract?.rebateClaimedAmount)}
-                                    {renderReadOnlyField('Rebate Claimed Status', selectedContract?.rebateClaimedStatus || '-')}
+                                    {renderFieldWithInlineDiff(
+                                        'Rebate Type',
+                                        'rebateType',
+                                        selectedContract?.rebateType,
+                                        pendingVersion.rebateType
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Rebate Percentage',
+                                        'rebatePercentage',
+                                        selectedContract?.rebatePercentage,
+                                        pendingVersion.rebatePercentage
+                                    )}
+                                    {renderFieldWithInlineDiff(
+                                        'Rebate Amount',
+                                        'rebateAmount',
+                                        selectedContract?.rebateAmount,
+                                        pendingVersion.rebateAmount
+                                    )}
+                                    {renderReadOnlyField(
+                                        'Rebate Claimed Amount',
+                                        selectedContract?.rebateClaimedAmount
+                                    )}
+                                    {renderReadOnlyField(
+                                        'Rebate Claimed Status',
+                                        selectedContract?.rebateClaimedStatus || '-'
+                                    )}
                                 </div>
                             ) : (
-                            <>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Rebate Type */}
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Rebate Type
-                                    </label>
-                                    <select
-                                        name="rebateType"
-                                        value={formData.rebateType || RebateTypeEnum.NONE}
-                                        onChange={(e) => {
-                                            const newRebateType = (e.target.value ||
-                                                RebateTypeEnum.NONE) as RebateTypeEnum;
-                                            setFormData((prev) => ({
-                                                ...prev,
-                                                rebateType: newRebateType,
-                                                // Clear opposite field when switching types
-                                                rebatePercentage:
-                                                    newRebateType !== RebateTypeEnum.PERCENTAGE
-                                                        ? ''
-                                                        : prev.rebatePercentage,
-                                                rebateAmount:
-                                                    newRebateType !== RebateTypeEnum.AMOUNT ? '' : prev.rebateAmount,
-                                            }));
-                                        }}
-                                        disabled={isFieldDisabled()}
-                                        className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                            isFieldDisabled()
-                                                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                                        }`}
-                                    >
-                                        <option value={RebateTypeEnum.NONE}>None</option>
-                                        <option value={RebateTypeEnum.PERCENTAGE}>Percentage</option>
-                                        <option value={RebateTypeEnum.AMOUNT}>Amount</option>
-                                    </select>
-                                </div>
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {/* Rebate Type */}
+                                        <div className="group">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                Rebate Type
+                                            </label>
+                                            <select
+                                                name="rebateType"
+                                                value={formData.rebateType || RebateTypeEnum.NONE}
+                                                onChange={(e) => {
+                                                    const newRebateType = (e.target.value ||
+                                                        RebateTypeEnum.NONE) as RebateTypeEnum;
+                                                    setFormData((prev) => ({
+                                                        ...prev,
+                                                        rebateType: newRebateType,
+                                                        // Clear opposite field when switching types
+                                                        rebatePercentage:
+                                                            newRebateType !== RebateTypeEnum.PERCENTAGE
+                                                                ? ''
+                                                                : prev.rebatePercentage,
+                                                        rebateAmount:
+                                                            newRebateType !== RebateTypeEnum.AMOUNT
+                                                                ? ''
+                                                                : prev.rebateAmount,
+                                                    }));
+                                                }}
+                                                disabled={isFieldDisabled()}
+                                                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                    isFieldDisabled()
+                                                        ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                        : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                                                }`}
+                                            >
+                                                <option value={RebateTypeEnum.NONE}>None</option>
+                                                <option value={RebateTypeEnum.PERCENTAGE}>Percentage</option>
+                                                <option value={RebateTypeEnum.AMOUNT}>Amount</option>
+                                            </select>
+                                        </div>
 
-                                {/* Rebate Percentage - Only visible when rebateType is PERCENTAGE */}
-                                {formData.rebateType === RebateTypeEnum.PERCENTAGE && (
-                                    <div className="group">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                            Rebate Percentage
-                                        </label>
-                                        <input
-                                            type="number"
-                                            name="rebatePercentage"
-                                            value={formData.rebatePercentage}
-                                            onChange={(e) => {
-                                                const value = e.target.value;
-                                                // Prevent values over 99
-                                                if (
-                                                    value === '' ||
-                                                    (!isNaN(parseFloat(value)) && parseFloat(value) <= 99)
-                                                ) {
-                                                    setFormData((prev) => ({ ...prev, rebatePercentage: value }));
-                                                    // Clear validation errors if value is valid
-                                                    if (
-                                                        value === '' ||
-                                                        (!isNaN(parseFloat(value)) && parseFloat(value) <= 99)
-                                                    ) {
-                                                        setValidationErrors([]);
-                                                    }
-                                                }
-                                            }}
-                                            onBlur={(e) => {
-                                                const value = parseFloat(e.target.value);
-                                                if (!isNaN(value) && value > 99) {
-                                                    setFormData((prev) => ({ ...prev, rebatePercentage: '99' }));
-                                                    setValidationErrors(['Rebate percentage cannot exceed 99%.']);
-                                                } else if (!isNaN(value) && value <= 99) {
-                                                    // Clear errors if value is valid
-                                                    setValidationErrors([]);
-                                                }
-                                            }}
-                                            placeholder="Enter rebate percentage (max 99%)"
-                                            min="0"
-                                            max="99"
-                                            step="0.01"
-                                            disabled={isFieldDisabled()}
-                                            className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                                isFieldDisabled()
-                                                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                                            }`}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Rebate Amount - Only visible when rebateType is AMOUNT */}
-                                {formData.rebateType === RebateTypeEnum.AMOUNT && (
-                                    <div className="group">
-                                        <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                            <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                            Rebate Amount
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="rebateAmount"
-                                            value={formData.rebateAmount}
-                                            onChange={(e) => {
-                                                const rawValue = removeCommas(e.target.value);
-                                                const numericValue = rawValue.replace(/[^0-9.]/g, '');
-                                                const parts = numericValue.split('.');
-                                                const cleanValue =
-                                                    parts.length > 2
-                                                        ? parts[0] + '.' + parts.slice(1).join('')
-                                                        : numericValue;
-                                                setFormData((prev) => ({ ...prev, rebateAmount: cleanValue }));
-                                            }}
-                                            onBlur={(e) => {
-                                                const rawValue = removeCommas(e.target.value);
-                                                if (rawValue) {
-                                                    const numericValue = parseFloat(rawValue);
-                                                    if (!isNaN(numericValue)) {
-                                                        const formatted = formatNumberWithCommas(numericValue);
-                                                        setFormData((prev) => ({ ...prev, rebateAmount: formatted }));
-                                                    }
-                                                }
-                                            }}
-                                            placeholder="Enter rebate amount"
-                                            disabled={isFieldDisabled()}
-                                            className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                                isFieldDisabled()
-                                                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                                    : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
-                                            }`}
-                                        />
-                                    </div>
-                                )}
-
-                                {/* Empty div for grid alignment when rebate type is not PERCENTAGE or AMOUNT */}
-                                {formData.rebateType !== RebateTypeEnum.PERCENTAGE &&
-                                    formData.rebateType !== RebateTypeEnum.AMOUNT &&
-                                    formData.rebateType !== RebateTypeEnum.NONE && <div></div>}
-
-                                {/* Rebate Claimed Amount - Always visible, read-only */}
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Rebate Claimed Amount
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formatNumberWithCommas(formData.rebateClaimedAmount)}
-                                        readOnly
-                                        className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
-                                    />
-                                </div>
-
-                                {/* Rebate Claimed Status - Always visible, read-only */}
-                                <div className="group">
-                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                        Rebate Claimed Status
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.rebateClaimedStatus || '-'}
-                                        readOnly
-                                        className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Compute Rebate Button */}
-                            {!isCreateMode && (
-                                <div className="mt-6 flex justify-end">
-                                    <button
-                                        type="button"
-                                        onClick={handleComputeRebate}
-                                        disabled={
-                                            formData.rebateType === RebateTypeEnum.NONE ||
-                                            !formData.rebateType ||
-                                            formData.rebateClaimedStatus === RebateClaimedStatusEnum.CLAIMED ||
-                                            isComputingRebate ||
-                                            isFieldDisabled()
-                                        }
-                                        className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                                            formData.rebateType === RebateTypeEnum.NONE ||
-                                            !formData.rebateType ||
-                                            formData.rebateClaimedStatus === RebateClaimedStatusEnum.CLAIMED ||
-                                            isComputingRebate ||
-                                            isFieldDisabled()
-                                                ? 'cursor-not-allowed bg-gray-400 opacity-70'
-                                                : 'bg-blue-600 hover:bg-blue-700'
-                                        }`}
-                                    >
-                                        {isComputingRebate ? (
-                                            <>
-                                                <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                                                    <circle
-                                                        className="opacity-25"
-                                                        cx="12"
-                                                        cy="12"
-                                                        r="10"
-                                                        stroke="currentColor"
-                                                        strokeWidth="4"
-                                                    ></circle>
-                                                    <path
-                                                        className="opacity-75"
-                                                        fill="currentColor"
-                                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                                    ></path>
-                                                </svg>
-                                                Computing...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <svg
-                                                    className="h-5 w-5"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                                                    />
-                                                </svg>
-                                                Compute Rebate
-                                            </>
+                                        {/* Rebate Percentage - Only visible when rebateType is PERCENTAGE */}
+                                        {formData.rebateType === RebateTypeEnum.PERCENTAGE && (
+                                            <div className="group">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                    Rebate Percentage
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    name="rebatePercentage"
+                                                    value={formData.rebatePercentage}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        // Prevent values over 99
+                                                        if (
+                                                            value === '' ||
+                                                            (!isNaN(parseFloat(value)) && parseFloat(value) <= 99)
+                                                        ) {
+                                                            setFormData((prev) => ({
+                                                                ...prev,
+                                                                rebatePercentage: value,
+                                                            }));
+                                                            // Clear validation errors if value is valid
+                                                            if (
+                                                                value === '' ||
+                                                                (!isNaN(parseFloat(value)) && parseFloat(value) <= 99)
+                                                            ) {
+                                                                setValidationErrors([]);
+                                                            }
+                                                        }
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        const value = parseFloat(e.target.value);
+                                                        if (!isNaN(value) && value > 99) {
+                                                            setFormData((prev) => ({
+                                                                ...prev,
+                                                                rebatePercentage: '99',
+                                                            }));
+                                                            setValidationErrors([
+                                                                'Rebate percentage cannot exceed 99%.',
+                                                            ]);
+                                                        } else if (!isNaN(value) && value <= 99) {
+                                                            // Clear errors if value is valid
+                                                            setValidationErrors([]);
+                                                        }
+                                                    }}
+                                                    placeholder="Enter rebate percentage (max 99%)"
+                                                    min="0"
+                                                    max="99"
+                                                    step="0.01"
+                                                    disabled={isFieldDisabled()}
+                                                    className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                        isFieldDisabled()
+                                                            ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                            : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                                                    }`}
+                                                />
+                                            </div>
                                         )}
-                                    </button>
-                                </div>
-                            )}
-                            </>
+
+                                        {/* Rebate Amount - Only visible when rebateType is AMOUNT */}
+                                        {formData.rebateType === RebateTypeEnum.AMOUNT && (
+                                            <div className="group">
+                                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                    Rebate Amount
+                                                </label>
+                                                <input
+                                                    type="text"
+                                                    name="rebateAmount"
+                                                    value={formData.rebateAmount}
+                                                    onChange={(e) => {
+                                                        const rawValue = removeCommas(e.target.value);
+                                                        const numericValue = rawValue.replace(/[^0-9.]/g, '');
+                                                        const parts = numericValue.split('.');
+                                                        const cleanValue =
+                                                            parts.length > 2
+                                                                ? parts[0] + '.' + parts.slice(1).join('')
+                                                                : numericValue;
+                                                        setFormData((prev) => ({ ...prev, rebateAmount: cleanValue }));
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        const rawValue = removeCommas(e.target.value);
+                                                        if (rawValue) {
+                                                            const numericValue = parseFloat(rawValue);
+                                                            if (!isNaN(numericValue)) {
+                                                                const formatted = formatNumberWithCommas(numericValue);
+                                                                setFormData((prev) => ({
+                                                                    ...prev,
+                                                                    rebateAmount: formatted,
+                                                                }));
+                                                            }
+                                                        }
+                                                    }}
+                                                    placeholder="Enter rebate amount"
+                                                    disabled={isFieldDisabled()}
+                                                    className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                        isFieldDisabled()
+                                                            ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                            : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                                                    }`}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* Empty div for grid alignment when rebate type is not PERCENTAGE or AMOUNT */}
+                                        {formData.rebateType !== RebateTypeEnum.PERCENTAGE &&
+                                            formData.rebateType !== RebateTypeEnum.AMOUNT &&
+                                            formData.rebateType !== RebateTypeEnum.NONE && <div></div>}
+
+                                        {/* Rebate Claimed Amount - Always visible, read-only */}
+                                        <div className="group">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                Rebate Claimed Amount
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formatNumberWithCommas(formData.rebateClaimedAmount)}
+                                                readOnly
+                                                className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
+                                            />
+                                        </div>
+
+                                        {/* Rebate Claimed Status - Always visible, read-only */}
+                                        <div className="group">
+                                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                                Rebate Claimed Status
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={formData.rebateClaimedStatus || '-'}
+                                                readOnly
+                                                className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Compute Rebate Button */}
+                                    {!isCreateMode && (
+                                        <div className="mt-6 flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={handleComputeRebate}
+                                                disabled={
+                                                    formData.rebateType === RebateTypeEnum.NONE ||
+                                                    !formData.rebateType ||
+                                                    formData.rebateClaimedStatus === RebateClaimedStatusEnum.CLAIMED ||
+                                                    isComputingRebate ||
+                                                    isFieldDisabled()
+                                                }
+                                                className={`flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                                                    formData.rebateType === RebateTypeEnum.NONE ||
+                                                    !formData.rebateType ||
+                                                    formData.rebateClaimedStatus === RebateClaimedStatusEnum.CLAIMED ||
+                                                    isComputingRebate ||
+                                                    isFieldDisabled()
+                                                        ? 'cursor-not-allowed bg-gray-400 opacity-70'
+                                                        : 'bg-blue-600 hover:bg-blue-700'
+                                                }`}
+                                            >
+                                                {isComputingRebate ? (
+                                                    <>
+                                                        <svg
+                                                            className="animate-spin h-5 w-5"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <circle
+                                                                className="opacity-25"
+                                                                cx="12"
+                                                                cy="12"
+                                                                r="10"
+                                                                stroke="currentColor"
+                                                                strokeWidth="4"
+                                                            ></circle>
+                                                            <path
+                                                                className="opacity-75"
+                                                                fill="currentColor"
+                                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                                                            ></path>
+                                                        </svg>
+                                                        Computing...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <svg
+                                                            className="h-5 w-5"
+                                                            fill="none"
+                                                            stroke="currentColor"
+                                                            viewBox="0 0 24 24"
+                                                        >
+                                                            <path
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                                strokeWidth={2}
+                                                                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                                            />
+                                                        </svg>
+                                                        Compute Rebate
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { StatusBadge } from '@components-web';
-import { InvoiceApi, InvoiceDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
+import { InvoiceApi, InvoiceDto, PaymentStatusEnum, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { formatCurrency, formatDate } from '@web-app/utils/formatters';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -115,12 +115,36 @@ export default function InvoicesMainPage() {
         fetchInvoices(undefined, undefined);
     }, [statusFilter]);
 
+    const PAYMENT_STATUS_CONFIG: Record<string, { bgColor: string; textColor: string; label: string }> = {
+        [PaymentStatusEnum.PENDING]: { bgColor: 'bg-yellow-100', textColor: 'text-yellow-800', label: 'Pending' },
+        [PaymentStatusEnum.PARTIAL]: { bgColor: 'bg-orange-100', textColor: 'text-orange-800', label: 'Partial' },
+        [PaymentStatusEnum.PAID]: { bgColor: 'bg-green-100', textColor: 'text-green-800', label: 'Paid' },
+        [PaymentStatusEnum.OVERPAID]: { bgColor: 'bg-blue-100', textColor: 'text-blue-800', label: 'Overpaid' },
+    };
+
+    const getPaymentStatusBadge = (status?: string) => {
+        const config = PAYMENT_STATUS_CONFIG[status || ''] ?? {
+            bgColor: 'bg-gray-100',
+            textColor: 'text-gray-800',
+            label: status || '-',
+        };
+        return (
+            <span
+                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${config.bgColor} ${config.textColor}`}
+            >
+                {config.label}
+            </span>
+        );
+    };
+
     const headers = useMemo(
         () => [
             { key: 'invoiceNumber', label: 'INVOICE #' },
             { key: 'customerName', label: 'CUSTOMER' },
             { key: 'totalAmount', label: 'TOTAL AMOUNT' },
+            { key: 'salesType', label: 'SALES TYPE' },
             { key: 'status', label: 'STATUS' },
+            { key: 'paymentStatus', label: 'PAYMENT STATUS' },
             { key: 'invoiceDate', label: 'INVOICE DATE' },
             { key: 'dueDate', label: 'DUE DATE' },
         ],
@@ -134,9 +158,11 @@ export default function InvoicesMainPage() {
                     ...invoice,
                     invoiceNumber: invoice.docno || '-',
                     totalAmount: invoice.finalAmount ? formatCurrency(invoice.finalAmount) : '-',
+                    salesType: invoice.salesTypeName || '-',
                     invoiceDate: invoice.invoiceDate ? formatDate(invoice.invoiceDate) : '-',
                     dueDate: invoice.termsName || '-', // Using terms as due date placeholder
                     status: <StatusBadge status={invoice.status ?? StatusEnum.ACTIVE} />,
+                    paymentStatusBadge: invoice.contractId ? null : getPaymentStatusBadge(invoice.paymentStatus),
                 };
             }),
         [invoices]

@@ -3,6 +3,7 @@
 import { StatusBadge } from '@components-web';
 import { CustomerApi, CustomerDto, StatusEnum, useEnv, useLocalStore } from '@data-access/index';
 import { getActivityStyle, parseActivityLog } from '@web-app/utils/activityLogUtils';
+import { formatCurrency } from '@web-app/utils/formatters';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CustomerHeader, CustomerTable } from './components';
@@ -129,6 +130,9 @@ export default function CustomersMainPage() {
             { key: 'phone', label: 'PHONE' },
             { key: 'customerType', label: 'TYPE' },
             { key: 'status', label: 'STATUS' },
+            { key: 'balance', label: 'BALANCE' },
+            { key: 'creditLimit', label: 'CREDIT LIMIT' },
+            { key: 'customerCredit', label: 'CUSTOMER CREDIT' },
             { key: 'latestActivity', label: 'LATEST ACTIVITY' },
         ],
         []
@@ -152,6 +156,9 @@ export default function CustomersMainPage() {
                 return {
                     ...customer,
                     status: <StatusBadge status={customer.status ?? StatusEnum.ACTIVE} />,
+                    formattedBalance: formatCurrency(customer.balance ?? 0),
+                    formattedCreditLimit: formatCurrency(customer.creditLimit ?? 0),
+                    formattedCustomerCredit: formatCurrency(customer.customerCredit ?? 0),
                     latestActivity,
                 };
             }),

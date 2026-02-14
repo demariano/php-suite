@@ -52,6 +52,8 @@ export interface InvoiceDto {
     paymentStatus?: PaymentStatusEnum;
     printStatus?: PrintStatusEnum;
     contractSales: boolean;
+    taxRate?: number;
+    taxable?: boolean;
     invoiceDetails?: InvoiceDetailsDto[];
     activityLogs?: string[];
     forApprovalVersion?: Record<string, any>;
@@ -84,6 +86,8 @@ export interface CreateInvoiceDto {
     paymentStatus?: PaymentStatusEnum;
     printStatus?: PrintStatusEnum;
     contractSales: boolean;
+    taxRate?: number;
+    taxable?: boolean;
     invoiceDetails?: InvoiceDetailsDto[];
     activityLogs?: string[];
     forApprovalVersion?: Record<string, any>;

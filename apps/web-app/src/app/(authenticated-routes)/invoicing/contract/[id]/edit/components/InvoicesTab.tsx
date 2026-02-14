@@ -1,6 +1,6 @@
 'use client';
 
-import { InvoiceApi, InvoiceDto, PaymentStatusEnum, StatusEnum } from '@data-access/index';
+import { InvoiceApi, InvoiceDto, StatusEnum } from '@data-access/index';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -63,24 +63,6 @@ export default function InvoicesTab({ contractId, invoicedAmount }: InvoicesTabP
         );
     };
 
-    const getPaymentStatusBadge = (paymentStatus?: PaymentStatusEnum) => {
-        const paymentStatusColors: Partial<Record<PaymentStatusEnum, string>> = {
-            [PaymentStatusEnum.PENDING]: 'bg-orange-100 text-orange-800',
-            [PaymentStatusEnum.PARTIAL]: 'bg-yellow-100 text-yellow-800',
-            [PaymentStatusEnum.PAID]: 'bg-green-100 text-green-800',
-        };
-
-        return (
-            <span
-                className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                    paymentStatusColors[paymentStatus || PaymentStatusEnum.PENDING] || 'bg-gray-100 text-gray-800'
-                }`}
-            >
-                {paymentStatus || 'PENDING'}
-            </span>
-        );
-    };
-
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -137,18 +119,12 @@ export default function InvoicesTab({ contractId, invoicedAmount }: InvoicesTabP
                             >
                                 Status
                             </th>
-                            <th
-                                scope="col"
-                                className="px-6 py-4 text-center text-xs font-bold uppercase tracking-wider text-white"
-                            >
-                                Payment Status
-                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 bg-white">
                         {invoices.length === 0 ? (
                             <tr>
-                                <td colSpan={5} className="px-6 py-12 text-center">
+                                <td colSpan={4} className="px-6 py-12 text-center">
                                     <div className="flex flex-col items-center justify-center gap-3">
                                         <svg
                                             className="h-16 w-16 text-gray-300"
@@ -203,9 +179,6 @@ export default function InvoicesTab({ contractId, invoicedAmount }: InvoicesTabP
                                     </td>
                                     <td className="whitespace-nowrap px-6 py-4 text-center">
                                         {getStatusBadge(invoice.status)}
-                                    </td>
-                                    <td className="whitespace-nowrap px-6 py-4 text-center">
-                                        {getPaymentStatusBadge(invoice.paymentStatus)}
                                     </td>
                                 </tr>
                             ))

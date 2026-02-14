@@ -6,6 +6,9 @@ import { ReactNode } from 'react';
 
 type CustomerTableRow = Omit<CustomerDto, 'status'> & {
     status: ReactNode;
+    formattedBalance: string;
+    formattedCreditLimit: string;
+    formattedCustomerCredit: string;
     latestActivity: { text: string; style: { bgColor: string; textColor: string } } | null;
     [key: string]: unknown;
 };
@@ -81,6 +84,15 @@ export default function CustomerTable({
                                                 {customer.customerTypeName || '-'}
                                             </td>
                                             <td className="px-6 py-5">{customer.status}</td>
+                                            <td className="px-6 py-5 text-sm text-gray-900 font-semibold">
+                                                {customer.formattedBalance}
+                                            </td>
+                                            <td className="px-6 py-5 text-sm text-gray-900 font-semibold">
+                                                {customer.formattedCreditLimit}
+                                            </td>
+                                            <td className="px-6 py-5 text-sm text-gray-900 font-semibold">
+                                                {customer.formattedCustomerCredit}
+                                            </td>
                                             <td className="px-6 py-5 text-sm">
                                                 {customer.latestActivity ? (
                                                     <span
@@ -153,6 +165,24 @@ export default function CustomerTable({
                                             <dt className="font-medium text-gray-500">Type</dt>
                                             <dd className="text-right text-gray-900">
                                                 {customer.customerTypeName || '-'}
+                                            </dd>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <dt className="font-medium text-gray-500">Balance</dt>
+                                            <dd className="text-right text-gray-900 font-semibold">
+                                                {customer.formattedBalance}
+                                            </dd>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <dt className="font-medium text-gray-500">Credit Limit</dt>
+                                            <dd className="text-right text-gray-900 font-semibold">
+                                                {customer.formattedCreditLimit}
+                                            </dd>
+                                        </div>
+                                        <div className="flex justify-between gap-3">
+                                            <dt className="font-medium text-gray-500">Customer Credit</dt>
+                                            <dd className="text-right text-gray-900 font-semibold">
+                                                {customer.formattedCustomerCredit}
                                             </dd>
                                         </div>
                                         {customer.latestActivity && (

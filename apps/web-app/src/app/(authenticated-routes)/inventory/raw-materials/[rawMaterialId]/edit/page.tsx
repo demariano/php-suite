@@ -623,65 +623,82 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                                                     />
                                                 )}
 
-                                                {(showApprovalUI || showDeletionCard) && selectedRawMaterial.changeReason && (
-                                                    <ChangeReasonReadOnly value={selectedRawMaterial.changeReason} />
-                                                )}
+                                                {(showApprovalUI || showDeletionCard) &&
+                                                    selectedRawMaterial.changeReason && (
+                                                        <ChangeReasonReadOnly
+                                                            value={selectedRawMaterial.changeReason}
+                                                        />
+                                                    )}
 
                                                 {showDeletionCard && (
                                                     <div className="rounded-xl border-2 border-red-300 bg-red-50 p-4">
                                                         <div className="flex items-center gap-2 text-sm font-bold text-red-700">
                                                             <span className="text-base">🗑️</span>
-                                                            This record is marked for deletion and is awaiting admin approval.
+                                                            This record is marked for deletion and is awaiting admin
+                                                            approval.
                                                         </div>
                                                     </div>
                                                 )}
 
                                                 {showApprovalUI ? (
                                                     <>
-                                                        {renderFieldWithInlineDiff('Raw Material Name', selectedRawMaterial.rawMaterialName, 'rawMaterialName')}
-                                                        {renderFieldWithInlineDiff('Description', selectedRawMaterial.description, 'description')}
+                                                        {renderFieldWithInlineDiff(
+                                                            'Raw Material Name',
+                                                            selectedRawMaterial.rawMaterialName,
+                                                            'rawMaterialName'
+                                                        )}
+                                                        {renderFieldWithInlineDiff(
+                                                            'Description',
+                                                            selectedRawMaterial.description,
+                                                            'description'
+                                                        )}
                                                     </>
                                                 ) : (
-                                                <>
-                                                <div className="group">
-                                                    <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                                                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                                        Raw Material Name
-                                                    </label>
-                                                    <input
-                                                        type="text"
-                                                        value={selectedRawMaterial.rawMaterialName || ''}
-                                                        onChange={(e) =>
-                                                            setSelectedRawMaterial((prev) =>
-                                                                prev
-                                                                    ? { ...prev, rawMaterialName: e.target.value }
-                                                                    : prev
-                                                            )
-                                                        }
-                                                        placeholder="Enter raw material name"
-                                                        required
-                                                        className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md"
-                                                    />
-                                                </div>
+                                                    <>
+                                                        <div className="group">
+                                                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                                                Raw Material Name
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={selectedRawMaterial.rawMaterialName || ''}
+                                                                onChange={(e) =>
+                                                                    setSelectedRawMaterial((prev) =>
+                                                                        prev
+                                                                            ? {
+                                                                                  ...prev,
+                                                                                  rawMaterialName: e.target.value,
+                                                                              }
+                                                                            : prev
+                                                                    )
+                                                                }
+                                                                placeholder="Enter raw material name"
+                                                                required
+                                                                className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md"
+                                                            />
+                                                        </div>
 
-                                                <div className="group">
-                                                    <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                                                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                                        Description (optional)
-                                                    </label>
-                                                    <textarea
-                                                        value={selectedRawMaterial.description || ''}
-                                                        onChange={(e) =>
-                                                            setSelectedRawMaterial((prev) =>
-                                                                prev ? { ...prev, description: e.target.value } : prev
-                                                            )
-                                                        }
-                                                        placeholder="Enter description"
-                                                        rows={3}
-                                                        className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md"
-                                                    />
-                                                </div>
-                                                </>
+                                                        <div className="group">
+                                                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                                                Description (optional)
+                                                            </label>
+                                                            <textarea
+                                                                value={selectedRawMaterial.description || ''}
+                                                                onChange={(e) =>
+                                                                    setSelectedRawMaterial((prev) =>
+                                                                        prev
+                                                                            ? { ...prev, description: e.target.value }
+                                                                            : prev
+                                                                    )
+                                                                }
+                                                                placeholder="Enter description"
+                                                                rows={3}
+                                                                className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-sm transition-all duration-200 hover:border-blue-300 hover:shadow-md"
+                                                            />
+                                                        </div>
+                                                    </>
                                                 )}
                                             </div>
                                         </div>
@@ -710,7 +727,9 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                                                 Delete
                                             </button>
                                         )}
-                                        {(isFormDisabled || showApprovalUI || showDeletionCard) && <div className="hidden sm:block" />}
+                                        {(isFormDisabled || showApprovalUI || showDeletionCard) && (
+                                            <div className="hidden sm:block" />
+                                        )}
 
                                         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
                                             {isAdminUser && (showApprovalUI || showDeletionCard) && (
@@ -732,26 +751,26 @@ export default function EditRawMaterialPage({ params }: { params: { rawMaterialI
                                                 </>
                                             )}
                                             {!showApprovalUI && !showDeletionCard && (
-                                            <button
-                                                type="submit"
-                                                disabled={isSaving}
-                                                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                            >
-                                                <svg
-                                                    className="h-5 w-5"
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
+                                                <button
+                                                    type="submit"
+                                                    disabled={isSaving}
+                                                    className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
-                                                    <path
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                        strokeWidth={2}
-                                                        d="M5 13l4 4L19 7"
-                                                    />
-                                                </svg>
-                                                {isSaving ? 'Saving...' : 'Save Changes'}
-                                            </button>
+                                                    <svg
+                                                        className="h-5 w-5"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        viewBox="0 0 24 24"
+                                                    >
+                                                        <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            strokeWidth={2}
+                                                            d="M5 13l4 4L19 7"
+                                                        />
+                                                    </svg>
+                                                    {isSaving ? 'Saving...' : 'Save Changes'}
+                                                </button>
                                             )}
                                             <button
                                                 type="button"

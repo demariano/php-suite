@@ -16,12 +16,15 @@ export interface PaymentDetailsDto {
 }
 
 export interface PaymentInvoiceDetailsDto {
+    paymentDetailsId?: string;
     invoiceId: string;
     docno: string;
     amountApplied: number;
     receiptNo: string;
     paymentDate: string;
     paymentId: number;
+    dateCreated?: string;
+    customerCreditPayment?: boolean;
 }
 
 export interface PaymentDto {

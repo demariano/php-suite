@@ -3,6 +3,9 @@ import { DeliveredStockPurchaseOrderDetailDto } from './delivered.stock.purchase
 
 export class DeliveredStockPurchaseOrderDeliveryDto {
     @ApiProperty({ required: false })
+    deliveryNo?: string;
+
+    @ApiProperty({ required: false })
     deliveryDate?: string;
 
     @ApiProperty({ required: false })

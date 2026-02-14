@@ -1,21 +1,21 @@
 'use client';
 
 import {
-  RawMaterialDto,
-  RawMaterialsLocationDto,
-  RawMaterialsStockDto,
-  RawMaterialSupplierDto,
-  StatusEnum,
+    RawMaterialDto,
+    RawMaterialsLocationDto,
+    RawMaterialsStockDto,
+    RawMaterialSupplierDto,
+    StatusEnum,
 } from '@data-access/index';
 import { useEffect, useState } from 'react';
 import { ChangeReasonField } from '../../../components';
 import { ChangeReasonReadOnly } from '../../../components/ChangeReasonReadOnly';
-import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import {
-  RawMaterialSearchableSelectionModal,
-  RawMaterialsLocationSearchableSelectionModal,
-  RawMaterialSupplierSearchableSelectionModal,
+    RawMaterialSearchableSelectionModal,
+    RawMaterialsLocationSearchableSelectionModal,
+    RawMaterialSupplierSearchableSelectionModal,
 } from '../../../search-modals';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import SelectionField from '../../stock/components/SelectionField';
 
 interface RawMaterialsStockFormProps {
@@ -370,11 +370,26 @@ export default function RawMaterialsStockForm({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {showApprovalUI ? (
                                     <>
-                                        {!isCreateMode && selectedStock?.rawMaterialNamePoNo && (
-                                            renderFieldWithInlineDiff('Source PO Number', 'rawMaterialNamePoNo', selectedStock?.rawMaterialNamePoNo, forApprovalVersion?.rawMaterialNamePoNo)
+                                        {!isCreateMode &&
+                                            selectedStock?.rawMaterialNamePoNo &&
+                                            renderFieldWithInlineDiff(
+                                                'Source PO Number',
+                                                'rawMaterialNamePoNo',
+                                                selectedStock?.rawMaterialNamePoNo,
+                                                forApprovalVersion?.rawMaterialNamePoNo
+                                            )}
+                                        {renderFieldWithInlineDiff(
+                                            'Lot Number',
+                                            'lotNo',
+                                            selectedStock?.lotNo,
+                                            forApprovalVersion?.lotNo
                                         )}
-                                        {renderFieldWithInlineDiff('Lot Number', 'lotNo', selectedStock?.lotNo, forApprovalVersion?.lotNo)}
-                                        {renderFieldWithInlineDiff('Quantity', 'qty', selectedStock?.qty, forApprovalVersion?.qty)}
+                                        {renderFieldWithInlineDiff(
+                                            'Quantity',
+                                            'qty',
+                                            selectedStock?.qty,
+                                            forApprovalVersion?.qty
+                                        )}
                                     </>
                                 ) : (
                                     <>
@@ -403,7 +418,9 @@ export default function RawMaterialsStockForm({
                                                 type="text"
                                                 name="lotNo"
                                                 value={formData.lotNo}
-                                                onChange={(e) => setFormData((prev) => ({ ...prev, lotNo: e.target.value }))}
+                                                onChange={(e) =>
+                                                    setFormData((prev) => ({ ...prev, lotNo: e.target.value }))
+                                                }
                                                 placeholder={isCreateMode ? 'Enter lot number' : ''}
                                                 disabled={!isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE}
                                                 className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
@@ -425,7 +442,9 @@ export default function RawMaterialsStockForm({
                                                 name="qty"
                                                 min="0"
                                                 value={formData.qty}
-                                                onChange={(e) => setFormData((prev) => ({ ...prev, qty: e.target.value }))}
+                                                onChange={(e) =>
+                                                    setFormData((prev) => ({ ...prev, qty: e.target.value }))
+                                                }
                                                 placeholder={isCreateMode ? 'Enter quantity' : ''}
                                                 disabled={!isCreateMode && selectedStock?.status !== StatusEnum.ACTIVE}
                                                 className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
@@ -465,9 +484,24 @@ export default function RawMaterialsStockForm({
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 {showApprovalUI ? (
                                     <>
-                                        {renderFieldWithInlineDiff('Raw Material', 'rawMaterialName', selectedStock?.rawMaterialName, forApprovalVersion?.rawMaterialName)}
-                                        {renderFieldWithInlineDiff('Supplier', 'rawMaterialSupplierName', selectedStock?.rawMaterialSupplierName, forApprovalVersion?.rawMaterialSupplierName)}
-                                        {renderFieldWithInlineDiff('Location', 'rawMaterialsLocationName', selectedStock?.rawMaterialsLocationName, forApprovalVersion?.rawMaterialsLocationName)}
+                                        {renderFieldWithInlineDiff(
+                                            'Raw Material',
+                                            'rawMaterialName',
+                                            selectedStock?.rawMaterialName,
+                                            forApprovalVersion?.rawMaterialName
+                                        )}
+                                        {renderFieldWithInlineDiff(
+                                            'Supplier',
+                                            'rawMaterialSupplierName',
+                                            selectedStock?.rawMaterialSupplierName,
+                                            forApprovalVersion?.rawMaterialSupplierName
+                                        )}
+                                        {renderFieldWithInlineDiff(
+                                            'Location',
+                                            'rawMaterialsLocationName',
+                                            selectedStock?.rawMaterialsLocationName,
+                                            forApprovalVersion?.rawMaterialsLocationName
+                                        )}
                                     </>
                                 ) : (
                                     <>
@@ -507,7 +541,10 @@ export default function RawMaterialsStockForm({
                 {/* Action Buttons */}
                 {activeTab !== 'approval' && (
                     <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                        {!isCreateMode && !showApprovalUI && !showDeletionCard && selectedStock?.status === StatusEnum.ACTIVE ? (
+                        {!isCreateMode &&
+                        !showApprovalUI &&
+                        !showDeletionCard &&
+                        selectedStock?.status === StatusEnum.ACTIVE ? (
                             <button
                                 type="button"
                                 onClick={(e) => {
@@ -550,7 +587,10 @@ export default function RawMaterialsStockForm({
                                     </button>
                                 </>
                             )}
-                            {(isCreateMode || (!showApprovalUI && !showDeletionCard && selectedStock?.status === StatusEnum.ACTIVE)) && (
+                            {(isCreateMode ||
+                                (!showApprovalUI &&
+                                    !showDeletionCard &&
+                                    selectedStock?.status === StatusEnum.ACTIVE)) && (
                                 <button
                                     type="submit"
                                     className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"

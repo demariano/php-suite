@@ -24,6 +24,7 @@ import { ValidateInvoiceHandler } from './command/validate-invoice/validate-invo
 import { ValidateStockHandler } from './command/validate-stock/validate-stock.handler';
 import { InvoiceController } from './invoice.controller';
 import { GetInvoicesByContractIdHandler } from './queries/get.by.contract.id/get.invoices.by.contract.id.handler';
+import { GetInvoicesByCustomerIdHandler } from './queries/get.by.customer.id/get.invoices.by.customer.id.handler';
 import { GetInvoiceByDocnoHandler } from './queries/get.by.docno/get.invoice.by.docno.handler';
 import { GetInvoiceByIdHandler } from './queries/get.by.id/get.invoice.by.id.handler';
 import { GetPendingPaymentInvoicesHandler } from './queries/get.pending.payment.invoices/get.pending.payment.invoices.handler';
@@ -71,6 +72,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         GetInvoiceByIdHandler,
         GetInvoiceByDocnoHandler,
         GetInvoicesByContractIdHandler,
+        GetInvoicesByCustomerIdHandler,
         GetPendingPaymentInvoicesHandler,
         GetRecordsPaginationHandler,
         GetRecordsByStatusPaginationHandler,

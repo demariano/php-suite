@@ -13,6 +13,7 @@ import { UpdateInvoiceCommand } from './command/update/update.command';
 import { ValidateInvoiceCommand } from './command/validate-invoice/validate-invoice.command';
 import { ValidateStockCommand } from './command/validate-stock/validate-stock.command';
 import { GetInvoicesByContractIdQuery } from './queries/get.by.contract.id/get.invoices.by.contract.id.query';
+import { GetInvoicesByCustomerIdQuery } from './queries/get.by.customer.id/get.invoices.by.customer.id.query';
 import { GetInvoiceByDocnoQuery } from './queries/get.by.docno/get.invoice.by.docno.query';
 import { GetInvoiceByIdQuery } from './queries/get.by.id/get.invoice.by.id.query';
 import { GetPendingPaymentInvoicesQuery } from './queries/get.pending.payment.invoices/get.pending.payment.invoices.query';
@@ -864,5 +865,31 @@ export class InvoiceController {
     })
     getByContractId(@Param('contractId') contractId: string) {
         return this.queryBus.execute(new GetInvoicesByContractIdQuery(contractId));
+    }
+
+    @Get('customer/:customerId')
+    @ApiOperation({
+        summary: 'Get invoices by customer ID',
+        description:
+            'Retrieves paginated invoice records for a specific customer, sorted by invoice date (most recent first)',
+    })
+    @ApiParam({
+        name: 'customerId',
+        description: 'Customer ID',
+        example: 'customer-123',
+    })
+    @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of records per page', example: 10 })
+    @ApiQuery({ name: 'direction', type: String, required: false, description: 'Pagination direction (next or prev)' })
+    @ApiQuery({ name: 'cursorPointer', type: String, required: false, description: 'Cursor pointer for pagination' })
+    @ApiResponse({ status: 200, description: 'Invoices retrieved successfully' })
+    getByCustomerId(
+        @Param('customerId') customerId: string,
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string
+    ) {
+        return this.queryBus.execute(
+            new GetInvoicesByCustomerIdQuery(customerId, limit || 10, direction || '', cursorPointer || '')
+        );
     }
 }

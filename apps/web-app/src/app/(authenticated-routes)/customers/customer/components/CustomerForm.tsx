@@ -11,7 +11,6 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { ChangeReasonField, ChangeReasonReadOnly } from '../../../components';
 import { useNumberFormatting } from '../../../components/NumberFormatting';
-import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import {
     AreaSearchableSelectionModal,
     CustomerClassificationSearchableSelectionModal,
@@ -20,6 +19,7 @@ import {
     TermsSearchableSelectionModal,
     TownSelectionModal,
 } from '../../../search-modals';
+import { createFieldChangeDetector } from '../../../utils/fieldChangeDetection';
 import SelectionField from './SelectionField';
 
 interface CustomerTermsDetailsDto {
@@ -1374,7 +1374,7 @@ export default function CustomerForm({
                                         <input
                                             type="text"
                                             name="balance"
-                                            value={balanceFormatting.value}
+                                            value={balanceFormatting.value || '0'}
                                             onChange={(e) => {
                                                 balanceFormatting.onChange(e);
                                                 setFormData((prev) => ({ ...prev, balance: e.target.value }));
@@ -1432,7 +1432,7 @@ export default function CustomerForm({
                                         <input
                                             type="text"
                                             name="customerCredit"
-                                            value={customerCreditFormatting.value}
+                                            value={customerCreditFormatting.value || '0'}
                                             onChange={(e) => {
                                                 customerCreditFormatting.onChange(e);
                                                 setFormData((prev) => ({ ...prev, customerCredit: e.target.value }));

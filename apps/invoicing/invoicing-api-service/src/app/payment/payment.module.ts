@@ -18,7 +18,9 @@ import { DeletePaymentHandler } from './command/delete/delete.handler';
 import { DenyPaymentHandler } from './command/deny-record/deny.handler';
 import { UpdatePaymentHandler } from './command/update/update.handler';
 import { PaymentController } from './payment.controller';
+import { GetPaymentsByCustomerIdHandler } from './queries/get.by.customer.id/get.payments.by.customer.id.handler';
 import { GetPaymentByIdHandler } from './queries/get.by.id/get.payment.by.id.handler';
+import { GetPaymentInvoicesByInvoiceIdHandler } from './queries/get.by.invoiceId/get.payment.invoices.by.invoiceId.handler';
 import { GetPaymentByNameHandler } from './queries/get.by.name/get.payment.by.name.handler';
 import { GetPaymentByReceiptNoHandler } from './queries/get.by.receiptNo/get.payment.by.receiptNo.handler';
 import { GetPaymentsContainingReceiptNoHandler } from './queries/get.containing.receiptNo/get.payments.containing.receiptNo.handler';
@@ -59,9 +61,11 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         },
         CreatePaymentHandler,
         GetPaymentByIdHandler,
+        GetPaymentInvoicesByInvoiceIdHandler,
         GetPaymentByNameHandler,
         GetPaymentByReceiptNoHandler,
         GetPaymentsContainingReceiptNoHandler,
+        GetPaymentsByCustomerIdHandler,
         GetRecordsPaginationHandler,
         GetRecordsByStatusPaginationHandler,
         UpdatePaymentHandler,

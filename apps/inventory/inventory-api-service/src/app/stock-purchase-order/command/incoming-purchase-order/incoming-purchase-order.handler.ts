@@ -52,6 +52,26 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
             throw new BadRequestException('No deliveredPurchaseOrderDetails supplied');
         }
 
+        // Validate deliveryNo is provided for all deliveries
+        for (const delivery of incomingDeliveries) {
+            if (!delivery.deliveryNo || !delivery.deliveryNo.trim()) {
+                throw new BadRequestException('Delivery No is required for all deliveries');
+            }
+        }
+
+        // Validate deliveryNo + deliveryDate uniqueness within the PO
+        const existingDeliveries = existing.deliveredPurchaseOrderDetails || [];
+        for (const delivery of incomingDeliveries) {
+            const duplicate = existingDeliveries.find(
+                (d) => d.deliveryNo === delivery.deliveryNo && d.deliveryDate === delivery.deliveryDate
+            );
+            if (duplicate) {
+                throw new BadRequestException(
+                    `Delivery No '${delivery.deliveryNo}' on ${delivery.deliveryDate} already exists on this purchase order`
+                );
+            }
+        }
+
         // Validate delivered quantities do not exceed ordered quantities
         this.validateDeliveryQuantities(existing, incomingDeliveries);
 
@@ -133,7 +153,7 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
                 stockRecord.activityLogs.push(
                     `Date: ${deliveryDate || 'N/A'}, Added ${qtyDelta} from PO ${
                         po.docNo || po.stockPurchaseOrderId
-                    } by ${user.username}`
+                    } (Delivery No: ${delivery?.deliveryNo || 'N/A'}) by ${user.username}`
                 );
                 stockRecord.activityLogs = reduceArrayContents(stockRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
@@ -159,9 +179,9 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
                 stockTypeName: line.stockTypeName,
                 lotNo: lotNo || undefined,
                 activityLogs: [
-                    `Date: ${deliveryDate || 'N/A'}, Created from PO ${po.docNo || po.stockPurchaseOrderId} by ${
-                        user.username
-                    }`,
+                    `Date: ${deliveryDate || 'N/A'}, Created from PO ${
+                        po.docNo || po.stockPurchaseOrderId
+                    } (Delivery No: ${delivery?.deliveryNo || 'N/A'}) by ${user.username}`,
                 ],
                 forApprovalVersion: undefined,
                 changeReason: undefined,
@@ -176,7 +196,9 @@ export class IncomingPurchaseOrderHandler implements ICommandHandler<IncomingPur
         delivery: StockPurchaseOrderDto['deliveredPurchaseOrderDetails'][number]
     ): void {
         po.deliveredPurchaseOrderDetails = po.deliveredPurchaseOrderDetails || [];
-        const existing = po.deliveredPurchaseOrderDetails.find((d) => d.deliveryDate === delivery.deliveryDate);
+        const existing = po.deliveredPurchaseOrderDetails.find(
+            (d) => d.deliveryDate === delivery.deliveryDate && d.deliveryNo === delivery.deliveryNo
+        );
         if (existing) {
             existing.stockItems = [...(existing.stockItems || []), ...(delivery.stockItems || [])];
         } else {

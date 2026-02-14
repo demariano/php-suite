@@ -47,6 +47,9 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
         this.logger.log(`Processing update request for invoice: ${command.id}`);
 
         try {
+            // Recompute totals from invoice details to ensure consistency
+            this.recomputeInvoiceTotals(command.invoiceDto);
+
             // Validate that invoice exists
             const existingRecord = await this.validateInvoice(command.id);
 
@@ -329,11 +332,31 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
                 totalAmountPaid: command.invoiceDto.totalAmountPaid,
                 invoiceDetails: command.invoiceDto.invoiceDetails,
                 contractSales: command.invoiceDto.contractSales,
+                taxRate: command.invoiceDto.taxRate,
+                taxable: command.invoiceDto.taxable,
             };
 
             // Limit activity logs to last 10 entries
             existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
         }
+    }
+
+    /**
+     * Recomputes invoiceAmount, taxAmount, and finalAmount from invoiceDetails
+     * to ensure the stored totals are always consistent with line items
+     */
+    private recomputeInvoiceTotals(invoice: Partial<InvoiceDto>): void {
+        const details = invoice.invoiceDetails || [];
+        if (details.length === 0) return;
+
+        const invoiceAmount = Math.round(details.reduce((sum, d) => sum + (d.amount || 0), 0) * 100) / 100;
+        const effectiveTaxRate = invoice.taxable ? (invoice.taxRate ?? 0) / 100 : 0;
+        const taxAmount = Math.round(invoiceAmount * effectiveTaxRate * 100) / 100;
+        const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
+
+        invoice.invoiceAmount = invoiceAmount;
+        invoice.taxAmount = taxAmount;
+        invoice.finalAmount = finalAmount;
     }
 
     /**

@@ -479,35 +479,39 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
 
                                                 <div className="grid grid-cols-1 gap-6">
                                                     {showApprovalUI ? (
-                                                        renderFieldWithInlineDiff('Unit Name', selectedUnit.rawMaterialUnitName, 'rawMaterialUnitName')
+                                                        renderFieldWithInlineDiff(
+                                                            'Unit Name',
+                                                            selectedUnit.rawMaterialUnitName,
+                                                            'rawMaterialUnitName'
+                                                        )
                                                     ) : (
-                                                    <div className="group">
-                                                        <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
-                                                            <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-                                                            Unit Name
-                                                        </label>
-                                                        <input
-                                                            type="text"
-                                                            value={selectedUnit.rawMaterialUnitName || ''}
-                                                            onChange={(e) =>
-                                                                setSelectedUnit((prev) =>
-                                                                    prev
-                                                                        ? {
-                                                                              ...prev,
-                                                                              rawMaterialUnitName: e.target.value,
-                                                                          }
-                                                                        : prev
-                                                                )
-                                                            }
-                                                            placeholder="Enter unit name"
-                                                            disabled={isFormDisabled}
-                                                            className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                                                isFormDisabled
-                                                                    ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
-                                                                    : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-md'
-                                                            }`}
-                                                        />
-                                                    </div>
+                                                        <div className="group">
+                                                            <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
+                                                                <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
+                                                                Unit Name
+                                                            </label>
+                                                            <input
+                                                                type="text"
+                                                                value={selectedUnit.rawMaterialUnitName || ''}
+                                                                onChange={(e) =>
+                                                                    setSelectedUnit((prev) =>
+                                                                        prev
+                                                                            ? {
+                                                                                  ...prev,
+                                                                                  rawMaterialUnitName: e.target.value,
+                                                                              }
+                                                                            : prev
+                                                                    )
+                                                                }
+                                                                placeholder="Enter unit name"
+                                                                disabled={isFormDisabled}
+                                                                className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
+                                                                    isFormDisabled
+                                                                        ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500'
+                                                                        : 'border-gray-200 bg-white text-gray-700 hover:border-blue-300 hover:shadow-md'
+                                                                }`}
+                                                            />
+                                                        </div>
                                                     )}
                                                 </div>
                                             </div>
@@ -515,7 +519,9 @@ export default function EditRawMaterialUnitPage({ params }: { params: { rawMater
                                     </div>
 
                                     <div className="mt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-t border-gray-200 pt-4">
-                                        {!showApprovalUI && !showDeletionCard && selectedUnit.status === StatusEnum.ACTIVE ? (
+                                        {!showApprovalUI &&
+                                        !showDeletionCard &&
+                                        selectedUnit.status === StatusEnum.ACTIVE ? (
                                             <div className="hidden sm:block" />
                                         ) : (
                                             <div className="hidden sm:block" />

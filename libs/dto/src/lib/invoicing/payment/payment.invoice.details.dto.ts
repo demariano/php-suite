@@ -19,5 +19,11 @@ export class PaymentInvoiceDetailsDto {
     dateCreated!: string;
 
     @ApiProperty()
+    receiptNo?: string;
+
+    @ApiProperty()
+    paymentDate?: string;
+
+    @ApiProperty()
     customerCreditPayment = false;
 }

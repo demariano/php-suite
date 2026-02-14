@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 import InvoiceDetailsTab from './InvoiceDetailsTab';
 import PaymentsTab from './PaymentsTab';
 import RecordDetailsTab from './RecordDetailsTab';
+import ReturnGoodsSoldTab from './ReturnGoodsSoldTab';
 
 interface InvoiceFormProps {
     isCreateMode: boolean;
@@ -21,8 +22,8 @@ interface InvoiceFormProps {
     successMessage: string | null;
     isAdminUser: boolean;
     isLoading: boolean;
-    activeTab: 'details' | 'logs' | 'payments';
-    onTabChange: (tab: 'details' | 'logs' | 'payments') => void;
+    activeTab: 'details' | 'logs' | 'payments' | 'rgs';
+    onTabChange: (tab: 'details' | 'logs' | 'payments' | 'rgs') => void;
     onSave: (invoice: InvoiceDto) => void;
     onDelete: () => void;
     onApprove: () => void;
@@ -324,6 +325,29 @@ export default function InvoiceForm({
                                     />
                                 </svg>
                                 Payments
+                            </span>
+                        </button>
+                    )}
+
+                    {!isCreateMode && (
+                        <button
+                            onClick={() => onTabChange('rgs')}
+                            className={`flex-shrink-0 px-5 py-3 rounded-lg font-semibold text-sm transition-colors ${
+                                activeTab === 'rgs'
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                            }`}
+                        >
+                            <span className="flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"
+                                    />
+                                </svg>
+                                Return Goods Sold
                             </span>
                         </button>
                     )}
@@ -759,6 +783,32 @@ export default function InvoiceForm({
                 {activeTab === 'payments' && !isCreateMode && selectedInvoice && (
                     <div className="space-y-6 animate-fadeIn">
                         <PaymentsTab formData={formData} />
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center justify-end border-t-2 border-gray-200 pt-6">
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:w-auto"
+                            >
+                                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        strokeWidth={2}
+                                        d="M6 18L18 6M6 6l12 12"
+                                    />
+                                </svg>
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Return Goods Sold Tab */}
+                {activeTab === 'rgs' && !isCreateMode && selectedInvoice && (
+                    <div className="space-y-6 animate-fadeIn">
+                        <ReturnGoodsSoldTab formData={formData} />
 
                         {/* Action Buttons */}
                         <div className="flex items-center justify-end border-t-2 border-gray-200 pt-6">

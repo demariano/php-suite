@@ -93,6 +93,8 @@ export class InvoicePaymentHandlerService {
     }
 
     private async handleInvoiceCreated(invoicePayloads: InvoicePaymentEventDto[]): Promise<void> {
+        if (invoicePayloads.length === 0) return;
+
         for (const payload of invoicePayloads) {
             this.logger.log(`Handling invoice payment event for invoice ${payload.invoiceId}`);
 
@@ -111,6 +113,8 @@ export class InvoicePaymentHandlerService {
     }
 
     private async handleInvoiceDeleted(invoicePayloads: InvoicePaymentEventDto[]): Promise<void> {
+        if (invoicePayloads.length === 0) return;
+
         for (const payload of invoicePayloads) {
             this.logger.log(`Handling invoice payment deletion event for invoice ${payload.invoiceId}`);
 
@@ -127,6 +131,8 @@ export class InvoicePaymentHandlerService {
     }
 
     private async handleInvoiceUpdated(invoicePayloads: InvoicePaymentEventDto[]): Promise<void> {
+        if (invoicePayloads.length === 0) return;
+
         for (const payload of invoicePayloads) {
             this.logger.log(`Handling invoice payment update event for invoice ${payload.invoiceId}`);
             const invoiceRecord = await this.invoiceDatabaseService.findRecordById(payload.invoiceId);
@@ -140,9 +146,10 @@ export class InvoicePaymentHandlerService {
             await this.recomputeOverPayments(invoiceRecord, payments);
             await this.updateInvoicePaymentStatus(invoiceRecord, payments);
         }
-
         //assumption is that all invoicePayloads is for a single customer always
-        await this.sendCustomerBalanceUpdateEvent(invoicePayloads[0].customerId, 0);
+        const creditUsedDelta = this.computeCreditUsedDelta(invoicePayloads);
+        //assumption is that all invoicePayloads is for a single customer always
+        await this.sendCustomerBalanceUpdateEvent(invoicePayloads[0].customerId, creditUsedDelta);
     }
 
     private async handlePaymentCreation(invoicePayloads: InvoicePaymentEventDto[]): Promise<void> {
@@ -298,8 +305,12 @@ export class InvoicePaymentHandlerService {
             return;
         }
 
+        console.log('Payments for invoice:', payments);
+
         // Calculate total amount paid
         const totalAmountPaid = payments.reduce((sum, payment) => sum + (payment.amountApplied || 0), 0);
+
+        console.log(`Total amount paid: ${totalAmountPaid}, Invoice final amount: ${invoiceRecord.finalAmount}`);
 
         //check for overpayment , pending , partial payment or fully paid status
 
@@ -331,11 +342,16 @@ export class InvoicePaymentHandlerService {
             const page = await this.invoiceDatabaseService.findRecordsByCustomerIdPagination(
                 100,
                 customerId,
-                'next',
+                cursorPointer ? 'next' : '',
                 cursorPointer
             );
             if (page.data?.length) {
                 for (const invoice of page.data) {
+                    // Skip contract invoices - their balance is tracked on the contract, not the customer
+                    if (invoice.contractId) {
+                        continue;
+                    }
+
                     if (
                         invoice.paymentStatus === PaymentStatusEnum.OVERPAID ||
                         invoice.paymentStatus === PaymentStatusEnum.PARTIAL ||

@@ -230,10 +230,30 @@ class InvoiceApi extends AxiosConfig {
     };
 
     public getInvoicesByContractId = async (contractId: string): Promise<InvoiceDto[]> => {
-        console.log('InvoiceApi: Fetching invoices for contract:', contractId);
         const response = await this.axiosInstance.get(`/invoices/contract/${contractId}`);
-        console.log('InvoiceApi: Response after interceptor:', response);
-        return response?.data ?? [];
+        // Interceptor returns the array directly when body is an array
+        return Array.isArray(response) ? response : response?.data ?? [];
+    };
+
+    public getInvoicesByCustomerId = async (
+        customerId: string,
+        limit = 10,
+        direction?: string,
+        cursorPointer?: string
+    ): Promise<InvoicesResponse> => {
+        const params = new URLSearchParams({
+            limit: limit.toString(),
+        });
+
+        if (direction) {
+            params.append('direction', direction);
+        }
+
+        if (cursorPointer) {
+            params.append('cursorPointer', cursorPointer);
+        }
+
+        return await this.axiosInstance.get(`/invoices/customer/${customerId}?${params.toString()}`);
     };
 }
 

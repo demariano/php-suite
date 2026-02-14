@@ -1,5 +1,6 @@
 'use client';
 
+import { DeleteConfirmationModal } from '@components-web';
 import { RawMaterialsPurchaseOrderApi } from '@data-access/api/raw-materials-purchase-order.api';
 import { useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { parseActivityLog } from '@web-app/utils/activityLogUtils';
@@ -22,6 +23,7 @@ export default function EditRawMaterialsPurchaseOrderPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDenyDialogOpen, setIsDenyDialogOpen] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Check if user is admin or super admin
@@ -195,6 +197,47 @@ export default function EditRawMaterialsPurchaseOrderPage() {
             });
             setIsSubmitting(false);
         }
+    };
+
+    const handleDelete = () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const handleDeleteConfirm = async (deletionReason: string) => {
+        if (!purchaseOrderData) return;
+        setIsSubmitting(true);
+        try {
+            const userRole =
+                env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
+                    ? authedUser?.userRole
+                    : undefined;
+
+            await RawMaterialsPurchaseOrderApi.deletePurchaseOrder(
+                id,
+                { ...purchaseOrderData, deletionReason },
+                userRole
+            );
+            setFlashNotification({
+                title: 'Success',
+                message: 'Purchase order deleted successfully!',
+                alertType: 'success',
+            });
+            router.push('/inventory/raw-materials-purchase-order');
+        } catch (error: any) {
+            console.error('Failed to delete purchase order:', error);
+            setFlashNotification({
+                title: 'Error',
+                message: error.response?.data?.message || 'Failed to delete purchase order.',
+                alertType: 'error',
+            });
+        } finally {
+            setIsSubmitting(false);
+            setShowDeleteConfirm(false);
+        }
+    };
+
+    const handleDeleteCancel = () => {
+        setShowDeleteConfirm(false);
     };
 
     const handleCancel = () => {
@@ -403,7 +446,9 @@ export default function EditRawMaterialsPurchaseOrderPage() {
                                         status={purchaseOrderData.status}
                                         onApprove={handleApprove}
                                         onDeny={handleDeny}
+                                        onCancel={handleCancel}
                                         isSubmitting={isSubmitting}
+                                        isAdminUser={isAdminUser}
                                     />
                                 ) : (
                                     <PurchaseOrderDetailsTab
@@ -413,19 +458,99 @@ export default function EditRawMaterialsPurchaseOrderPage() {
                                         poStatus={purchaseOrderData.poStatus}
                                         isAdminUser={isAdminUser}
                                         onUpdate={handleUpdateDetails}
+                                        onDelete={handleDelete}
+                                        onCancel={handleCancel}
                                         onTransitionToPending={handleTransitionToPending}
                                         isSubmitting={isSubmitting}
                                     />
                                 ))}
 
                             {activeTab === 'deliveries' && (
-                                <DeliveriesTab
-                                    purchaseOrderData={purchaseOrderData}
-                                    status={purchaseOrderData.status}
-                                    onAddDelivery={handleAddDelivery}
-                                    onDeleteDelivery={handleDeleteDelivery}
-                                    isSubmitting={isSubmitting}
-                                />
+                                <div className="space-y-6">
+                                    <DeliveriesTab
+                                        purchaseOrderData={purchaseOrderData}
+                                        status={purchaseOrderData.status}
+                                        onAddDelivery={handleAddDelivery}
+                                        onDeleteDelivery={handleDeleteDelivery}
+                                        isSubmitting={isSubmitting}
+                                    />
+
+                                    <div className="mt-6 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                                        <div className="hidden sm:block" />
+                                        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
+                                            {isAdminUser &&
+                                                purchaseOrderData &&
+                                                ['FOR_APPROVAL', 'FOR_DELETION', 'NEW_RECORD'].includes(
+                                                    purchaseOrderData.status
+                                                ) && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleDeny}
+                                                            disabled={isSubmitting}
+                                                            className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:bg-red-300 disabled:cursor-not-allowed"
+                                                        >
+                                                            <svg
+                                                                className="h-5 w-5"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M6 18L18 6M6 6l12 12"
+                                                                />
+                                                            </svg>
+                                                            Deny
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleApprove}
+                                                            disabled={isSubmitting}
+                                                            className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-green-300 disabled:cursor-not-allowed"
+                                                        >
+                                                            <svg
+                                                                className="h-5 w-5"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M5 13l4 4L19 7"
+                                                                />
+                                                            </svg>
+                                                            Approve
+                                                        </button>
+                                                    </>
+                                                )}
+                                            <button
+                                                type="button"
+                                                onClick={handleCancel}
+                                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                            >
+                                                <svg
+                                                    className="h-5 w-5"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M6 18L18 6M6 6l12 12"
+                                                    />
+                                                </svg>
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
 
                             {activeTab === 'logs' && (
@@ -453,16 +578,42 @@ export default function EditRawMaterialsPurchaseOrderPage() {
                                                             type="button"
                                                             onClick={handleDeny}
                                                             disabled={isSubmitting}
-                                                            className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:bg-red-300 disabled:cursor-not-allowed"
                                                         >
+                                                            <svg
+                                                                className="h-5 w-5"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M6 18L18 6M6 6l12 12"
+                                                                />
+                                                            </svg>
                                                             Deny
                                                         </button>
                                                         <button
                                                             type="button"
                                                             onClick={handleApprove}
                                                             disabled={isSubmitting}
-                                                            className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                            className="flex items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 font-semibold text-white shadow-sm transition-colors duration-200 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:bg-green-300 disabled:cursor-not-allowed"
                                                         >
+                                                            <svg
+                                                                className="h-5 w-5"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                viewBox="0 0 24 24"
+                                                            >
+                                                                <path
+                                                                    strokeLinecap="round"
+                                                                    strokeLinejoin="round"
+                                                                    strokeWidth={2}
+                                                                    d="M5 13l4 4L19 7"
+                                                                />
+                                                            </svg>
                                                             Approve
                                                         </button>
                                                     </>
@@ -470,8 +621,21 @@ export default function EditRawMaterialsPurchaseOrderPage() {
                                             <button
                                                 type="button"
                                                 onClick={handleCancel}
-                                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-colors duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                                                className="flex items-center justify-center gap-2 rounded-xl border-2 border-gray-300 bg-white px-6 py-3 font-semibold text-gray-700 shadow-sm transition-all duration-200 hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
                                             >
+                                                <svg
+                                                    className="h-5 w-5"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M6 18L18 6M6 6l12 12"
+                                                    />
+                                                </svg>
                                                 Cancel
                                             </button>
                                         </div>
@@ -489,6 +653,14 @@ export default function EditRawMaterialsPurchaseOrderPage() {
                 onSubmit={handleDenySubmit}
                 isSubmitting={isSubmitting}
                 purchaseOrderData={purchaseOrderData}
+            />
+
+            <DeleteConfirmationModal
+                show={showDeleteConfirm}
+                record={purchaseOrderData}
+                recordDisplayName={purchaseOrderData?.docNo}
+                onConfirm={handleDeleteConfirm}
+                onCancel={handleDeleteCancel}
             />
         </div>
     );

@@ -100,5 +100,11 @@ export class InvoiceDto {
     contractSales?: boolean;
 
     @ApiProperty()
+    taxRate?: number;
+
+    @ApiProperty()
+    taxable?: boolean;
+
+    @ApiProperty()
     approverMessage?: string;
 }

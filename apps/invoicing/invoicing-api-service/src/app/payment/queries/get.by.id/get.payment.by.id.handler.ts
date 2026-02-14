@@ -1,5 +1,8 @@
 import { ErrorResponseDto, PaymentDto, ResponseDto } from '@dto';
-import { PaymentDatabaseServiceAbstractClass } from '@invoicing-database-service';
+import {
+    PaymentDatabaseServiceAbstractClass,
+    PaymentInvoiceDatabaseServiceAbstractClass,
+} from '@invoicing-database-service';
 import { Inject, Logger, NotFoundException } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
 import { GetPaymentByIdQuery } from './get.payment.by.id.query';
@@ -13,7 +16,10 @@ export class GetPaymentByIdHandler implements IQueryHandler<GetPaymentByIdQuery>
 
     constructor(
         @Inject('PaymentDatabaseService')
-        private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass
+        private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass,
+
+        @Inject('PaymentInvoiceDatabaseService')
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
     ) {}
 
     async execute(query: GetPaymentByIdQuery): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -26,6 +32,12 @@ export class GetPaymentByIdHandler implements IQueryHandler<GetPaymentByIdQuery>
                 this.logger.warn(`Payment not found: ${query.recordId}`);
                 throw new NotFoundException(`Payment record not found for id ${query.recordId}`);
             }
+
+            // Hydrate paymentInvoiceDetails from the separate payment-invoice table
+            const paymentInvoiceDetails = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
+                payment.paymentId
+            );
+            payment.paymentInvoiceDetails = paymentInvoiceDetails || [];
 
             this.logger.log(`Payment retrieved successfully: ${payment.paymentId}`);
             return new ResponseDto<PaymentDto>(payment, HTTP_STATUS_OK);

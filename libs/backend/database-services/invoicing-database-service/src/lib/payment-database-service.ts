@@ -175,7 +175,6 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         const records = await this.paymentTable.find(
             {
                 GSI3PK: `PAYMENT#${customerId}`,
-                GSI3SK: customerId,
             },
             dynamoDbOption
         );

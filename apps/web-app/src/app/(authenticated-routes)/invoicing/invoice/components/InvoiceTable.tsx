@@ -6,8 +6,10 @@ import { ReactNode } from 'react';
 
 type InvoiceTableRow = Omit<InvoiceDto, 'status'> & {
     status: ReactNode;
+    paymentStatusBadge: ReactNode;
     invoiceNumber: string;
     totalAmount: string;
+    salesType: string;
     invoiceDate: string;
     dueDate: string;
 };
@@ -81,7 +83,9 @@ export default function InvoiceTable({
                                             <td className="px-6 py-5 text-sm text-gray-900 font-semibold">
                                                 {invoice.totalAmount}
                                             </td>
+                                            <td className="px-6 py-5 text-sm text-gray-600">{invoice.salesType}</td>
                                             <td className="px-6 py-5">{invoice.status}</td>
+                                            <td className="px-6 py-5">{invoice.paymentStatusBadge}</td>
                                             <td className="px-6 py-5 text-sm text-gray-600">{invoice.invoiceDate}</td>
                                             <td className="px-6 py-5 text-sm text-gray-600">{invoice.dueDate}</td>
                                         </tr>
@@ -119,7 +123,10 @@ export default function InvoiceTable({
                                                 {invoice.invoiceNumber}
                                             </div>
                                         </div>
-                                        <div>{invoice.status}</div>
+                                        <div className="flex flex-col items-end gap-1">
+                                            {invoice.status}
+                                            {invoice.paymentStatusBadge}
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
@@ -140,6 +147,12 @@ export default function InvoiceTable({
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
+                                                Sales Type
+                                            </div>
+                                            <div className="text-sm text-gray-900">{invoice.salesType}</div>
+                                        </div>
                                         <div>
                                             <div className="text-xs text-gray-500 uppercase tracking-wide mb-1">
                                                 Invoice Date

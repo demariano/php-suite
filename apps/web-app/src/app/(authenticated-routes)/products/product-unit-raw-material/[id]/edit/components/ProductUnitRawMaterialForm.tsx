@@ -716,9 +716,7 @@ export default function ProductUnitRawMaterialForm({
 
                         // Added/Modified/Unchanged units (from display/pending)
                         displayUnits.forEach((newUnit) => {
-                            const originalUnit = originalUnits.find(
-                                (u) => u.productUnitId === newUnit.productUnitId
-                            );
+                            const originalUnit = originalUnits.find((u) => u.productUnitId === newUnit.productUnitId);
                             if (!originalUnit) {
                                 unitRows.push({ unit: newUnit, status: 'added' });
                             } else {
@@ -793,7 +791,10 @@ export default function ProductUnitRawMaterialForm({
                                     const origRMs = originalUnit?.rawMaterials ?? [];
 
                                     if (unitRow.status === 'added' || unitRow.status === 'unchanged') {
-                                        rmRows = displayRMs.map((rm) => ({ rm, status: unitRow.status === 'added' ? 'added' : 'unchanged' }));
+                                        rmRows = displayRMs.map((rm) => ({
+                                            rm,
+                                            status: unitRow.status === 'added' ? 'added' : 'unchanged',
+                                        }));
                                     } else if (unitRow.status === 'removed') {
                                         rmRows = displayRMs.map((rm) => ({ rm, status: 'removed' }));
                                     } else {
@@ -839,8 +840,7 @@ export default function ProductUnitRawMaterialForm({
                                                                 : 'text-gray-700'
                                                         }`}
                                                     >
-                                                        Unit:{' '}
-                                                        {unitRow.unit.productUnitName || 'Unknown'}
+                                                        Unit: {unitRow.unit.productUnitName || 'Unknown'}
                                                     </h4>
                                                 </div>
                                                 {unitRow.status === 'added' && (

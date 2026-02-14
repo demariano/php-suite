@@ -160,9 +160,14 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         existingRecord.totalAmountPaid = forApprovalVersion.totalAmountPaid as number;
         existingRecord.invoiceDetails = forApprovalVersion.invoiceDetails as InvoiceDetailsDto[];
         existingRecord.contractSales = forApprovalVersion.contractSales as boolean;
+        existingRecord.taxRate = forApprovalVersion.taxRate as number;
+        existingRecord.taxable = forApprovalVersion.taxable as boolean;
         existingRecord.forApprovalVersion = {};
         // Reset changeReason to null AFTER applying forApprovalVersion
         existingRecord.changeReason = null;
+
+        // Recompute totals from invoice details to ensure consistency
+        this.recomputeInvoiceTotals(existingRecord);
 
         // Update record in database
         const updatedRecord = await this.invoiceDatabaseService.updateRecord(existingRecord);
@@ -365,6 +370,24 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
                 `Current: ${currentInvoicedAmount}, New invoice: ${newInvoiceAmount}, ` +
                 `Projected: ${projectedInvoicedAmount}`
         );
+    }
+
+    /**
+     * Recomputes invoiceAmount, taxAmount, and finalAmount from invoiceDetails
+     * to ensure the stored totals are always consistent with line items
+     */
+    private recomputeInvoiceTotals(invoice: InvoiceDto): void {
+        const details = invoice.invoiceDetails || [];
+        if (details.length === 0) return;
+
+        const invoiceAmount = Math.round(details.reduce((sum, d) => sum + (d.amount || 0), 0) * 100) / 100;
+        const effectiveTaxRate = invoice.taxable ? (invoice.taxRate ?? 0) / 100 : 0;
+        const taxAmount = Math.round(invoiceAmount * effectiveTaxRate * 100) / 100;
+        const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
+
+        invoice.invoiceAmount = invoiceAmount;
+        invoice.taxAmount = taxAmount;
+        invoice.finalAmount = finalAmount;
     }
 
     /**

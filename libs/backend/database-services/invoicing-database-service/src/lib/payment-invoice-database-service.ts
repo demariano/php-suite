@@ -53,28 +53,43 @@ export class PaymentInvoiceDatabaseService implements PaymentInvoiceDatabaseServ
     }
 
     async findRecordByPaymentId(paymentId: string): Promise<PaymentInvoiceDetailsDto[]> {
-        const records = await this.paymentInvoiceTable.find({
-            GSI1PK: `PAYMENTINVOICE`,
-            GSI1SK: paymentId,
-        });
+        const records = await this.paymentInvoiceTable.find(
+            {
+                GSI1PK: `PAYMENTINVOICE`,
+                GSI1SK: paymentId,
+            },
+            {
+                index: 'GSI1',
+            }
+        );
 
         return await this.convertToDtoList(records);
     }
 
     async findRecordByInvoiceId(invoiceId: string): Promise<PaymentInvoiceDetailsDto[]> {
-        const records = await this.paymentInvoiceTable.find({
-            GSI2PK: `PAYMENTINVOICE`,
-            GSI2SK: invoiceId,
-        });
+        const records = await this.paymentInvoiceTable.find(
+            {
+                GSI2PK: `PAYMENTINVOICE`,
+                GSI2SK: invoiceId,
+            },
+            {
+                index: 'GSI2',
+            }
+        );
 
         return await this.convertToDtoList(records);
     }
 
     async findRecordByInvoiceDocno(invoiceDocno: string): Promise<PaymentInvoiceDetailsDto[]> {
-        const records = await this.paymentInvoiceTable.find({
-            GSI3PK: `PAYMENTINVOICE`,
-            GSI3SK: invoiceDocno,
-        });
+        const records = await this.paymentInvoiceTable.find(
+            {
+                GSI3PK: `PAYMENTINVOICE`,
+                GSI3SK: invoiceDocno,
+            },
+            {
+                index: 'GSI3',
+            }
+        );
 
         return await this.convertToDtoList(records);
     }

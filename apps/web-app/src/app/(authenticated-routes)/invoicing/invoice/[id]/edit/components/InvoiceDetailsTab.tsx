@@ -341,7 +341,8 @@ export default function InvoiceDetailsTab({
 
             const invoiceAmount =
                 Math.round(updatedDetails.reduce((sum, detail) => sum + (detail.amount || 0), 0) * 100) / 100;
-            const taxAmount = Math.round(invoiceAmount * 0.1 * 100) / 100;
+            const effectiveTaxRate = formData.taxable ? (formData.taxRate ?? 0) / 100 : 0;
+            const taxAmount = Math.round(invoiceAmount * effectiveTaxRate * 100) / 100;
             const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
 
             onFormDataChange({
@@ -436,7 +437,8 @@ export default function InvoiceDetailsTab({
 
         const invoiceAmount =
             Math.round(updatedDetails.reduce((sum, detail) => sum + (detail.amount || 0), 0) * 100) / 100;
-        const taxAmount = Math.round(invoiceAmount * 0.1 * 100) / 100;
+        const effectiveTaxRate = formData.taxable ? (formData.taxRate ?? 0) / 100 : 0;
+        const taxAmount = Math.round(invoiceAmount * effectiveTaxRate * 100) / 100;
         const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
 
         onFormDataChange({

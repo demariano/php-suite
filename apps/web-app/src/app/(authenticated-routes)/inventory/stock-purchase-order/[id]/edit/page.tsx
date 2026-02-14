@@ -1,5 +1,6 @@
 'use client';
 
+import { DeleteConfirmationModal } from '@components-web';
 import { StockPurchaseOrderApi } from '@data-access/api/stock-purchase-order.api';
 import { useEnv, useLocalStore, useSessionStore } from '@data-access/index';
 import { parseActivityLog } from '@web-app/utils/activityLogUtils';
@@ -22,6 +23,7 @@ export default function EditStockPurchaseOrderPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDenyDialogOpen, setIsDenyDialogOpen] = useState(false);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Check if user is admin or super admin
@@ -195,6 +197,42 @@ export default function EditStockPurchaseOrderPage() {
             });
             setIsSubmitting(false);
         }
+    };
+
+    const handleDelete = () => {
+        setShowDeleteConfirm(true);
+    };
+
+    const handleDeleteConfirm = async (record: any, reason: string) => {
+        setIsSubmitting(true);
+        try {
+            const userRole =
+                env.BYPASS_AUTH === 'ENABLED' && process.env.NODE_ENV === 'development'
+                    ? authedUser?.userRole
+                    : undefined;
+
+            await StockPurchaseOrderApi.deleteStockPurchaseOrder(id, { changeReason: reason }, userRole);
+            setFlashNotification({
+                title: 'Success',
+                message: 'Purchase order deleted successfully!',
+                alertType: 'success',
+            });
+            router.push('/inventory/stock-purchase-order');
+        } catch (error: any) {
+            console.error('Failed to delete purchase order:', error);
+            setFlashNotification({
+                title: 'Error',
+                message: error.response?.data?.message || 'Failed to delete purchase order.',
+                alertType: 'error',
+            });
+        } finally {
+            setIsSubmitting(false);
+            setShowDeleteConfirm(false);
+        }
+    };
+
+    const handleDeleteCancel = () => {
+        setShowDeleteConfirm(false);
     };
 
     const handleCancel = () => {
@@ -413,6 +451,8 @@ export default function EditStockPurchaseOrderPage() {
                                         poStatus={purchaseOrderData.poStatus}
                                         isAdminUser={isAdminUser}
                                         onUpdate={handleUpdateDetails}
+                                        onDelete={handleDelete}
+                                        onCancel={handleCancel}
                                         onTransitionToPending={handleTransitionToPending}
                                         isSubmitting={isSubmitting}
                                     />
@@ -489,6 +529,14 @@ export default function EditStockPurchaseOrderPage() {
                 onSubmit={handleDenySubmit}
                 isSubmitting={isSubmitting}
                 purchaseOrderData={purchaseOrderData}
+            />
+
+            <DeleteConfirmationModal
+                show={showDeleteConfirm}
+                record={purchaseOrderData}
+                recordDisplayName={purchaseOrderData?.docNo}
+                onConfirm={handleDeleteConfirm}
+                onCancel={handleDeleteCancel}
             />
         </div>
     );

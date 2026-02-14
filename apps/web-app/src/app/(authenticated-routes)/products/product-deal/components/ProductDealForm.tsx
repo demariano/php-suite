@@ -240,7 +240,11 @@ export default function ProductDealForm({
 
             <div className="space-y-6">
                 <div className="space-y-4">
-                    <div className={`rounded-xl border-2 p-4 sm:p-6 ${showApprovalUI ? 'border-green-400 bg-white' : 'border-gray-200'}`}>
+                    <div
+                        className={`rounded-xl border-2 p-4 sm:p-6 ${
+                            showApprovalUI ? 'border-green-400 bg-white' : 'border-gray-200'
+                        }`}
+                    >
                         <div className="mb-4 flex items-center gap-3">
                             <div className="rounded-lg bg-blue-600 p-2 shadow-md">
                                 <svg
@@ -319,7 +323,9 @@ export default function ProductDealForm({
                                             type="number"
                                             name="minQty"
                                             value={formData.minQty}
-                                            onChange={(e) => setFormData((prev) => ({ ...prev, minQty: e.target.value }))}
+                                            onChange={(e) =>
+                                                setFormData((prev) => ({ ...prev, minQty: e.target.value }))
+                                            }
                                             placeholder={isCreateMode ? 'Enter minimum quantity' : ''}
                                             disabled={isFormDisabled}
                                             min="0"

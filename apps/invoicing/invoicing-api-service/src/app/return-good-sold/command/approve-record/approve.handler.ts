@@ -147,6 +147,10 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
         const invoiceRecord = await this.invoiceDatabaseService.findRecordById(existingRecord.invoiceId);
         if (invoiceRecord) {
             invoiceRecord.invoiceDetails = existingRecord.modifiedInvoiceDetails;
+
+            // Recompute invoice totals from modified line items
+            this.recomputeInvoiceTotals(invoiceRecord);
+
             await this.invoiceDatabaseService.updateRecord(invoiceRecord);
             this.logger.log(
                 `Invoice ${invoiceRecord.invoiceId} updated successfully based on approved return good sold ${existingRecord.returnGoodSoldId}`
@@ -186,6 +190,10 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
         const invoiceRecord = await this.invoiceDatabaseService.findRecordById(existingRecord.invoiceId);
         if (invoiceRecord) {
             invoiceRecord.invoiceDetails = existingRecord.originalInvoiceDetails;
+
+            // Recompute invoice totals from restored original line items
+            this.recomputeInvoiceTotals(invoiceRecord);
+
             await this.invoiceDatabaseService.updateRecord(invoiceRecord);
             this.logger.log(
                 `Invoice ${invoiceRecord.invoiceId} updated successfully based on approved return good sold ${existingRecord.returnGoodSoldId}`
@@ -215,6 +223,26 @@ export class ApproveReturnGoodSoldHandler implements ICommandHandler<ApproveRetu
 
         this.logger.log(`Return Good Sold deletion approved: ${existingRecord.returnGoodSoldId}`);
         return new ResponseDto<ReturnGoodSoldDto>(existingRecord, HTTP_STATUS_OK);
+    }
+
+    /**
+     * Recomputes invoiceAmount, taxAmount, and finalAmount from the invoice's line items
+     */
+    private recomputeInvoiceTotals(invoiceRecord: any): void {
+        const details = invoiceRecord.invoiceDetails || [];
+        const invoiceAmount =
+            Math.round(details.reduce((sum: number, item: any) => sum + (item.amount || 0), 0) * 100) / 100;
+        const effectiveTaxRate = invoiceRecord.taxable ? (invoiceRecord.taxRate ?? 0) / 100 : 0;
+        const taxAmount = Math.round(invoiceAmount * effectiveTaxRate * 100) / 100;
+        const finalAmount = Math.round((invoiceAmount + taxAmount) * 100) / 100;
+
+        invoiceRecord.invoiceAmount = invoiceAmount;
+        invoiceRecord.taxAmount = taxAmount;
+        invoiceRecord.finalAmount = finalAmount;
+
+        this.logger.log(
+            `Recomputed invoice totals - invoiceAmount: ${invoiceAmount}, taxAmount: ${taxAmount}, finalAmount: ${finalAmount}`
+        );
     }
 
     /**

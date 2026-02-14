@@ -26,6 +26,7 @@ interface DeliveredItem {
 }
 
 interface DeliveryGroup {
+    deliveryNo?: string;
     deliveryDate: string;
     stockItems: DeliveredItem[];
     stockLocationName?: string;
@@ -47,6 +48,7 @@ export function DeliveriesTab({
     onDeleteDelivery,
     isSubmitting,
 }: DeliveriesTabProps) {
+    const [deliveryNo, setDeliveryNo] = useState('');
     const [deliveryDate, setDeliveryDate] = useState('');
     const [deliveryItems, setDeliveryItems] = useState<Record<string, { qty: string; lotNo: string }>>({});
     const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
@@ -163,6 +165,28 @@ export function DeliveriesTab({
             return;
         }
 
+        if (!deliveryNo.trim()) {
+            setFlashNotification({
+                title: 'Validation Error',
+                message: 'Delivery No is required.',
+                alertType: 'warning',
+            });
+            return;
+        }
+
+        // Check deliveryNo + deliveryDate uniqueness within the PO
+        const duplicateDelivery = deliveredPurchaseOrderDetails.find(
+            (d) => d.deliveryNo === deliveryNo.trim() && d.deliveryDate === deliveryDate
+        );
+        if (duplicateDelivery) {
+            setFlashNotification({
+                title: 'Validation Error',
+                message: 'A delivery with this Delivery No and Date already exists on this purchase order.',
+                alertType: 'warning',
+            });
+            return;
+        }
+
         if (!deliveryDate) {
             setFlashNotification({
                 title: 'Validation Error',
@@ -194,17 +218,19 @@ export function DeliveriesTab({
         });
 
         onAddDelivery({
+            deliveryNo: deliveryNo.trim(),
             deliveryDate,
             stockItems,
         });
 
         // Reset form
+        setDeliveryNo('');
         setDeliveryDate('');
         setDeliveryItems({});
         setValidationErrors({});
     };
 
-    const handleDeleteDelivery = (deliveryDate: string) => {
+    const handleDeleteDelivery = (deliveryNo: string | undefined, deliveryDate: string) => {
         if (status !== 'ACTIVE') {
             setFlashNotification({
                 title: 'Not Allowed',
@@ -214,8 +240,10 @@ export function DeliveriesTab({
             return;
         }
 
-        // Find the complete delivery object
-        const delivery = deliveredPurchaseOrderDetails.find((d) => d.deliveryDate === deliveryDate);
+        // Find the complete delivery object by composite key
+        const delivery = deliveredPurchaseOrderDetails.find(
+            (d) => d.deliveryDate === deliveryDate && d.deliveryNo === deliveryNo
+        );
         if (!delivery) {
             setFlashNotification({
                 title: 'Error',
@@ -275,6 +303,20 @@ export function DeliveriesTab({
                                     </div>
                                 </div>
                             )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Delivery No <span className="text-red-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={deliveryNo}
+                                    onChange={(e) => setDeliveryNo(e.target.value)}
+                                    disabled={isDisabled || isSubmitting}
+                                    placeholder="Enter delivery number"
+                                    className="w-full rounded-xl border-2 border-gray-200 bg-white px-4 py-2.5 text-sm font-medium shadow-sm transition-all duration-200 hover:border-blue-300 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-50"
+                                />
+                            </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -428,6 +470,10 @@ export function DeliveriesTab({
                                             <div className="flex items-center gap-4">
                                                 <div>
                                                     <h4 className="text-sm font-semibold text-gray-900">
+                                                        {delivery.deliveryNo && (
+                                                            <span className="text-blue-600">{delivery.deliveryNo}</span>
+                                                        )}
+                                                        {delivery.deliveryNo && ' \u2014 '}
                                                         Delivery on{' '}
                                                         {new Date(delivery.deliveryDate).toLocaleDateString('en-US', {
                                                             year: 'numeric',
@@ -449,7 +495,10 @@ export function DeliveriesTab({
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        handleDeleteDelivery(delivery.deliveryDate);
+                                                        handleDeleteDelivery(
+                                                            delivery.deliveryNo,
+                                                            delivery.deliveryDate
+                                                        );
                                                     }}
                                                     disabled={isDisabled || isSubmitting}
                                                     className="text-red-600 hover:text-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -537,7 +586,13 @@ export function DeliveriesTab({
                         </div>
 
                         <p className="text-sm text-gray-600 mb-6 leading-relaxed">
-                            Are you sure you want to delete the delivery on{' '}
+                            Are you sure you want to delete delivery{' '}
+                            {deliveryToDelete.deliveryNo && (
+                                <>
+                                    <strong>{deliveryToDelete.deliveryNo}</strong> on{' '}
+                                </>
+                            )}
+                            {!deliveryToDelete.deliveryNo && 'on '}
                             <strong>
                                 {new Date(deliveryToDelete.deliveryDate).toLocaleDateString('en-US', {
                                     year: 'numeric',

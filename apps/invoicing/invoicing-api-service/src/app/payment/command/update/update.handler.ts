@@ -1,4 +1,3 @@
-import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
 import {
     ContractPaymentDto,
     ContractPaymentEventEnum,
@@ -37,9 +36,7 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
         private readonly messageQueueService: MessageQueueServiceAbstract,
         private readonly configService: ConfigService,
         @Inject('PaymentInvoiceDatabaseService')
-        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
-        @Inject('CustomerDatabaseService')
-        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
     ) {}
 
     async execute(command: UpdatePaymentCommand): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -67,6 +64,8 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
                 originalPaymentAmount
             );
 
+            console.log('command.paymentDto', JSON.stringify(command.paymentDto, null, 2));
+
             // Update record in database
             const updatedRecord = await this.paymentDatabaseService.updateRecord(existingRecord);
             if (updatedRecord.status == StatusEnum.ACTIVE) {
@@ -74,6 +73,11 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
                 // First, delete existing payment-invoice details for this payment
                 const existingPaymentInvoices = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
                     updatedRecord.paymentId
+                );
+
+                console.log(
+                    'Existing payment-invoice details found:',
+                    JSON.stringify(existingPaymentInvoices, null, 2)
                 );
 
                 const paymentInvoicePayloads: InvoicePaymentEventDto[] = [];
@@ -94,7 +98,7 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
                     paymentInvoicePayloads.push(invoicePaymentDto);
                 }
                 // Then, recreate payment-invoice details from updated record
-                for (const piDto of updatedRecord.paymentInvoiceDetails) {
+                for (const piDto of command.paymentDto.paymentInvoiceDetails || []) {
                     await this.paymentInvoiceDatabaseService.createRecord({
                         paymentId: updatedRecord.paymentId,
                         invoiceId: piDto.invoiceId,

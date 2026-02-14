@@ -19,11 +19,16 @@ export class CustomerBalanceHandlerService {
                 return;
             }
             customerRecord.balance = event.balance ?? customerRecord.balance;
-            if (event.creditUsed !== undefined) {
+
+            // First, set credit from the absolute overpayment total if provided
+            if (event.creditAmount !== undefined) {
+                customerRecord.customerCredit = event.creditAmount;
+            }
+
+            // Then, apply any credit used delta (e.g., when credit payment is used/refunded)
+            if (event.creditUsed !== undefined && event.creditUsed !== 0) {
                 const currentCredit = customerRecord.customerCredit ?? 0;
                 customerRecord.customerCredit = currentCredit + event.creditUsed;
-            } else if (event.creditAmount !== undefined) {
-                customerRecord.customerCredit = event.creditAmount;
             }
 
             await this.customerDatabaseService.updateRecord(customerRecord);

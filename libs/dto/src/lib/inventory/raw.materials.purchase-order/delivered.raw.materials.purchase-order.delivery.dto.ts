@@ -3,6 +3,9 @@ import { DeliveredRawMaterialsPurchaseOrderDetailDto } from './delivered.raw.mat
 
 export class DeliveredRawMaterialsPurchaseOrderDeliveryDto {
     @ApiProperty({ required: false })
+    deliveryNo?: string;
+
+    @ApiProperty({ required: false })
     deliveryDate?: string;
 
     @ApiProperty({ required: false })

@@ -9,7 +9,9 @@ import { DeletePaymentCommand } from './command/delete/delete.command';
 import { DenyPaymentCommand } from './command/deny-record/deny.command';
 import { DenyPaymentDto } from './command/deny-record/deny.dto';
 import { UpdatePaymentCommand } from './command/update/update.command';
+import { GetPaymentsByCustomerIdQuery } from './queries/get.by.customer.id/get.payments.by.customer.id.query';
 import { GetPaymentByIdQuery } from './queries/get.by.id/get.payment.by.id.query';
+import { GetPaymentInvoicesByInvoiceIdQuery } from './queries/get.by.invoiceId/get.payment.invoices.by.invoiceId.query';
 import { GetPaymentByNameQuery } from './queries/get.by.name/get.payment.by.name.query';
 import { GetPaymentByReceiptNoQuery } from './queries/get.by.receiptNo/get.payment.by.receiptNo.query';
 import { GetPaymentsContainingReceiptNoQuery } from './queries/get.containing.receiptNo/get.payments.containing.receiptNo.query';
@@ -495,6 +497,24 @@ export class PaymentController {
         return this.queryBus.execute(query);
     }
 
+    @Get('invoice/:invoiceId')
+    @ApiOperation({
+        summary: 'Get payment invoices by invoice ID',
+        description: 'Retrieves all payment-invoice records associated with a specific invoice',
+    })
+    @ApiParam({
+        name: 'invoiceId',
+        description: 'Invoice ID',
+        example: 'invoice-123',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Payment invoice records retrieved successfully',
+    })
+    getPaymentInvoicesByInvoiceId(@Param('invoiceId') invoiceId: string) {
+        return this.queryBus.execute(new GetPaymentInvoicesByInvoiceIdQuery(invoiceId));
+    }
+
     @Get(':id')
     @ApiOperation({
         summary: 'Get payment by ID',
@@ -663,6 +683,31 @@ export class PaymentController {
     ) {
         return this.queryBus.execute(
             new GetPaymentsContainingReceiptNoQuery(receiptNo, limit, direction, cursorPointer)
+        );
+    }
+
+    @Get('customer/:customerId')
+    @ApiOperation({
+        summary: 'Get payments by customer ID',
+        description: 'Retrieves paginated payment records for a specific customer',
+    })
+    @ApiParam({
+        name: 'customerId',
+        description: 'Customer ID',
+        example: 'customer-123',
+    })
+    @ApiQuery({ name: 'limit', type: Number, required: false, description: 'Number of records per page', example: 10 })
+    @ApiQuery({ name: 'direction', type: String, required: false, description: 'Pagination direction (next or prev)' })
+    @ApiQuery({ name: 'cursorPointer', type: String, required: false, description: 'Cursor pointer for pagination' })
+    @ApiResponse({ status: 200, description: 'Payments retrieved successfully' })
+    getByCustomerId(
+        @Param('customerId') customerId: string,
+        @Query('limit') limit?: number,
+        @Query('direction') direction?: string,
+        @Query('cursorPointer') cursorPointer?: string
+    ) {
+        return this.queryBus.execute(
+            new GetPaymentsByCustomerIdQuery(customerId, limit || 10, direction || '', cursorPointer || '')
         );
     }
 }

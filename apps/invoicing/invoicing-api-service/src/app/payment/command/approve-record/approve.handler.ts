@@ -69,6 +69,13 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
     private async validatePaymentRecord(recordId: string): Promise<PaymentDto> {
         const existingRecord = await this.paymentDatabaseService.findRecordById(recordId);
 
+        //attach payment invoice details to existing record for further validation in approval process
+        if (existingRecord) {
+            existingRecord.paymentInvoiceDetails = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
+                existingRecord.paymentId
+            );
+        }
+
         if (!existingRecord) {
             this.logger.warn(`Payment not found: ${recordId}`);
             throw new NotFoundException(`Payment record not found for id ${recordId}`);
@@ -153,7 +160,7 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         existingRecord.activityLogs = reduceArrayContents(existingRecord.activityLogs, ACTIVITY_LOGS_LIMIT);
 
         const forApprovalVersion = existingRecord.forApprovalVersion;
-        const oldPaymentInvoiceDetails = existingRecord.paymentInvoiceDetails || [];
+        const newInvoiceDetails: PaymentInvoiceDetailsDto[] = [];
 
         existingRecord.paymentDate = forApprovalVersion.paymentDate as string;
         existingRecord.paymentAmount = forApprovalVersion.paymentAmount as number;
@@ -175,10 +182,10 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         // Update record in database
         const updatedRecord = await this.paymentDatabaseService.updateRecord(existingRecord);
 
-        const paymentInvoiceDetails = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
+        const oldPaymentInvoiceDetails = await this.paymentInvoiceDatabaseService.findRecordByPaymentId(
             updatedRecord.paymentId
         );
-        for (const pid of paymentInvoiceDetails) {
+        for (const pid of oldPaymentInvoiceDetails) {
             await this.paymentInvoiceDatabaseService.deleteRecord(pid);
         }
 
@@ -192,12 +199,9 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
                 dateCreated: new Date().toISOString(),
                 customerCreditPayment: detail.customerCreditPayment,
             };
-            await this.paymentInvoiceDatabaseService.createRecord(newPaymentInvoiceDetail);
+            const createdPayment = await this.paymentInvoiceDatabaseService.createRecord(newPaymentInvoiceDetail);
+            newInvoiceDetails.push(createdPayment);
         }
-
-        // get the old and new payment invoice details and send all the necessary events
-        const oldInvoiceDetails = oldPaymentInvoiceDetails;
-        const newInvoiceDetails = updatedRecord.paymentInvoiceDetails || [];
 
         const paymentInvoicePayloads: InvoicePaymentEventDto[] = [];
         for (const detail of newInvoiceDetails) {
@@ -216,7 +220,7 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         }
 
         //add the old invoice details with PAYMENT_DELETED event
-        for (const detail of oldInvoiceDetails) {
+        for (const detail of oldPaymentInvoiceDetails) {
             const invoicePaymentDto: InvoicePaymentEventDto = {
                 invoiceId: detail.invoiceId,
                 receiptNo: updatedRecord.receiptNo,
@@ -255,7 +259,7 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         }
 
         const invoicePaymentPayloads: InvoicePaymentEventDto[] = [];
-        for (const detail of existingRecord.paymentInvoiceDetails) {
+        for (const detail of paymentInvoiceDetails) {
             const invoicePaymentDto: InvoicePaymentEventDto = {
                 invoiceId: detail.invoiceId,
                 receiptNo: existingRecord.receiptNo,

@@ -96,9 +96,13 @@ export default function TerritoryManagerForm({
     const currentStatus = selectedTerritoryManager?.status ?? StatusEnum.ACTIVE;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const pendingVersion = (selectedTerritoryManager?.forApprovalVersion || {}) as Record<string, any>;
-    const isFieldChanged = createFieldChangeDetector(selectedTerritoryManager, selectedTerritoryManager?.forApprovalVersion);
+    const isFieldChanged = createFieldChangeDetector(
+        selectedTerritoryManager,
+        selectedTerritoryManager?.forApprovalVersion
+    );
     const showApprovalUI = !isCreateMode && [StatusEnum.FOR_APPROVAL, StatusEnum.NEW_RECORD].includes(currentStatus);
-    const showDeletionCard = !isCreateMode && (currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION);
+    const showDeletionCard =
+        !isCreateMode && (currentStatus === StatusEnum.FOR_DELETION || currentStatus === StatusEnum.FOR_DEACTIVATION);
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const formatValue = (value: any): string => {
@@ -259,10 +263,14 @@ export default function TerritoryManagerForm({
                         </div>
                         <div>
                             <h3 className="text-lg font-bold text-red-800 m-0">
-                                {currentStatus === StatusEnum.FOR_DELETION ? 'Record Marked for Deletion' : 'Record Marked for Deactivation'}
+                                {currentStatus === StatusEnum.FOR_DELETION
+                                    ? 'Record Marked for Deletion'
+                                    : 'Record Marked for Deactivation'}
                             </h3>
                             <p className="text-sm text-red-700">
-                                This record has been marked for {currentStatus === StatusEnum.FOR_DELETION ? 'deletion' : 'deactivation'} and is awaiting approval.
+                                This record has been marked for{' '}
+                                {currentStatus === StatusEnum.FOR_DELETION ? 'deletion' : 'deactivation'} and is
+                                awaiting approval.
                             </p>
                         </div>
                     </div>
@@ -287,57 +295,67 @@ export default function TerritoryManagerForm({
                         </div>
                         {showApprovalUI ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {renderFieldWithInlineDiff('Territory Manager Name', 'territoryManagerName', selectedTerritoryManager?.territoryManagerName, pendingVersion.territoryManagerName)}
-                                {renderFieldWithInlineDiff('Contact Number', 'contactNo', selectedTerritoryManager?.contactNo, pendingVersion.contactNo)}
+                                {renderFieldWithInlineDiff(
+                                    'Territory Manager Name',
+                                    'territoryManagerName',
+                                    selectedTerritoryManager?.territoryManagerName,
+                                    pendingVersion.territoryManagerName
+                                )}
+                                {renderFieldWithInlineDiff(
+                                    'Contact Number',
+                                    'contactNo',
+                                    selectedTerritoryManager?.contactNo,
+                                    pendingVersion.contactNo
+                                )}
                             </div>
                         ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="group">
-                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                    Territory Manager Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="territoryManagerName"
-                                    value={formData.territoryManagerName}
-                                    onChange={(e) => {
-                                        setFormData((prev) => ({ ...prev, territoryManagerName: e.target.value }));
-                                        setUserHasMadeSelections(true);
-                                    }}
-                                    placeholder={isCreateMode ? 'Enter territory manager name' : ''}
-                                    disabled={isFormDisabled}
-                                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
-                                        isFormDisabled
-                                            ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
-                                            : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                                    }`}
-                                    required
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="group">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                        Territory Manager Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="territoryManagerName"
+                                        value={formData.territoryManagerName}
+                                        onChange={(e) => {
+                                            setFormData((prev) => ({ ...prev, territoryManagerName: e.target.value }));
+                                            setUserHasMadeSelections(true);
+                                        }}
+                                        placeholder={isCreateMode ? 'Enter territory manager name' : ''}
+                                        disabled={isFormDisabled}
+                                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                                            isFormDisabled
+                                                ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                                        }`}
+                                        required
+                                    />
+                                </div>
+                                <div className="group">
+                                    <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                        <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                        Contact Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="contactNo"
+                                        value={formData.contactNo}
+                                        onChange={(e) => {
+                                            setFormData((prev) => ({ ...prev, contactNo: e.target.value }));
+                                            setUserHasMadeSelections(true);
+                                        }}
+                                        placeholder={isCreateMode ? 'Enter contact number' : ''}
+                                        disabled={isFormDisabled}
+                                        className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
+                                            isFormDisabled
+                                                ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
+                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+                                        }`}
+                                    />
+                                </div>
                             </div>
-                            <div className="group">
-                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                    Contact Number
-                                </label>
-                                <input
-                                    type="text"
-                                    name="contactNo"
-                                    value={formData.contactNo}
-                                    onChange={(e) => {
-                                        setFormData((prev) => ({ ...prev, contactNo: e.target.value }));
-                                        setUserHasMadeSelections(true);
-                                    }}
-                                    placeholder={isCreateMode ? 'Enter contact number' : ''}
-                                    disabled={isFormDisabled}
-                                    className={`w-full px-4 py-3 border-2 rounded-xl text-sm font-medium shadow-sm transition-all duration-200 ${
-                                        isFormDisabled
-                                            ? 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
-                                            : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-                                    }`}
-                                />
-                            </div>
-                        </div>
                         )}
                     </div>
                 </div>

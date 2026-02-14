@@ -110,8 +110,11 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
 
             this.logger.log(`Payment created successfully: ${createdRecord.paymentId}`);
 
+            // Attach original invoice details since they are stored in a separate table
+            createdRecord.paymentInvoiceDetails = command.paymentDto.paymentInvoiceDetails;
+
             // Send invoice payment events for ACTIVE payments
-            if (createdRecord.status === StatusEnum.ACTIVE && createdRecord.paymentInvoiceDetails) {
+            if (createdRecord.status === StatusEnum.ACTIVE) {
                 await this.sendInvoicePaymentEvents(createdRecord);
             }
 
@@ -223,6 +226,7 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             command.paymentDto.forApprovalVersion.contractNo = command.paymentDto.contractNo;
             command.paymentDto.forApprovalVersion.chequeClearStatus = command.paymentDto.chequeClearStatus;
             command.paymentDto.forApprovalVersion.paymentDetails = command.paymentDto.paymentDetails;
+            command.paymentDto.forApprovalVersion.paymentInvoiceDetails = command.paymentDto.paymentInvoiceDetails;
 
             // Clear main record fields for NEW_RECORD - data is only in forApprovalVersion
             command.paymentDto.paymentInvoiceDetails = [];

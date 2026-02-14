@@ -25,7 +25,7 @@ interface EditInvoicePageProps {
 export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     const [isLoading, setIsLoading] = useState(false);
     const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDto | null>(null);
-    const [activeTab, setActiveTab] = useState<'details' | 'logs' | 'payments'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'logs' | 'payments' | 'rgs'>('details');
     const [showDenyDialog, setShowDenyDialog] = useState(false);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [showCancelDialog, setShowCancelDialog] = useState(false);
@@ -266,16 +266,13 @@ export default function EditInvoicePage({ params }: EditInvoicePageProps) {
     };
 
     const handleCancel = () => {
-        // Show dialog if there are invoice details OR if editing a draft
-        // This includes cases where validation fails (e.g., contract amount exceeded)
-        const hasInvoiceDetails =
-            selectedInvoice && selectedInvoice.invoiceDetails && selectedInvoice.invoiceDetails.length > 0;
         const isDraft = selectedInvoice && selectedInvoice.status === StatusEnum.DRAFT;
 
-        if (hasInvoiceDetails || isDraft) {
+        if (isDraft) {
+            // Only show cancel/delete confirmation for DRAFT invoices
             setShowCancelDialog(true);
         } else {
-            // No items and not a draft, just navigate away
+            // For any other status (ACTIVE, FOR_APPROVAL, etc.), just navigate back
             router.push('/invoicing/invoice');
         }
     };

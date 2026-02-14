@@ -231,6 +231,18 @@ export function detectFieldChanges(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const newValue = (newObject as any)[fieldName];
 
+        // Skip entity primary key fields (e.g., invoiceId, paymentId, customerId, etc.)
+        // These exist in DB records but are not included in update DTOs,
+        // causing false "value → (empty)" changes
+        if (
+            fieldName.endsWith('Id') &&
+            oldValue != null &&
+            oldValue !== '' &&
+            (newValue === undefined || newValue === null)
+        ) {
+            continue;
+        }
+
         // Handle arrays
         if (Array.isArray(oldValue) || Array.isArray(newValue)) {
             // Determine ID field for this array
