@@ -65,4 +65,8 @@ export abstract class PaymentDatabaseServiceAbstractClass {
     ): Promise<PageDto<PaymentDto>>;
 
     abstract batchUpdateRecords(payments: PaymentDto[]): Promise<void>;
+
+    abstract getPaymentsByDateRange(startDate: string, endDate: string): Promise<PaymentDto[]>;
+
+    abstract getPaymentsByDateRangeDetailed(startDate: string, endDate: string): Promise<PaymentDto[]>;
 }

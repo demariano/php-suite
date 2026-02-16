@@ -10,22 +10,47 @@ export class ExcelGeneratorService {
     constructor(private readonly configService: ConfigService, private readonly s3Service: AwsS3LibService) {}
 
     async generateExcelReport(reportDto: ReportDto): Promise<FileDetailsDto> {
-        //using excelJS create an excel file from the reportDto
-        const headers = reportDto.headers;
-
-        if (
-            !headers ||
-            headers.length === 0 ||
-            !reportDto.rows ||
-            reportDto.rows.length === 0 ||
-            !reportDto.reportFilename
-        ) {
-            throw new Error('ReportDto must have headers and rows to generate an Excel report');
+        if (!reportDto.reportFilename) {
+            throw new Error('ReportDto must have reportFilename to generate an Excel report');
         }
 
         const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet(reportDto.reportName);
 
+        const workbookSheets = reportDto.workbook?.sheets;
+        if (workbookSheets && workbookSheets.length > 0) {
+            for (const sheetDto of workbookSheets) {
+                if (!sheetDto.headers || sheetDto.headers.length === 0) {
+                    throw new Error('Each workbook sheet must have headers to generate an Excel report');
+                }
+                if (!sheetDto.rows || sheetDto.rows.length === 0) {
+                    throw new Error('Each workbook sheet must have rows to generate an Excel report');
+                }
+
+                const sheet = workbook.addWorksheet(sheetDto.name);
+                this.writeSheet(sheet, sheetDto.headers, sheetDto.rows);
+            }
+
+            return await this.saveData(workbook, reportDto);
+        }
+
+        // Single-sheet legacy behavior
+        const headers = reportDto.headers;
+        if (!headers || headers.length === 0 || !reportDto.rows || reportDto.rows.length === 0) {
+            throw new Error('ReportDto must have headers and rows to generate an Excel report');
+        }
+
+        const sheet = workbook.addWorksheet(reportDto.reportName);
+        this.writeSheet(sheet, headers, reportDto.rows);
+
+        return await this.saveData(workbook, reportDto);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private writeSheet(
+        sheet: ExcelJS.Worksheet,
+        headers: { description: string; metaData?: Record<string, unknown> }[],
+        rows: Record<string, any>[]
+    ) {
         // Set columns without styles
         sheet.columns = headers.map((header) => ({
             header: header.description,
@@ -45,8 +70,9 @@ export class ExcelGeneratorService {
             };
         });
 
-        //add the items to the sheet
-        reportDto.rows.forEach((row) => {
+        // Add the items to the sheet
+        rows.forEach((row) => {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const rowData: Record<string, any> = {};
             headers.forEach((header) => {
                 rowData[header.description] = row[header.description];
@@ -55,7 +81,7 @@ export class ExcelGeneratorService {
         });
 
         // After adding all rows, auto-size columns
-        sheet.columns.forEach((column, i) => {
+        sheet.columns.forEach((column) => {
             let maxLength = 10;
             column.eachCell?.((cell: ExcelJS.Cell) => {
                 const cellValue = cell.value ? cell.value.toString() : '';
@@ -63,8 +89,6 @@ export class ExcelGeneratorService {
             });
             column.width = maxLength + 2;
         });
-
-        return await this.saveData(workbook, reportDto);
     }
 
     async saveData(workbook: ExcelJS.Workbook, reportDto: ReportDto): Promise<FileDetailsDto> {

@@ -137,7 +137,8 @@
                 "Inventory Event Handler Service",
                 "Invoicing Event Handler Service",
                 "Accounting Event Handler Service",
-                "Product Event Handler Service"
+                "Product Event Handler Service",
+                "Report Event Handler Service"
             ],
             "group": {
                 "kind": "build",
@@ -159,7 +160,9 @@
                 "Inventory Event Handler Service",
                 "Invoicing Event Handler Service",
                 "Accounting Event Handler Service",
-                "Product Event Handler Service"
+                "Product Event Handler Service",
+                "Report Event Handler Service",
+                "Report Api Service"
             ],
             "group": {
                 "kind": "build",
@@ -301,6 +304,16 @@
             "label": "Product Event Handler Service",
             "type": "shell",
             "command": "npx nx serve product-event-handler-service --skip-nx-cache",
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "Report Event Handler Service",
+            "type": "shell",
+            "command": "npx nx serve report-event-handler-service",
             "presentation": {
                 "reveal": "always",
                 "panel": "new"

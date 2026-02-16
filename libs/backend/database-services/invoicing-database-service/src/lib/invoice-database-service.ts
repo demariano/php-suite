@@ -924,4 +924,283 @@ export class InvoiceDatabaseService implements InvoiceDatabaseServiceAbstract {
             }
         }
     }
+
+    async getInvoicesByDateRange(startDate: string, endDate: string, fields: string[]): Promise<InvoiceDto[]> {
+        const allInvoices: InvoiceDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI11', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI11',
+                  };
+
+            const records = await this.invoiceTable.find(
+                {
+                    GSI11PK: `INVOICE`,
+                    GSI11SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: fields,
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allInvoices.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allInvoices;
+    }
+
+    /**
+     * Find all invoices for a specific customer within a date range
+     * Uses GSI3: PK = INVOICE#${customerId}, SK = invoiceDate (supports between query)
+     */
+    async getInvoicesByCustomerAndDateRange(
+        customerId: string,
+        startDate: string,
+        endDate: string,
+        fields?: string[]
+    ): Promise<InvoiceDto[]> {
+        const allInvoices: InvoiceDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI3',
+                  };
+
+            const findOptions: Record<string, unknown> = {
+                ...dynamoDbOption,
+                where: '${status} = {ACTIVE}',
+                substitutions: {
+                    ACTIVE: StatusEnum.ACTIVE,
+                },
+            };
+
+            if (fields && fields.length > 0) {
+                findOptions['fields'] = fields;
+            }
+
+            const records = await this.invoiceTable.find(
+                {
+                    GSI3PK: `INVOICE#${customerId}`,
+                    GSI3SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                findOptions
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allInvoices.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allInvoices;
+    }
+
+    /**
+     * Find all invoices for a specific area within a date range
+     * Uses GSI8: PK = INVOICE#${areaId}, SK = invoiceDate (supports between query)
+     */
+    async getInvoicesByAreaAndDateRange(
+        areaId: string,
+        startDate: string,
+        endDate: string,
+        fields?: string[]
+    ): Promise<InvoiceDto[]> {
+        const allInvoices: InvoiceDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI8', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI8',
+                  };
+
+            const findOptions: Record<string, unknown> = {
+                ...dynamoDbOption,
+                where: '${status} = {ACTIVE}',
+                substitutions: {
+                    ACTIVE: StatusEnum.ACTIVE,
+                },
+            };
+
+            if (fields && fields.length > 0) {
+                findOptions['fields'] = fields;
+            }
+
+            const records = await this.invoiceTable.find(
+                {
+                    GSI8PK: `INVOICE#${areaId}`,
+                    GSI8SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                findOptions
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allInvoices.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allInvoices;
+    }
+
+    /**
+     * Find all invoices for a specific sales type within a date range
+     * Uses GSI4: PK = INVOICE#${salesTypeId}, SK = invoiceDate (supports between query)
+     */
+    async getInvoicesBySalesTypeAndDateRange(
+        salesTypeId: string,
+        startDate: string,
+        endDate: string,
+        fields?: string[]
+    ): Promise<InvoiceDto[]> {
+        const allInvoices: InvoiceDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI4', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI4',
+                  };
+
+            const findOptions: Record<string, unknown> = {
+                ...dynamoDbOption,
+                where: '${status} = {ACTIVE}',
+                substitutions: {
+                    ACTIVE: StatusEnum.ACTIVE,
+                },
+            };
+
+            if (fields && fields.length > 0) {
+                findOptions['fields'] = fields;
+            }
+
+            const records = await this.invoiceTable.find(
+                {
+                    GSI4PK: `INVOICE#${salesTypeId}`,
+                    GSI4SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                findOptions
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allInvoices.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allInvoices;
+    }
+
+    /**
+     * Find all pending/partial payment invoices, optionally filtered by date range
+     * Returns full InvoiceDto[] (not just count) for report generation
+     */
+    async getPendingPaymentInvoices(startDate?: string, endDate?: string): Promise<InvoiceDto[]> {
+        const allInvoices: InvoiceDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI11', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI11',
+                  };
+
+            const findCondition: Record<string, unknown> = {
+                GSI11PK: `INVOICE`,
+            };
+
+            if (startDate && endDate) {
+                findCondition['GSI11SK'] = { between: [startDate, endDate] };
+            }
+
+            const records = await this.invoiceTable.find(findCondition, {
+                ...dynamoDbOption,
+                where: '(${paymentStatus} = {PENDING} OR ${paymentStatus} = {PARTIAL}) AND ${status} = {ACTIVE}',
+                substitutions: {
+                    PENDING: PaymentStatusEnum.PENDING,
+                    PARTIAL: PaymentStatusEnum.PARTIAL,
+                    ACTIVE: StatusEnum.ACTIVE,
+                },
+            });
+
+            const dtos = await this.convertToDtoList(records);
+            allInvoices.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allInvoices;
+    }
+
+    async getPendingPaymentInvoiceCount(startDate?: string, endDate?: string): Promise<number> {
+        let totalCount = 0;
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        // Count PENDING invoices, optionally filtered by date range
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI11', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI11',
+                  };
+
+            const findCondition: Record<string, unknown> = {
+                GSI11PK: `INVOICE`,
+            };
+
+            // If date range provided, filter by invoiceDate (GSI11SK)
+            if (startDate && endDate) {
+                findCondition['GSI11SK'] = { between: [startDate, endDate] };
+            }
+
+            const records = await this.invoiceTable.find(findCondition, {
+                ...dynamoDbOption,
+                fields: ['invoiceId'],
+                where: '${paymentStatus} = {PENDING} AND ${status} = {ACTIVE}',
+                substitutions: {
+                    PENDING: PaymentStatusEnum.PENDING,
+                    ACTIVE: StatusEnum.ACTIVE,
+                },
+            });
+
+            totalCount += records.length;
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return totalCount;
+    }
 }

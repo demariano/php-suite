@@ -5,6 +5,7 @@ export const ReportSchema = {
     indexes: {
         primary: { hash: 'PK', sort: 'SK' },
         GSI1: { hash: 'GSI1PK', sort: 'GSI1SK' },
+        GSI2: { hash: 'GSI2PK', sort: 'GSI2SK' },
     },
     models: {
         Reports: {
@@ -13,6 +14,7 @@ export const ReportSchema = {
             reportId: { type: String, generate: 'ulid' },
             reportName: { type: String },
             reportFilename: { type: String },
+            reportType: { type: String },
             createdBy: { type: String },
             dateCreated: { type: String },
             status: {
@@ -20,6 +22,7 @@ export const ReportSchema = {
                 enum: ['READY', 'IN_PROGRESS', 'FAILED'],
                 required: false,
             },
+            errorMessage: { type: String, required: false },
             fileDetails: {
                 type: Object,
                 properties: {
@@ -28,11 +31,17 @@ export const ReportSchema = {
                     key: { type: String },
                     fileType: { type: String },
                 },
-                required: true,
+                required: false,
+            },
+            filters: {
+                type: Object,
+                required: false,
             },
             dateRange: { type: String },
             GSI1PK: { type: String, value: 'REPORTS', hidden: false },
             GSI1SK: { type: String, value: '${dateCreated}', hidden: false },
+            GSI2PK: { type: String, value: 'REPORT_TYPE#${reportType}', hidden: false },
+            GSI2SK: { type: String, value: '${dateCreated}', hidden: false },
         },
     } as const,
     params: {

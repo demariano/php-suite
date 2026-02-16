@@ -9,6 +9,7 @@ import { ProductPriceTypeModule } from './product-price-type/product-price-type.
 import { ProductUnitRawMaterialModule } from './product-unit-raw-material/product-unit-raw-material.module';
 import { ProductUnitModule } from './product-unit/product-unit.module';
 import { ProductModule } from './product/product.module';
+import { ReportsModule } from './reports/reports.module';
 
 @Module({
     imports: [
@@ -19,6 +20,7 @@ import { ProductModule } from './product/product.module';
         ProductPriceTypeModule,
         ProductModule,
         ProductUnitRawMaterialModule,
+        ReportsModule,
     ],
     controllers: [AppController],
     providers: [AppService],

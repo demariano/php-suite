@@ -632,4 +632,35 @@ export class CustomerDatabaseService implements CustomerDatabaseServiceAbstract 
         };
         return customerData;
     }
+
+    async getActiveCustomerCount(): Promise<number> {
+        let totalCount = 0;
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI2',
+                  };
+
+            const records = await this.customerTable.find(
+                {
+                    GSI2PK: `CUSTOMER#ACTIVE`,
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: ['customerId'],
+                }
+            );
+
+            totalCount += records.length;
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return totalCount;
+    }
 }

@@ -471,4 +471,94 @@ export class VoucherDatabaseService implements VoucherDatabaseServiceAbstract {
         const updatePromises = records.map((record) => this.updateRecord(record));
         await Promise.all(updatePromises);
     }
+
+    /**
+     * Get all vouchers within a date range (non-paginated, for report generation)
+     * Uses GSI3: PK = VOUCHER, SK = voucherDate
+     */
+    async getVouchersByDateRange(startDate: string, endDate: string): Promise<VoucherDto[]> {
+        const allVouchers: VoucherDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI3',
+                  };
+
+            const records = await this.voucherTable.find(
+                {
+                    GSI3PK: `VOUCHER`,
+                    GSI3SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    where: '${status} = {ACTIVE}',
+                    substitutions: {
+                        ACTIVE: 'ACTIVE',
+                    },
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allVouchers.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allVouchers;
+    }
+
+    /**
+     * Get vouchers by date range filtered by customerId (for per-customer report)
+     * Uses GSI3 (date range) with a where filter on customerId
+     * Note: GSI5 (customer) has voucherId as SK, so date range query is not possible on it
+     */
+    async getVouchersByDateRangeAndCustomer(
+        customerId: string,
+        startDate: string,
+        endDate: string
+    ): Promise<VoucherDto[]> {
+        const allVouchers: VoucherDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI3', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI3',
+                  };
+
+            const records = await this.voucherTable.find(
+                {
+                    GSI3PK: `VOUCHER`,
+                    GSI3SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    where: '${customerId} = {targetCustomerId} AND ${status} = {ACTIVE}',
+                    substitutions: {
+                        targetCustomerId: customerId,
+                        ACTIVE: 'ACTIVE',
+                    },
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allVouchers.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allVouchers;
+    }
 }

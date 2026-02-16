@@ -59,4 +59,6 @@ export abstract class CustomerDatabaseServiceAbstract {
     abstract updateBalance(customerId: string, amountChange: number): Promise<CustomerDto | null>;
 
     abstract updateCustomerCredit(customerId: string, creditAmount: number): Promise<CustomerDto | null>;
+
+    abstract getActiveCustomerCount(): Promise<number>;
 }

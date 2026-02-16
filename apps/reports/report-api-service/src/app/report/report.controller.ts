@@ -1,15 +1,18 @@
-import { CurrentUser, UserCognito } from '@auth-guard-lib';
+import { CognitoAuthGuard, CurrentUser, UserCognito } from '@auth-guard-lib';
 import { CreateReportDto, ReportDto } from '@dto';
-import { Body, Controller, Delete, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { CommandBus, QueryBus } from '@nestjs/cqrs';
 import { ApiBody, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { CreateReportCommand } from './command/create/create.command';
 import { DeleteReportCommand } from './command/delete/delete.command';
 import { GetReportByIdQuery } from './queries/get.by.id/get.report.by.id.query';
+import { GetDownloadUrlQuery } from './queries/get.download.url/get.download.url.query';
+import { GetRecordsByTypePaginationQuery } from './queries/get.records.by.type.pagination/get.records.by.type.pagination.query';
 import { GetReportRecordsPaginationQuery } from './queries/get.records.pagination/get.records.pagination.query';
 
 @Controller('reports')
 @ApiTags('reports')
+@UseGuards(CognitoAuthGuard)
 export class ReportController {
     constructor(private readonly commandBus: CommandBus, private readonly queryBus: QueryBus) {}
 
@@ -74,6 +77,69 @@ export class ReportController {
         reportDto.reportId = id;
         const command = new DeleteReportCommand(id, reportDto, undefined); // User context can be added if available
         return this.commandBus.execute(command);
+    }
+
+    @Get('type/:reportType')
+    @ApiOperation({
+        summary: 'Get reports by type with pagination',
+        description: 'Retrieves reports filtered by report type with pagination support.',
+    })
+    @ApiParam({
+        name: 'reportType',
+        description: 'Report type enum value',
+        example: 'CUSTOMER_LIST',
+    })
+    @ApiQuery({
+        name: 'limit',
+        type: Number,
+        required: true,
+        description: 'Number of records to return',
+        example: 10,
+    })
+    @ApiQuery({
+        name: 'direction',
+        type: String,
+        required: false,
+        description: 'Page direction: "next" or "prev"',
+        enum: ['next', 'prev'],
+    })
+    @ApiQuery({
+        name: 'cursorPointer',
+        type: String,
+        required: false,
+        description: 'Cursor for pagination',
+    })
+    getRecordsByTypePagination(
+        @Param('reportType') reportType: string,
+        @Query('limit') limit: number,
+        @Query('direction') direction: string,
+        @Query('cursorPointer') cursorPointer: string
+    ) {
+        const query = new GetRecordsByTypePaginationQuery(reportType, limit, direction, cursorPointer);
+        return this.queryBus.execute(query);
+    }
+
+    @Get(':id/download-url')
+    @ApiOperation({
+        summary: 'Get download URL for a generated report',
+        description: 'Returns a pre-signed S3 URL for downloading a generated report file.',
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Report ID',
+        example: 'rep_123456789',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Download URL generated successfully',
+    })
+    @ApiResponse({
+        status: 404,
+        description: 'Report not found or file not available',
+    })
+    getDownloadUrl(@Param('id') id: string) {
+        const query = new GetDownloadUrlQuery(id);
+        return this.queryBus.execute(query);
     }
 
     @Get(':id')

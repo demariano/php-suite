@@ -1,3 +1,4 @@
+import { AwsS3LibService } from '@aws-s3-lib';
 import { ErrorResponseDto, ReportDto, ResponseDto } from '@dto';
 import { BadRequestException, Inject, Logger, NotFoundException } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -13,20 +14,44 @@ export class DeleteReportHandler implements ICommandHandler<DeleteReportCommand>
 
     constructor(
         @Inject('ReportDatabaseService')
-        private readonly reportDatabaseService: ReportDatabaseServiceAbstract
+        private readonly reportDatabaseService: ReportDatabaseServiceAbstract,
+        @Inject('AwsS3LibService')
+        private readonly s3Service: AwsS3LibService
     ) {}
 
     async execute(command: DeleteReportCommand): Promise<ResponseDto<ReportDto | ErrorResponseDto>> {
-        this.logger.log(`Processing delete request for area: ${command.recordId}`);
+        this.logger.log(`Processing delete request for report: ${command.recordId}`);
 
         try {
             // Fetch and validate existing report record
             const existingRecord = await this.fetchReportById(command.recordId);
+
+            // Delete S3 file if it exists
+            await this.deleteS3File(existingRecord);
+
+            // Delete database record
             await this.reportDatabaseService.deleteRecord(command.reportDto);
 
             return new ResponseDto<ReportDto>(existingRecord, HTTP_STATUS_OK);
         } catch (error) {
             return this.handleError(error, command.recordId);
+        }
+    }
+
+    /**
+     * Deletes the S3 file associated with the report if file details exist
+     */
+    private async deleteS3File(report: ReportDto): Promise<void> {
+        if (report.fileDetails?.bucket && report.fileDetails?.key) {
+            try {
+                await this.s3Service.deleteObject(report.fileDetails.bucket, report.fileDetails.key);
+                this.logger.log(`S3 file deleted: bucket=${report.fileDetails.bucket}, key=${report.fileDetails.key}`);
+            } catch (error) {
+                this.logger.warn(
+                    `Failed to delete S3 file for report ${report.reportId}, continuing with record deletion`,
+                    error
+                );
+            }
         }
     }
 

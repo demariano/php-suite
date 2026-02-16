@@ -200,6 +200,14 @@ export * from './lib/invoicing/payment/payment.invoice.details.dto';
 export * from './lib/invoicing/return.good.sold/create.return.good.sold.dto';
 export * from './lib/invoicing/return.good.sold/return.good.sold.dto';
 
+//dashboard
+export * from './lib/invoicing/dashboard/contract.expiration.dto';
+export * from './lib/invoicing/dashboard/dashboard.summary.dto';
+export * from './lib/invoicing/dashboard/invoice.payment.status.chart.dto';
+export * from './lib/invoicing/dashboard/invoices.created.chart.dto';
+export * from './lib/invoicing/dashboard/payments.created.chart.dto';
+export * from './lib/invoicing/dashboard/return.goods.sold.chart.dto';
+
 //collection receipt range
 export * from './lib/enums/range.status.enum';
 export * from './lib/invoicing/collection-receipt-range/cancel.receipt.number.request.dto';
@@ -218,9 +226,12 @@ export * from './lib/enums/account.event.enum';
 export * from './lib/enums/account.type.enum';
 
 //reports
+export * from './lib/enums/report.event.enum';
 export * from './lib/enums/report.status.enum';
+export * from './lib/enums/report.type.enum';
 export * from './lib/reports/create.report.dto';
 export * from './lib/reports/report.dto';
+export * from './lib/reports/report.event.dto';
 export * from './lib/reports/report.file.detail.dto';
 
 //file details

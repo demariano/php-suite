@@ -65,6 +65,21 @@ export * from './types/terms.types';
 export * from './types/territory-manager.types';
 export * from './types/voucher.types';
 
+// Export dashboard API types
+export type {
+    ContractExpirationItem,
+    ContractExpirationResponse,
+    DashboardSummaryResponse,
+    InvoicePaymentStatusResponse,
+    InvoicesCreatedResponse,
+    PaymentsCreatedResponse,
+    ReturnGoodsSoldResponse,
+    WeeklyInvoiceCreatedData,
+    WeeklyPaymentAmountData,
+    WeeklyPaymentStatusData,
+    WeeklyRGSCountData,
+} from './api/dashboard.api';
+
 // Export API types
 export type { AreasResponse } from './api/area.api';
 export type { CollectionReceiptRangesResponse } from './api/collection-receipt-range.api';
@@ -96,4 +111,3 @@ export * from './config/env';
 
 // Export utilities
 export * from './utils/errorExtraction';
-

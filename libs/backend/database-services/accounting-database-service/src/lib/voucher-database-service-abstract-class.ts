@@ -57,4 +57,12 @@ export abstract class VoucherDatabaseServiceAbstract {
         direction: string,
         cursorPointer: string
     ): Promise<PageDto<VoucherDto>>;
+
+    abstract getVouchersByDateRange(startDate: string, endDate: string): Promise<VoucherDto[]>;
+
+    abstract getVouchersByDateRangeAndCustomer(
+        customerId: string,
+        startDate: string,
+        endDate: string
+    ): Promise<VoucherDto[]>;
 }

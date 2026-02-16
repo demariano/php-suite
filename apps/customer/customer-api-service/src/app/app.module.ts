@@ -6,10 +6,11 @@ import { AreaModule } from './area/area.module';
 import { CustomerClassificationModule } from './customer-classification/customer-classification.module';
 import { CustomerTypeModule } from './customer-type/customer-type.module';
 import { CustomerModule } from './customer/customer.module';
+import { ReportsModule } from './reports/reports.module';
 import { TermsModule } from './terms/terms.module';
 
 @Module({
-    imports: [CustomerModule, CustomerClassificationModule, CustomerTypeModule, TermsModule, AreaModule],
+    imports: [CustomerModule, CustomerClassificationModule, CustomerTypeModule, TermsModule, AreaModule, ReportsModule],
     controllers: [AppController],
     providers: [AppService],
 })

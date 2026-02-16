@@ -67,4 +67,14 @@ export abstract class ReturnGoodSoldDatabaseServiceAbstractClass {
     abstract getReturnGoodSoldCountByAreaId(areaId: string): Promise<number>;
 
     abstract batchUpdateRecords(returnGoodSolds: ReturnGoodSoldDto[]): Promise<void>;
+
+    abstract getActiveRGSByDateRange(startDate: string, endDate: string): Promise<ReturnGoodSoldDto[]>;
+
+    abstract getActiveRGSByDateRangeDetailed(startDate: string, endDate: string): Promise<ReturnGoodSoldDto[]>;
+
+    abstract getActiveRGSByCustomerAndDateRange(
+        customerId: string,
+        startDate: string,
+        endDate: string
+    ): Promise<ReturnGoodSoldDto[]>;
 }

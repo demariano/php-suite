@@ -707,4 +707,108 @@ export class ContractDatabaseService implements ContractDatabaseServiceAbstract 
             }
         }
     }
+
+    async getActiveContractCount(filterStartDate?: string, filterEndDate?: string): Promise<number> {
+        let totalCount = 0;
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        // Use provided date range or default to today (Asia/Manila)
+        const rangeStart = filterStartDate || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+        const rangeEnd = filterEndDate || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI2',
+                  };
+
+            const records = await this.contractTable.find(
+                {
+                    GSI2PK: `CONTRACT#${StatusEnum.ACTIVE}`,
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: ['contractId', 'startDate', 'endDate'],
+                }
+            );
+
+            // Only count contracts whose period overlaps with the selected date range
+            // Overlap: contract.startDate <= rangeEnd AND contract.endDate >= rangeStart
+            const validRecords = records.filter((record: { startDate?: string; endDate?: string }) => {
+                const startStr = record.startDate ? record.startDate.substring(0, 10) : null;
+                const endStr = record.endDate ? record.endDate.substring(0, 10) : null;
+                // Contract must have started by end of selected range
+                if (startStr && startStr > rangeEnd) return false;
+                // Contract must not have ended before start of selected range
+                if (endStr && endStr < rangeStart) return false;
+                return true;
+            });
+
+            totalCount += validRecords.length;
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return totalCount;
+    }
+
+    async getActiveContracts(filterStartDate?: string, filterEndDate?: string): Promise<ContractDto[]> {
+        const allContracts: ContractDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        // Use provided date range or default to today (Asia/Manila)
+        const rangeStart = filterStartDate || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+        const rangeEnd = filterEndDate || new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI2',
+                  };
+
+            const records = await this.contractTable.find(
+                {
+                    GSI2PK: `CONTRACT#${StatusEnum.ACTIVE}`,
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: [
+                        'contractId',
+                        'contractNo',
+                        'contractName',
+                        'customerId',
+                        'customerName',
+                        'startDate',
+                        'endDate',
+                        'status',
+                    ],
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+
+            // Only include contracts whose period overlaps with the selected date range
+            const validDtos = dtos.filter((dto) => {
+                const startStr = dto.startDate ? dto.startDate.substring(0, 10) : null;
+                const endStr = dto.endDate ? dto.endDate.substring(0, 10) : null;
+                // Contract must have started by end of selected range
+                if (startStr && startStr > rangeEnd) return false;
+                // Contract must not have ended before start of selected range
+                if (endStr && endStr < rangeStart) return false;
+                return true;
+            });
+
+            allContracts.push(...validDtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allContracts;
+    }
 }

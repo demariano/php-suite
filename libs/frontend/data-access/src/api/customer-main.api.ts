@@ -202,6 +202,10 @@ class CustomerMainApi extends AxiosConfig {
 
         return await this.axiosInstance.post(url, { approverMessage });
     };
+
+    public getActiveCustomerCount = async (): Promise<{ count: number }> => {
+        return await this.axiosInstance.get('/customers/count/active');
+    };
 }
 
 export default new CustomerMainApi();

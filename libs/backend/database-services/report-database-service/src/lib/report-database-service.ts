@@ -1,4 +1,4 @@
-import { PageDto, ReportDto, ReportFileDetailDto, ReportStatusEnum } from '@dto';
+import { PageDto, ReportDto, ReportFileDetailDto, ReportFilterParams, ReportStatusEnum, ReportTypeEnum } from '@dto';
 import { DynamoDbLibService, ReportSchema, ReportsDataType } from '@dynamo-db-lib';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -50,15 +50,18 @@ export class ReportDatabaseService implements ReportDatabaseServiceAbstract {
         const reportData: ReportsDataType = {
             reportName: reportDto.reportName,
             reportFilename: reportDto.reportFilename,
+            reportType: reportDto.reportType,
             createdBy: reportDto.createdBy,
             dateCreated: reportDto.dateCreated,
             dateRange: reportDto.dateRange,
             status: 'IN_PROGRESS',
             PK: 'REPORTS',
-            SK: reportDto.reportFilename || reportDto.reportName || '',
             fileDetails: reportDto.fileDetails as ReportFileDetailDto,
+            filters: reportDto.filters as ReportFilterParams,
             GSI1PK: 'REPORTS',
-            GSI1SK: reportDto.dateCreated || '',
+            GSI1SK: reportDto.dateCreated || new Date().toISOString(),
+            GSI2PK: `REPORT_TYPE#${reportDto.reportType || ''}`,
+            GSI2SK: reportDto.dateCreated || new Date().toISOString(),
         };
         const reportRecord: ReportsDataType = await this.reportTable.create(reportData);
         return await this.convertToDto(reportRecord);
@@ -75,6 +78,7 @@ export class ReportDatabaseService implements ReportDatabaseServiceAbstract {
         }
 
         reportRecord.status = data.status ?? ReportStatusEnum.FAILED;
+        reportRecord.errorMessage = data.errorMessage;
 
         reportRecord.reportFilename = data.reportFilename;
         reportRecord.fileDetails = data.fileDetails as ReportFileDetailDto;
@@ -87,10 +91,9 @@ export class ReportDatabaseService implements ReportDatabaseServiceAbstract {
     }
 
     async deleteRecord(reportDto: ReportDto): Promise<ReportDto> {
-        // Remove by PK/SK
         const reportRecord = await this.reportTable.get({
             PK: 'REPORTS',
-            SK: reportDto.reportFilename || reportDto.reportName || '',
+            SK: reportDto.reportId || '',
         });
         if (!reportRecord) {
             throw new Error('Report record not found');
@@ -131,16 +134,51 @@ export class ReportDatabaseService implements ReportDatabaseServiceAbstract {
         );
     }
 
+    async findRecordsByReportTypePagination(
+        reportType: string,
+        limit: number,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<ReportDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', direction, cursorPointer);
+        const records = await this.reportTable.find(
+            {
+                GSI2PK: `REPORT_TYPE#${reportType}`,
+            },
+            dynamoDbOption
+        );
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI2PK',
+            'GSI2SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
+    }
+
     async convertToDto(record: ReportsDataType): Promise<ReportDto> {
         const dto = new ReportDto();
         dto.reportName = record.reportName || '';
         dto.reportFilename = record.reportFilename || '';
+        dto.reportType = record.reportType as ReportTypeEnum;
         dto.createdBy = record.createdBy || '';
         dto.dateCreated = record.dateCreated || '';
         dto.dateRange = record.dateRange || '';
         dto.reportId = record.reportId || '';
         dto.status = record.status as ReportStatusEnum;
         dto.fileDetails = record.fileDetails;
+        dto.filters = record.filters as ReportFilterParams;
+        dto.errorMessage = record.errorMessage;
         return dto;
     }
 

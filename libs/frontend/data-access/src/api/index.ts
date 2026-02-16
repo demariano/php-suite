@@ -6,6 +6,7 @@ export { default as ContractApi } from './contract.api';
 export { default as CustomerClassificationApi } from './customer-classification.api';
 export { default as CustomerApi } from './customer-main.api';
 export { default as CustomerTypeApi } from './customer-type.api';
+export { default as DashboardApi } from './dashboard.api';
 export { default as InvoiceApi } from './invoice.api';
 export { default as PaymentApi } from './payment.api';
 export { default as ProductApi } from './product.api';
@@ -13,6 +14,7 @@ export { default as RawMaterialsLocationApi } from './raw-material-location.api'
 export { default as RawMaterialSupplierApi } from './raw-material-supplier.api';
 export { default as RawMaterialUnitApi } from './raw-material-unit.api';
 export { default as RawMaterialApi } from './raw-material.api';
+export { default as ReportApi } from './report.api';
 export { default as ReturnGoodSoldApi } from './return-good-sold.api';
 export { default as SalesTypeApi } from './sales-type.api';
 export { default as StockDeliveryApi } from './stock-delivery.api';
@@ -32,6 +34,5 @@ export {
     ProductDealApi,
     ProductMainApi,
     ProductPriceTypeApi,
-    ProductUnitApi
+    ProductUnitApi,
 } from './product.api';
-

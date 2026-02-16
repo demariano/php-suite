@@ -35,5 +35,6 @@ export const configuration = async () => {
         INVOICE_EVENT_SQS: process.env['INVOICE_EVENT_SQS'],
         ACCOUNTING_EVENT_SQS: process.env['ACCOUNTING_EVENT_SQS'],
         PRODUCT_EVENT_SQS: process.env['PRODUCT_EVENT_SQS'],
+        REPORT_EVENT_SQS: process.env['REPORT_EVENT_SQS'],
     };
 };

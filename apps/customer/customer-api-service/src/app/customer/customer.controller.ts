@@ -9,6 +9,7 @@ import { DeleteCustomerCommand } from './command/delete/delete.command';
 import { DenyCustomerCommand } from './command/deny-record/deny.command';
 import { DenyCustomerDto } from './command/deny-record/deny.dto';
 import { UpdateCustomerCommand } from './command/update/update.command';
+import { GetActiveCustomerCountQuery } from './queries/get.active.count/get.active.customer.count.query';
 import { GetCustomerByIdQuery } from './queries/get.by.id/get.customer.by.id.query';
 import { GetCustomerByNameQuery } from './queries/get.by.name/get.customer.by.name.query';
 import { GetRecordsByStatusPaginationQuery } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.query';
@@ -565,6 +566,31 @@ export class CustomerController {
         return this.queryBus.execute(
             new GetRecordsByStatusPaginationQuery(status, limit, direction, cursorPointer, name)
         );
+    }
+
+    @Get('count/active')
+    @ApiOperation({
+        summary: 'Get active customer count',
+        description: 'Returns the total count of customers with ACTIVE status.',
+    })
+    @ApiResponse({
+        status: 200,
+        description: 'Active customer count retrieved successfully',
+        schema: {
+            type: 'object',
+            properties: {
+                statusCode: { type: 'number', example: 200 },
+                body: {
+                    type: 'object',
+                    properties: {
+                        count: { type: 'number', example: 2847 },
+                    },
+                },
+            },
+        },
+    })
+    getActiveCustomerCount() {
+        return this.queryBus.execute(new GetActiveCustomerCountQuery());
     }
 
     @Get(':id')

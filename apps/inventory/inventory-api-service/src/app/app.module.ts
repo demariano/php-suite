@@ -8,6 +8,7 @@ import { RawMaterialModule } from './raw-material/raw-material.module';
 import { RawMaterialsLocationModule } from './raw-materials-location/raw-materials-location.module';
 import { RawMaterialsPurchaseOrderModule } from './raw-materials-purchase-order/raw-materials-purchase-order.module';
 import { RawMaterialsStockModule } from './raw-materials-stock/raw-materials-stock.module';
+import { ReportsModule } from './reports/reports.module';
 import { StockDeliveryModule } from './stock-delivery/stock-delivery.module';
 import { StockPurchaseOrderModule } from './stock-purchase-order/stock-purchase-order.module';
 import { StockTypeModule } from './stock-type/stock-type.module';
@@ -27,6 +28,7 @@ import { SupplierModule } from './supplier/supplier.module';
         StockPurchaseOrderModule,
         StockModule,
         StockTypeModule,
+        ReportsModule,
     ],
     controllers: [AppController],
     providers: [AppService],

@@ -614,4 +614,137 @@ export class ReturnGoodSoldDatabaseService implements ReturnGoodSoldDatabaseServ
             }
         }
     }
+
+    async getActiveRGSByDateRange(startDate: string, endDate: string): Promise<ReturnGoodSoldDto[]> {
+        const allRGS: ReturnGoodSoldDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI2',
+                  };
+
+            const records = await this.returnGoodSoldTable.find(
+                {
+                    GSI2PK: `RETURN_GOOD_SOLD#ACTIVE`,
+                    GSI2SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: ['returnGoodSoldId', 'dateReturned', 'status'],
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allRGS.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allRGS;
+    }
+
+    /**
+     * Get active RGS by date range with full details for report generation
+     * Returns all relevant fields including customer info, docno, invoice details
+     */
+    async getActiveRGSByDateRangeDetailed(startDate: string, endDate: string): Promise<ReturnGoodSoldDto[]> {
+        const allRGS: ReturnGoodSoldDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI2', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI2',
+                  };
+
+            const records = await this.returnGoodSoldTable.find(
+                {
+                    GSI2PK: `RETURN_GOOD_SOLD#ACTIVE`,
+                    GSI2SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: [
+                        'returnGoodSoldId',
+                        'dateReturned',
+                        'status',
+                        'customerId',
+                        'customerName',
+                        'invoiceDocno',
+                        'rgsDocno',
+                        'invoiceId',
+                        'areaId',
+                        'areaName',
+                        'originalInvoiceDetails',
+                        'modifiedInvoiceDetails',
+                    ],
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allRGS.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allRGS;
+    }
+
+    /**
+     * Get active RGS by customer and date range for per-customer report
+     * Uses GSI5: PK = RETURN_GOOD_SOLD#${customerId}, SK = dateReturned
+     */
+    async getActiveRGSByCustomerAndDateRange(
+        customerId: string,
+        startDate: string,
+        endDate: string
+    ): Promise<ReturnGoodSoldDto[]> {
+        const allRGS: ReturnGoodSoldDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI5',
+                  };
+
+            const records = await this.returnGoodSoldTable.find(
+                {
+                    GSI5PK: `RETURN_GOOD_SOLD#${customerId}`,
+                    GSI5SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    where: '${status} = {ACTIVE}',
+                    substitutions: {
+                        ACTIVE: 'ACTIVE',
+                    },
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allRGS.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allRGS;
+    }
 }

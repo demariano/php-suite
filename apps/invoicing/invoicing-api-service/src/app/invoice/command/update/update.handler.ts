@@ -425,6 +425,18 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
             throw new BadRequestException(`Contract not found: ${contractId}`);
         }
 
+        // Validate that the contract has not expired
+        if (contract.endDate) {
+            const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Manila' });
+            const endDateStr = contract.endDate.substring(0, 10);
+            if (endDateStr < todayStr) {
+                throw new BadRequestException(
+                    `Cannot create invoice for expired contract. ` +
+                        `Contract "${contract.contractName || contractId}" expired on ${contract.endDate}.`
+                );
+            }
+        }
+
         // Calculate current invoiced amount (excluding this invoice if it's an update)
         let currentInvoicedAmount = contract.invoicedAmount || 0;
 

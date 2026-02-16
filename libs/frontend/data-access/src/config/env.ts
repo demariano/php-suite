@@ -16,6 +16,7 @@ export const ENV_KEYS = [
     'API_INVOICING_URL',
     'API_ACCOUNTING_URL',
     'API_INVENTORY_URL',
+    'API_REPORT_URL',
 ] as const;
 
 export type EnvVariables = {

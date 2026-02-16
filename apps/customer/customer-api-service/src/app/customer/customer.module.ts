@@ -11,6 +11,7 @@ import { DeleteCustomerHandler } from './command/delete/delete.handler';
 import { DenyCustomerHandler } from './command/deny-record/deny.handler';
 import { UpdateCustomerHandler } from './command/update/update.handler';
 import { CustomerController } from './customer.controller';
+import { GetActiveCustomerCountHandler } from './queries/get.active.count/get.active.customer.count.handler';
 import { GetCustomerByIdHandler } from './queries/get.by.id/get.customer.by.id.handler';
 import { GetCustomerByNameHandler } from './queries/get.by.name/get.customer.by.name.handler';
 import { GetRecordsByStatusPaginationHandler } from './queries/get.records.by.status.pagination/get.records.by.status.pagination.handler';
@@ -44,6 +45,7 @@ import { GetCustomerRecordsPaginationHandler } from './queries/get.records.pagin
         DeleteCustomerHandler,
         ApproveCustomerHandler,
         DenyCustomerHandler,
+        GetActiveCustomerCountHandler,
     ],
 })
 export class CustomerModule {}

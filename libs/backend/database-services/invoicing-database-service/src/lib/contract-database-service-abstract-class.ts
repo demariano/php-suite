@@ -73,4 +73,8 @@ export abstract class ContractDatabaseServiceAbstract {
     abstract updateInvoicedAmount(contractId: string, invoicedAmount: number): Promise<ContractDto>;
 
     abstract batchUpdateRecords(contracts: ContractDto[]): Promise<void>;
+
+    abstract getActiveContractCount(filterStartDate?: string, filterEndDate?: string): Promise<number>;
+
+    abstract getActiveContracts(filterStartDate?: string, filterEndDate?: string): Promise<ContractDto[]>;
 }

@@ -252,248 +252,284 @@ export default function ProductSearchableSelectionModal({
     if (!show) return null;
 
     return (
-        <div
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000,
-            }}
-        >
-            <div
-                style={{
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    padding: '24px',
-                    width: '700px',
-                    maxWidth: '95vw',
-                    maxHeight: '80vh',
-                    overflow: 'hidden',
-                    boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                }}
-            >
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '20px',
-                    }}
-                >
-                    <h3
-                        style={{
-                            fontSize: '18px',
-                            fontWeight: '600',
-                            color: '#1f2937',
-                            margin: 0,
-                        }}
-                    >
-                        {showDeals ? `${selectedProduct?.productName} - Product Deals` : title}
-                    </h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[1000] animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl w-[640px] max-w-[90vw] max-h-[80vh] overflow-hidden shadow-2xl flex flex-col border border-gray-100">
+                {/* Header */}
+                <div className="flex justify-between items-center px-6 pt-6 pb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center">
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="#3b82f6"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                <line x1="12" y1="22.08" x2="12" y2="12" />
+                            </svg>
+                        </div>
+                        <h2 className="text-lg font-semibold text-gray-900">
+                            {showDeals ? `${selectedProduct?.productName} - Product Deals` : title}
+                        </h2>
+                    </div>
                     <button
                         onClick={showDeals ? handleBackToProducts : onClose}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            fontSize: '24px',
-                            cursor: 'pointer',
-                            color: '#6b7280',
-                            padding: '4px',
-                        }}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
                     >
-                        {showDeals ? '←' : '×'}
+                        {showDeals ? (
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <line x1="19" y1="12" x2="5" y2="12" />
+                                <polyline points="12 19 5 12 12 5" />
+                            </svg>
+                        ) : (
+                            <svg
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                        )}
                     </button>
                 </div>
 
                 {!showDeals && (
                     <>
                         {/* Search */}
-                        <div style={{ marginBottom: '20px' }}>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="px-6 pb-4">
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="#9ca3af"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <circle cx="11" cy="11" r="8" />
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                    </svg>
+                                </div>
                                 <input
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     placeholder="Search products by name..."
-                                    style={{
-                                        flex: 1,
-                                        padding: '12px 16px',
-                                        border: '2px solid #d1d5db',
-                                        borderRadius: '8px',
-                                        fontSize: '14px',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                    }}
-                                    onFocus={(e) => {
-                                        e.currentTarget.style.borderColor = '#3b82f6';
-                                    }}
-                                    onBlur={(e) => {
-                                        e.currentTarget.style.borderColor = '#d1d5db';
-                                    }}
+                                    className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+                                    autoFocus
                                 />
                                 {searchTerm && (
                                     <button
                                         type="button"
                                         onClick={handleClearSearch}
-                                        style={{
-                                            padding: '12px 16px',
-                                            backgroundColor: '#6b7280',
-                                            color: 'white',
-                                            border: 'none',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            fontSize: '14px',
-                                            fontWeight: '500',
-                                        }}
+                                        className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600"
                                     >
-                                        Clear
+                                        <svg
+                                            width="16"
+                                            height="16"
+                                            viewBox="0 0 24 24"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        >
+                                            <circle cx="12" cy="12" r="10" />
+                                            <line x1="15" y1="9" x2="9" y2="15" />
+                                            <line x1="9" y1="9" x2="15" y2="15" />
+                                        </svg>
                                     </button>
                                 )}
                             </div>
                         </div>
 
+                        {/* Divider */}
+                        <div className="border-t border-gray-100" />
+
                         {/* Products List */}
-                        <div
-                            style={{
-                                maxHeight: '400px',
-                                overflowY: 'auto',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '8px',
-                                marginBottom: '20px',
-                            }}
-                        >
+                        <div className="flex-1 overflow-y-auto px-3 py-2">
                             {loading ? (
-                                <div
-                                    style={{
-                                        padding: '40px',
-                                        textAlign: 'center',
-                                        color: '#6b7280',
-                                    }}
-                                >
-                                    Loading...
-                                </div>
-                            ) : items.length > 0 ? (
-                                items.map((item) => (
-                                    <div
-                                        key={item.productId}
-                                        onClick={() => handleProductSelect(item)}
-                                        style={{
-                                            padding: '12px 16px',
-                                            borderBottom: '1px solid #e5e7eb',
-                                            cursor: 'pointer',
-                                            transition: 'background-color 0.2s ease',
-                                            backgroundColor: selectedValue === item.productId ? '#dbeafe' : 'white',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (selectedValue !== item.productId) {
-                                                e.currentTarget.style.backgroundColor = '#f9fafb';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (selectedValue !== item.productId) {
-                                                e.currentTarget.style.backgroundColor = 'white';
-                                            }
-                                        }}
+                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                    <svg
+                                        className="animate-spin h-6 w-6 mb-3 text-blue-500"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        fill="none"
+                                        viewBox="0 0 24 24"
                                     >
-                                        <div
-                                            style={{
-                                                fontSize: '14px',
-                                                fontWeight: '500',
-                                                color: '#1f2937',
-                                                marginBottom: '4px',
-                                            }}
+                                        <circle
+                                            className="opacity-25"
+                                            cx="12"
+                                            cy="12"
+                                            r="10"
+                                            stroke="currentColor"
+                                            strokeWidth="4"
+                                        />
+                                        <path
+                                            className="opacity-75"
+                                            fill="currentColor"
+                                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                                        />
+                                    </svg>
+                                    <span className="text-sm">Loading products...</span>
+                                </div>
+                            ) : items.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                    <svg
+                                        width="40"
+                                        height="40"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="mb-3 opacity-40"
+                                    >
+                                        <circle cx="11" cy="11" r="8" />
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                        <line x1="8" y1="11" x2="14" y2="11" />
+                                    </svg>
+                                    <span className="text-sm font-medium">
+                                        {searchTerm ? `No products matching "${searchTerm}"` : 'No products available'}
+                                    </span>
+                                    {searchTerm && (
+                                        <button
+                                            onClick={handleClearSearch}
+                                            className="mt-2 text-xs text-blue-500 hover:text-blue-600 font-medium"
                                         >
-                                            {item.productName}
-                                        </div>
-                                        <div
-                                            style={{
-                                                fontSize: '12px',
-                                                color: '#6b7280',
-                                                display: 'flex',
-                                                gap: '16px',
-                                                flexWrap: 'wrap',
-                                            }}
-                                        >
-                                            {item.productCategoryName && (
-                                                <span>Category: {item.productCategoryName}</span>
-                                            )}
-                                            {item.productClassName && <span>Class: {item.productClassName}</span>}
-                                            <span>Deals: {item.productDeals?.length || 0}</span>
-                                        </div>
-                                    </div>
-                                ))
+                                            Clear search
+                                        </button>
+                                    )}
+                                </div>
                             ) : (
-                                <div
-                                    style={{
-                                        padding: '40px',
-                                        textAlign: 'center',
-                                        color: '#6b7280',
-                                    }}
-                                >
-                                    No products found
+                                <div className="space-y-0.5">
+                                    {items.map((item) => {
+                                        const isSelected = selectedValue === item.productId;
+                                        return (
+                                            <button
+                                                key={item.productId}
+                                                onClick={() => handleProductSelect(item)}
+                                                className={`w-full text-left px-4 py-3 rounded-lg text-sm transition-all flex items-center justify-between group ${
+                                                    isSelected
+                                                        ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+                                                        : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-3 min-w-0">
+                                                    <div
+                                                        className={`w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 ${
+                                                            isSelected
+                                                                ? 'bg-blue-100 text-blue-600'
+                                                                : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'
+                                                        }`}
+                                                    >
+                                                        {item.productName?.toString()?.charAt(0)?.toUpperCase() || '?'}
+                                                    </div>
+                                                    <div className="min-w-0">
+                                                        <span className="font-medium block truncate">
+                                                            {item.productName}
+                                                        </span>
+                                                        <div className="flex items-center gap-2 flex-wrap mt-0.5 text-xs text-gray-400">
+                                                            {item.productCategoryName && (
+                                                                <span>Category: {item.productCategoryName}</span>
+                                                            )}
+                                                            {item.productClassName && (
+                                                                <span>Class: {item.productClassName}</span>
+                                                            )}
+                                                            <span>Deals: {item.productDeals?.length || 0}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                {isSelected && (
+                                                    <svg
+                                                        width="16"
+                                                        height="16"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        stroke="currentColor"
+                                                        strokeWidth="2.5"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        className="text-blue-500 shrink-0 ml-2"
+                                                    >
+                                                        <polyline points="20 6 9 17 4 12" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
 
                         {/* Pagination */}
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    fontSize: '14px',
-                                    color: '#6b7280',
-                                }}
-                            >
-                                {items.length} items
-                            </div>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    gap: '8px',
-                                }}
-                            >
+                        <div className="border-t border-gray-100 px-6 py-3 flex items-center justify-between">
+                            <span className="text-xs text-gray-400">
+                                {items.length > 0
+                                    ? `${items.length} ${items.length !== 1 ? 'products' : 'product'} shown`
+                                    : ''}
+                            </span>
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={handlePrevPage}
                                     disabled={!hasPrevPage || loading}
-                                    style={{
-                                        padding: '8px 16px',
-                                        backgroundColor: hasPrevPage ? '#f3f4f6' : '#f9fafb',
-                                        color: hasPrevPage ? '#374151' : '#9ca3af',
-                                        border: '1px solid #d1d5db',
-                                        borderRadius: '6px',
-                                        cursor: hasPrevPage ? 'pointer' : 'not-allowed',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-md border border-gray-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed enabled:text-gray-700 enabled:hover:bg-gray-50 enabled:hover:border-gray-300"
                                 >
+                                    <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <polyline points="15 18 9 12 15 6" />
+                                    </svg>
                                     Previous
                                 </button>
                                 <button
                                     onClick={handleNextPage}
                                     disabled={!hasNextPage || loading}
-                                    style={{
-                                        padding: '8px 16px',
-                                        backgroundColor: hasNextPage ? '#3b82f6' : '#f9fafb',
-                                        color: hasNextPage ? 'white' : '#9ca3af',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        cursor: hasNextPage ? 'pointer' : 'not-allowed',
-                                        fontSize: '14px',
-                                        fontWeight: '500',
-                                    }}
+                                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-md transition-all disabled:opacity-40 disabled:cursor-not-allowed enabled:bg-gray-900 enabled:text-white enabled:hover:bg-gray-800"
                                 >
                                     Next
+                                    <svg
+                                        width="14"
+                                        height="14"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <polyline points="9 18 15 12 9 6" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -502,102 +538,83 @@ export default function ProductSearchableSelectionModal({
 
                 {showDeals && selectedProduct && (
                     <>
+                        {/* Divider */}
+                        <div className="border-t border-gray-100" />
+
                         {/* Product Deals List */}
-                        <div
-                            style={{
-                                maxHeight: '400px',
-                                overflowY: 'auto',
-                                border: '1px solid #e5e7eb',
-                                borderRadius: '8px',
-                                marginBottom: '20px',
-                            }}
-                        >
+                        <div className="flex-1 overflow-y-auto px-3 py-2">
                             {selectedProduct.productDeals && selectedProduct.productDeals.length > 0 ? (
-                                selectedProduct.productDeals.map((deal) => (
-                                    <div
-                                        key={deal.productDealId}
-                                        onClick={() => handleDealSelect(deal)}
-                                        style={{
-                                            padding: '12px 16px',
-                                            borderBottom: '1px solid #e5e7eb',
-                                            cursor: 'pointer',
-                                            transition: 'background-color 0.2s ease',
-                                            backgroundColor: 'white',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#f9fafb';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = 'white';
-                                        }}
-                                    >
-                                        <div
-                                            style={{
-                                                fontSize: '14px',
-                                                fontWeight: '500',
-                                                color: '#1f2937',
-                                                marginBottom: '4px',
-                                            }}
+                                <div className="space-y-0.5">
+                                    {selectedProduct.productDeals.map((deal) => (
+                                        <button
+                                            key={deal.productDealId}
+                                            onClick={() => handleDealSelect(deal)}
+                                            className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all flex items-center justify-between group text-gray-700 hover:bg-gray-50 hover:text-gray-900"
                                         >
-                                            {deal.productDealName}
-                                        </div>
-                                        <div
-                                            style={{
-                                                fontSize: '12px',
-                                                color: '#6b7280',
-                                                display: 'flex',
-                                                gap: '16px',
-                                                flexWrap: 'wrap',
-                                            }}
-                                        >
-                                            {deal.minQty !== undefined && <span>Min Qty: {deal.minQty}</span>}
-                                            {deal.additionalQty !== undefined && (
-                                                <span>Additional Qty: {deal.additionalQty}</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
+                                            <div className="flex items-center gap-3 min-w-0">
+                                                <div className="w-7 h-7 rounded-md flex items-center justify-center text-xs font-bold shrink-0 bg-gray-100 text-gray-500 group-hover:bg-gray-200">
+                                                    {deal.productDealName?.toString()?.charAt(0)?.toUpperCase() || '?'}
+                                                </div>
+                                                <div className="min-w-0">
+                                                    <span className="font-medium block truncate">
+                                                        {deal.productDealName}
+                                                    </span>
+                                                    <div className="flex items-center gap-2 flex-wrap mt-0.5 text-xs text-gray-400">
+                                                        {deal.minQty !== undefined && (
+                                                            <span>Min Qty: {deal.minQty}</span>
+                                                        )}
+                                                        {deal.additionalQty !== undefined && (
+                                                            <span>Additional Qty: {deal.additionalQty}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             ) : (
-                                <div
-                                    style={{
-                                        padding: '40px',
-                                        textAlign: 'center',
-                                        color: '#6b7280',
-                                    }}
-                                >
-                                    No deals available for this product
+                                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                                    <svg
+                                        width="40"
+                                        height="40"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="1.5"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="mb-3 opacity-40"
+                                    >
+                                        <circle cx="11" cy="11" r="8" />
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                                        <line x1="8" y1="11" x2="14" y2="11" />
+                                    </svg>
+                                    <span className="text-sm font-medium">No deals available for this product</span>
                                 </div>
                             )}
                         </div>
 
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                            }}
-                        >
-                            <div
-                                style={{
-                                    fontSize: '14px',
-                                    color: '#6b7280',
-                                }}
-                            >
+                        {/* Footer */}
+                        <div className="border-t border-gray-100 px-6 py-3 flex items-center justify-between">
+                            <span className="text-xs text-gray-400">
                                 {selectedProduct.productDeals?.length || 0} deals available
-                            </div>
+                            </span>
                             <button
                                 onClick={handleBackToProducts}
-                                style={{
-                                    padding: '8px 16px',
-                                    backgroundColor: '#6b7280',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                }}
+                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
                             >
+                                <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <polyline points="15 18 9 12 15 6" />
+                                </svg>
                                 Back to Products
                             </button>
                         </div>

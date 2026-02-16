@@ -4,8 +4,10 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CollectionReceiptRangeModule } from './collection-receipt-range/collection-receipt-range.module';
 import { ContractModule } from './contract/contract.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { PaymentModule } from './payment/payment.module';
+import { ReportsModule } from './reports/reports.module';
 import { ReturnGoodSoldModule } from './return-good-sold/return.good.sold.module';
 import { SalesTypeModule } from './sales-type/sales-type.module';
 import { TerritoryManagerModule } from './territory-manager/territory-manager.module';
@@ -19,6 +21,8 @@ import { TerritoryManagerModule } from './territory-manager/territory-manager.mo
         PaymentModule,
         ReturnGoodSoldModule,
         CollectionReceiptRangeModule,
+        DashboardModule,
+        ReportsModule,
     ],
     controllers: [AppController],
     providers: [AppService],

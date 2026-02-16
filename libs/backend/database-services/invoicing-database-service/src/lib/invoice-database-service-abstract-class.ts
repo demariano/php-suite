@@ -78,6 +78,19 @@ export abstract class InvoiceDatabaseServiceAbstract {
         cursorPointer: string
     ): Promise<PageDto<InvoiceDto>>;
 
+    abstract getInvoicesByDateRange(startDate: string, endDate: string, fields: string[]): Promise<InvoiceDto[]>;
+
+    abstract getInvoicesByCustomerAndDateRange(
+        customerId: string,
+        startDate: string,
+        endDate: string,
+        fields?: string[]
+    ): Promise<InvoiceDto[]>;
+
+    abstract getPendingPaymentInvoiceCount(startDate?: string, endDate?: string): Promise<number>;
+
+    abstract getPendingPaymentInvoices(startDate?: string, endDate?: string): Promise<InvoiceDto[]>;
+
     abstract findRecordsByTermsIdPagination(
         limit: number,
         termsId: string,

@@ -1,5 +1,7 @@
-import { ErrorResponseDto, ReportDto, ResponseDto } from '@dto';
+import { ErrorResponseDto, ReportDto, ReportEventDto, ReportEventEnum, ResponseDto } from '@dto';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
 import { BadRequestException, Inject, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
 import { ReportDatabaseServiceAbstract } from '@report-database-service';
 import { CreateReportCommand } from './create.command';
@@ -14,7 +16,10 @@ export class CreateReportHandler implements ICommandHandler<CreateReportCommand>
 
     constructor(
         @Inject('ReportDatabaseService')
-        private readonly reportDatabaseService: ReportDatabaseServiceAbstract
+        private readonly reportDatabaseService: ReportDatabaseServiceAbstract,
+        @Inject('MessageQueueAwsLibService')
+        private readonly messageQueueService: MessageQueueServiceAbstract,
+        private readonly configService: ConfigService
     ) {}
     async execute(command: CreateReportCommand): Promise<ResponseDto<ReportDto | ErrorResponseDto>> {
         this.logger.log(`Processing create request for report: ${command.reportDto.reportName}`);
@@ -22,13 +27,43 @@ export class CreateReportHandler implements ICommandHandler<CreateReportCommand>
         try {
             // Create record in database
             command.reportDto.createdBy = command.user.username;
+            command.reportDto.dateCreated = new Date().toISOString();
             const createdRecord = await this.reportDatabaseService.createRecord(command.reportDto);
 
             this.logger.log(`Report created successfully: ${createdRecord.reportId}`);
+
+            // Send SQS event to trigger report generation
+            await this.sendReportGenerationEvent(createdRecord, command.user.username);
+
             return new ResponseDto<ReportDto>(createdRecord, HTTP_STATUS_CREATED);
         } catch (error) {
             return this.handleError(error, command.reportDto.reportName);
         }
+    }
+
+    /**
+     * Sends an SQS event to trigger async report generation
+     */
+    private async sendReportGenerationEvent(report: ReportDto, createdBy: string): Promise<void> {
+        const queueUrl = this.configService.get<string>('REPORT_EVENT_SQS');
+
+        if (!queueUrl) {
+            this.logger.error('REPORT_EVENT_SQS is not configured - report generation event not sent');
+            return;
+        }
+
+        const eventDto: ReportEventDto = {
+            eventType: ReportEventEnum.GENERATE_REPORT,
+            reportId: report.reportId || '',
+            reportType: report.reportType!,
+            reportName: report.reportName || '',
+            createdBy: createdBy,
+            filters: report.filters || {},
+            timestamp: new Date().toISOString(),
+        };
+
+        await this.messageQueueService.sendMessageToSQS(queueUrl, JSON.stringify(eventDto));
+        this.logger.log(`Report generation event sent for report: ${report.reportId}`);
     }
 
     /**

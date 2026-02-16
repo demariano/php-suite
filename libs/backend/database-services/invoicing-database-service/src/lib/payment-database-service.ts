@@ -514,4 +514,99 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             }
         }
     }
+
+    async getPaymentsByDateRange(startDate: string, endDate: string): Promise<PaymentDto[]> {
+        const allPayments: PaymentDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI5',
+                  };
+
+            const records = await this.paymentTable.find(
+                {
+                    GSI5PK: `PAYMENT`,
+                    GSI5SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: ['paymentId', 'paymentDate', 'paymentAmount', 'status'],
+                    where: '${status} = {ACTIVE}',
+                    substitutions: {
+                        ACTIVE: 'ACTIVE',
+                    },
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allPayments.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allPayments;
+    }
+
+    /**
+     * Get payments by date range with full details for report generation
+     * Returns all relevant fields including customer info, receipt, contract details
+     */
+    async getPaymentsByDateRangeDetailed(startDate: string, endDate: string): Promise<PaymentDto[]> {
+        const allPayments: PaymentDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI5',
+                  };
+
+            const records = await this.paymentTable.find(
+                {
+                    GSI5PK: `PAYMENT`,
+                    GSI5SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: [
+                        'paymentId',
+                        'paymentDate',
+                        'paymentAmount',
+                        'status',
+                        'customerId',
+                        'customerName',
+                        'receiptNo',
+                        'paymentDetails',
+                        'contractPayment',
+                        'contractId',
+                        'contractName',
+                        'contractNo',
+                    ],
+                    where: '${status} = {ACTIVE}',
+                    substitutions: {
+                        ACTIVE: 'ACTIVE',
+                    },
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allPayments.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allPayments;
+    }
 }

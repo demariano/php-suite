@@ -2,6 +2,7 @@ export { default as Accordiong } from './data-display/accordion/accordion';
 export { default as Avatar } from './data-display/avatar/avatar';
 export { default as Badge } from './data-display/badge/badge';
 export { default as Card } from './data-display/card/card';
+export { default as StatCard } from './data-display/card/statCard';
 export { default as VisualCard } from './data-display/card/visualCard';
 export { default as BarChart } from './data-display/charts/bar-chart/bar-chart';
 export { default as Linechart } from './data-display/charts/line-chart/line-chart';
@@ -16,6 +17,8 @@ export { default as Typography } from './data-display/typography/typography';
 
 export { default as Button } from './form-controls/button/button';
 export { default as DateRangePicker } from './form-controls/calendar/dateRangePicker';
+export { default as DateRangeSelector } from './form-controls/calendar/dateRangeSelector';
+export type { DateRangePreset, DateRangeSelectorProps } from './form-controls/calendar/dateRangeSelector';
 export { default as Checkbox } from './form-controls/checkbox/checkbox';
 export { default as DropdownMenu } from './form-controls/dropdown-menu/dropdown-menu';
 export { default as DropdownOptions } from './form-controls/dropdown-options/dropdown-options';
