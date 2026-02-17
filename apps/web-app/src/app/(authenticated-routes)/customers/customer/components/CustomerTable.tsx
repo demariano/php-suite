@@ -84,13 +84,13 @@ export default function CustomerTable({
                                                 {customer.customerTypeName || '-'}
                                             </td>
                                             <td className="px-6 py-5">{customer.status}</td>
-                                            <td className="px-6 py-5 text-sm text-gray-900 font-semibold">
+                                            <td className="px-6 py-5 text-sm text-gray-600">
                                                 {customer.formattedBalance}
                                             </td>
-                                            <td className="px-6 py-5 text-sm text-gray-900 font-semibold">
+                                            <td className="px-6 py-5 text-sm text-gray-600">
                                                 {customer.formattedCreditLimit}
                                             </td>
-                                            <td className="px-6 py-5 text-sm text-gray-900 font-semibold">
+                                            <td className="px-6 py-5 text-sm text-gray-600">
                                                 {customer.formattedCustomerCredit}
                                             </td>
                                             <td className="px-6 py-5 text-sm">
@@ -169,19 +169,17 @@ export default function CustomerTable({
                                         </div>
                                         <div className="flex justify-between gap-3">
                                             <dt className="font-medium text-gray-500">Balance</dt>
-                                            <dd className="text-right text-gray-900 font-semibold">
-                                                {customer.formattedBalance}
-                                            </dd>
+                                            <dd className="text-right text-gray-900">{customer.formattedBalance}</dd>
                                         </div>
                                         <div className="flex justify-between gap-3">
                                             <dt className="font-medium text-gray-500">Credit Limit</dt>
-                                            <dd className="text-right text-gray-900 font-semibold">
+                                            <dd className="text-right text-gray-900">
                                                 {customer.formattedCreditLimit}
                                             </dd>
                                         </div>
                                         <div className="flex justify-between gap-3">
                                             <dt className="font-medium text-gray-500">Customer Credit</dt>
-                                            <dd className="text-right text-gray-900 font-semibold">
+                                            <dd className="text-right text-gray-900">
                                                 {customer.formattedCustomerCredit}
                                             </dd>
                                         </div>

@@ -169,6 +169,11 @@ const ReportFilters = ({
     const [selectedProductDealIds, setSelectedProductDealIds] = useState<string[]>([]);
     const [selectedProductDealNames, setSelectedProductDealNames] = useState<string[]>([]);
     const [showProductDealMultiModal, setShowProductDealMultiModal] = useState(false);
+    const [includeProductDealDetails, setIncludeProductDealDetails] = useState(false);
+    const [includeInvoiceDetails, setIncludeInvoiceDetails] = useState(false);
+    const [includePaymentDetails, setIncludePaymentDetails] = useState(false);
+    const [includePaymentInvoiceDetails, setIncludePaymentInvoiceDetails] = useState(false);
+    const [includeProductUnitDetails, setIncludeProductUnitDetails] = useState(false);
     const [selectedTownNames, setSelectedTownNames] = useState<string[]>([]);
     const [showTownMultiModal, setShowTownMultiModal] = useState(false);
     const [availableTowns, setAvailableTowns] = useState<string[]>([]);
@@ -585,6 +590,10 @@ const ReportFilters = ({
         setSelectedProductDealIds([]);
         setSelectedProductDealNames([]);
         setShowProductDealMultiModal(false);
+        setIncludeProductDealDetails(false);
+        setIncludeInvoiceDetails(false);
+        setIncludePaymentDetails(false);
+        setIncludePaymentInvoiceDetails(false);
         setSelectedTownNames([]);
         setShowTownMultiModal(false);
         setAvailableTowns([]);
@@ -615,6 +624,8 @@ const ReportFilters = ({
         setSelectedProductClassIds([]);
         setSelectedProductClassNames([]);
         setShowProductClassMultiModal(false);
+        setIncludeProductDealDetails(false);
+        setIncludeProductUnitDetails(false);
 
         // Voucher report
         setSelectedAccountType('');
@@ -699,6 +710,9 @@ const ReportFilters = ({
             if (isInvoicePerDatePerArea && selectedPaymentStatuses.length > 0) {
                 filters.paymentStatus = selectedPaymentStatuses;
             }
+            if (includeInvoiceDetails) {
+                filters.includeInvoiceDetails = true;
+            }
         }
         if (filterType === 'date-range-method' && paymentMethod !== 'all') {
             filters.paymentMethod = paymentMethod;
@@ -745,6 +759,12 @@ const ReportFilters = ({
             if (customerCreditFilter !== 'all') {
                 filters.customerCreditPayment = customerCreditFilter === 'yes';
             }
+            if (includePaymentDetails) {
+                filters.includePaymentDetails = true;
+            }
+            if (includePaymentInvoiceDetails) {
+                filters.includePaymentInvoiceDetails = true;
+            }
         }
         if (filterType === 'list-area-status') {
             if (selectedArea !== 'all') filters.areaId = selectedArea;
@@ -770,6 +790,9 @@ const ReportFilters = ({
             }
             if (selectedProductDealIds.length > 0) {
                 filters.productDealIds = selectedProductDealIds;
+            }
+            if (includeProductDealDetails) {
+                filters.includeProductDealDetails = true;
             }
             if (selectedCustomerStatuses.length > 0) {
                 filters.customerStatuses = selectedCustomerStatuses;
@@ -827,6 +850,12 @@ const ReportFilters = ({
             }
             if (selectedProductUnitIds.length > 0) {
                 filters.productUnitIds = selectedProductUnitIds;
+            }
+            if (includeProductDealDetails) {
+                filters.includeProductDealDetails = true;
+            }
+            if (includeProductUnitDetails) {
+                filters.includeProductUnitDetails = true;
             }
         }
 
@@ -919,6 +948,11 @@ const ReportFilters = ({
         selectedCustomerTypeIds,
         selectedTownNames,
         selectedProductDealIds,
+        includeProductDealDetails,
+        includeInvoiceDetails,
+        includePaymentDetails,
+        includePaymentInvoiceDetails,
+        includeProductUnitDetails,
         selectedCustomerStatuses,
         selectedStockStatuses,
         selectedStockTypeIds,
@@ -987,6 +1021,47 @@ const ReportFilters = ({
                                 />
                             )}
                         </div>
+
+                        {filterType === 'date-range-invoice' && (
+                            <label className="self-end flex items-center gap-2 cursor-pointer select-none pb-2">
+                                <input
+                                    type="checkbox"
+                                    checked={includeInvoiceDetails}
+                                    onChange={(e) => setIncludeInvoiceDetails(e.target.checked)}
+                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                    Include Invoice Details
+                                </span>
+                            </label>
+                        )}
+
+                        {filterType === 'date-range-payment' && (
+                            <>
+                                <label className="self-end flex items-center gap-2 cursor-pointer select-none pb-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={includePaymentDetails}
+                                        onChange={(e) => setIncludePaymentDetails(e.target.checked)}
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                        Include Payment Details
+                                    </span>
+                                </label>
+                                <label className="self-end flex items-center gap-2 cursor-pointer select-none pb-2">
+                                    <input
+                                        type="checkbox"
+                                        checked={includePaymentInvoiceDetails}
+                                        onChange={(e) => setIncludePaymentInvoiceDetails(e.target.checked)}
+                                        className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                    />
+                                    <span className="text-sm font-medium text-gray-700 whitespace-nowrap">
+                                        Include Payment Invoice Details
+                                    </span>
+                                </label>
+                            </>
+                        )}
 
                         <div className="self-end">
                             <button
@@ -2463,33 +2538,55 @@ const ReportFilters = ({
                                 )}
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={() => setShowProductDealMultiModal(true)}
-                                className="w-full inline-flex items-center gap-2 px-3 h-10 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors justify-between"
-                            >
-                                <span
-                                    className={selectedProductDealIds.length === 0 ? 'text-gray-400' : 'text-gray-900'}
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowProductDealMultiModal(true)}
+                                    className="flex-1 inline-flex items-center gap-2 px-3 h-10 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors justify-between"
                                 >
-                                    {selectedProductDealIds.length === 0
-                                        ? 'All Product Deals'
-                                        : selectedProductDealIds.length === 1
-                                        ? selectedProductDealNames[0] || selectedProductDealIds[0]
-                                        : `${selectedProductDealIds.length} Deals selected`}
-                                </span>
-                                <svg
-                                    width="16"
-                                    height="16"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="2"
-                                    strokeLinecap="round"
-                                    strokeLinejoin="round"
+                                    <span
+                                        className={
+                                            selectedProductDealIds.length === 0 ? 'text-gray-400' : 'text-gray-900'
+                                        }
+                                    >
+                                        {selectedProductDealIds.length === 0
+                                            ? 'All Product Deals'
+                                            : selectedProductDealIds.length === 1
+                                            ? selectedProductDealNames[0] || selectedProductDealIds[0]
+                                            : `${selectedProductDealIds.length} Deals selected`}
+                                    </span>
+                                    <svg
+                                        width="16"
+                                        height="16"
+                                        viewBox="0 0 24 24"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    >
+                                        <polyline points="6 9 12 15 18 9" />
+                                    </svg>
+                                </button>
+
+                                <label
+                                    className={
+                                        `inline-flex items-center gap-2 px-4 h-10 rounded-lg border cursor-pointer select-none transition-colors text-sm whitespace-nowrap ` +
+                                        (includeProductDealDetails
+                                            ? 'border-gray-300 bg-gray-50 text-gray-900'
+                                            : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50')
+                                    }
+                                    title="Include product deal details as sub-rows in the report"
                                 >
-                                    <polyline points="6 9 12 15 18 9" />
-                                </svg>
-                            </button>
+                                    <input
+                                        type="checkbox"
+                                        checked={includeProductDealDetails}
+                                        onChange={(e) => setIncludeProductDealDetails(e.target.checked)}
+                                        className="w-4 h-4 rounded border-gray-300 text-blue-600 accent-blue-600"
+                                    />
+                                    Include Product Deal Details
+                                </label>
+                            </div>
 
                             {selectedProductDealIds.length > 0 && (
                                 <div className="mt-2 flex flex-wrap gap-2">
@@ -3092,9 +3189,7 @@ const ReportFilters = ({
                                 onClick={() => setShowTownMultiModal(true)}
                                 className="w-full inline-flex items-center gap-2 px-3 h-10 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors justify-between"
                             >
-                                <span
-                                    className={selectedTownNames.length === 0 ? 'text-gray-400' : 'text-gray-900'}
-                                >
+                                <span className={selectedTownNames.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
                                     {selectedTownNames.length === 0
                                         ? 'All Towns'
                                         : selectedTownNames.length === 1
@@ -4054,31 +4149,53 @@ const ReportFilters = ({
                             )}
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={() => setShowProductDealMultiModal(true)}
-                            className="w-full inline-flex items-center gap-2 px-3 h-10 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors justify-between"
-                        >
-                            <span className={selectedProductDealIds.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
-                                {selectedProductDealIds.length === 0
-                                    ? 'All Deals'
-                                    : selectedProductDealIds.length === 1
-                                    ? selectedProductDealNames[0] || selectedProductDealIds[0]
-                                    : `${selectedProductDealIds.length} Deals selected`}
-                            </span>
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowProductDealMultiModal(true)}
+                                className="flex-1 inline-flex items-center gap-2 px-3 h-10 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors justify-between"
                             >
-                                <polyline points="6 9 12 15 18 9" />
-                            </svg>
-                        </button>
+                                <span
+                                    className={selectedProductDealIds.length === 0 ? 'text-gray-400' : 'text-gray-900'}
+                                >
+                                    {selectedProductDealIds.length === 0
+                                        ? 'All Deals'
+                                        : selectedProductDealIds.length === 1
+                                        ? selectedProductDealNames[0] || selectedProductDealIds[0]
+                                        : `${selectedProductDealIds.length} Deals selected`}
+                                </span>
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </button>
+
+                            <label
+                                className={
+                                    `inline-flex items-center gap-2 px-4 h-10 rounded-lg border cursor-pointer select-none transition-colors text-sm whitespace-nowrap ` +
+                                    (includeProductDealDetails
+                                        ? 'border-gray-300 bg-gray-50 text-gray-900'
+                                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50')
+                                }
+                                title="Include product deal details as sub-rows in the report"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={includeProductDealDetails}
+                                    onChange={(e) => setIncludeProductDealDetails(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 accent-blue-600"
+                                />
+                                Include Product Deal Details
+                            </label>
+                        </div>
 
                         {selectedProductDealIds.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-2">
@@ -4158,31 +4275,53 @@ const ReportFilters = ({
                             )}
                         </div>
 
-                        <button
-                            type="button"
-                            onClick={() => setShowProductUnitMultiModal(true)}
-                            className="w-full inline-flex items-center gap-2 px-3 h-10 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors justify-between"
-                        >
-                            <span className={selectedProductUnitIds.length === 0 ? 'text-gray-400' : 'text-gray-900'}>
-                                {selectedProductUnitIds.length === 0
-                                    ? 'All Units'
-                                    : selectedProductUnitIds.length === 1
-                                    ? selectedProductUnitNames[0] || selectedProductUnitIds[0]
-                                    : `${selectedProductUnitIds.length} Units selected`}
-                            </span>
-                            <svg
-                                width="16"
-                                height="16"
-                                viewBox="0 0 24 24"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowProductUnitMultiModal(true)}
+                                className="flex-1 inline-flex items-center gap-2 px-3 h-10 border border-gray-300 rounded-lg text-sm text-gray-700 bg-white hover:bg-gray-50 transition-colors justify-between"
                             >
-                                <polyline points="6 9 12 15 18 9" />
-                            </svg>
-                        </button>
+                                <span
+                                    className={selectedProductUnitIds.length === 0 ? 'text-gray-400' : 'text-gray-900'}
+                                >
+                                    {selectedProductUnitIds.length === 0
+                                        ? 'All Units'
+                                        : selectedProductUnitIds.length === 1
+                                        ? selectedProductUnitNames[0] || selectedProductUnitIds[0]
+                                        : `${selectedProductUnitIds.length} Units selected`}
+                                </span>
+                                <svg
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <polyline points="6 9 12 15 18 9" />
+                                </svg>
+                            </button>
+
+                            <label
+                                className={
+                                    `inline-flex items-center gap-2 px-4 h-10 rounded-lg border cursor-pointer select-none transition-colors text-sm whitespace-nowrap ` +
+                                    (includeProductUnitDetails
+                                        ? 'border-gray-300 bg-gray-50 text-gray-900'
+                                        : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50')
+                                }
+                                title="Include product unit details as sub-rows in the report"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={includeProductUnitDetails}
+                                    onChange={(e) => setIncludeProductUnitDetails(e.target.checked)}
+                                    className="w-4 h-4 rounded border-gray-300 text-blue-600 accent-blue-600"
+                                />
+                                Include Product Unit Details
+                            </label>
+                        </div>
 
                         {selectedProductUnitIds.length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-2">

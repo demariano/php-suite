@@ -2,6 +2,7 @@ import { AreaDatabaseService } from '@customer-database-service';
 import {
     ContractDto,
     FileDetailsDto,
+    InvoiceDetailsDto,
     InvoiceDto,
     ReportDto,
     ReportEventDto,
@@ -19,6 +20,8 @@ import {
 } from '@invoicing-database-service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ReportDatabaseService } from '@report-database-service';
+
+type InvoicePerDateRow = Record<string, string | number>;
 
 @Injectable()
 export class InvoicePerDateReportHandlerService {
@@ -73,6 +76,11 @@ export class InvoicePerDateReportHandlerService {
                 'status',
             ];
 
+            const includeInvoiceDetails = !!event.filters?.includeInvoiceDetails;
+            if (includeInvoiceDetails) {
+                fields.push('invoiceDetails');
+            }
+
             let invoices = await this.fetchInvoices(event, startDate, endDate, fields);
             invoices = this.applyOptionalFilters(invoices, event);
 
@@ -114,9 +122,10 @@ export class InvoicePerDateReportHandlerService {
             invoices = this.sortInvoicesByDate(invoices);
 
             const separateByArea = !!event.filters?.separateByArea;
+            const opts = { includeInvoiceDetails };
             const reportDto = separateByArea
-                ? this.buildAreaWorkbookReportDto(event, invoices)
-                : this.buildReportDto(event, invoices);
+                ? this.buildAreaWorkbookReportDto(event, invoices, opts)
+                : this.buildReportDto(event, invoices, opts);
             const fileDetails = await this.excelGeneratorService.generateExcelReport(reportDto);
 
             await this.updateReportStatus(event, ReportStatusEnum.READY, reportDto.reportFilename, fileDetails);
@@ -331,7 +340,11 @@ export class InvoicePerDateReportHandlerService {
         return map;
     }
 
-    private buildReportDto(event: ReportEventDto, invoices: InvoiceDto[]): ReportDto {
+    private buildReportDto(
+        event: ReportEventDto,
+        invoices: InvoiceDto[],
+        opts: { includeInvoiceDetails: boolean }
+    ): ReportDto {
         const reportDto = new ReportDto();
         reportDto.reportId = event.reportId;
         reportDto.reportName = event.reportName || 'Invoice Per Date';
@@ -351,7 +364,13 @@ export class InvoicePerDateReportHandlerService {
             { description: 'Payment Status', metaData: {} },
         ];
 
-        reportDto.rows = invoices.map((inv) => ({
+        reportDto.rows = this.buildRows(invoices, opts);
+
+        return reportDto;
+    }
+
+    private buildInvoiceRow(inv: InvoiceDto): InvoicePerDateRow {
+        return {
             'Doc No': inv.docno || '',
             'Invoice Date': inv.invoiceDate || '',
             Customer: inv.customerName || inv.customerId || '',
@@ -363,12 +382,67 @@ export class InvoicePerDateReportHandlerService {
             'Tax Amount': Number(inv.taxAmount ?? 0),
             'Final Amount': Number(inv.finalAmount ?? 0),
             'Payment Status': inv.paymentStatus || '',
-        }));
-
-        return reportDto;
+        };
     }
 
-    private buildAreaWorkbookReportDto(event: ReportEventDto, invoices: InvoiceDto[]): ReportDto {
+    private buildInvoiceDetailSubHeaderRow(): InvoicePerDateRow {
+        return {
+            'Doc No': '',
+            'Invoice Date': 'Product',
+            Customer: 'Qty',
+            Area: 'Cost',
+            'Territory Manager': 'Price',
+            'Sales Type': 'Amount',
+            Contract: '',
+            'Invoice Amount': '',
+            'Tax Amount': '',
+            'Final Amount': '',
+            'Payment Status': '',
+            __subHeader: true,
+        } as unknown as InvoicePerDateRow;
+    }
+
+    private buildInvoiceDetailSubRow(detail: InvoiceDetailsDto): InvoicePerDateRow {
+        return {
+            'Doc No': '',
+            'Invoice Date': detail.productName || detail.productId || '',
+            Customer: detail.qty ?? 0,
+            Area: Number(detail.cost ?? 0),
+            'Territory Manager': Number(detail.price ?? 0),
+            'Sales Type': Number(detail.amount ?? 0),
+            Contract: '',
+            'Invoice Amount': '',
+            'Tax Amount': '',
+            'Final Amount': '',
+            'Payment Status': '',
+        };
+    }
+
+    private buildRows(invoices: InvoiceDto[], opts: { includeInvoiceDetails: boolean }): InvoicePerDateRow[] {
+        const rows: InvoicePerDateRow[] = [];
+
+        for (const inv of invoices) {
+            rows.push(this.buildInvoiceRow(inv));
+
+            if (!opts.includeInvoiceDetails) continue;
+
+            const details: InvoiceDetailsDto[] = inv.invoiceDetails || [];
+            if (details.length > 0) {
+                rows.push(this.buildInvoiceDetailSubHeaderRow());
+                for (const detail of details) {
+                    rows.push(this.buildInvoiceDetailSubRow(detail));
+                }
+            }
+        }
+
+        return rows;
+    }
+
+    private buildAreaWorkbookReportDto(
+        event: ReportEventDto,
+        invoices: InvoiceDto[],
+        opts: { includeInvoiceDetails: boolean }
+    ): ReportDto {
         const reportDto = new ReportDto();
         reportDto.reportId = event.reportId;
         reportDto.reportName = event.reportName || 'Invoice Per Date';
@@ -405,7 +479,7 @@ export class InvoicePerDateReportHandlerService {
             return {
                 name,
                 headers,
-                rows: this.buildReportDto(event, sorted).rows || [],
+                rows: this.buildRows(sorted, opts),
             };
         });
 

@@ -2,7 +2,7 @@
     @apply flex min-h-screen bg-secondaryNeutral-50;
 
     &__content {
-        @apply relative z-0 h-screen w-full overflow-y-auto bg-secondaryNeutral-50 px-4 pb-14 pt-20 sm:px-14 sm:pt-28;
+        @apply relative z-0 h-screen w-full overflow-y-auto bg-secondaryNeutral-50 px-4 pb-14 pt-20 sm:px-14 sm:pt-6;
     }
 
     &__header {

@@ -2,6 +2,7 @@ import { AreaDatabaseService } from '@customer-database-service';
 import {
     ContractDto,
     FileDetailsDto,
+    PaymentDetailsDto,
     PaymentDto,
     PaymentInvoiceDetailsDto,
     ReportDto,
@@ -17,6 +18,8 @@ import {
 } from '@invoicing-database-service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ReportDatabaseService } from '@report-database-service';
+
+type PaymentsReceivedRow = Record<string, string | number>;
 
 @Injectable()
 export class PaymentsReceivedReportHandlerService {
@@ -116,16 +119,21 @@ export class PaymentsReceivedReportHandlerService {
             // 7. Sort by payment date
             payments = this.sortPaymentsByDate(payments);
 
-            // 8. Build report
+            // 8. Read detail flags
+            const includePaymentDetails = !!event.filters?.includePaymentDetails;
+            const includePaymentInvoiceDetails = !!event.filters?.includePaymentInvoiceDetails;
+            const detailOpts = { includePaymentDetails, includePaymentInvoiceDetails };
+
+            // 9. Build report
             const separateByArea = !!event.filters?.separateByArea;
             const reportDto = separateByArea
-                ? this.buildAreaWorkbookReportDto(event, payments, paymentInvoiceMap)
-                : this.buildReportDto(event, payments, paymentInvoiceMap);
+                ? this.buildAreaWorkbookReportDto(event, payments, paymentInvoiceMap, detailOpts)
+                : this.buildReportDto(event, payments, paymentInvoiceMap, detailOpts);
 
-            // 9. Generate Excel
+            // 10. Generate Excel
             const fileDetails = await this.excelGeneratorService.generateExcelReport(reportDto);
 
-            // 10. Update report status
+            // 11. Update report status
             await this.updateReportStatus(event, ReportStatusEnum.READY, reportDto.reportFilename, fileDetails);
 
             this.logger.log(
@@ -319,17 +327,20 @@ export class PaymentsReceivedReportHandlerService {
 
     private buildPaymentRow(
         payment: PaymentDto,
-        paymentInvoiceMap: Map<string, PaymentInvoiceDetailsDto[]>
+        paymentInvoiceMap: Map<string, PaymentInvoiceDetailsDto[]>,
+        opts?: { includePaymentDetails?: boolean; includePaymentInvoiceDetails?: boolean }
     ): Record<string, unknown> {
-        // Build payment details summary
-        const paymentDetailsSummary = this.formatPaymentDetails(payment);
+        // Build payment details summary (flattened) – blank when sub-rows will show them
+        const paymentDetailsSummary = opts?.includePaymentDetails ? '' : this.formatPaymentDetails(payment);
 
-        // Build applied invoice doc nos
+        // Build applied invoice doc nos (flattened) – blank when sub-rows will show them
         const invoiceDetails = paymentInvoiceMap.get(payment.paymentId) || [];
-        const appliedDocNos = invoiceDetails
-            .map((detail) => detail.docno)
-            .filter(Boolean)
-            .join(', ');
+        const appliedDocNos = opts?.includePaymentInvoiceDetails
+            ? ''
+            : invoiceDetails
+                  .map((detail) => detail.docno)
+                  .filter(Boolean)
+                  .join(', ');
 
         return {
             'Receipt No': payment.receiptNo || '',
@@ -346,6 +357,75 @@ export class PaymentsReceivedReportHandlerService {
             'Payment Details': paymentDetailsSummary,
             'Applied Invoice Doc Nos': appliedDocNos,
         };
+    }
+
+    // ─── Sub-Header / Sub-Row Builders ───────────────────────────────────
+
+    private buildPaymentDetailSubHeaderRow(): PaymentsReceivedRow {
+        return {
+            __subHeader: true,
+            'Receipt No': 'Payment Type',
+            'Payment Date': 'Amount',
+            Customer: 'Cheque No',
+            Area: 'Bank Name',
+            'Contract No': 'Bank Account No',
+        } as unknown as PaymentsReceivedRow;
+    }
+
+    private buildPaymentDetailSubRow(detail: PaymentDetailsDto): PaymentsReceivedRow {
+        return {
+            'Receipt No': detail.paymentType || '',
+            'Payment Date': Number(detail.amount ?? 0),
+            Customer: detail.chequeNo || '',
+            Area: detail.bankName || '',
+            'Contract No': detail.bankAccountNo || '',
+        } as unknown as PaymentsReceivedRow;
+    }
+
+    private buildPaymentInvoiceSubHeaderRow(): PaymentsReceivedRow {
+        return {
+            __subHeader: true,
+            'Receipt No': 'Invoice Doc No',
+            'Payment Date': 'Amount Applied',
+        } as unknown as PaymentsReceivedRow;
+    }
+
+    private buildPaymentInvoiceSubRow(invoice: PaymentInvoiceDetailsDto): PaymentsReceivedRow {
+        return {
+            'Receipt No': invoice.docno || '',
+            'Payment Date': Number(invoice.amountApplied ?? 0),
+        } as unknown as PaymentsReceivedRow;
+    }
+
+    private buildRows(
+        payments: PaymentDto[],
+        paymentInvoiceMap: Map<string, PaymentInvoiceDetailsDto[]>,
+        opts: { includePaymentDetails?: boolean; includePaymentInvoiceDetails?: boolean }
+    ): Record<string, unknown>[] {
+        const rows: Record<string, unknown>[] = [];
+
+        for (const payment of payments) {
+            rows.push(this.buildPaymentRow(payment, paymentInvoiceMap, opts));
+
+            if (opts.includePaymentDetails && payment.paymentDetails?.length) {
+                rows.push(this.buildPaymentDetailSubHeaderRow());
+                for (const detail of payment.paymentDetails) {
+                    rows.push(this.buildPaymentDetailSubRow(detail));
+                }
+            }
+
+            if (opts.includePaymentInvoiceDetails) {
+                const invoices = paymentInvoiceMap.get(payment.paymentId) || [];
+                if (invoices.length) {
+                    rows.push(this.buildPaymentInvoiceSubHeaderRow());
+                    for (const inv of invoices) {
+                        rows.push(this.buildPaymentInvoiceSubRow(inv));
+                    }
+                }
+            }
+        }
+
+        return rows;
     }
 
     private formatPaymentDetails(payment: PaymentDto): string {
@@ -374,7 +454,8 @@ export class PaymentsReceivedReportHandlerService {
     private buildReportDto(
         event: ReportEventDto,
         payments: PaymentDto[],
-        paymentInvoiceMap: Map<string, PaymentInvoiceDetailsDto[]>
+        paymentInvoiceMap: Map<string, PaymentInvoiceDetailsDto[]>,
+        opts: { includePaymentDetails?: boolean; includePaymentInvoiceDetails?: boolean } = {}
     ): ReportDto {
         const reportDto = new ReportDto();
         reportDto.reportId = event.reportId;
@@ -382,7 +463,7 @@ export class PaymentsReceivedReportHandlerService {
         reportDto.reportFilename = `${event.reportName || 'Payments-Received'}.xlsx`;
 
         reportDto.headers = this.getReportHeaders();
-        reportDto.rows = payments.map((payment) => this.buildPaymentRow(payment, paymentInvoiceMap));
+        reportDto.rows = this.buildRows(payments, paymentInvoiceMap, opts);
 
         return reportDto;
     }
@@ -390,7 +471,8 @@ export class PaymentsReceivedReportHandlerService {
     private buildAreaWorkbookReportDto(
         event: ReportEventDto,
         payments: PaymentDto[],
-        paymentInvoiceMap: Map<string, PaymentInvoiceDetailsDto[]>
+        paymentInvoiceMap: Map<string, PaymentInvoiceDetailsDto[]>,
+        opts: { includePaymentDetails?: boolean; includePaymentInvoiceDetails?: boolean } = {}
     ): ReportDto {
         const reportDto = new ReportDto();
         reportDto.reportId = event.reportId;
@@ -417,7 +499,7 @@ export class PaymentsReceivedReportHandlerService {
             return {
                 name,
                 headers,
-                rows: sorted.map((payment) => this.buildPaymentRow(payment, paymentInvoiceMap)),
+                rows: this.buildRows(sorted, paymentInvoiceMap, opts),
             };
         });
 

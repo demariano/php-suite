@@ -51,11 +51,9 @@ export class ProductListReportHandlerService {
             // Sort by productName
             productRecords = this.sortByProductName(productRecords);
 
-            // Determine if sub-row columns are needed
-            const includeProductDealColumns = productRecords.some((p) => p.productDeals && p.productDeals.length > 0);
-            const includeProductUnitPriceColumns = productRecords.some(
-                (p) => p.productUnitPrice && p.productUnitPrice.length > 0
-            );
+            // Determine if sub-row columns are needed (driven by user checkbox flags)
+            const includeProductDealColumns = !!event.filters?.includeProductDealDetails;
+            const includeProductUnitPriceColumns = !!event.filters?.includeProductUnitDetails;
 
             // Build report DTO
             const reportDto = this.buildReportDto(
@@ -163,7 +161,7 @@ export class ProductListReportHandlerService {
 
     // ─── Report Building ─────────────────────────────────────────────────
 
-    private getReportHeaders(includeProductDealColumns: boolean, includeProductUnitPriceColumns: boolean) {
+    private getReportHeaders() {
         const base = [
             { description: 'Product Name', metaData: {} },
             { description: 'Category', metaData: {} },
@@ -172,109 +170,62 @@ export class ProductListReportHandlerService {
             { description: 'Status', metaData: {} },
         ];
 
-        if (includeProductDealColumns) {
-            base.push(
-                { description: 'Deal Name', metaData: {} },
-                { description: 'Min Qty', metaData: {} },
-                { description: 'Additional Qty', metaData: {} }
-            );
-        }
-
-        if (includeProductUnitPriceColumns) {
-            base.push(
-                { description: 'Unit', metaData: {} },
-                { description: 'Price Type', metaData: {} },
-                { description: 'Cost', metaData: {} },
-                { description: 'Price', metaData: {} }
-            );
-        }
-
         return base;
     }
 
-    private buildProductRow(
-        product: ProductDto,
-        includeProductDealColumns: boolean,
-        includeProductUnitPriceColumns: boolean
-    ): ProductListRow {
-        const row: ProductListRow = {
+    private buildProductRow(product: ProductDto): ProductListRow {
+        return {
             'Product Name': product.productName || '',
             Category: product.productCategoryName || '',
             Class: product.productClassName || '',
             'Critical Level': product.criticalLevel ?? 0,
             Status: product.status || '',
         };
-
-        if (includeProductDealColumns) {
-            row['Deal Name'] = '';
-            row['Min Qty'] = '';
-            row['Additional Qty'] = '';
-        }
-
-        if (includeProductUnitPriceColumns) {
-            row['Unit'] = '';
-            row['Price Type'] = '';
-            row['Cost'] = '';
-            row['Price'] = '';
-        }
-
-        return row;
     }
 
-    private buildProductDealSubRow(
-        deal: { productDealName?: string; minQty?: number; additionalQty?: number },
-        includeProductUnitPriceColumns: boolean
-    ): ProductListRow {
-        const row: ProductListRow = {
-            'Product Name': '',
-            Category: '',
-            Class: '',
-            'Critical Level': '',
-            Status: '',
-            'Deal Name': deal.productDealName || '',
-            'Min Qty': deal.minQty ?? 0,
-            'Additional Qty': deal.additionalQty ?? 0,
-        };
-
-        if (includeProductUnitPriceColumns) {
-            row['Unit'] = '';
-            row['Price Type'] = '';
-            row['Cost'] = '';
-            row['Price'] = '';
-        }
-
-        return row;
+    private buildProductDealSubHeaderRow(): ProductListRow {
+        return {
+            __subHeader: true,
+            'Product Name': 'Deal Name',
+            Category: 'Min Qty',
+            Class: 'Additional Qty',
+        } as unknown as ProductListRow;
     }
 
-    private buildProductUnitPriceSubRow(
-        unitPrice: {
-            productUnitName?: string;
-            productPriceTypeName?: string;
-            cost?: number;
-            price?: number;
-        },
-        includeProductDealColumns: boolean
-    ): ProductListRow {
-        const row: ProductListRow = {
-            'Product Name': '',
-            Category: '',
-            Class: '',
-            'Critical Level': '',
-            Status: '',
-        };
+    private buildProductDealSubRow(deal: {
+        productDealName?: string;
+        minQty?: number;
+        additionalQty?: number;
+    }): ProductListRow {
+        return {
+            'Product Name': deal.productDealName || '',
+            Category: deal.minQty ?? 0,
+            Class: deal.additionalQty ?? 0,
+        } as unknown as ProductListRow;
+    }
 
-        if (includeProductDealColumns) {
-            row['Deal Name'] = '';
-            row['Min Qty'] = '';
-            row['Additional Qty'] = '';
-        }
+    private buildProductUnitPriceSubHeaderRow(): ProductListRow {
+        return {
+            __subHeader: true,
+            'Product Name': 'Unit',
+            Category: 'Price Type',
+            Class: 'Cost',
+            'Critical Level': 'Price',
+        } as unknown as ProductListRow;
+    }
 
-        row['Unit'] = unitPrice.productUnitName || '';
-        row['Price Type'] = unitPrice.productPriceTypeName || '';
-        row['Cost'] = unitPrice.cost ?? 0;
-        row['Price'] = unitPrice.price ?? 0;
-
-        return row;
+    private buildProductUnitPriceSubRow(unitPrice: {
+        productUnitName?: string;
+        productPriceTypeName?: string;
+        cost?: number;
+        price?: number;
+    }): ProductListRow {
+        return {
+            'Product Name': unitPrice.productUnitName || '',
+            Category: unitPrice.productPriceTypeName || '',
+            Class: unitPrice.cost ?? 0,
+            'Critical Level': unitPrice.price ?? 0,
+        } as unknown as ProductListRow;
     }
 
     private buildRows(
@@ -285,21 +236,27 @@ export class ProductListReportHandlerService {
         const rows: ProductListRow[] = [];
 
         for (const product of records) {
-            rows.push(this.buildProductRow(product, includeProductDealColumns, includeProductUnitPriceColumns));
+            rows.push(this.buildProductRow(product));
 
             // Add product deal sub-rows
             if (includeProductDealColumns) {
                 const deals = product.productDeals || [];
-                for (const deal of deals) {
-                    rows.push(this.buildProductDealSubRow(deal, includeProductUnitPriceColumns));
+                if (deals.length > 0) {
+                    rows.push(this.buildProductDealSubHeaderRow());
+                    for (const deal of deals) {
+                        rows.push(this.buildProductDealSubRow(deal));
+                    }
                 }
             }
 
             // Add product unit price sub-rows
             if (includeProductUnitPriceColumns) {
                 const unitPrices = product.productUnitPrice || [];
-                for (const unitPrice of unitPrices) {
-                    rows.push(this.buildProductUnitPriceSubRow(unitPrice, includeProductDealColumns));
+                if (unitPrices.length > 0) {
+                    rows.push(this.buildProductUnitPriceSubHeaderRow());
+                    for (const unitPrice of unitPrices) {
+                        rows.push(this.buildProductUnitPriceSubRow(unitPrice));
+                    }
                 }
             }
         }
@@ -317,7 +274,7 @@ export class ProductListReportHandlerService {
         reportDto.reportId = event.reportId;
         reportDto.reportName = event.reportName || 'Product List Report';
         reportDto.reportFilename = `${event.reportName || 'Product-List'}.xlsx`;
-        reportDto.headers = this.getReportHeaders(includeProductDealColumns, includeProductUnitPriceColumns);
+        reportDto.headers = this.getReportHeaders();
         reportDto.rows = this.buildRows(records, includeProductDealColumns, includeProductUnitPriceColumns);
         return reportDto;
     }

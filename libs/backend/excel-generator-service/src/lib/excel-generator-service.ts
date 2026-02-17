@@ -77,7 +77,22 @@ export class ExcelGeneratorService {
             headers.forEach((header) => {
                 rowData[header.description] = row[header.description];
             });
-            sheet.addRow(rowData);
+            const excelRow = sheet.addRow(rowData);
+
+            // Style sub-header rows (blue background, white bold text)
+            if (row['__subHeader']) {
+                excelRow.eachCell((cell) => {
+                    if (cell.value !== null && cell.value !== undefined && cell.value !== '') {
+                        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+                        cell.alignment = { horizontal: 'center' };
+                        cell.fill = {
+                            type: 'pattern',
+                            pattern: 'solid',
+                            fgColor: { argb: 'FF3B82F6' }, // blue
+                        };
+                    }
+                });
+            }
         });
 
         // After adding all rows, auto-size columns

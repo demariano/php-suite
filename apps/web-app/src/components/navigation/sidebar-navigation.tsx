@@ -306,12 +306,6 @@ export const getSidebarNavigation = (
                     icon: File,
                     onClick: (route: string) => onNavigate?.(route),
                 },
-                {
-                    label: 'UI Layout Testing',
-                    route: '/ui-layout-testing',
-                    icon: File,
-                    onClick: (route: string) => onNavigate?.(route),
-                },
             ],
         },
     ];

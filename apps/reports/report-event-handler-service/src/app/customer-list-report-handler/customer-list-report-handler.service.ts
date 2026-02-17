@@ -61,11 +61,12 @@ export class CustomerListReportHandlerService {
             // Determine if product deal sub-rows should be included
             const productDealIds = (event.filters?.productDealIds || []).filter(Boolean);
             const productDealIdSet = productDealIds.length > 0 ? new Set(productDealIds) : undefined;
-            const includeProductDealColumns = !!productDealIdSet;
+            const includeProductDealDetails = !!event.filters?.includeProductDealDetails;
+            const includeProductDealColumns = !includeProductDealDetails && !!productDealIdSet;
 
             // Step 7: Build report (with separate-by-area branching)
             const separateByArea = !!event.filters?.separateByArea;
-            const opts = { includeProductDealColumns, productDealIdSet };
+            const opts = { includeProductDealColumns, includeProductDealDetails, productDealIdSet };
             const reportDto = separateByArea
                 ? this.buildAreaWorkbookReportDto(event, customers, opts)
                 : this.buildReportDto(event, customers, opts);
@@ -267,42 +268,58 @@ export class CustomerListReportHandlerService {
         return row;
     }
 
-    private buildProductDealSubRow(deal: CustomerProductDealDto): CustomerListRow {
+    private buildProductDealSubHeaderRow(): CustomerListRow {
         return {
             'Customer Name': '',
-            'Contact No': '',
-            'Contact Person': '',
-            Area: '',
-            Town: '',
-            Classification: '',
+            'Contact No': 'Product Deal',
+            'Contact Person': 'Product',
+            Area: 'Min Qty',
+            Town: 'Additional Qty',
+            Classification: 'Deal Status',
             Type: '',
             Balance: '',
             'Credit Limit': '',
             Status: '',
-            'Product Deal': deal.productDealName || deal.productDealId || '',
-            Product: deal.productName || deal.productId || '',
-            'Min Qty': deal.minQty ?? 0,
-            'Additional Qty': deal.additionalQty ?? 0,
-            'Deal Status': deal.status || '',
+            __subHeader: true,
+        } as unknown as CustomerListRow;
+    }
+
+    private buildProductDealSubRow(deal: CustomerProductDealDto): CustomerListRow {
+        return {
+            'Customer Name': '',
+            'Contact No': deal.productDealName || deal.productDealId || '',
+            'Contact Person': deal.productName || deal.productId || '',
+            Area: deal.minQty ?? 0,
+            Town: deal.additionalQty ?? 0,
+            Classification: deal.status || '',
+            Type: '',
+            Balance: '',
+            'Credit Limit': '',
+            Status: '',
         };
     }
 
     private buildRows(
         customers: CustomerDto[],
-        opts: { includeProductDealColumns: boolean; productDealIdSet?: Set<string> }
+        opts: { includeProductDealColumns: boolean; includeProductDealDetails: boolean; productDealIdSet?: Set<string> }
     ): CustomerListRow[] {
         const rows: CustomerListRow[] = [];
 
         for (const customer of customers) {
             rows.push(this.buildCustomerRow(customer, opts.includeProductDealColumns));
 
-            if (!opts.includeProductDealColumns) continue;
+            if (!opts.includeProductDealDetails) continue;
 
             const deals: CustomerProductDealDto[] = customer.customerProductDeals || [];
-            for (const deal of deals) {
-                // Only include deals that match the selected product deal filter
-                if (opts.productDealIdSet && !opts.productDealIdSet.has(deal.productDealId || '')) continue;
-                rows.push(this.buildProductDealSubRow(deal));
+            const filteredDeals = opts.productDealIdSet
+                ? deals.filter((deal) => opts.productDealIdSet!.has(deal.productDealId || ''))
+                : deals;
+
+            if (filteredDeals.length > 0) {
+                rows.push(this.buildProductDealSubHeaderRow());
+                for (const deal of filteredDeals) {
+                    rows.push(this.buildProductDealSubRow(deal));
+                }
             }
         }
 
@@ -312,7 +329,7 @@ export class CustomerListReportHandlerService {
     private buildReportDto(
         event: ReportEventDto,
         customers: CustomerDto[],
-        opts: { includeProductDealColumns: boolean; productDealIdSet?: Set<string> }
+        opts: { includeProductDealColumns: boolean; includeProductDealDetails: boolean; productDealIdSet?: Set<string> }
     ): ReportDto {
         const reportDto = new ReportDto();
         reportDto.reportId = event.reportId;
@@ -328,7 +345,7 @@ export class CustomerListReportHandlerService {
     private buildAreaWorkbookReportDto(
         event: ReportEventDto,
         customers: CustomerDto[],
-        opts: { includeProductDealColumns: boolean; productDealIdSet?: Set<string> }
+        opts: { includeProductDealColumns: boolean; includeProductDealDetails: boolean; productDealIdSet?: Set<string> }
     ): ReportDto {
         const reportDto = new ReportDto();
         reportDto.reportId = event.reportId;

@@ -64,7 +64,9 @@ export default function AreaSearchableSelectionModal({
             setSelectedItems([]);
             return;
         }
-        setSelectedItems(selectedValues.map((id, i) => ({ areaId: id, areaName: selectedNames?.[i] || id, status: 'ACTIVE' as any })));
+        setSelectedItems(
+            selectedValues.map((id, i) => ({ areaId: id, areaName: selectedNames?.[i] || id, status: 'ACTIVE' as any }))
+        );
     }, [show, multiSelect, selectedValues]);
 
     // Handle ESC key to close modal

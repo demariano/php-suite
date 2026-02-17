@@ -41,6 +41,11 @@ export interface ReportFilterParams {
     productStatuses?: string[];
     accountType?: string;
     subAccounts?: string[];
+    includeProductDealDetails?: boolean;
+    includeProductUnitDetails?: boolean;
+    includeInvoiceDetails?: boolean;
+    includePaymentDetails?: boolean;
+    includePaymentInvoiceDetails?: boolean;
 }
 
 export interface ReportEventDto {

@@ -59,6 +59,7 @@ export class InvoicePerDatePerAreaReportHandlerService {
         try {
             const selectedProducts = this.buildSelectedProductMap(event);
             const includeProductColumns = selectedProducts.size > 0;
+            const includeInvoiceDetails = !!event.filters?.includeInvoiceDetails;
 
             const fields = [
                 'invoiceId',
@@ -81,7 +82,7 @@ export class InvoicePerDatePerAreaReportHandlerService {
                 'status',
             ];
 
-            if (includeProductColumns) {
+            if (includeProductColumns || includeInvoiceDetails) {
                 fields.push('invoiceDetails');
             }
 
@@ -149,11 +150,13 @@ export class InvoicePerDatePerAreaReportHandlerService {
             const reportDto = separateByArea
                 ? this.buildAreaWorkbookReportDto(event, invoices, {
                       includeProductColumns,
+                      includeInvoiceDetails,
                       productMap,
                       selectedProducts,
                   })
                 : this.buildSingleSheetReportDto(event, invoices, {
                       includeProductColumns,
+                      includeInvoiceDetails,
                       productMap,
                       selectedProducts,
                   });
@@ -311,12 +314,14 @@ export class InvoicePerDatePerAreaReportHandlerService {
         invoices: InvoiceDto[],
         opts: {
             includeProductColumns: boolean;
+            includeInvoiceDetails: boolean;
             productMap?: Map<string, string>;
             selectedProducts?: Map<string, { lotNos?: string[] }>;
         }
     ): InvoicePerDatePerAreaRow[] {
         const rows: InvoicePerDatePerAreaRow[] = [];
         const includeProductColumns = opts.includeProductColumns;
+        const includeInvoiceDetails = opts.includeInvoiceDetails;
         const selectedProducts = opts.selectedProducts;
 
         for (const inv of invoices) {
@@ -343,9 +348,22 @@ export class InvoicePerDatePerAreaReportHandlerService {
 
             rows.push(summary);
 
-            if (!includeProductColumns) continue;
+            if (!includeProductColumns && !includeInvoiceDetails) continue;
 
             const details: InvoiceDetailsDto[] = (inv.invoiceDetails || []) as InvoiceDetailsDto[];
+
+            // Include invoice details sub-rows (sub-header style, no product column filter)
+            if (includeInvoiceDetails && !includeProductColumns) {
+                if (details.length > 0) {
+                    rows.push(this.buildInvoiceDetailSubHeaderRow());
+                    for (const detail of details) {
+                        rows.push(this.buildInvoiceDetailSubRow(detail));
+                    }
+                }
+                continue;
+            }
+
+            // Include product column sub-rows (existing behavior)
             for (const detail of details) {
                 if (selectedProducts && !this.matchesProductFilter(detail, selectedProducts)) continue;
 
@@ -383,11 +401,51 @@ export class InvoicePerDatePerAreaReportHandlerService {
         return rows;
     }
 
+    private buildInvoiceDetailSubHeaderRow(): InvoicePerDatePerAreaRow {
+        return {
+            'Doc No': '',
+            'Invoice Date': 'Product',
+            Customer: 'Qty',
+            Area: 'Cost',
+            'Territory Manager': 'Price',
+            'Sales Type': 'Amount',
+            Contract: '',
+            'Invoice Amount': '',
+            'Tax Amount': '',
+            'Final Amount': '',
+            'Payment Status': '',
+            __subHeader: true,
+        } as unknown as InvoicePerDatePerAreaRow;
+    }
+
+    private buildInvoiceDetailSubRow(detail: InvoiceDetailsDto): InvoicePerDatePerAreaRow {
+        const qty = this.toNumber(detail.qty, 0);
+        const explicitAmount = this.toNumber(detail.amount, Number.NaN);
+        const price = this.toNumber(detail.price, 0);
+        const cost = this.toNumber(detail.cost, 0);
+        const amount = Number.isFinite(explicitAmount) ? explicitAmount : qty * price;
+
+        return {
+            'Doc No': '',
+            'Invoice Date': detail.productName || detail.productId || '',
+            Customer: qty,
+            Area: cost,
+            'Territory Manager': price,
+            'Sales Type': amount,
+            Contract: '',
+            'Invoice Amount': '',
+            'Tax Amount': '',
+            'Final Amount': '',
+            'Payment Status': '',
+        };
+    }
+
     private buildSingleSheetReportDto(
         event: ReportEventDto,
         invoices: InvoiceDto[],
         opts: {
             includeProductColumns: boolean;
+            includeInvoiceDetails: boolean;
             productMap?: Map<string, string>;
             selectedProducts?: Map<string, { lotNos?: string[] }>;
         }
@@ -426,6 +484,7 @@ export class InvoicePerDatePerAreaReportHandlerService {
         invoices: InvoiceDto[],
         opts: {
             includeProductColumns: boolean;
+            includeInvoiceDetails: boolean;
             productMap?: Map<string, string>;
             selectedProducts?: Map<string, { lotNos?: string[] }>;
         }
