@@ -86,10 +86,13 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
                     paymentAmount: payment.paymentAmount,
                     customerId: payment.customerId,
                     customerName: payment.customerName,
+                    areaId: payment.areaId,
+                    areaName: payment.areaName,
                     receiptNo: payment.receiptNo,
                     activityLogs: payment.activityLogs,
                     forApprovalVersion: payment.forApprovalVersion,
                     contractPayment: payment.contractPayment,
+                    customerCreditPayment: payment.customerCreditPayment,
                     status: payment.status,
                     contractId: payment.contractId,
                     contractName: payment.contractName,
@@ -223,7 +226,11 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
             const userRole = env.BYPASS_AUTH === 'ENABLED' ? authedUser?.userRole : undefined;
 
             // Call the API to deny the record with approverMessage
-            const deniedPayment = await (PaymentApi as any).denyPayment(selectedPayment.paymentId, approverMessage, userRole);
+            const deniedPayment = await (PaymentApi as any).denyPayment(
+                selectedPayment.paymentId,
+                approverMessage,
+                userRole
+            );
             setSelectedPayment(deniedPayment);
             setFlashNotification({
                 title: 'Success!',

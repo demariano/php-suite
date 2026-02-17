@@ -2,6 +2,7 @@ import {
     CollectionReceiptRangeDatabaseService,
     ContractDatabaseService,
     InvoiceDatabaseService,
+    PaymentDatabaseService,
     ReturnGoodSoldDatabaseService,
 } from '@invoicing-database-service';
 import { Inject, Injectable, Logger } from '@nestjs/common';
@@ -23,7 +24,9 @@ export class AreaSyncHandlerService {
         @Inject('ReturnGoodSoldDatabaseService')
         private readonly returnGoodSoldDatabaseService: ReturnGoodSoldDatabaseService,
         @Inject('CollectionReceiptRangeDatabaseService')
-        private readonly collectionReceiptRangeDatabaseService: CollectionReceiptRangeDatabaseService
+        private readonly collectionReceiptRangeDatabaseService: CollectionReceiptRangeDatabaseService,
+        @Inject('PaymentDatabaseService')
+        private readonly paymentDatabaseService: PaymentDatabaseService
     ) {}
 
     /**
@@ -41,10 +44,11 @@ export class AreaSyncHandlerService {
                 this.syncAreaNameToContracts(event),
                 this.syncAreaNameToReturnGoodSold(event),
                 this.syncAreaNameToCollectionReceiptRanges(event),
+                this.syncAreaNameToPayments(event),
             ]);
 
             // Log results
-            const entityNames = ['Invoices', 'Contracts', 'ReturnGoodSold', 'CollectionReceiptRanges'];
+            const entityNames = ['Invoices', 'Contracts', 'ReturnGoodSold', 'CollectionReceiptRanges', 'Payments'];
             results.forEach((result, index) => {
                 if (result.status === 'fulfilled') {
                     this.logger.log(`✅ ${entityNames[index]} sync completed`);
@@ -264,6 +268,56 @@ export class AreaSyncHandlerService {
             this.logger.log(`✅ Successfully synced ${totalUpdated} collection receipt ranges for areaId: ${areaId}`);
         } catch (error) {
             this.logger.error(`❌ Failed to sync collection receipt ranges for areaId: ${areaId}`, error);
+            throw error;
+        }
+    }
+
+    /**
+     * Sync area name to payments
+     */
+    private async syncAreaNameToPayments(event: AreaUpdatedEvent): Promise<void> {
+        const { areaId, newAreaName } = event;
+        const limit = 100;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let cursorPointer: any = null;
+        let totalUpdated = 0;
+
+        this.logger.log(`Starting area sync for payments: areaId=${areaId}`);
+
+        try {
+            do {
+                const direction = cursorPointer ? 'next' : null;
+
+                const page = await this.paymentDatabaseService.findRecordsByAreaIdPagination(
+                    limit,
+                    areaId,
+                    direction,
+                    cursorPointer
+                );
+
+                if (!page.data || page.data.length === 0) break;
+
+                const updatedPayments = page.data.map((payment) => ({
+                    ...payment,
+                    areaName: newAreaName,
+                    forApprovalVersion: payment.forApprovalVersion
+                        ? {
+                              ...payment.forApprovalVersion,
+                              areaName: newAreaName,
+                          }
+                        : undefined,
+                }));
+
+                await this.paymentDatabaseService.batchUpdateRecords(updatedPayments);
+                totalUpdated += page.data.length;
+                cursorPointer = page.nextCursorPointer || null;
+
+                if (cursorPointer) await this.sleep(50);
+            } while (cursorPointer);
+
+            this.logger.log(`✅ Successfully synced ${totalUpdated} payments for areaId: ${areaId}`);
+        } catch (error) {
+            this.logger.error(`❌ Failed to sync payments for areaId: ${areaId}`, error);
             throw error;
         }
     }

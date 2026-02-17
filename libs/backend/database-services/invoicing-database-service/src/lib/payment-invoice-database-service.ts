@@ -154,4 +154,20 @@ export class PaymentInvoiceDatabaseService implements PaymentInvoiceDatabaseServ
         };
         return paymentData;
     }
+
+    async deleteAllRecords(): Promise<void> {
+        const records = await this.paymentInvoiceTable.find(
+            {
+                GSI1PK: 'PAYMENTINVOICE',
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        for (const record of records) {
+            await this.paymentInvoiceTable.remove(record);
+            this.logger.log(`PaymentInvoice Record deleted: ${JSON.stringify(record)}`);
+        }
+    }
 }

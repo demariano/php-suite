@@ -6,7 +6,6 @@ import { GetInvoicePaymentStatusReportQuery } from './queries/get.invoice.paymen
 import { GetInvoicesPerContractQuery } from './queries/get.invoices.per.contract/get.invoices.per.contract.query';
 import { GetInvoicesPerCustomerQuery } from './queries/get.invoices.per.customer/get.invoices.per.customer.query';
 import { GetInvoicesPerDateQuery } from './queries/get.invoices.per.date/get.invoices.per.date.query';
-import { GetOutstandingPaymentsReportQuery } from './queries/get.outstanding.payments/get.outstanding.payments.query';
 import { GetPaymentsReceivedReportQuery } from './queries/get.payments.received/get.payments.received.query';
 import { GetRgsPerCustomerQuery } from './queries/get.rgs.per.customer/get.rgs.per.customer.query';
 import { GetRgsPerDateQuery } from './queries/get.rgs.per.date/get.rgs.per.date.query';
@@ -76,14 +75,6 @@ export class ReportsController {
     @ApiQuery({ name: 'endDate', type: String, required: true })
     getPaymentsReceived(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
         return this.queryBus.execute(new GetPaymentsReceivedReportQuery(startDate, endDate));
-    }
-
-    @Get('outstanding-payments')
-    @ApiOperation({ summary: 'Outstanding/pending payment invoices within a date range' })
-    @ApiQuery({ name: 'startDate', type: String, required: true })
-    @ApiQuery({ name: 'endDate', type: String, required: true })
-    getOutstandingPayments(@Query('startDate') startDate: string, @Query('endDate') endDate: string) {
-        return this.queryBus.execute(new GetOutstandingPaymentsReportQuery(startDate, endDate));
     }
 
     @Get('rgs-per-date')

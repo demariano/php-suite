@@ -21,6 +21,26 @@ export interface ReportFilterParams {
     }>;
     activeStatus?: boolean;
     inactiveStatus?: boolean;
+    receiptNos?: string[];
+    invoiceDocNos?: string[];
+    rgsDocNos?: string[];
+    contractPayment?: boolean;
+    customerCreditPayment?: boolean;
+    paymentRecordStatuses?: string[];
+    customerClassificationIds?: string[];
+    customerTypeIds?: string[];
+    townNames?: string[];
+    productDealIds?: string[];
+    customerStatuses?: string[];
+    stockTypeIds?: string[];
+    productUnitIds?: string[];
+    lotNos?: string[];
+    stockStatuses?: string[];
+    productCategoryIds?: string[];
+    productClassIds?: string[];
+    productStatuses?: string[];
+    accountType?: string;
+    subAccounts?: string[];
 }
 
 export interface ReportEventDto {

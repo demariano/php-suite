@@ -11,6 +11,7 @@ import {
     PaymentDetailsDto,
     PaymentDto,
     PaymentInvoiceDetailsDto,
+    PaymentTypeEnum,
     ResponseDto,
     StatusEnum,
     UserRole,
@@ -99,6 +100,25 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
                 );
             }
 
+            // Validate paymentType is CUSTOMER_CREDIT and no banking details are present
+            const hasInvalidPaymentType = existingRecord.paymentDetails.some(
+                (detail) => detail.paymentType !== PaymentTypeEnum.CUSTOMER_CREDIT
+            );
+            if (hasInvalidPaymentType) {
+                this.logger.warn(`Customer credit payment must use CUSTOMER_CREDIT payment type`);
+                throw new BadRequestException('Customer credit payment must use CUSTOMER_CREDIT payment type');
+            }
+
+            const hasBankingDetails = existingRecord.paymentDetails.some(
+                (detail) => detail.chequeNo || detail.bankName || detail.bankAccountNo || detail.chequeDate
+            );
+            if (hasBankingDetails) {
+                this.logger.warn(`Customer credit payment cannot have banking details`);
+                throw new BadRequestException(
+                    'Customer credit payment cannot have banking details (chequeNo, bankName, bankAccountNo, chequeDate)'
+                );
+            }
+
             //check for customer credit limit if it's a customer credit payment
             if (
                 customer &&
@@ -166,6 +186,8 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         existingRecord.paymentAmount = forApprovalVersion.paymentAmount as number;
         existingRecord.customerId = forApprovalVersion.customerId as string;
         existingRecord.customerName = forApprovalVersion.customerName as string;
+        existingRecord.areaId = forApprovalVersion.areaId as string;
+        existingRecord.areaName = forApprovalVersion.areaName as string;
         // Receipt number not updated - immutable after creation
         existingRecord.contractPayment = forApprovalVersion.contractPayment as boolean;
         existingRecord.contractId = forApprovalVersion.contractId as string;
@@ -174,6 +196,7 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         existingRecord.chequeClearStatus = forApprovalVersion.chequeClearStatus as ChequeClearStatusEnum;
         existingRecord.paymentDetails = forApprovalVersion.paymentDetails as PaymentDetailsDto[];
         existingRecord.paymentInvoiceDetails = forApprovalVersion.paymentInvoiceDetails as PaymentInvoiceDetailsDto[];
+        existingRecord.customerCreditPayment = forApprovalVersion.customerCreditPayment as boolean;
         // Clear forApprovalVersion (set to {})
         existingRecord.forApprovalVersion = {};
         // Reset changeReason to null (NOT undefined) AFTER applying forApprovalVersion
@@ -268,6 +291,7 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
                 contractPayment: existingRecord.contractPayment,
                 paymentId: existingRecord.paymentId,
                 customerId: existingRecord.customerId,
+                customerCreditPayment: detail.customerCreditPayment,
                 invoicePaymentEvent: InvoicePaymentEventEnum.PAYMENT_DELETED,
             };
             invoicePaymentPayloads.push(invoicePaymentDto);

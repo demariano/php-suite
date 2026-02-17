@@ -13,6 +13,7 @@ export interface PaymentDetailsDto {
     bankAccountNo: string;
     paymentType: PaymentTypeEnum;
     amount: number;
+    customerCreditPayment?: boolean;
 }
 
 export interface PaymentInvoiceDetailsDto {
@@ -33,10 +34,13 @@ export interface PaymentDto {
     paymentAmount: number;
     customerId: string;
     customerName: string;
+    areaId: string;
+    areaName: string;
     receiptNo: string;
     activityLogs: string[];
     forApprovalVersion: Record<string, unknown>;
     contractPayment: boolean;
+    customerCreditPayment?: boolean;
     status?: StatusEnum;
     contractId: string;
     contractName: string;
@@ -53,10 +57,13 @@ export interface CreatePaymentDto {
     paymentAmount: number;
     customerId: string;
     customerName: string;
+    areaId: string;
+    areaName: string;
     receiptNo: string;
     activityLogs: string[];
     forApprovalVersion: Record<string, unknown>;
     contractPayment: boolean;
+    customerCreditPayment?: boolean;
     status?: StatusEnum;
     contractId: string;
     contractName: string;

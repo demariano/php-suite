@@ -1,5 +1,6 @@
 import { AuthGuardLibModule } from '@auth-guard-lib';
 import { ConfigurationLibModule } from '@configuration-lib';
+import { CustomerDatabaseService, CustomerDatabaseServiceModule } from '@customer-database-service';
 import { DynamoDbLibModule } from '@dynamo-db-lib';
 import { InventoryDatabaseServiceModule, StockDatabaseService } from '@inventory-database-service';
 import {
@@ -41,6 +42,7 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         InvoicingDatabaseServiceModule,
         ConfigurationDatabaseServiceModule,
         InventoryDatabaseServiceModule,
+        CustomerDatabaseServiceModule,
     ],
     controllers: [InvoiceController],
     providers: [
@@ -67,6 +69,10 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         {
             provide: 'PaymentInvoiceDatabaseService',
             useClass: PaymentInvoiceDatabaseService,
+        },
+        {
+            provide: 'CustomerDatabaseService',
+            useClass: CustomerDatabaseService,
         },
         CreateInvoiceHandler,
         GetInvoiceByIdHandler,

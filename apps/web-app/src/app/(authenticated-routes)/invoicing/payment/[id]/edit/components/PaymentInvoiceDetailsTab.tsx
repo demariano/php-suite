@@ -207,6 +207,10 @@ export default function PaymentInvoiceDetailsTab({
 
     // Determine if invoice selection should be allowed
     const shouldAllowInvoiceSelection = () => {
+        // Customer credit payment: allow only if no invoices added yet (limit 1)
+        if (formData.customerCreditPayment) {
+            return (formData.paymentInvoiceDetails?.length || 0) < 1;
+        }
         // Non-contract payments: always allow
         if (!formData.contractPayment) {
             return true;
@@ -345,6 +349,7 @@ export default function PaymentInvoiceDetailsTab({
                 receiptNo: formData.receiptNo,
                 paymentDate: formData.paymentDate,
                 paymentId: parseInt(formData.paymentId) || 0,
+                ...(formData.customerCreditPayment ? { customerCreditPayment: true } : {}),
             });
 
             // Store invoice details for display
@@ -816,6 +821,9 @@ export default function PaymentInvoiceDetailsTab({
                                                                                         invoice.invoiceId
                                                                                 )
                                                                             );
+                                                                        } else if (formData.customerCreditPayment) {
+                                                                            // Credit payments: only allow 1 invoice
+                                                                            setSelectedInvoices([invoice]);
                                                                         } else {
                                                                             setSelectedInvoices((prev) => [
                                                                                 ...prev,

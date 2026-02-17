@@ -1,4 +1,5 @@
 import { UserCognito } from '@auth-guard-lib';
+import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
 import {
     ContractInvoiceEventEnum,
     ErrorResponseDto,
@@ -39,7 +40,9 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         private readonly configService: ConfigService,
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
-        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService,
+        @Inject('CustomerDatabaseService')
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
     ) {}
 
     async execute(command: ApproveInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -119,6 +122,16 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
             const existingAmount = isUpdate ? existingRecord.finalAmount : null;
 
             await this.validateContractAmountLimit(contractId, newAmount, existingAmount);
+        }
+
+        // Validate customer credit limit if not a contract sale
+        const forApprovalCustomerId = existingRecord.forApprovalVersion?.customerId as string;
+        const forApprovalContractSales = existingRecord.forApprovalVersion?.contractSales as boolean;
+        const forApprovalFinalAmount = existingRecord.forApprovalVersion?.finalAmount as number;
+        if (!forApprovalContractSales && forApprovalCustomerId && forApprovalFinalAmount) {
+            const isUpdate = existingRecord.status === StatusEnum.FOR_APPROVAL;
+            const existingFinalAmount = isUpdate ? existingRecord.finalAmount : null;
+            await this.validateCustomerCreditLimit(forApprovalCustomerId, forApprovalFinalAmount, existingFinalAmount);
         }
 
         // Store original invoice details and status before applying forApprovalVersion
@@ -421,5 +434,43 @@ export class ApproveInvoiceHandler implements ICommandHandler<ApproveInvoiceComm
         };
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+    }
+
+    /**
+     * Validates that adding this invoice won't exceed the customer's credit limit
+     */
+    private async validateCustomerCreditLimit(
+        customerId: string,
+        invoiceAmount: number,
+        existingInvoiceAmount: number | null
+    ): Promise<void> {
+        const customer = await this.customerDatabaseService.findRecordById(customerId);
+
+        if (!customer || !customer.creditLimit) {
+            return; // No credit limit set, skip validation
+        }
+
+        const currentBalance = customer.balance || 0;
+        let projectedBalance = currentBalance + invoiceAmount;
+
+        if (existingInvoiceAmount !== null) {
+            projectedBalance -= existingInvoiceAmount;
+        }
+
+        if (projectedBalance > customer.creditLimit) {
+            throw new BadRequestException(
+                `Invoice would exceed customer credit limit. ` +
+                    `Credit limit: ${customer.creditLimit.toFixed(2)}, ` +
+                    `Current balance: ${currentBalance.toFixed(2)}, ` +
+                    `Invoice amount: ${invoiceAmount.toFixed(2)}, ` +
+                    `Projected balance: ${projectedBalance.toFixed(2)}`
+            );
+        }
+
+        this.logger.log(
+            `Customer credit limit validation passed - Limit: ${customer.creditLimit}, ` +
+                `Current balance: ${currentBalance}, Invoice: ${invoiceAmount}, ` +
+                `Projected: ${projectedBalance}`
+        );
     }
 }

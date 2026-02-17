@@ -9,7 +9,13 @@ export type ReportFilterType =
     | 'date-range-salestype'
     | 'date-range-invoice'
     | 'date-range-customer'
-    | 'date-range-method';
+    | 'date-range-method'
+    | 'date-range-payment'
+    | 'date-range-rgs'
+    | 'list-customer'
+    | 'list-stock'
+    | 'list-product'
+    | 'date-range-voucher';
 
 export interface ReportConfig {
     id: string;
@@ -39,8 +45,11 @@ export const REPORT_MODULES: ReportModuleConfig[] = [
                 id: 'customer-list',
                 title: 'Customer List Report',
                 description: 'Complete list of customers with filters',
-                filterType: 'list-area-status',
+                filterType: 'list-customer',
                 reportType: ReportTypeEnum.CUSTOMER_LIST,
+                supportsSeparateByArea: true,
+                separateByAreaDefault: false,
+                supportsMultiArea: true,
             },
         ],
     },
@@ -70,15 +79,11 @@ export const REPORT_MODULES: ReportModuleConfig[] = [
                 id: 'payments-received',
                 title: 'Payments Received Report',
                 description: 'All payments received within date range',
-                filterType: 'date-range-method',
+                filterType: 'date-range-payment',
                 reportType: ReportTypeEnum.PAYMENTS_RECEIVED,
-            },
-            {
-                id: 'outstanding-payments',
-                title: 'Outstanding Payments',
-                description: 'Unpaid and overdue invoices',
-                filterType: 'date-range',
-                reportType: ReportTypeEnum.OUTSTANDING_PAYMENTS,
+                supportsSeparateByArea: true,
+                separateByAreaDefault: true,
+                supportsMultiArea: true,
             },
         ],
     },
@@ -91,15 +96,11 @@ export const REPORT_MODULES: ReportModuleConfig[] = [
                 id: 'rgs-per-date',
                 title: 'Return Goods Sold Per Date',
                 description: 'Return goods sold within a specific date range',
-                filterType: 'date-range',
+                filterType: 'date-range-rgs',
                 reportType: ReportTypeEnum.RGS_PER_DATE,
-            },
-            {
-                id: 'rgs-per-date-per-customer',
-                title: 'Return Goods Sold Per Date Per Customer',
-                description: 'Return goods sold filtered by date range and customer',
-                filterType: 'date-range-customer',
-                reportType: ReportTypeEnum.RGS_PER_DATE_PER_CUSTOMER,
+                supportsSeparateByArea: true,
+                separateByAreaDefault: false,
+                supportsMultiArea: true,
             },
         ],
     },
@@ -112,7 +113,7 @@ export const REPORT_MODULES: ReportModuleConfig[] = [
                 id: 'stock-list',
                 title: 'Stock List Report',
                 description: 'Complete list of stock items',
-                filterType: 'list',
+                filterType: 'list-stock',
                 reportType: ReportTypeEnum.STOCK_LIST,
             },
         ],
@@ -126,7 +127,7 @@ export const REPORT_MODULES: ReportModuleConfig[] = [
                 id: 'product-list',
                 title: 'Product List Report',
                 description: 'Complete list of products',
-                filterType: 'list',
+                filterType: 'list-product',
                 reportType: ReportTypeEnum.PRODUCT_LIST,
             },
         ],
@@ -138,17 +139,10 @@ export const REPORT_MODULES: ReportModuleConfig[] = [
         reports: [
             {
                 id: 'voucher-per-date',
-                title: 'Voucher Per Date',
-                description: 'Vouchers within a specific date range',
-                filterType: 'date-range',
+                title: 'Voucher Report',
+                description: 'Vouchers within a date range with optional customer, area, and account filters',
+                filterType: 'date-range-voucher',
                 reportType: ReportTypeEnum.VOUCHER_PER_DATE,
-            },
-            {
-                id: 'voucher-per-date-per-customer',
-                title: 'Voucher Per Date Per Customer',
-                description: 'Vouchers filtered by date range and customer',
-                filterType: 'date-range-customer',
-                reportType: ReportTypeEnum.VOUCHER_PER_DATE_PER_CUSTOMER,
             },
         ],
     },

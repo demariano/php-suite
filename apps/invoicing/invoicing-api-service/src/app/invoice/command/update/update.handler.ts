@@ -1,3 +1,4 @@
+import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
 import {
     ContractInvoiceEventEnum,
     ErrorResponseDto,
@@ -40,7 +41,9 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
         private readonly configService: ConfigService,
         @Inject('PaymentInvoiceDatabaseService')
         private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
-        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService,
+        @Inject('CustomerDatabaseService')
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
     ) {}
 
     async execute(command: UpdateInvoiceCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -72,6 +75,19 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
                     existingRecord.contractId,
                     existingRecord.finalAmount,
                     originalInvoiceDetails?.finalAmount // Subtract old amount for updates
+                );
+            }
+
+            // Validate customer credit limit if not a contract sale and status will be ACTIVE
+            if (
+                !existingRecord.contractSales &&
+                existingRecord.customerId &&
+                existingRecord.status === StatusEnum.ACTIVE
+            ) {
+                await this.validateCustomerCreditLimit(
+                    existingRecord.customerId,
+                    existingRecord.finalAmount,
+                    originalInvoiceDetails?.finalAmount || null
                 );
             }
 
@@ -478,5 +494,43 @@ export class UpdateInvoiceHandler implements ICommandHandler<UpdateInvoiceComman
         };
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+    }
+
+    /**
+     * Validates that adding this invoice won't exceed the customer's credit limit
+     */
+    private async validateCustomerCreditLimit(
+        customerId: string,
+        invoiceAmount: number,
+        existingInvoiceAmount: number | null
+    ): Promise<void> {
+        const customer = await this.customerDatabaseService.findRecordById(customerId);
+
+        if (!customer || !customer.creditLimit) {
+            return; // No credit limit set, skip validation
+        }
+
+        const currentBalance = customer.balance || 0;
+        let projectedBalance = currentBalance + invoiceAmount;
+
+        if (existingInvoiceAmount !== null) {
+            projectedBalance -= existingInvoiceAmount;
+        }
+
+        if (projectedBalance > customer.creditLimit) {
+            throw new BadRequestException(
+                `Invoice would exceed customer credit limit. ` +
+                    `Credit limit: ${customer.creditLimit.toFixed(2)}, ` +
+                    `Current balance: ${currentBalance.toFixed(2)}, ` +
+                    `Invoice amount: ${invoiceAmount.toFixed(2)}, ` +
+                    `Projected balance: ${projectedBalance.toFixed(2)}`
+            );
+        }
+
+        this.logger.log(
+            `Customer credit limit validation passed - Limit: ${customer.creditLimit}, ` +
+                `Current balance: ${currentBalance}, Invoice: ${invoiceAmount}, ` +
+                `Projected: ${projectedBalance}`
+        );
     }
 }

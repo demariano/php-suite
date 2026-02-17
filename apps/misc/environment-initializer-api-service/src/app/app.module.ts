@@ -1,6 +1,10 @@
 import { Module } from '@nestjs/common';
 
-import { AccountingDatabaseServiceModule, AccountsDatabaseService } from '@accounting-database-service';
+import {
+    AccountingDatabaseServiceModule,
+    AccountsDatabaseService,
+    VoucherDatabaseService,
+} from '@accounting-database-service';
 import { AuthGuardLibModule } from '@auth-guard-lib';
 import { AwsCognitoLibModule } from '@aws-cognito-lib';
 import { ConfigurationDatabaseService, ConfigurationDatabaseServiceModule } from '@configuration-database-service';
@@ -24,9 +28,14 @@ import {
     SupplierDatabaseService,
 } from '@inventory-database-service';
 import {
+    CollectionReceiptRangeDatabaseService,
     ContractDatabaseService,
     InvoiceDatabaseService,
     InvoicingDatabaseServiceModule,
+    OverPaymentDatabaseService,
+    PaymentDatabaseService,
+    PaymentInvoiceDatabaseService,
+    ReturnGoodSoldDatabaseService,
     SalesTypeDatabaseService,
     TerritoryManagerDatabaseService,
 } from '@invoicing-database-service';
@@ -156,6 +165,30 @@ import { AppService } from './app.service';
         {
             provide: 'RawMaterialsStockDatabaseService',
             useClass: RawMaterialsStockDatabaseService,
+        },
+        {
+            provide: 'CollectionReceiptRangeDatabaseService',
+            useClass: CollectionReceiptRangeDatabaseService,
+        },
+        {
+            provide: 'VoucherDatabaseService',
+            useClass: VoucherDatabaseService,
+        },
+        {
+            provide: 'PaymentDatabaseService',
+            useClass: PaymentDatabaseService,
+        },
+        {
+            provide: 'PaymentInvoiceDatabaseService',
+            useClass: PaymentInvoiceDatabaseService,
+        },
+        {
+            provide: 'OverPaymentDatabaseService',
+            useClass: OverPaymentDatabaseService,
+        },
+        {
+            provide: 'ReturnGoodSoldDatabaseService',
+            useClass: ReturnGoodSoldDatabaseService,
         },
     ],
 })

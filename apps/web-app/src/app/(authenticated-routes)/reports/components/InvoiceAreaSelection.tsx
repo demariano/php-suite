@@ -202,6 +202,7 @@ const InvoiceAreaSelection = ({
                 title="Select Area"
                 selectedValue={selectedInvoiceAreaId}
                 selectedValues={selectedInvoiceAreaIds}
+                selectedNames={selectedInvoiceAreaNames}
                 multiSelect={!!supportsMultiArea}
                 onSelect={(area) => {
                     setSelectedInvoiceAreaId(area.areaId || null);

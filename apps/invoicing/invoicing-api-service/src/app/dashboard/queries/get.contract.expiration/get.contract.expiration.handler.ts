@@ -28,9 +28,8 @@ export class GetContractExpirationHandler implements IQueryHandler<GetContractEx
             const expiringContracts: ContractExpirationItemDto[] = activeContracts
                 .filter((contract) => {
                     if (!contract.endDate) return false;
-                    const endDateStr = contract.endDate.substring(0, 10);
-                    // Show contracts whose endDate falls within the selected date range
-                    return endDateStr >= query.startDate && endDateStr <= query.endDate;
+                    // Show all active contracts — getActiveContracts already filters by date range overlap
+                    return true;
                 })
                 .map((contract) => {
                     const contractEndDate = contract.endDate as string;

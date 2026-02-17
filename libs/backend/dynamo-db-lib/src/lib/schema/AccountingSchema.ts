@@ -72,7 +72,7 @@ export const AccountingSchema = {
             voucherDetails: { type: Array },
             paymentType: {
                 type: String,
-                enum: ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'OTHER'],
+                enum: ['CASH', 'CHEQUE', 'BANK_TRANSFER', 'OTHER', 'CUSTOMER_CREDIT'],
                 required: false,
             },
             bankName: { type: String, required: false },

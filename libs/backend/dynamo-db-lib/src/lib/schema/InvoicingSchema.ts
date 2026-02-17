@@ -188,6 +188,8 @@ export const InvoicingSchema = {
             paymentAmount: { type: Number },
             customerId: { type: String },
             customerName: { type: String },
+            areaId: { type: String, required: false },
+            areaName: { type: String, required: false },
             receiptNo: { type: String },
             activityLogs: { type: Array },
             forApprovalVersion: { type: Object },
@@ -217,6 +219,8 @@ export const InvoicingSchema = {
             GSI5SK: { type: String, value: '${paymentDate}', hidden: false },
             GSI6PK: { type: String, value: 'PAYMENT#${contractId}', hidden: false },
             GSI6SK: { type: String, value: '${paymentDate}', hidden: false },
+            GSI7PK: { type: String, value: 'PAYMENT#${areaId}', hidden: false },
+            GSI7SK: { type: String, value: '${paymentDate}', hidden: false },
         },
         PaymentInvoice: {
             PK: { type: String, value: 'PAYMENTINVOICE', hidden: false },

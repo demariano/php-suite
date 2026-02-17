@@ -7,6 +7,7 @@ import {
     InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
     PaymentDto,
+    PaymentTypeEnum,
     ResponseDto,
     StatusEnum,
     UserRole,
@@ -70,6 +71,25 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
                     this.logger.warn(`Customer credit payment cannot have other payment types in payment details`);
                     throw new BadRequestException(
                         'Customer credit payment cannot have other payment types in payment details'
+                    );
+                }
+
+                // Validate paymentType is CUSTOMER_CREDIT and no banking details are present
+                const hasInvalidPaymentType = command.paymentDto.paymentDetails.some(
+                    (detail) => detail.paymentType !== PaymentTypeEnum.CUSTOMER_CREDIT
+                );
+                if (hasInvalidPaymentType) {
+                    this.logger.warn(`Customer credit payment must use CUSTOMER_CREDIT payment type`);
+                    throw new BadRequestException('Customer credit payment must use CUSTOMER_CREDIT payment type');
+                }
+
+                const hasBankingDetails = command.paymentDto.paymentDetails.some(
+                    (detail) => detail.chequeNo || detail.bankName || detail.bankAccountNo || detail.chequeDate
+                );
+                if (hasBankingDetails) {
+                    this.logger.warn(`Customer credit payment cannot have banking details`);
+                    throw new BadRequestException(
+                        'Customer credit payment cannot have banking details (chequeNo, bankName, bankAccountNo, chequeDate)'
                     );
                 }
 
@@ -219,6 +239,8 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             command.paymentDto.forApprovalVersion.paymentAmount = command.paymentDto.paymentAmount;
             command.paymentDto.forApprovalVersion.customerId = command.paymentDto.customerId;
             command.paymentDto.forApprovalVersion.customerName = command.paymentDto.customerName;
+            command.paymentDto.forApprovalVersion.areaId = command.paymentDto.areaId;
+            command.paymentDto.forApprovalVersion.areaName = command.paymentDto.areaName;
             command.paymentDto.forApprovalVersion.receiptNo = command.paymentDto.receiptNo;
             command.paymentDto.forApprovalVersion.contractPayment = command.paymentDto.contractPayment;
             command.paymentDto.forApprovalVersion.contractId = command.paymentDto.contractId;
@@ -227,6 +249,7 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             command.paymentDto.forApprovalVersion.chequeClearStatus = command.paymentDto.chequeClearStatus;
             command.paymentDto.forApprovalVersion.paymentDetails = command.paymentDto.paymentDetails;
             command.paymentDto.forApprovalVersion.paymentInvoiceDetails = command.paymentDto.paymentInvoiceDetails;
+            command.paymentDto.forApprovalVersion.customerCreditPayment = command.paymentDto.customerCreditPayment;
 
             // Clear main record fields for NEW_RECORD - data is only in forApprovalVersion
             command.paymentDto.paymentInvoiceDetails = [];

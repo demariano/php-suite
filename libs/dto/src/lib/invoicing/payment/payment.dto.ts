@@ -21,6 +21,12 @@ export class PaymentDto {
     customerName!: string;
 
     @ApiProperty()
+    areaId!: string;
+
+    @ApiProperty()
+    areaName!: string;
+
+    @ApiProperty()
     customerCreditPayment = false;
 
     @ApiProperty()

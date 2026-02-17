@@ -189,6 +189,8 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
             existingRecord.paymentAmount = command.paymentDto.paymentAmount;
             existingRecord.customerId = command.paymentDto.customerId;
             existingRecord.customerName = command.paymentDto.customerName;
+            existingRecord.areaId = command.paymentDto.areaId;
+            existingRecord.areaName = command.paymentDto.areaName;
             // Receipt number not updated - immutable after creation
             existingRecord.contractPayment = command.paymentDto.contractPayment;
             existingRecord.contractId = command.paymentDto.contractId;
@@ -255,6 +257,8 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
                 paymentAmount: command.paymentDto.paymentAmount,
                 customerId: command.paymentDto.customerId,
                 customerName: command.paymentDto.customerName,
+                areaId: command.paymentDto.areaId,
+                areaName: command.paymentDto.areaName,
                 // receiptNo: removed - immutable after creation
                 contractPayment: command.paymentDto.contractPayment,
                 contractId: command.paymentDto.contractId,

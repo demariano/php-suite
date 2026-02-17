@@ -21,4 +21,6 @@ export abstract class PaymentInvoiceDatabaseServiceAbstractClass {
     abstract convertToDtoList(records: PaymentInvoiceDataType[]): Promise<PaymentInvoiceDetailsDto[]>;
 
     abstract convertToDataType(dto: PaymentInvoiceDetailsDto): Promise<PaymentInvoiceDataType>;
+
+    abstract deleteAllRecords(): Promise<void>;
 }

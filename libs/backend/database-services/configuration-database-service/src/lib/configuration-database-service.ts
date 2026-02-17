@@ -185,4 +185,20 @@ export class ConfigurationDatabaseService implements ConfigurationDatabaseServic
 
         return dto;
     }
+
+    async deleteAllRecords(): Promise<void> {
+        const records = await this.configurationTable.find(
+            {
+                GSI1PK: 'CONFIGURATION',
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        for (const record of records) {
+            await this.configurationTable.remove(record);
+            this.logger.log(`Configuration Record deleted: ${JSON.stringify(record)}`);
+        }
+    }
 }

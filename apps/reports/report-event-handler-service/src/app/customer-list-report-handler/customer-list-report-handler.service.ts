@@ -2,16 +2,18 @@ import { AreaDatabaseService, CustomerDatabaseService } from '@customer-database
 import {
     AreaDto,
     CustomerDto,
+    CustomerProductDealDto,
     FileDetailsDto,
     ReportDto,
     ReportEventDto,
     ReportFileDetailDto,
     ReportStatusEnum,
-    StatusEnum,
 } from '@dto';
 import { ExcelGeneratorService } from '@excel-generator-service';
 import { Injectable, Logger } from '@nestjs/common';
 import { ReportDatabaseService } from '@report-database-service';
+
+type CustomerListRow = Record<string, string | number>;
 
 @Injectable()
 export class CustomerListReportHandlerService {
@@ -28,19 +30,22 @@ export class CustomerListReportHandlerService {
         this.logger.log(`Processing CUSTOMER_LIST report: reportId=${event.reportId}`);
 
         try {
-            // Step 1: Bulk fetch all areas and build a lookup map for fresh area names
+            // Step 1: Build area lookup map for fresh area names
             const areaMap = await this.buildAreaLookupMap();
 
-            // Step 2: Fetch customers (by area or all)
-            let customers = await this.fetchCustomers(event);
+            // Step 2: Fetch all customers via pagination
+            let customers = await this.fetchAllCustomers();
 
-            // Step 3: Filter by active/inactive status
-            customers = this.filterByStatus(customers, event);
+            // Step 3: Apply multi-filters
+            customers = this.applyFilters(customers, event);
 
-            // Step 4: Enrich area names with latest values from area map
+            // Step 4: Enrich area names from lookup map
             customers = this.enrichAreaNames(customers, areaMap);
 
-            // Step 5: Handle empty results
+            // Step 5: Sort alphabetically by customer name
+            customers = this.sortCustomersByName(customers);
+
+            // Step 6: Handle empty results
             if (customers.length === 0) {
                 this.logger.warn(`No customers found for CUSTOMER_LIST report: reportId=${event.reportId}`);
                 await this.updateReportStatus(
@@ -53,11 +58,22 @@ export class CustomerListReportHandlerService {
                 return;
             }
 
-            // Step 6: Build and generate report
-            const reportDto = this.buildReportDto(event, customers);
+            // Determine if product deal sub-rows should be included
+            const productDealIds = (event.filters?.productDealIds || []).filter(Boolean);
+            const productDealIdSet = productDealIds.length > 0 ? new Set(productDealIds) : undefined;
+            const includeProductDealColumns = !!productDealIdSet;
+
+            // Step 7: Build report (with separate-by-area branching)
+            const separateByArea = !!event.filters?.separateByArea;
+            const opts = { includeProductDealColumns, productDealIdSet };
+            const reportDto = separateByArea
+                ? this.buildAreaWorkbookReportDto(event, customers, opts)
+                : this.buildReportDto(event, customers, opts);
+
+            // Step 8: Generate Excel
             const fileDetails = await this.excelGeneratorService.generateExcelReport(reportDto);
 
-            // Step 7: Update report status to READY
+            // Step 9: Update report status to READY
             await this.updateReportStatus(event, ReportStatusEnum.READY, reportDto.reportFilename, fileDetails);
 
             this.logger.log(
@@ -70,6 +86,8 @@ export class CustomerListReportHandlerService {
             throw error;
         }
     }
+
+    // ─── Data Fetching ───────────────────────────────────────────────────
 
     private async buildAreaLookupMap(): Promise<Map<string, string>> {
         const areaMap = new Map<string, string>();
@@ -94,15 +112,7 @@ export class CustomerListReportHandlerService {
         return areaMap;
     }
 
-    private async fetchCustomers(event: ReportEventDto): Promise<CustomerDto[]> {
-        const areaId = event.filters?.areaId;
-
-        if (areaId) {
-            this.logger.log(`Fetching customers for areaId=${areaId}`);
-            return await this.customerDatabaseService.findAllCustomersByAreaId(areaId);
-        }
-
-        // Get all customers via pagination
+    private async fetchAllCustomers(): Promise<CustomerDto[]> {
         this.logger.log(`Fetching all customers via pagination`);
         const customers: CustomerDto[] = [];
         let cursorPointer: string | undefined = undefined;
@@ -125,25 +135,75 @@ export class CustomerListReportHandlerService {
         return customers;
     }
 
-    private filterByStatus(customers: CustomerDto[], event: ReportEventDto): CustomerDto[] {
-        const activeStatus = event.filters?.activeStatus;
-        const inactiveStatus = event.filters?.inactiveStatus;
+    // ─── Filtering ───────────────────────────────────────────────────────
 
-        // If both true or both false/undefined, return all (no filter)
-        if (activeStatus === inactiveStatus) {
-            return customers;
-        }
+    private applyFilters(customers: CustomerDto[], event: ReportEventDto): CustomerDto[] {
+        const filters = event.filters || {};
 
-        if (activeStatus) {
-            return customers.filter((c) => c.status === StatusEnum.ACTIVE);
-        }
+        // Area filter (multi)
+        const areaIds = (filters.areaIds || []).filter(Boolean);
+        const areaIdSet = areaIds.length > 0 ? new Set(areaIds) : undefined;
 
-        if (inactiveStatus) {
-            return customers.filter((c) => c.status === StatusEnum.INACTIVE);
-        }
+        // Town filter (multi)
+        const townNames = (filters.townNames || []).filter(Boolean);
+        const townNameSet = townNames.length > 0 ? new Set(townNames) : undefined;
 
-        return customers;
+        // Classification filter (multi)
+        const classificationIds = (filters.customerClassificationIds || []).filter(Boolean);
+        const classificationIdSet = classificationIds.length > 0 ? new Set(classificationIds) : undefined;
+
+        // Type filter (multi)
+        const typeIds = (filters.customerTypeIds || []).filter(Boolean);
+        const typeIdSet = typeIds.length > 0 ? new Set(typeIds) : undefined;
+
+        // Product Deal filter (multi) — match if customer has any matching productDealId in their customerProductDeals array
+        const productDealIds = (filters.productDealIds || []).filter(Boolean);
+        const productDealIdSet = productDealIds.length > 0 ? new Set(productDealIds) : undefined;
+
+        // Customer status filter (multi)
+        const customerStatuses = (filters.customerStatuses || []).filter(Boolean);
+        const statusSet = customerStatuses.length > 0 ? new Set(customerStatuses) : undefined;
+
+        return customers.filter((customer) => {
+            // Area filter
+            if (areaIdSet && !areaIdSet.has(customer.areaId || '')) return false;
+
+            // Town filter
+            if (townNameSet && !townNameSet.has(customer.townName || '')) return false;
+
+            // Classification filter
+            if (classificationIdSet && !classificationIdSet.has(customer.customerClassificationId || '')) return false;
+
+            // Type filter
+            if (typeIdSet && !typeIdSet.has(customer.customerTypeId || '')) return false;
+
+            // Product Deal filter — customer must have at least one matching deal
+            if (productDealIdSet) {
+                const deals = customer.customerProductDeals || [];
+                const hasMatch = deals.some((deal: { productDealId?: string }) =>
+                    productDealIdSet.has(deal.productDealId || '')
+                );
+                if (!hasMatch) return false;
+            }
+
+            // Status filter
+            if (statusSet && !statusSet.has(customer.status || '')) return false;
+
+            return true;
+        });
     }
+
+    // ─── Sorting ─────────────────────────────────────────────────────────
+
+    private sortCustomersByName(customers: CustomerDto[]): CustomerDto[] {
+        return [...customers].sort((a, b) => {
+            const aName = (a.customerName || '').toLowerCase();
+            const bName = (b.customerName || '').toLowerCase();
+            return aName.localeCompare(bName);
+        });
+    }
+
+    // ─── Enrichment ──────────────────────────────────────────────────────
 
     private enrichAreaNames(customers: CustomerDto[], areaMap: Map<string, string>): CustomerDto[] {
         return customers.map((customer) => {
@@ -154,13 +214,10 @@ export class CustomerListReportHandlerService {
         });
     }
 
-    private buildReportDto(event: ReportEventDto, customers: CustomerDto[]): ReportDto {
-        const reportDto = new ReportDto();
-        reportDto.reportId = event.reportId;
-        reportDto.reportName = event.reportName || 'Customer List';
-        reportDto.reportFilename = `${event.reportName || 'Customer-List'}.xlsx`;
+    // ─── Report Building ─────────────────────────────────────────────────
 
-        reportDto.headers = [
+    private getReportHeaders(includeProductDealColumns: boolean) {
+        const base = [
             { description: 'Customer Name', metaData: {} },
             { description: 'Contact No', metaData: {} },
             { description: 'Contact Person', metaData: {} },
@@ -173,7 +230,20 @@ export class CustomerListReportHandlerService {
             { description: 'Status', metaData: {} },
         ];
 
-        reportDto.rows = customers.map((customer) => ({
+        if (!includeProductDealColumns) return base;
+
+        return [
+            ...base,
+            { description: 'Product Deal', metaData: {} },
+            { description: 'Product', metaData: {} },
+            { description: 'Min Qty', metaData: {} },
+            { description: 'Additional Qty', metaData: {} },
+            { description: 'Deal Status', metaData: {} },
+        ];
+    }
+
+    private buildCustomerRow(customer: CustomerDto, includeProductDealColumns: boolean): CustomerListRow {
+        const row: CustomerListRow = {
             'Customer Name': customer.customerName || '',
             'Contact No': customer.contactNo || '',
             'Contact Person': customer.contactPerson || '',
@@ -184,10 +254,138 @@ export class CustomerListReportHandlerService {
             Balance: customer.balance ?? 0,
             'Credit Limit': customer.creditLimit ?? 0,
             Status: customer.status || '',
-        }));
+        };
+
+        if (includeProductDealColumns) {
+            row['Product Deal'] = '';
+            row['Product'] = '';
+            row['Min Qty'] = '';
+            row['Additional Qty'] = '';
+            row['Deal Status'] = '';
+        }
+
+        return row;
+    }
+
+    private buildProductDealSubRow(deal: CustomerProductDealDto): CustomerListRow {
+        return {
+            'Customer Name': '',
+            'Contact No': '',
+            'Contact Person': '',
+            Area: '',
+            Town: '',
+            Classification: '',
+            Type: '',
+            Balance: '',
+            'Credit Limit': '',
+            Status: '',
+            'Product Deal': deal.productDealName || deal.productDealId || '',
+            Product: deal.productName || deal.productId || '',
+            'Min Qty': deal.minQty ?? 0,
+            'Additional Qty': deal.additionalQty ?? 0,
+            'Deal Status': deal.status || '',
+        };
+    }
+
+    private buildRows(
+        customers: CustomerDto[],
+        opts: { includeProductDealColumns: boolean; productDealIdSet?: Set<string> }
+    ): CustomerListRow[] {
+        const rows: CustomerListRow[] = [];
+
+        for (const customer of customers) {
+            rows.push(this.buildCustomerRow(customer, opts.includeProductDealColumns));
+
+            if (!opts.includeProductDealColumns) continue;
+
+            const deals: CustomerProductDealDto[] = customer.customerProductDeals || [];
+            for (const deal of deals) {
+                // Only include deals that match the selected product deal filter
+                if (opts.productDealIdSet && !opts.productDealIdSet.has(deal.productDealId || '')) continue;
+                rows.push(this.buildProductDealSubRow(deal));
+            }
+        }
+
+        return rows;
+    }
+
+    private buildReportDto(
+        event: ReportEventDto,
+        customers: CustomerDto[],
+        opts: { includeProductDealColumns: boolean; productDealIdSet?: Set<string> }
+    ): ReportDto {
+        const reportDto = new ReportDto();
+        reportDto.reportId = event.reportId;
+        reportDto.reportName = event.reportName || 'Customer List';
+        reportDto.reportFilename = `${event.reportName || 'Customer-List'}.xlsx`;
+
+        reportDto.headers = this.getReportHeaders(opts.includeProductDealColumns);
+        reportDto.rows = this.buildRows(customers, opts);
 
         return reportDto;
     }
+
+    private buildAreaWorkbookReportDto(
+        event: ReportEventDto,
+        customers: CustomerDto[],
+        opts: { includeProductDealColumns: boolean; productDealIdSet?: Set<string> }
+    ): ReportDto {
+        const reportDto = new ReportDto();
+        reportDto.reportId = event.reportId;
+        reportDto.reportName = event.reportName || 'Customer List';
+        reportDto.reportFilename = `${event.reportName || 'Customer-List'}.xlsx`;
+
+        const headers = this.getReportHeaders(opts.includeProductDealColumns);
+
+        // Group customers by area
+        const grouped = new Map<string, CustomerDto[]>();
+        for (const customer of customers) {
+            const key = customer.areaId || 'UNASSIGNED';
+            const list = grouped.get(key) || [];
+            list.push(customer);
+            grouped.set(key, list);
+        }
+
+        const used = new Set<string>();
+        const sheets = Array.from(grouped.values()).map((areaCustomers) => {
+            const sorted = this.sortCustomersByName(areaCustomers);
+            const sample = sorted[0];
+            const baseName = sample?.areaName || 'Unassigned';
+            const name = this.uniqueSheetName(baseName, used);
+            return {
+                name,
+                headers,
+                rows: this.buildRows(sorted, opts),
+            };
+        });
+
+        reportDto.workbook = { sheets };
+        return reportDto;
+    }
+
+    // ─── Sheet Name Helpers ──────────────────────────────────────────────
+
+    private normalizeSheetName(name: string): string {
+        const cleaned = name.replace(/[:\\/?*\u005B\u005D]/g, ' ').trim();
+        const truncated = cleaned.length > 31 ? cleaned.slice(0, 31).trim() : cleaned;
+        return truncated || 'Sheet';
+    }
+
+    private uniqueSheetName(baseName: string, used: Set<string>): string {
+        const base = this.normalizeSheetName(baseName);
+        let name = base;
+        let i = 2;
+        while (used.has(name)) {
+            const suffix = ` (${i})`;
+            const maxBase = 31 - suffix.length;
+            name = `${base.slice(0, Math.max(1, maxBase)).trim()}${suffix}`;
+            i += 1;
+        }
+        used.add(name);
+        return name;
+    }
+
+    // ─── Report Status Update ────────────────────────────────────────────
 
     private async updateReportStatus(
         event: ReportEventDto,

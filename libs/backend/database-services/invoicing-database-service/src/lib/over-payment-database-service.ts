@@ -129,4 +129,20 @@ export class OverPaymentDatabaseService implements OverPaymentDatabaseServiceAbs
         };
         return paymentData;
     }
+
+    async deleteAllRecords(): Promise<void> {
+        const records = await this.overPaymentTable.find(
+            {
+                GSI1PK: 'OVERPAYMENT',
+            },
+            {
+                index: 'GSI1',
+            }
+        );
+
+        for (const record of records) {
+            await this.overPaymentTable.remove(record);
+            this.logger.log(`OverPayment Record deleted: ${JSON.stringify(record)}`);
+        }
+    }
 }

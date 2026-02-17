@@ -1,40 +1,39 @@
 'use client';
 
-import { AreaApi, AreaDto } from '@data-access/index';
-import { useEffect, useState } from 'react';
+import { ProductUnitApi, ProductUnitDto } from '@data-access/index';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-interface AreaSearchableSelectionModalProps {
+interface ProductUnitMultiSearchableSelectionModalProps {
     show: boolean;
     title: string;
-    selectedValue: string | null;
     selectedValues?: string[];
-    selectedNames?: string[];
-    multiSelect?: boolean;
-    onSelect: (area: AreaDto) => void;
-    onSelectMultiple?: (areas: AreaDto[]) => void;
-    onClose: () => void;
+    onSelectMultiple?: (productUnits: ProductUnitDto[]) => void;
+    onClose?: () => void;
 }
 
 interface Item {
     id: string;
     name: string;
-    fullData?: AreaDto;
+    fullData?: ProductUnitDto;
 }
 
-export default function AreaSearchableSelectionModal({
+type ProductUnitsResponse = {
+    data?: ProductUnitDto[];
+    nextCursorPointer?: string;
+    prevCursorPointer?: string;
+};
+
+export default function ProductUnitMultiSearchableSelectionModal({
     show,
     title,
-    selectedValue,
     selectedValues,
-    selectedNames,
-    multiSelect,
-    onSelect,
     onSelectMultiple,
     onClose,
-}: AreaSearchableSelectionModalProps) {
+}: ProductUnitMultiSearchableSelectionModalProps) {
     const [items, setItems] = useState<Item[]>([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [hasNextPage, setHasNextPage] = useState(false);
     const [hasPrevPage, setHasPrevPage] = useState(false);
@@ -43,35 +42,81 @@ export default function AreaSearchableSelectionModal({
     const [cursorStack, setCursorStack] = useState<string[]>([]);
     const [currentCursor, setCurrentCursor] = useState<string | null>(null);
     const [isGoingBack, setIsGoingBack] = useState(false);
-    const [selectedItems, setSelectedItems] = useState<AreaDto[]>([]);
+    const [selectedItems, setSelectedItems] = useState<ProductUnitDto[]>([]);
+
+    const initializedRef = useRef(false);
+    const lastRequestKeyRef = useRef<string>('');
 
     const limit = 20;
 
     useEffect(() => {
-        if (show) {
-            setCurrentCursor(null);
-            setIsGoingBack(false);
-            if (multiSelect) {
-                setSelectedItems([]);
-            }
-            loadItems();
+        if (!show) {
+            initializedRef.current = false;
+            lastRequestKeyRef.current = '';
+            return;
         }
+
+        if (initializedRef.current) return;
+        initializedRef.current = true;
+
+        setCurrentCursor(null);
+        setIsGoingBack(false);
+        setCurrentPage(1);
+        setCursorStack([]);
+        setSearchTerm('');
+        setDebouncedSearchTerm('');
     }, [show]);
 
     useEffect(() => {
-        if (!show || !multiSelect) return;
-        if (!selectedValues || selectedValues.length === 0) {
-            setSelectedItems([]);
-            return;
-        }
-        setSelectedItems(selectedValues.map((id, i) => ({ areaId: id, areaName: selectedNames?.[i] || id, status: 'ACTIVE' as any })));
-    }, [show, multiSelect, selectedValues]);
+        if (!show) return;
+        let cancelled = false;
 
-    // Handle ESC key to close modal
+        const hydrateSelected = async () => {
+            if (!selectedValues || selectedValues.length === 0) {
+                setSelectedItems([]);
+                return;
+            }
+
+            const ids = Array.from(new Set(selectedValues.filter(Boolean))).slice(0, 100);
+            const results = await Promise.allSettled(ids.map((id) => ProductUnitApi.getProductUnitById(id)));
+            if (cancelled) return;
+
+            const hydrated: ProductUnitDto[] = results.map((res, idx) => {
+                const fallbackId = ids[idx];
+                if (res.status !== 'fulfilled') {
+                    return { productUnitId: fallbackId, productUnitName: fallbackId };
+                }
+
+                const value = res.value as unknown;
+                const maybeAxios = value as { data?: ProductUnitDto };
+                const productUnit = maybeAxios?.data ?? (value as ProductUnitDto);
+                const productUnitId = productUnit?.productUnitId || fallbackId;
+                const productUnitName = productUnit?.productUnitName || productUnitId;
+                return { ...productUnit, productUnitId, productUnitName };
+            });
+
+            setSelectedItems(hydrated);
+        };
+
+        hydrateSelected();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [show, selectedValues]);
+
+    useEffect(() => {
+        if (!show) return;
+        const timeoutId = setTimeout(() => {
+            setDebouncedSearchTerm(searchTerm);
+        }, 300);
+        return () => clearTimeout(timeoutId);
+    }, [show, searchTerm]);
+
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape' && show) {
-                onClose();
+                onClose?.();
             }
         };
 
@@ -84,71 +129,77 @@ export default function AreaSearchableSelectionModal({
         };
     }, [show, onClose]);
 
-    useEffect(() => {
-        if (show) {
-            loadItems();
-        }
-    }, [currentPage]);
+    const loadItems = useCallback(
+        async (searchQuery?: string) => {
+            const effectiveQuery = searchQuery?.trim() ? searchQuery.trim() : '';
+            const key = `${currentPage}|${isGoingBack ? 'prev' : 'next'}|${currentCursor || ''}|${effectiveQuery}`;
+            if (lastRequestKeyRef.current === key) return;
+            lastRequestKeyRef.current = key;
 
-    // Auto-search when search term changes
-    useEffect(() => {
-        if (show && searchTerm) {
-            const timeoutId = setTimeout(() => {
-                setCurrentPage(1);
-                setCursorStack([]);
-                loadItems(searchTerm);
-            }, 500); // 500ms delay to avoid too many API calls
+            setLoading(true);
+            try {
+                const direction = currentPage > 1 ? (isGoingBack ? 'prev' : 'next') : undefined;
+                const cursor = currentCursor ? JSON.stringify(currentCursor) : undefined;
 
-            return () => clearTimeout(timeoutId);
-        } else if (show && searchTerm === '') {
-            setCurrentPage(1);
-            setCursorStack([]);
-            loadItems();
-        }
-    }, [searchTerm]);
-
-    const loadItems = async (searchQuery?: string) => {
-        setLoading(true);
-        try {
-            let response;
-
-            // Determine direction and cursor for pagination
-            const direction = currentPage > 1 ? (isGoingBack ? 'prev' : 'next') : undefined;
-            const cursor = currentCursor ? JSON.stringify(currentCursor) : undefined;
-
-            response = await AreaApi.getAreasByStatus(
-                limit,
-                'ACTIVE',
-                direction,
-                cursor,
-                undefined, // userRole
-                searchQuery || undefined
-            );
-
-            const itemsList = response.data.map((item: any) => ({
-                id: item.areaId,
-                name: item.areaName,
-                fullData: item,
-            }));
-
-            setItems(itemsList);
-            setHasNextPage(!!response.nextCursorPointer);
-            setHasPrevPage(!!response.prevCursorPointer);
-            setNextCursor(response.nextCursorPointer || null);
-            setPrevCursor(response.prevCursorPointer || null);
-
-            // Update cursor stack for navigation
-            if (currentPage > 1 && !searchQuery) {
-                const newCursorStack = [...cursorStack];
-                if (response.nextCursorPointer && !newCursorStack.includes(response.nextCursorPointer)) {
-                    newCursorStack[currentPage - 1] = response.nextCursorPointer;
-                    setCursorStack(newCursorStack);
+                let response: ProductUnitsResponse;
+                if (effectiveQuery) {
+                    response = await ProductUnitApi.getProductUnitsByName(effectiveQuery, limit, direction, cursor);
+                } else {
+                    response = await ProductUnitApi.getProductUnitsByStatus(limit, 'ACTIVE', direction, cursor);
                 }
+
+                const list: Item[] = Array.isArray(response?.data)
+                    ? response.data.map((p: ProductUnitDto) => ({
+                          id: p.productUnitId || '',
+                          name: p.productUnitName || p.productUnitId || '',
+                          fullData: p,
+                      }))
+                    : [];
+
+                setItems(list.filter((i) => i.id));
+                setHasNextPage(!!response?.nextCursorPointer);
+                setHasPrevPage(!!response?.prevCursorPointer);
+                setNextCursor(response?.nextCursorPointer || null);
+                setPrevCursor(response?.prevCursorPointer || null);
+
+                if (currentPage > 1 && !effectiveQuery) {
+                    const newCursorStack = [...cursorStack];
+                    if (response?.nextCursorPointer && !newCursorStack.includes(response.nextCursorPointer)) {
+                        newCursorStack[currentPage - 1] = response.nextCursorPointer;
+                        setCursorStack(newCursorStack);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading product units:', error);
+                setItems([]);
+                setHasNextPage(false);
+                setHasPrevPage(false);
+                setNextCursor(null);
+                setPrevCursor(null);
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error('Error loading areas:', error);
-        } finally {
-            setLoading(false);
+        },
+        [currentCursor, currentPage, cursorStack, isGoingBack]
+    );
+
+    useEffect(() => {
+        if (!show) return;
+        loadItems(debouncedSearchTerm || undefined);
+    }, [show, currentPage, currentCursor, isGoingBack, debouncedSearchTerm, loadItems]);
+
+    const selectedIds = useMemo(() => new Set(selectedItems.map((p) => p.productUnitId)), [selectedItems]);
+
+    const handleToggle = (item: Item) => {
+        const productUnit: ProductUnitDto = item.fullData ?? {
+            productUnitId: item.id,
+            productUnitName: item.name,
+        };
+        const exists = selectedItems.some((p) => p.productUnitId === productUnit.productUnitId);
+        if (exists) {
+            setSelectedItems(selectedItems.filter((p) => p.productUnitId !== productUnit.productUnitId));
+        } else {
+            setSelectedItems([...selectedItems, productUnit]);
         }
     };
 
@@ -158,60 +209,30 @@ export default function AreaSearchableSelectionModal({
         setCursorStack([]);
         setCurrentCursor(null);
         setIsGoingBack(false);
-        loadItems();
     };
 
     const handleNextPage = () => {
-        if (hasNextPage) {
-            // Store current cursor for back navigation
-            const newCursorStack = [...cursorStack];
-            if (currentCursor) {
-                newCursorStack[currentPage] = currentCursor;
-            }
-            setCursorStack(newCursorStack);
-
-            // Move to next page with next cursor
-            setCurrentCursor(nextCursor);
-            setIsGoingBack(false);
-            setCurrentPage((prev) => prev + 1);
+        if (!hasNextPage) return;
+        const newCursorStack = [...cursorStack];
+        if (currentCursor) {
+            newCursorStack[currentPage] = currentCursor;
         }
+        setCursorStack(newCursorStack);
+        setCurrentCursor(nextCursor);
+        setIsGoingBack(false);
+        setCurrentPage((prev) => prev + 1);
     };
 
     const handlePrevPage = () => {
-        if (hasPrevPage && currentPage > 1) {
-            // Use prevCursor from API response
-            setCurrentCursor(prevCursor);
-            setIsGoingBack(true);
-            setCurrentPage((prev) => prev - 1);
-        }
+        if (!hasPrevPage || currentPage <= 1) return;
+        setCurrentCursor(prevCursor);
+        setIsGoingBack(true);
+        setCurrentPage((prev) => prev - 1);
     };
 
-    const handleSelect = (item: Item) => {
-        // Use the full AreaDto object from API response (includes towns array)
-        const area: AreaDto = item.fullData || {
-            areaId: item.id,
-            areaName: item.name,
-            status: 'ACTIVE' as any, // Fallback if fullData is missing
-        };
-
-        if (multiSelect) {
-            const exists = selectedItems.some((a) => a.areaId === area.areaId);
-            if (exists) {
-                setSelectedItems(selectedItems.filter((a) => a.areaId !== area.areaId));
-            } else {
-                setSelectedItems([...selectedItems, area]);
-            }
-            return;
-        }
-
-        onSelect(area);
-        onClose();
-    };
-
-    const handleConfirmMultiple = () => {
-        if (!multiSelect) return;
+    const handleConfirm = () => {
         onSelectMultiple?.(selectedItems);
-        onClose();
+        onClose?.();
     };
 
     if (!show) return null;
@@ -233,14 +254,16 @@ export default function AreaSearchableSelectionModal({
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                             >
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                <circle cx="12" cy="10" r="3" />
+                                <rect x="1" y="3" width="15" height="13" />
+                                <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                                <circle cx="5.5" cy="18.5" r="2.5" />
+                                <circle cx="18.5" cy="18.5" r="2.5" />
                             </svg>
                         </div>
                         <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
                     </div>
                     <button
-                        onClick={onClose}
+                        onClick={() => onClose?.()}
                         className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-all"
                     >
                         <svg
@@ -281,7 +304,7 @@ export default function AreaSearchableSelectionModal({
                             type="text"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Search areas by name..."
+                            placeholder="Search product units..."
                             className="w-full pl-10 pr-10 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
                             autoFocus
                         />
@@ -310,17 +333,14 @@ export default function AreaSearchableSelectionModal({
                     </div>
                 </div>
 
-                {multiSelect && (
-                    <div className="px-6 pb-3">
-                        <p className="text-xs text-gray-500">
-                            {selectedItems.length === 0
-                                ? 'No areas selected (All Areas)'
-                                : `${selectedItems.length} area${selectedItems.length === 1 ? '' : 's'} selected`}
-                        </p>
-                    </div>
-                )}
+                <div className="px-6 pb-3">
+                    <p className="text-xs text-gray-500">
+                        {selectedItems.length === 0
+                            ? 'No product units selected (All Product Units)'
+                            : `${selectedItems.length} product unit${selectedItems.length === 1 ? '' : 's'} selected`}
+                    </p>
+                </div>
 
-                {/* Divider */}
                 <div className="border-t border-gray-100" />
 
                 {/* Items List */}
@@ -347,7 +367,7 @@ export default function AreaSearchableSelectionModal({
                                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                                 />
                             </svg>
-                            <span className="text-sm">Loading areas...</span>
+                            <span className="text-sm">Loading product units...</span>
                         </div>
                     ) : items.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-12 text-gray-400">
@@ -367,9 +387,11 @@ export default function AreaSearchableSelectionModal({
                                 <line x1="8" y1="11" x2="14" y2="11" />
                             </svg>
                             <span className="text-sm font-medium">
-                                {searchTerm ? `No areas matching "${searchTerm}"` : 'No areas available'}
+                                {debouncedSearchTerm
+                                    ? `No product units matching "${debouncedSearchTerm}"`
+                                    : 'No product units available'}
                             </span>
-                            {searchTerm && (
+                            {debouncedSearchTerm && (
                                 <button
                                     onClick={handleClearSearch}
                                     className="mt-2 text-xs text-blue-500 hover:text-blue-600 font-medium"
@@ -381,13 +403,11 @@ export default function AreaSearchableSelectionModal({
                     ) : (
                         <div className="space-y-0.5">
                             {items.map((item) => {
-                                const isSelected = multiSelect
-                                    ? selectedItems.some((a) => a.areaId === item.id)
-                                    : selectedValue === item.id;
+                                const isSelected = selectedIds.has(item.id);
                                 return (
                                     <button
                                         key={item.id}
-                                        onClick={() => handleSelect(item)}
+                                        onClick={() => handleToggle(item)}
                                         className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-all flex items-center justify-between group ${
                                             isSelected
                                                 ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
@@ -402,7 +422,7 @@ export default function AreaSearchableSelectionModal({
                                                         : 'bg-gray-100 text-gray-500 group-hover:bg-gray-200'
                                                 }`}
                                             >
-                                                {item.name?.charAt(0)?.toUpperCase() || 'A'}
+                                                {item.name?.charAt(0)?.toUpperCase() || 'U'}
                                             </div>
                                             <span>{item.name}</span>
                                         </div>
@@ -428,32 +448,26 @@ export default function AreaSearchableSelectionModal({
                     )}
                 </div>
 
-                {/* Pagination */}
+                {/* Footer */}
                 <div className="border-t border-gray-100 px-6 py-3 flex items-center justify-between">
                     <span className="text-xs text-gray-400">
-                        {items.length > 0 ? `${items.length} area${items.length !== 1 ? 's' : ''} shown` : ''}
+                        {items.length > 0 ? `${items.length} product unit${items.length !== 1 ? 's' : ''} shown` : ''}
                     </span>
                     <div className="flex items-center gap-2">
-                        {multiSelect && (
-                            <>
-                                <button
-                                    type="button"
-                                    onClick={onClose}
-                                    className="inline-flex items-center px-3.5 py-1.5 text-xs font-medium rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleConfirmMultiple}
-                                    className="inline-flex items-center px-3.5 py-1.5 text-xs font-medium rounded-md transition-all bg-blue-600 text-white hover:bg-blue-700"
-                                >
-                                    {selectedItems.length === 0
-                                        ? 'Confirm (All Areas)'
-                                        : `Confirm (${selectedItems.length})`}
-                                </button>
-                            </>
-                        )}
+                        <button
+                            type="button"
+                            onClick={() => onClose?.()}
+                            className="inline-flex items-center px-3.5 py-1.5 text-xs font-medium rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleConfirm}
+                            className="inline-flex items-center px-3.5 py-1.5 text-xs font-medium rounded-md transition-all bg-blue-600 text-white hover:bg-blue-700"
+                        >
+                            {selectedItems.length === 0 ? 'Confirm (All)' : `Confirm (${selectedItems.length})`}
+                        </button>
                         <button
                             onClick={handlePrevPage}
                             disabled={!hasPrevPage || loading}

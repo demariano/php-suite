@@ -1,4 +1,5 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
+import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
 import { ContractInvoiceEventEnum, ErrorResponseDto, InvoiceDto, ResponseDto, StatusEnum, UserRole } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { ContractDatabaseServiceAbstract, InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
@@ -27,7 +28,9 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
         @Inject('MessageQueueAwsLibService')
         private readonly messageQueueService: MessageQueueServiceAbstract,
         private readonly configService: ConfigService,
-        private readonly invoiceStockDeltaService: InvoiceStockDeltaService
+        private readonly invoiceStockDeltaService: InvoiceStockDeltaService,
+        @Inject('CustomerDatabaseService')
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
     ) {}
 
     async execute(command: SubmitDraftCommand): Promise<ResponseDto<InvoiceDto | ErrorResponseDto>> {
@@ -59,6 +62,11 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
             // Validate contract amount limit if invoice has contract and will be ACTIVE
             if (draftInvoice.contractId && finalStatus === StatusEnum.ACTIVE) {
                 await this.validateContractAmountLimit(draftInvoice.contractId, draftInvoice.finalAmount);
+            }
+
+            // Validate customer credit limit if not a contract sale and status will be ACTIVE
+            if (!draftInvoice.contractSales && draftInvoice.customerId && finalStatus === StatusEnum.ACTIVE) {
+                await this.validateCustomerCreditLimit(draftInvoice.customerId, draftInvoice.finalAmount, null);
             }
 
             // Update activity logs
@@ -268,5 +276,43 @@ export class SubmitDraftHandler implements ICommandHandler<SubmitDraftCommand> {
 
         const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
         throw new BadRequestException(errorMessage);
+    }
+
+    /**
+     * Validates that adding this invoice won't exceed the customer's credit limit
+     */
+    private async validateCustomerCreditLimit(
+        customerId: string,
+        invoiceAmount: number,
+        existingInvoiceAmount: number | null
+    ): Promise<void> {
+        const customer = await this.customerDatabaseService.findRecordById(customerId);
+
+        if (!customer || !customer.creditLimit) {
+            return; // No credit limit set, skip validation
+        }
+
+        const currentBalance = customer.balance || 0;
+        let projectedBalance = currentBalance + invoiceAmount;
+
+        if (existingInvoiceAmount !== null) {
+            projectedBalance -= existingInvoiceAmount;
+        }
+
+        if (projectedBalance > customer.creditLimit) {
+            throw new BadRequestException(
+                `Invoice would exceed customer credit limit. ` +
+                    `Credit limit: ${customer.creditLimit.toFixed(2)}, ` +
+                    `Current balance: ${currentBalance.toFixed(2)}, ` +
+                    `Invoice amount: ${invoiceAmount.toFixed(2)}, ` +
+                    `Projected balance: ${projectedBalance.toFixed(2)}`
+            );
+        }
+
+        this.logger.log(
+            `Customer credit limit validation passed - Limit: ${customer.creditLimit}, ` +
+                `Current balance: ${currentBalance}, Invoice: ${invoiceAmount}, ` +
+                `Projected: ${projectedBalance}`
+        );
     }
 }

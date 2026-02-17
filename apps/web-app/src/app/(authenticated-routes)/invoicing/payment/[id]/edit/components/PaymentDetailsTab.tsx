@@ -189,6 +189,8 @@ export default function PaymentDetailsTab({
                 return 'Bank Transfer';
             case PaymentTypeEnum.OTHER:
                 return 'Other';
+            case PaymentTypeEnum.CUSTOMER_CREDIT:
+                return 'Customer Credit';
             default:
                 return type;
         }
@@ -283,7 +285,7 @@ export default function PaymentDetailsTab({
                             </div>
                             <h3 className="text-base font-bold text-blue-600">Payment Details</h3>
                         </div>
-                        {!isReadOnly && (
+                        {!isReadOnly && !formData.customerCreditPayment && (
                             <button
                                 type="button"
                                 onClick={() => setShowAddModal(true)}
@@ -343,7 +345,7 @@ export default function PaymentDetailsTab({
                                             <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[140px] min-w-[140px]">
                                                 Credit Date
                                             </th>
-                                            {!isReadOnly && (
+                                            {!isReadOnly && !formData.customerCreditPayment && (
                                                 <th className="px-4 py-4 text-left text-gray-700 font-semibold text-xs uppercase tracking-wider w-[120px]">
                                                     Actions
                                                 </th>
@@ -367,7 +369,24 @@ export default function PaymentDetailsTab({
                                                     {getPaymentTypeLabel(detail.paymentType)}
                                                 </td>
                                                 <td className="px-4 py-5 text-sm font-medium text-gray-900">
-                                                    ₱{detail.amount.toFixed(2)}
+                                                    {formData.customerCreditPayment && !isReadOnly ? (
+                                                        <NumberInput
+                                                            value={detail.amount}
+                                                            onChange={(value) => {
+                                                                const updatedDetails = [...(formData.paymentDetails || [])];
+                                                                updatedDetails[index] = { ...detail, amount: value };
+                                                                const newPaymentAmount = updatedDetails.reduce((sum, d) => sum + d.amount, 0);
+                                                                onFormDataChange({
+                                                                    paymentDetails: updatedDetails,
+                                                                    paymentAmount: newPaymentAmount,
+                                                                });
+                                                            }}
+                                                            placeholder="Enter amount"
+                                                            className="w-28 rounded-lg border-2 border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        />
+                                                    ) : (
+                                                        `₱${detail.amount.toFixed(2)}`
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-5 text-sm text-gray-600">
                                                     {detail.paymentType === PaymentTypeEnum.CHEQUE
@@ -388,7 +407,7 @@ export default function PaymentDetailsTab({
                                                 <td className="px-4 py-5 text-sm text-gray-600 whitespace-nowrap">
                                                     {detail.paymentCreditDate}
                                                 </td>
-                                                {!isReadOnly && (
+                                                {!isReadOnly && !formData.customerCreditPayment && (
                                                     <td className="px-4 py-5">
                                                         <div className="flex gap-2">
                                                             <button

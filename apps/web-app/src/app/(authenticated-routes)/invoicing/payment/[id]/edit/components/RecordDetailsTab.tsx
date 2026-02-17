@@ -6,6 +6,7 @@ import {
     ContractDto,
     CustomerDto,
     PaymentDto,
+    PaymentTypeEnum,
     useSessionStore,
 } from '@data-access/index';
 import { useState } from 'react';
@@ -21,6 +22,8 @@ interface RecordDetailsTabProps {
     isAdminUser: boolean;
     isReadOnly?: boolean;
     onReceiptNumberError?: (error: string | null) => void;
+    onCustomerSelected?: (customer: CustomerDto) => void;
+    customerCreditBalance?: number;
 }
 
 export default function RecordDetailsTab({
@@ -30,6 +33,8 @@ export default function RecordDetailsTab({
     isAdminUser,
     isReadOnly = false,
     onReceiptNumberError,
+    onCustomerSelected,
+    customerCreditBalance,
 }: RecordDetailsTabProps) {
     // State management for modals
     const [showCustomerModal, setShowCustomerModal] = useState(false);
@@ -45,10 +50,15 @@ export default function RecordDetailsTab({
     // Handle customer selection
     const handleCustomerSelect = async (customer: CustomerDto) => {
         try {
+            // Notify parent of customer selection (for credit balance tracking)
+            onCustomerSelected?.(customer);
+
             // Update form data with customer info
             onFormDataChange({
                 customerId: customer.customerId,
                 customerName: customer.customerName,
+                areaId: customer.areaId || '',
+                areaName: customer.areaName || '',
             });
 
             // Clear contract selection when customer changes
@@ -193,6 +203,8 @@ export default function RecordDetailsTab({
                                             onFormDataChange({
                                                 customerId: '',
                                                 customerName: '',
+                                                areaId: '',
+                                                areaName: '',
                                                 receiptNo: '', // Clear receipt number when customer is cleared
                                             });
                                             // Clear receipt number error
@@ -205,6 +217,22 @@ export default function RecordDetailsTab({
                                     </button>
                                 )}
                             </div>
+                        </div>
+
+                        {/* Payment Date */}
+                        <div className="group">
+                            <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
+                                <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                                Area Name
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.areaName || ''}
+                                readOnly
+                                disabled
+                                className="w-full rounded-xl border-2 border-gray-200 bg-gray-50 px-4 py-3 text-sm font-medium text-gray-500 shadow-sm cursor-not-allowed"
+                                placeholder="Auto-populated from customer"
+                            />
                         </div>
 
                         {/* Payment Date */}
@@ -315,19 +343,128 @@ export default function RecordDetailsTab({
                         <div className="col-span-1 md:col-span-2">
                             <label
                                 className={`flex items-center gap-2 text-sm font-bold text-gray-700 ${
-                                    isReadOnly ? 'cursor-default' : 'cursor-pointer'
+                                    isReadOnly || formData.customerCreditPayment ? 'cursor-default' : 'cursor-pointer'
                                 }`}
                             >
                                 <input
                                     type="checkbox"
                                     checked={formData.contractPayment || false}
-                                    onChange={(e) => onFormDataChange({ contractPayment: e.target.checked })}
-                                    disabled={isReadOnly}
-                                    className={`w-4 h-4 ${isReadOnly ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            // Turn off customerCreditPayment when enabling contractPayment
+                                            onFormDataChange({
+                                                contractPayment: true,
+                                                customerCreditPayment: false,
+                                                paymentDetails: [],
+                                                paymentInvoiceDetails: [],
+                                            });
+                                        } else {
+                                            onFormDataChange({
+                                                contractPayment: false,
+                                                contractId: '',
+                                                contractName: '',
+                                                contractNo: '',
+                                            });
+                                        }
+                                    }}
+                                    disabled={isReadOnly || formData.customerCreditPayment}
+                                    className={`w-4 h-4 ${
+                                        isReadOnly || formData.customerCreditPayment
+                                            ? 'cursor-not-allowed'
+                                            : 'cursor-pointer'
+                                    }`}
                                 />
                                 Contract Payment
                             </label>
                         </div>
+
+                        {/* Customer Credit Payment Checkbox */}
+                        <div className="col-span-1 md:col-span-2">
+                            <label
+                                className={`flex items-center gap-2 text-sm font-bold text-gray-700 ${
+                                    isReadOnly || !formData.customerId || formData.contractPayment
+                                        ? 'cursor-default'
+                                        : 'cursor-pointer'
+                                }`}
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={formData.customerCreditPayment || false}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            const today = new Date().toISOString().split('T')[0];
+                                            // Turn off contractPayment, clear contract fields, auto-create CUSTOMER_CREDIT detail
+                                            onFormDataChange({
+                                                customerCreditPayment: true,
+                                                contractPayment: false,
+                                                contractId: '',
+                                                contractName: '',
+                                                contractNo: '',
+                                                paymentDetails: [
+                                                    {
+                                                        paymentType: PaymentTypeEnum.CUSTOMER_CREDIT,
+                                                        customerCreditPayment: true,
+                                                        amount: 0,
+                                                        chequeNo: '',
+                                                        chequeDate: '',
+                                                        bankName: '',
+                                                        bankAccountNo: '',
+                                                        paymentCreditDate: today,
+                                                    },
+                                                ],
+                                                paymentInvoiceDetails: [],
+                                            });
+                                        } else {
+                                            // Clear credit payment and reset details
+                                            onFormDataChange({
+                                                customerCreditPayment: false,
+                                                paymentDetails: [],
+                                                paymentInvoiceDetails: [],
+                                            });
+                                        }
+                                    }}
+                                    disabled={isReadOnly || !formData.customerId || formData.contractPayment}
+                                    className={`w-4 h-4 ${
+                                        isReadOnly || !formData.customerId || formData.contractPayment
+                                            ? 'cursor-not-allowed'
+                                            : 'cursor-pointer'
+                                    }`}
+                                />
+                                Customer Credit Payment
+                            </label>
+                            {!formData.customerId && !isReadOnly && (
+                                <p className="ml-6 mt-1 text-xs text-gray-400">Select a customer first</p>
+                            )}
+                        </div>
+
+                        {/* Customer Credit Balance Display */}
+                        {formData.customerCreditPayment && (
+                            <div className="col-span-1 md:col-span-2">
+                                <div className="flex items-center gap-3 rounded-xl border-2 border-green-200 bg-green-50 p-4">
+                                    <svg
+                                        className="h-5 w-5 text-green-600 flex-shrink-0"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                            strokeWidth={2}
+                                            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    <div>
+                                        <p className="text-sm font-bold text-green-700 m-0">
+                                            Available Customer Credit: ₱{(customerCreditBalance ?? 0).toFixed(2)}
+                                        </p>
+                                        <p className="text-xs text-green-600 mt-1 m-0">
+                                            Payment amount must not exceed the available credit balance.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Contract Selection (only if contract payment is enabled) */}
                         {formData.contractPayment && (

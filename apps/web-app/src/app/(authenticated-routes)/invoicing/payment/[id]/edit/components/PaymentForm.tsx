@@ -1,6 +1,14 @@
 'use client';
 
-import { ContractApi, ContractTypeEnum, PaymentDto, StatusEnum, useSessionStore } from '@data-access/index';
+import {
+    ContractApi,
+    ContractTypeEnum,
+    CustomerDto,
+    PaymentDto,
+    PaymentTypeEnum,
+    StatusEnum,
+    useSessionStore,
+} from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useEffect, useState } from 'react';
 import PaymentDetailsTab from './PaymentDetailsTab';
@@ -42,10 +50,13 @@ export default function PaymentForm({
         paymentAmount: 0,
         customerId: '',
         customerName: '',
+        areaId: '',
+        areaName: '',
         receiptNo: '',
         activityLogs: [],
         forApprovalVersion: {},
         contractPayment: false,
+        customerCreditPayment: false,
         status: isCreateMode ? StatusEnum.NEW_RECORD : StatusEnum.ACTIVE,
         contractId: '',
         contractName: '',
@@ -64,6 +75,9 @@ export default function PaymentForm({
 
     // State for contract type (for validation)
     const [contractType, setContractType] = useState<ContractTypeEnum | null>(null);
+
+    // State for selected customer (for credit balance display)
+    const [selectedCustomer, setSelectedCustomer] = useState<CustomerDto | null>(null);
 
     // Fetch contract type when contractId is available
     useEffect(() => {
@@ -100,10 +114,13 @@ export default function PaymentForm({
                 paymentAmount: 0,
                 customerId: '',
                 customerName: '',
+                areaId: '',
+                areaName: '',
                 receiptNo: '',
                 activityLogs: [],
                 forApprovalVersion: {},
                 contractPayment: false,
+                customerCreditPayment: false,
                 status: StatusEnum.NEW_RECORD,
                 contractId: '',
                 contractName: '',
@@ -144,6 +161,39 @@ export default function PaymentForm({
         // Rule 4: Payment amount must be greater than zero
         if (!payment.paymentAmount || payment.paymentAmount <= 0) {
             return 'Payment amount must be greater than zero.';
+        }
+
+        // Rule 4a: Customer credit payment validations
+        if (payment.customerCreditPayment) {
+            // Must have exactly 1 invoice detail
+            if (!payment.paymentInvoiceDetails || payment.paymentInvoiceDetails.length !== 1) {
+                return 'Customer credit payment must be applied to exactly one invoice.';
+            }
+
+            // All payment details must be CUSTOMER_CREDIT type
+            const hasNonCreditType = payment.paymentDetails?.some(
+                (detail) => detail.paymentType !== PaymentTypeEnum.CUSTOMER_CREDIT
+            );
+            if (hasNonCreditType) {
+                return 'Customer credit payment can only have CUSTOMER_CREDIT payment type.';
+            }
+
+            // No banking details allowed
+            const hasBankingDetails = payment.paymentDetails?.some(
+                (detail) => detail.chequeNo || detail.bankName || detail.bankAccountNo || detail.chequeDate
+            );
+            if (hasBankingDetails) {
+                return 'Customer credit payment cannot have banking details.';
+            }
+
+            // Amount must not exceed available credit
+            if (selectedCustomer && selectedCustomer.customerCredit !== undefined) {
+                if (payment.paymentAmount > selectedCustomer.customerCredit) {
+                    return `Payment amount (₱${payment.paymentAmount.toFixed(
+                        2
+                    )}) exceeds available customer credit (₱${selectedCustomer.customerCredit.toFixed(2)}).`;
+                }
+            }
         }
 
         // Rule 5: Payment amount must equal sum of payment details amounts
@@ -711,18 +761,54 @@ export default function PaymentForm({
                                     isCreateMode={isCreateMode}
                                     isAdminUser={isAdminUser}
                                     isReadOnly={!isCreateMode && selectedPayment?.status !== StatusEnum.ACTIVE}
+                                    onCustomerSelected={(customer) => setSelectedCustomer(customer)}
+                                    customerCreditBalance={selectedCustomer?.customerCredit}
                                 />
+
+                                {/* Info banner for existing credit payments */}
+                                {!isCreateMode &&
+                                    selectedPayment?.customerCreditPayment &&
+                                    selectedPayment?.status === StatusEnum.ACTIVE && (
+                                        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+                                            <div className="flex items-start gap-3">
+                                                <svg
+                                                    className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        strokeWidth={2}
+                                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                    />
+                                                </svg>
+                                                <p className="text-sm text-blue-700 m-0">
+                                                    Customer credit payments cannot be edited. To make changes, delete
+                                                    this payment and create a new one.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                 <PaymentDetailsTab
                                     formData={formData}
                                     onFormDataChange={handleFormDataChange}
                                     isCreateMode={isCreateMode}
-                                    isReadOnly={!isCreateMode && selectedPayment?.status !== StatusEnum.ACTIVE}
+                                    isReadOnly={
+                                        (!isCreateMode && selectedPayment?.status !== StatusEnum.ACTIVE) ||
+                                        (!isCreateMode && !!selectedPayment?.customerCreditPayment)
+                                    }
                                 />
                                 <PaymentInvoiceDetailsTab
                                     formData={formData}
                                     onFormDataChange={handleFormDataChange}
                                     isCreateMode={isCreateMode}
-                                    isReadOnly={!isCreateMode && selectedPayment?.status !== StatusEnum.ACTIVE}
+                                    isReadOnly={
+                                        (!isCreateMode && selectedPayment?.status !== StatusEnum.ACTIVE) ||
+                                        (!isCreateMode && !!selectedPayment?.customerCreditPayment)
+                                    }
                                 />
 
                                 {/* Action Buttons for Details Tab */}

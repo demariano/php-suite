@@ -16,7 +16,6 @@ export enum ReportTypeEnum {
     INVOICE_PAYMENT_STATUS = 'INVOICE_PAYMENT_STATUS',
     INVOICE_PER_CONTRACT = 'INVOICE_PER_CONTRACT',
     PAYMENTS_RECEIVED = 'PAYMENTS_RECEIVED',
-    OUTSTANDING_PAYMENTS = 'OUTSTANDING_PAYMENTS',
     RGS_PER_DATE = 'RGS_PER_DATE',
     RGS_PER_DATE_PER_CUSTOMER = 'RGS_PER_DATE_PER_CUSTOMER',
     STOCK_LIST = 'STOCK_LIST',
@@ -52,6 +51,26 @@ export interface ReportFilterParams {
     }>;
     activeStatus?: boolean;
     inactiveStatus?: boolean;
+    receiptNos?: string[];
+    invoiceDocNos?: string[];
+    rgsDocNos?: string[];
+    contractPayment?: boolean;
+    customerCreditPayment?: boolean;
+    paymentRecordStatuses?: string[];
+    customerClassificationIds?: string[];
+    customerTypeIds?: string[];
+    townNames?: string[];
+    productDealIds?: string[];
+    customerStatuses?: string[];
+    stockTypeIds?: string[];
+    productUnitIds?: string[];
+    lotNos?: string[];
+    stockStatuses?: string[];
+    productCategoryIds?: string[];
+    productClassIds?: string[];
+    productStatuses?: string[];
+    accountType?: string;
+    subAccounts?: string[];
 }
 
 export interface ReportDto {

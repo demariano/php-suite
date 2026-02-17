@@ -12,4 +12,6 @@ export abstract class OverPaymentDatabaseServiceAbstract {
     abstract updateRecord(paymentData: OverPaymentDto): Promise<OverPaymentDto>;
 
     abstract deleteRecord(paymentDto: OverPaymentDto): Promise<OverPaymentDto>;
+
+    abstract deleteAllRecords(): Promise<void>;
 }

@@ -14,7 +14,6 @@ import { GetInvoicePaymentStatusReportHandler } from './queries/get.invoice.paym
 import { GetInvoicesPerContractHandler } from './queries/get.invoices.per.contract/get.invoices.per.contract.handler';
 import { GetInvoicesPerCustomerHandler } from './queries/get.invoices.per.customer/get.invoices.per.customer.handler';
 import { GetInvoicesPerDateHandler } from './queries/get.invoices.per.date/get.invoices.per.date.handler';
-import { GetOutstandingPaymentsReportHandler } from './queries/get.outstanding.payments/get.outstanding.payments.handler';
 import { GetPaymentsReceivedReportHandler } from './queries/get.payments.received/get.payments.received.handler';
 import { GetRgsPerCustomerHandler } from './queries/get.rgs.per.customer/get.rgs.per.customer.handler';
 import { GetRgsPerDateHandler } from './queries/get.rgs.per.date/get.rgs.per.date.handler';
@@ -47,7 +46,6 @@ import { ReportsController } from './reports.controller';
         GetInvoicePaymentStatusReportHandler,
         GetInvoicesPerContractHandler,
         GetPaymentsReceivedReportHandler,
-        GetOutstandingPaymentsReportHandler,
         GetRgsPerDateHandler,
         GetRgsPerCustomerHandler,
     ],

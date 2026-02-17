@@ -69,4 +69,13 @@ export abstract class PaymentDatabaseServiceAbstractClass {
     abstract getPaymentsByDateRange(startDate: string, endDate: string): Promise<PaymentDto[]>;
 
     abstract getPaymentsByDateRangeDetailed(startDate: string, endDate: string): Promise<PaymentDto[]>;
+
+    abstract getPaymentsByDateRangeAllStatuses(startDate: string, endDate: string): Promise<PaymentDto[]>;
+
+    abstract findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<PaymentDto>>;
 }

@@ -35,6 +35,8 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             paymentAmount: paymentDto.paymentAmount,
             customerId: paymentDto.customerId,
             customerName: paymentDto.customerName,
+            areaId: paymentDto.areaId,
+            areaName: paymentDto.areaName,
             receiptNo: paymentDto.receiptNo,
             activityLogs: paymentDto.activityLogs,
             forApprovalVersion: paymentDto.forApprovalVersion,
@@ -58,6 +60,8 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             GSI5SK: paymentDto.paymentDate,
             GSI6PK: `PAYMENT#${paymentDto.contractId}`,
             GSI6SK: paymentDto.paymentDate,
+            GSI7PK: `PAYMENT#${paymentDto.areaId}`,
+            GSI7SK: paymentDto.paymentDate,
         };
 
         const paymentRecord: PaymentDataType = await this.paymentTable.create(paymentData);
@@ -339,6 +343,8 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         dto.paymentAmount = record.paymentAmount ? record.paymentAmount : 0;
         dto.customerId = record.customerId ? record.customerId : '';
         dto.customerName = record.customerName ? record.customerName : '';
+        dto.areaId = record.areaId ? record.areaId : '';
+        dto.areaName = record.areaName ? record.areaName : '';
         dto.receiptNo = record.receiptNo ? record.receiptNo : '';
         dto.activityLogs = record.activityLogs ? record.activityLogs : [];
         dto.forApprovalVersion = record.forApprovalVersion ? record.forApprovalVersion : {};
@@ -374,6 +380,8 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             paymentAmount: dto.paymentAmount,
             customerId: dto.customerId,
             customerName: dto.customerName,
+            areaId: dto.areaId,
+            areaName: dto.areaName,
             receiptNo: dto.receiptNo,
             activityLogs: dto.activityLogs,
             forApprovalVersion: dto.forApprovalVersion,
@@ -397,6 +405,8 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
             GSI5SK: dto.paymentDate,
             GSI6PK: `PAYMENT#${dto.contractId}`,
             GSI6SK: dto.paymentDate,
+            GSI7PK: `PAYMENT#${dto.areaId}`,
+            GSI7SK: dto.paymentDate,
             changeReason: dto.changeReason,
             approverMessage: dto.approverMessage,
         };
@@ -588,6 +598,8 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
                         'status',
                         'customerId',
                         'customerName',
+                        'areaId',
+                        'areaName',
                         'receiptNo',
                         'paymentDetails',
                         'contractPayment',
@@ -608,5 +620,101 @@ export class PaymentDatabaseService implements PaymentDatabaseServiceAbstractCla
         } while (cursorPointer);
 
         return allPayments;
+    }
+
+    /**
+     * Get payments by date range with full details for report generation (all statuses)
+     * Unlike getPaymentsByDateRangeDetailed, this does NOT filter by ACTIVE status,
+     * allowing the caller to apply status filtering in-memory.
+     */
+    async getPaymentsByDateRangeAllStatuses(startDate: string, endDate: string): Promise<PaymentDto[]> {
+        const allPayments: PaymentDto[] = [];
+        let cursorPointer: string | undefined = undefined;
+        const limit = 1000;
+
+        do {
+            const dynamoDbOption = cursorPointer
+                ? createDynamoDbOptionWithPKSKIndex(limit, 'GSI5', 'next', cursorPointer)
+                : {
+                      limit: limit + 1,
+                      follow: true,
+                      index: 'GSI5',
+                  };
+
+            const records = await this.paymentTable.find(
+                {
+                    GSI5PK: `PAYMENT`,
+                    GSI5SK: {
+                        between: [startDate, endDate],
+                    },
+                },
+                {
+                    ...dynamoDbOption,
+                    fields: [
+                        'paymentId',
+                        'paymentDate',
+                        'paymentAmount',
+                        'status',
+                        'customerId',
+                        'customerName',
+                        'areaId',
+                        'areaName',
+                        'receiptNo',
+                        'paymentDetails',
+                        'contractPayment',
+                        'customerCreditPayment',
+                        'contractId',
+                        'contractName',
+                        'contractNo',
+                        'chequeClearStatus',
+                    ],
+                }
+            );
+
+            const dtos = await this.convertToDtoList(records);
+            allPayments.push(...dtos);
+            cursorPointer = records.next ? JSON.stringify(records.next) : undefined;
+        } while (cursorPointer);
+
+        return allPayments;
+    }
+
+    /**
+     * Find payments by areaId with pagination (for area name sync)
+     * Uses GSI7: PAYMENT#${areaId}
+     */
+    async findRecordsByAreaIdPagination(
+        limit: number,
+        areaId: string,
+        direction: string,
+        cursorPointer: string
+    ): Promise<PageDto<PaymentDto>> {
+        limit = Number(limit);
+        const dynamoDbOption = createDynamoDbOptionWithPKSKIndex(limit, 'GSI7', direction, cursorPointer);
+
+        const records = await this.paymentTable.find(
+            {
+                GSI7PK: `PAYMENT#${areaId}`,
+            },
+            dynamoDbOption
+        );
+
+        const pageRecordCursorPointers = pageRecordHandler(
+            records,
+            limit,
+            direction,
+            'GSI7PK',
+            'GSI7SK',
+            'PK',
+            'SK',
+            JSON.stringify(records.next),
+            JSON.stringify(records.prev)
+        );
+
+        return new PageDto(
+            await this.convertToDtoList(records),
+            pageRecordCursorPointers.nextCursorPointer,
+            pageRecordCursorPointers.prevCursorPointer
+        );
     }
 }

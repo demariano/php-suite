@@ -1,5 +1,13 @@
 import { ConfigurationDatabaseServiceAbstract } from '@configuration-database-service';
-import { ResponseDto, StatusEnum, ValidateInvoiceResponseDto, ValidationErrors, ValidationType } from '@dto';
+import { CustomerDatabaseServiceAbstract } from '@customer-database-service';
+import {
+    CreditLimitError,
+    ResponseDto,
+    StatusEnum,
+    ValidateInvoiceResponseDto,
+    ValidationErrors,
+    ValidationType,
+} from '@dto';
 import { ContractDatabaseServiceAbstract, InvoiceDatabaseServiceAbstract } from '@invoicing-database-service';
 import { Inject, Logger } from '@nestjs/common';
 import { CommandHandler, ICommandHandler } from '@nestjs/cqrs';
@@ -17,7 +25,9 @@ export class ValidateInvoiceHandler implements ICommandHandler<ValidateInvoiceCo
         @Inject('ContractDatabaseService')
         private readonly contractDatabaseService: ContractDatabaseServiceAbstract,
         @Inject('ConfigurationDatabaseService')
-        private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract
+        private readonly configurationDatabaseService: ConfigurationDatabaseServiceAbstract,
+        @Inject('CustomerDatabaseService')
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
     ) {}
 
     async execute(command: ValidateInvoiceCommand): Promise<ResponseDto<ValidateInvoiceResponseDto>> {
@@ -44,6 +54,19 @@ export class ValidateInvoiceHandler implements ICommandHandler<ValidateInvoiceCo
                 );
                 if (contractError) {
                     errors.contractAmountExceeded = contractError;
+                    isValid = false;
+                }
+            }
+
+            // 2.5. Validate customer credit limit (if not contract sale and not DRAFT)
+            if (invoice.customerId && !invoice.contractSales && invoice.status !== StatusEnum.DRAFT) {
+                const creditLimitError = await this.validateCustomerCreditLimit(
+                    invoice.customerId,
+                    invoice.finalAmount,
+                    existingInvoiceId
+                );
+                if (creditLimitError) {
+                    errors.creditLimitExceeded = creditLimitError;
                     isValid = false;
                 }
             }
@@ -194,6 +217,61 @@ export class ValidateInvoiceHandler implements ICommandHandler<ValidateInvoiceCo
         } catch (error) {
             this.logger.error('Error validating configuration:', error);
             return 'Failed to validate configuration';
+        }
+    }
+
+    /**
+     * Validates customer credit limit (non-throwing, returns error object or null)
+     */
+    private async validateCustomerCreditLimit(
+        customerId: string,
+        invoiceAmount: number,
+        existingInvoiceId?: string
+    ): Promise<CreditLimitError | null> {
+        try {
+            const customer = await this.customerDatabaseService.findRecordById(customerId);
+
+            if (!customer || !customer.creditLimit) {
+                return null; // No credit limit set, skip validation
+            }
+
+            const currentBalance = customer.balance || 0;
+            let projectedBalance = currentBalance + invoiceAmount;
+
+            // If updating an existing invoice, subtract its current amount
+            if (existingInvoiceId) {
+                const existingInvoice = await this.invoiceDatabaseService.findRecordById(existingInvoiceId);
+                if (existingInvoice) {
+                    projectedBalance -= existingInvoice.finalAmount || 0;
+                }
+            }
+
+            if (projectedBalance > customer.creditLimit) {
+                return {
+                    creditLimit: customer.creditLimit,
+                    currentBalance: currentBalance,
+                    invoiceAmount: invoiceAmount,
+                    projectedBalance: projectedBalance,
+                    message: `Invoice amount (${invoiceAmount.toFixed(
+                        2
+                    )}) would exceed customer credit limit. Credit limit: ${customer.creditLimit.toFixed(
+                        2
+                    )}, Current balance: ${currentBalance.toFixed(2)}, Projected balance: ${projectedBalance.toFixed(
+                        2
+                    )}`,
+                };
+            }
+
+            return null; // Validation passed
+        } catch (error) {
+            this.logger.error('Error validating customer credit limit:', error);
+            return {
+                creditLimit: 0,
+                currentBalance: 0,
+                invoiceAmount: invoiceAmount,
+                projectedBalance: 0,
+                message: 'Failed to validate customer credit limit',
+            };
         }
     }
 }
