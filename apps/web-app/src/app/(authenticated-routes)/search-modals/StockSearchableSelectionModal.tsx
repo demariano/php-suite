@@ -266,7 +266,7 @@ export default function StockSearchableSelectionModal({
 
                 {/* Search Fields */}
                 <div className="px-6 pb-4">
-                    <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="grid grid-cols-1 gap-3 mb-3 sm:grid-cols-2">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1.5">Lot No</label>
                             <input

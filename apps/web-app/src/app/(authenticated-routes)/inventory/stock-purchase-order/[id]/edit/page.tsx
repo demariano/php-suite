@@ -535,7 +535,7 @@ export default function EditStockPurchaseOrderPage() {
                 show={showDeleteConfirm}
                 record={purchaseOrderData}
                 recordDisplayName={purchaseOrderData?.docNo}
-                onConfirm={handleDeleteConfirm}
+                onConfirm={(reason) => handleDeleteConfirm(purchaseOrderData, reason)}
                 onCancel={handleDeleteCancel}
             />
         </div>

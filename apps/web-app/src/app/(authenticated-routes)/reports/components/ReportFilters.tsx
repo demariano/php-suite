@@ -2775,8 +2775,7 @@ const ReportFilters = ({
                 {!hasDateRange &&
                     filterType !== 'list-customer' &&
                     filterType !== 'list-stock' &&
-                    filterType !== 'list-product' &&
-                    filterType !== 'date-range-voucher' && (
+                    filterType !== 'list-product' && (
                         <div className="ml-auto self-end">
                             <button
                                 onClick={() => {

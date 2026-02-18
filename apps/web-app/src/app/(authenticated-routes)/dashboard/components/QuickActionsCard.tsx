@@ -11,12 +11,12 @@ export default function QuickActionsCard() {
 
     return (
         <Card className="px-6 py-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <Typography variant="h5">Quick Actions</Typography>
                     <p className="text-sm text-secondaryNeutral-400">Common tasks</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <button className={primaryBtnClass} onClick={() => router.push('/customers/customer/create')}>
                         <svg
                             width={14}

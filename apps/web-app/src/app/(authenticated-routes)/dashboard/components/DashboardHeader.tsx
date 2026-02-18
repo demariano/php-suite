@@ -20,16 +20,16 @@ export default function DashboardHeader({ dateRange, onDateRangeChange }: Dashbo
             : 'Select dates';
 
     return (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
                 <Typography variant="h2">Dashboard</Typography>
                 <p className="text-sm text-secondaryNeutral-400 mt-1">
                     Customer, Invoice &amp; Payment Management System
                 </p>
             </div>
-            <div className="flex items-center gap-3 relative">
+            <div className="flex flex-wrap items-center gap-3 relative">
                 <div className="flex items-center gap-2 text-sm text-secondaryNeutral-600">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                             strokeLinecap="round"
                             strokeLinejoin="round"

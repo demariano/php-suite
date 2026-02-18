@@ -168,8 +168,19 @@ export default function VoucherTable({
                 </div>
             )}
 
+            {/* Mobile Pagination */}
+            <div className="mt-4 sm:hidden space-y-3 bg-gray-50 border-t border-gray-200 px-4 py-5 rounded-xl">
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
+                <PaginationButtons
+                    hasPrevious={hasPrevious}
+                    hasNext={hasNext}
+                    onPrevious={onPrevious}
+                    onNext={onNext}
+                />
+            </div>
+
             {/* Pagination */}
-            <div className="flex items-center justify-between">
+            <div className="hidden sm:flex items-center justify-between">
                 <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                 <PaginationButtons
                     hasPrevious={hasPrevious}

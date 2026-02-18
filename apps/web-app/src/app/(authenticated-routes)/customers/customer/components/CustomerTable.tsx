@@ -117,7 +117,7 @@ export default function CustomerTable({
             )}
 
             {/* Pagination */}
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">
+            <div className="mt-6 hidden sm:flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between bg-white border border-gray-200 rounded-xl px-4 py-4 sm:px-6 shadow-sm">
                 <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                 <PaginationButtons
                     onPrevious={onPrevious}

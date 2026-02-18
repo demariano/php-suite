@@ -163,7 +163,18 @@ export function RawMaterialUnitTable({
                 )}
             </div>
 
-            <div className="mt-6 flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
+            {/* Mobile Pagination */}
+            <div className="mt-4 sm:hidden space-y-3 bg-gray-50 border-t border-gray-200 px-4 py-5 rounded-xl">
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
+                <PaginationButtons
+                    onPrevious={onPrevPage}
+                    onNext={onNextPage}
+                    hasPrevious={!!prevCursor}
+                    hasNext={!!nextCursor}
+                />
+            </div>
+
+            <div className="mt-6 hidden sm:flex flex-col gap-3 rounded-xl border border-gray-200 bg-white px-4 py-4 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:px-6">
                 <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                 <PaginationButtons
                     onPrevious={onPrevPage}

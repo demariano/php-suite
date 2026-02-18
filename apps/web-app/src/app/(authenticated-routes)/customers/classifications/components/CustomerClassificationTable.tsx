@@ -157,8 +157,19 @@ export default function CustomerClassificationTable({
                 )}
             </div>
 
+            {/* Mobile Pagination */}
+            <div className="mt-4 sm:hidden space-y-3 bg-gray-50 border-t border-gray-200 px-4 py-5 rounded-xl">
+                <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
+                <PaginationButtons
+                    onPrevious={onPrevious}
+                    onNext={onNext}
+                    hasPrevious={!!prevCursor}
+                    hasNext={!!nextCursor}
+                />
+            </div>
+
             {/* Pagination */}
-            <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-6 hidden sm:flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <PageSizeSelector value={pageSize} onChange={onPageSizeChange} />
                 <PaginationButtons
                     onPrevious={onPrevious}

@@ -236,7 +236,7 @@ export default function SupplierForm({
                             <h3 className="text-base font-bold text-blue-600">Supplier Information</h3>
                         </div>
                         {showApprovalUI ? (
-                            <div className="grid grid-cols-1 gap-6">
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 {renderFieldWithInlineDiff(
                                     'Supplier Name',
                                     'supplierName',
@@ -269,7 +269,7 @@ export default function SupplierForm({
                                 )}
                             </div>
                         ) : (
-                            <div className="grid grid-cols-1 gap-6">
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                                 <div className="group">
                                     <label className="mb-2 flex items-center gap-2 text-sm font-bold text-gray-700">
                                         <span className="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
