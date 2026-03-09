@@ -5,6 +5,7 @@ import { DynamoDbLibModule } from '@dynamo-db-lib';
 import {
     CollectionReceiptRangeDatabaseService,
     InvoicingDatabaseServiceModule,
+    PaymentContractDatabaseService,
     PaymentDatabaseService,
     PaymentInvoiceDatabaseService,
 } from '@invoicing-database-service';
@@ -58,6 +59,10 @@ import { GetRecordsPaginationHandler } from './queries/get.records.pagination/ge
         {
             provide: 'PaymentInvoiceDatabaseService',
             useClass: PaymentInvoiceDatabaseService,
+        },
+        {
+            provide: 'PaymentContractDatabaseService',
+            useClass: PaymentContractDatabaseService,
         },
         CreatePaymentHandler,
         GetPaymentByIdHandler,

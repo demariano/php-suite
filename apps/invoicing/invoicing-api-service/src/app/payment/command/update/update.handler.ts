@@ -12,6 +12,7 @@ import {
 import { reduceArrayContents } from '@dynamo-db-lib';
 import { detectFieldChanges, formatFieldChanges } from '@field-change-utils-lib';
 import {
+    PaymentContractDatabaseServiceAbstractClass,
     PaymentDatabaseServiceAbstractClass,
     PaymentInvoiceDatabaseServiceAbstractClass,
 } from '@invoicing-database-service';
@@ -36,7 +37,10 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
         private readonly messageQueueService: MessageQueueServiceAbstract,
         private readonly configService: ConfigService,
         @Inject('PaymentInvoiceDatabaseService')
-        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
+
+        @Inject('PaymentContractDatabaseService')
+        private readonly paymentContractDatabaseService: PaymentContractDatabaseServiceAbstractClass
     ) {}
 
     async execute(command: UpdatePaymentCommand): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -122,11 +126,40 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
                 }
 
                 await this.sendInvoicePaymentEvent(paymentInvoicePayloads);
-            }
 
-            // Send contract payment update event for admin updates on contract payments
-            if (hasApprovalPermission && updatedRecord.contractPayment && updatedRecord.contractId) {
-                await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_UPDATED, updatedRecord);
+                // Delete old payment-contract records and recreate from updated data
+                const existingPaymentContracts = await this.paymentContractDatabaseService.findRecordByPaymentId(
+                    updatedRecord.paymentId
+                );
+
+                // Send PAYMENT_DELETED events for old contracts
+                for (const pc of existingPaymentContracts) {
+                    await this.paymentContractDatabaseService.deleteRecord(pc);
+                    await this.sendSingleContractPaymentEvent(
+                        ContractPaymentEventEnum.PAYMENT_DELETED,
+                        pc.contractId,
+                        pc.amountApplied,
+                        updatedRecord
+                    );
+                }
+
+                // Recreate payment-contract records and send PAYMENT_ADDED events
+                for (const pcDto of command.paymentDto.paymentContractDetails || []) {
+                    await this.paymentContractDatabaseService.createRecord({
+                        paymentId: updatedRecord.paymentId,
+                        contractId: pcDto.contractId,
+                        contractNo: pcDto.contractNo,
+                        contractName: pcDto.contractName,
+                        amountApplied: pcDto.amountApplied,
+                        dateCreated: new Date().toISOString(),
+                    });
+                    await this.sendSingleContractPaymentEvent(
+                        ContractPaymentEventEnum.PAYMENT_ADDED,
+                        pcDto.contractId,
+                        pcDto.amountApplied,
+                        updatedRecord
+                    );
+                }
             }
 
             this.logger.log(`Payment updated successfully: ${updatedRecord.paymentId}`);
@@ -267,6 +300,7 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
                 chequeClearStatus: command.paymentDto.chequeClearStatus,
                 paymentDetails: command.paymentDto.paymentDetails,
                 paymentInvoiceDetails: command.paymentDto.paymentInvoiceDetails,
+                paymentContractDetails: command.paymentDto.paymentContractDetails,
             };
 
             // Limit activity logs to last 10 entries
@@ -321,14 +355,19 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
     }
 
     /**
-     * Sends contract payment event to SQS queue
+     * Sends a single contract payment event to SQS queue
      */
-    private async sendContractPaymentEvent(eventType: ContractPaymentEventEnum, payment: PaymentDto): Promise<void> {
+    private async sendSingleContractPaymentEvent(
+        eventType: ContractPaymentEventEnum,
+        contractId: string,
+        amountApplied: number,
+        payment: PaymentDto
+    ): Promise<void> {
         const contractPaymentDto: ContractPaymentDto = {
-            contractId: payment.contractId,
+            contractId,
             receiptNo: payment.receiptNo,
             paymentDate: payment.paymentDate,
-            paymentAmount: payment.paymentAmount,
+            paymentAmount: amountApplied,
             contractPayment: payment.contractPayment,
             paymentId: payment.paymentId,
         };
@@ -342,6 +381,6 @@ export class UpdatePaymentHandler implements ICommandHandler<UpdatePaymentComman
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
 
-        this.logger.log(`Sent ${eventType} event for contract ${payment.contractId}, payment ${payment.paymentId}`);
+        this.logger.log(`Sent ${eventType} event for contract ${contractId}, payment ${payment.paymentId}`);
     }
 }

@@ -15,6 +15,7 @@ import {
 import { reduceArrayContents } from '@dynamo-db-lib';
 import {
     CollectionReceiptRangeDatabaseServiceAbstract,
+    PaymentContractDatabaseServiceAbstractClass,
     PaymentDatabaseServiceAbstractClass,
     PaymentInvoiceDatabaseServiceAbstractClass,
 } from '@invoicing-database-service';
@@ -44,7 +45,10 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
         private readonly configService: ConfigService,
 
         @Inject('PaymentInvoiceDatabaseService')
-        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
+
+        @Inject('PaymentContractDatabaseService')
+        private readonly paymentContractDatabaseService: PaymentContractDatabaseServiceAbstractClass
     ) {}
 
     async execute(command: CreatePaymentCommand): Promise<ResponseDto<CreatePaymentDto | ErrorResponseDto>> {
@@ -128,23 +132,35 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
                 }
             }
 
+            //create the paymentcontract records
+            if (command.paymentDto.paymentContractDetails && command.paymentDto.paymentContractDetails.length > 0) {
+                for (const contractDetail of command.paymentDto.paymentContractDetails) {
+                    const paymentContractDto = {
+                        paymentId: createdRecord.paymentId,
+                        contractId: contractDetail.contractId,
+                        contractNo: contractDetail.contractNo,
+                        contractName: contractDetail.contractName,
+                        amountApplied: contractDetail.amountApplied,
+                        dateCreated: new Date().toISOString(),
+                    };
+                    await this.paymentContractDatabaseService.createRecord(paymentContractDto);
+                }
+            }
+
             this.logger.log(`Payment created successfully: ${createdRecord.paymentId}`);
 
             // Attach original invoice details since they are stored in a separate table
             createdRecord.paymentInvoiceDetails = command.paymentDto.paymentInvoiceDetails;
+            createdRecord.paymentContractDetails = command.paymentDto.paymentContractDetails;
 
             // Send invoice payment events for ACTIVE payments
             if (createdRecord.status === StatusEnum.ACTIVE) {
                 await this.sendInvoicePaymentEvents(createdRecord);
             }
 
-            // Send contract payment event for ACTIVE contract payments
-            if (
-                createdRecord.status === StatusEnum.ACTIVE &&
-                createdRecord.contractPayment &&
-                createdRecord.contractId
-            ) {
-                await this.sendContractPaymentEvent(createdRecord);
+            // Send contract payment events for ACTIVE contract payments
+            if (createdRecord.status === StatusEnum.ACTIVE && createdRecord.contractPayment) {
+                await this.sendContractPaymentEvents(createdRecord);
             }
 
             // Mark receipt number as used if receipt number is provided
@@ -249,10 +265,12 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
             command.paymentDto.forApprovalVersion.chequeClearStatus = command.paymentDto.chequeClearStatus;
             command.paymentDto.forApprovalVersion.paymentDetails = command.paymentDto.paymentDetails;
             command.paymentDto.forApprovalVersion.paymentInvoiceDetails = command.paymentDto.paymentInvoiceDetails;
+            command.paymentDto.forApprovalVersion.paymentContractDetails = command.paymentDto.paymentContractDetails;
             command.paymentDto.forApprovalVersion.customerCreditPayment = command.paymentDto.customerCreditPayment;
 
             // Clear main record fields for NEW_RECORD - data is only in forApprovalVersion
             command.paymentDto.paymentInvoiceDetails = [];
+            command.paymentDto.paymentContractDetails = [];
         }
     }
 
@@ -334,27 +352,35 @@ export class CreatePaymentHandler implements ICommandHandler<CreatePaymentComman
     }
 
     /**
-     * Sends contract payment event for contract payments
+     * Sends contract payment events for all contracts in the payment
      */
-    private async sendContractPaymentEvent(payment: PaymentDto): Promise<void> {
-        const contractPaymentDto: ContractPaymentDto = {
-            contractId: payment.contractId,
-            receiptNo: payment.receiptNo,
-            paymentDate: payment.paymentDate,
-            paymentAmount: payment.paymentAmount,
-            contractPayment: payment.contractPayment,
-            paymentId: payment.paymentId,
-        };
+    private async sendContractPaymentEvents(payment: PaymentDto): Promise<void> {
+        if (!payment.paymentContractDetails || payment.paymentContractDetails.length === 0) {
+            return;
+        }
 
         const invoicingEventSQSUrl = this.configService.get<string>('INVOICE_EVENT_SQS');
 
-        const eventPayload = {
-            eventType: ContractPaymentEventEnum.PAYMENT_ADDED,
-            paymentData: contractPaymentDto,
-        };
+        for (const contractDetail of payment.paymentContractDetails) {
+            const contractPaymentDto: ContractPaymentDto = {
+                contractId: contractDetail.contractId,
+                receiptNo: payment.receiptNo,
+                paymentDate: payment.paymentDate,
+                paymentAmount: contractDetail.amountApplied,
+                contractPayment: payment.contractPayment,
+                paymentId: payment.paymentId,
+            };
 
-        await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+            const eventPayload = {
+                eventType: ContractPaymentEventEnum.PAYMENT_ADDED,
+                paymentData: contractPaymentDto,
+            };
 
-        this.logger.log(`Sent PAYMENT_ADDED event for contract ${payment.contractId}, payment ${payment.paymentId}`);
+            await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
+
+            this.logger.log(
+                `Sent PAYMENT_ADDED event for contract ${contractDetail.contractId}, payment ${payment.paymentId}`
+            );
+        }
     }
 }

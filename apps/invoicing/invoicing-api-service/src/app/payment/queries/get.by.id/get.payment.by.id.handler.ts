@@ -1,5 +1,6 @@
 import { ErrorResponseDto, PaymentDto, ResponseDto } from '@dto';
 import {
+    PaymentContractDatabaseServiceAbstractClass,
     PaymentDatabaseServiceAbstractClass,
     PaymentInvoiceDatabaseServiceAbstractClass,
 } from '@invoicing-database-service';
@@ -19,7 +20,10 @@ export class GetPaymentByIdHandler implements IQueryHandler<GetPaymentByIdQuery>
         private readonly paymentDatabaseService: PaymentDatabaseServiceAbstractClass,
 
         @Inject('PaymentInvoiceDatabaseService')
-        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
+
+        @Inject('PaymentContractDatabaseService')
+        private readonly paymentContractDatabaseService: PaymentContractDatabaseServiceAbstractClass
     ) {}
 
     async execute(query: GetPaymentByIdQuery): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -38,6 +42,12 @@ export class GetPaymentByIdHandler implements IQueryHandler<GetPaymentByIdQuery>
                 payment.paymentId
             );
             payment.paymentInvoiceDetails = paymentInvoiceDetails || [];
+
+            // Hydrate paymentContractDetails from the separate payment-contract table
+            const paymentContractDetails = await this.paymentContractDatabaseService.findRecordByPaymentId(
+                payment.paymentId
+            );
+            payment.paymentContractDetails = paymentContractDetails || [];
 
             this.logger.log(`Payment retrieved successfully: ${payment.paymentId}`);
             return new ResponseDto<PaymentDto>(payment, HTTP_STATUS_OK);

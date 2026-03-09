@@ -11,6 +11,7 @@ import {
 } from '@data-access/index';
 import { renderActivityLogsTable } from '@web-app/utils/activityLogUtils';
 import { useEffect, useState } from 'react';
+import PaymentContractDetailsTab from './PaymentContractDetailsTab';
 import PaymentDetailsTab from './PaymentDetailsTab';
 import PaymentInvoiceDetailsTab from './PaymentInvoiceDetailsTab';
 import RecordDetailsTab from './RecordDetailsTab';
@@ -65,6 +66,7 @@ export default function PaymentForm({
         chequeClearStatus: 'PENDING' as any,
         paymentDetails: [],
         paymentInvoiceDetails: [],
+        paymentContractDetails: [],
     });
 
     // Toast notification hook
@@ -105,6 +107,7 @@ export default function PaymentForm({
                 ...selectedPayment,
                 paymentDetails: selectedPayment.paymentDetails || [],
                 paymentInvoiceDetails: selectedPayment.paymentInvoiceDetails || [],
+                paymentContractDetails: selectedPayment.paymentContractDetails || [],
             });
         } else if (isCreateMode) {
             // Reset to default values for create mode
@@ -129,6 +132,7 @@ export default function PaymentForm({
                 chequeClearStatus: 'PENDING' as any,
                 paymentDetails: [],
                 paymentInvoiceDetails: [],
+                paymentContractDetails: [],
             });
         }
     }, [selectedPayment, isCreateMode]);
@@ -234,6 +238,33 @@ export default function PaymentForm({
                 }
             }
             // For REGULAR contract payments, skip validation (but invoices shouldn't be there anyway)
+        }
+
+        // Rule 6a: Contract payments must have at least one contract selected
+        if (payment.contractPayment) {
+            if (!payment.paymentContractDetails || payment.paymentContractDetails.length === 0) {
+                return 'Contract payment must have at least one contract selected.';
+            }
+        }
+
+        // Rule 6b: Contract payment amount must equal sum of applied contract amounts
+        if (payment.contractPayment && payment.paymentContractDetails && payment.paymentContractDetails.length > 0) {
+            const contractAppliedSum = payment.paymentContractDetails.reduce((sum, detail) => {
+                return sum + (detail.amountApplied || 0);
+            }, 0);
+            const paymentAmount = payment.paymentAmount || 0;
+
+            if (contractAppliedSum > paymentAmount) {
+                return `Total applied contract amount (₱${contractAppliedSum.toFixed(
+                    2
+                )}) cannot exceed payment amount (₱${paymentAmount.toFixed(2)}).`;
+            }
+
+            if (Math.abs(paymentAmount - contractAppliedSum) > 0.01) {
+                return `Payment amount (₱${paymentAmount.toFixed(
+                    2
+                )}) must equal the sum of all applied contract amounts (₱${contractAppliedSum.toFixed(2)}).`;
+            }
         }
 
         // Rule 7: Change reason required for non-admin users editing existing payments
@@ -640,6 +671,18 @@ export default function PaymentForm({
                                                 pending: approvalVersionData.paymentInvoiceDetails || [],
                                             }}
                                         />
+                                        {approvalVersionData.contractPayment && (
+                                            <PaymentContractDetailsTab
+                                                formData={approvalVersionData}
+                                                onFormDataChange={() => {}} // No-op since read-only
+                                                isCreateMode={false}
+                                                isReadOnly={true}
+                                                approvalComparison={{
+                                                    original: selectedPayment.paymentContractDetails || [],
+                                                    pending: approvalVersionData.paymentContractDetails || [],
+                                                }}
+                                            />
+                                        )}
 
                                         {/* Action Buttons */}
                                         <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -810,6 +853,17 @@ export default function PaymentForm({
                                         (!isCreateMode && !!selectedPayment?.customerCreditPayment)
                                     }
                                 />
+                                {formData.contractPayment && (
+                                    <PaymentContractDetailsTab
+                                        formData={formData}
+                                        onFormDataChange={handleFormDataChange}
+                                        isCreateMode={isCreateMode}
+                                        isReadOnly={
+                                            (!isCreateMode && selectedPayment?.status !== StatusEnum.ACTIVE) ||
+                                            (!isCreateMode && !!selectedPayment?.customerCreditPayment)
+                                        }
+                                    />
+                                )}
 
                                 {/* Action Buttons for Details Tab */}
                                 <div className="mt-8 flex flex-col gap-3 border-t-2 border-gray-200 pt-6 sm:flex-row sm:items-center sm:justify-between">

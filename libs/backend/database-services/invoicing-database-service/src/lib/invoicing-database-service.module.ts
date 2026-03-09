@@ -3,6 +3,7 @@ import { CollectionReceiptRangeDatabaseService } from './collection-receipt-rang
 import { ContractDatabaseService } from './contract-database-service';
 import { InvoiceDatabaseService } from './invoice-database-service';
 import { OverPaymentDatabaseService } from './over-payment-database-service';
+import { PaymentContractDatabaseService } from './payment-contract-database-service';
 import { PaymentInvoiceDatabaseService } from './payment-invoice-database-service';
 import { SalesTypeDatabaseService } from './sales-type-database-service';
 import { TerritoryManagerDatabaseService } from './territory-manager-database-service';
@@ -16,6 +17,7 @@ import { TerritoryManagerDatabaseService } from './territory-manager-database-se
         CollectionReceiptRangeDatabaseService,
         ContractDatabaseService,
         OverPaymentDatabaseService,
+        PaymentContractDatabaseService,
         PaymentInvoiceDatabaseService,
     ],
     exports: [
@@ -25,6 +27,7 @@ import { TerritoryManagerDatabaseService } from './territory-manager-database-se
         CollectionReceiptRangeDatabaseService,
         ContractDatabaseService,
         OverPaymentDatabaseService,
+        PaymentContractDatabaseService,
         PaymentInvoiceDatabaseService,
     ],
 })

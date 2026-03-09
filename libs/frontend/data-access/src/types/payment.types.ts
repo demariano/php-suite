@@ -28,6 +28,18 @@ export interface PaymentInvoiceDetailsDto {
     customerCreditPayment?: boolean;
 }
 
+export interface PaymentContractDetailsDto {
+    paymentContractId: string;
+    contractId: string;
+    contractNo: string;
+    contractName: string;
+    amountApplied: number;
+    paymentId: string;
+    dateCreated: string;
+    receiptNo?: string;
+    paymentDate?: string;
+}
+
 export interface PaymentDto {
     paymentId: string;
     paymentDate: string;
@@ -50,6 +62,7 @@ export interface PaymentDto {
     chequeClearStatus: ChequeClearStatusEnum;
     paymentDetails: PaymentDetailsDto[];
     paymentInvoiceDetails: PaymentInvoiceDetailsDto[];
+    paymentContractDetails: PaymentContractDetailsDto[];
 }
 
 export interface CreatePaymentDto {
@@ -72,4 +85,5 @@ export interface CreatePaymentDto {
     chequeClearStatus: ChequeClearStatusEnum;
     paymentDetails: PaymentDetailsDto[];
     paymentInvoiceDetails: PaymentInvoiceDetailsDto[];
+    paymentContractDetails: PaymentContractDetailsDto[];
 }

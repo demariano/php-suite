@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { ChequeClearStatusEnum } from '../../enums/cheque.clear.status.enum';
 import { StatusEnum } from '../../enums/status.enum';
+import { PaymentContractDetailsDto } from './payment.contract.details.dto';
 import { PaymentDetailsDto } from './payment.details.dto';
 import { PaymentInvoiceDetailsDto } from './payment.invoice.details.dto';
 
@@ -68,6 +69,9 @@ export class PaymentDto {
 
     @ApiProperty({ type: [PaymentInvoiceDetailsDto], isArray: true })
     paymentInvoiceDetails!: PaymentInvoiceDetailsDto[];
+
+    @ApiProperty({ type: [PaymentContractDetailsDto], isArray: true })
+    paymentContractDetails!: PaymentContractDetailsDto[];
 
     @ApiProperty()
     approverMessage?: string;

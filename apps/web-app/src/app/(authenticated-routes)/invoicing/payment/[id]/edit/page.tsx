@@ -101,6 +101,7 @@ export default function EditPaymentPage({ params }: EditPaymentPageProps) {
                     chequeClearStatus: payment.chequeClearStatus,
                     paymentDetails: payment.paymentDetails,
                     paymentInvoiceDetails: payment.paymentInvoiceDetails,
+                    paymentContractDetails: payment.paymentContractDetails,
                 },
                 userRole
             );

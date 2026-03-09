@@ -11,6 +11,7 @@ import {
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import {
+    PaymentContractDatabaseServiceAbstractClass,
     PaymentDatabaseServiceAbstractClass,
     PaymentInvoiceDatabaseServiceAbstractClass,
 } from '@invoicing-database-service';
@@ -36,7 +37,10 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
         private readonly configService: ConfigService,
 
         @Inject('PaymentInvoiceDatabaseService')
-        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass
+        private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
+
+        @Inject('PaymentContractDatabaseService')
+        private readonly paymentContractDatabaseService: PaymentContractDatabaseServiceAbstractClass
     ) {}
 
     async execute(command: DeletePaymentCommand): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -185,8 +189,20 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
                 );
             }
 
-            if (command.paymentDto.contractPayment && command.paymentDto.contractId) {
-                await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, command.paymentDto);
+            if (command.paymentDto.contractPayment) {
+                // Delete payment-contract records and send per-contract PAYMENT_DELETED events
+                const paymentContractRecords = await this.paymentContractDatabaseService.findRecordByPaymentId(
+                    command.paymentDto.paymentId
+                );
+                for (const pc of paymentContractRecords) {
+                    await this.paymentContractDatabaseService.deleteRecord(pc);
+                    await this.sendSingleContractPaymentEvent(
+                        ContractPaymentEventEnum.PAYMENT_DELETED,
+                        pc.contractId,
+                        pc.amountApplied,
+                        command.paymentDto
+                    );
+                }
             }
             return await this.paymentDatabaseService.deleteRecord(command.paymentDto);
         } else {
@@ -242,14 +258,19 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
     }
 
     /**
-     * Sends contract payment event to SQS queue
+     * Sends a single contract payment event to SQS queue
      */
-    private async sendContractPaymentEvent(eventType: ContractPaymentEventEnum, payment: PaymentDto): Promise<void> {
+    private async sendSingleContractPaymentEvent(
+        eventType: ContractPaymentEventEnum,
+        contractId: string,
+        amountApplied: number,
+        payment: PaymentDto
+    ): Promise<void> {
         const contractPaymentDto: ContractPaymentDto = {
-            contractId: payment.contractId,
+            contractId,
             receiptNo: payment.receiptNo,
             paymentDate: payment.paymentDate,
-            paymentAmount: payment.paymentAmount,
+            paymentAmount: amountApplied,
             contractPayment: payment.contractPayment,
             paymentId: payment.paymentId,
         };
@@ -263,6 +284,6 @@ export class DeletePaymentHandler implements ICommandHandler<DeletePaymentComman
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
 
-        this.logger.log(`Sent ${eventType} event for contract ${payment.contractId}, payment ${payment.paymentId}`);
+        this.logger.log(`Sent ${eventType} event for contract ${contractId}, payment ${payment.paymentId}`);
     }
 }

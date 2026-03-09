@@ -2,8 +2,6 @@
 
 import {
     CollectionReceiptRangeApi,
-    ContractApi,
-    ContractDto,
     CustomerDto,
     PaymentDto,
     PaymentTypeEnum,
@@ -12,7 +10,6 @@ import {
 import { useState } from 'react';
 import { ChangeReasonField } from '../../../../../components/ChangeReasonField';
 import DatePicker from '../../../../../components/DatePicker';
-import ContractSearchableSelectionModal from '../../../../../search-modals/ContractSearchableSelectionModal';
 import CustomerSearchableSelectionModal from '../../../../../search-modals/CustomerSearchableSelectionModal';
 
 interface RecordDetailsTabProps {
@@ -38,7 +35,6 @@ export default function RecordDetailsTab({
 }: RecordDetailsTabProps) {
     // State management for modals
     const [showCustomerModal, setShowCustomerModal] = useState(false);
-    const [showContractModal, setShowContractModal] = useState(false);
 
     // State for receipt number fetching
     const [isFetchingReceiptNumber, setIsFetchingReceiptNumber] = useState(false);
@@ -116,29 +112,6 @@ export default function RecordDetailsTab({
             }
         } catch (error) {
             console.error('Error processing customer selection:', error);
-        }
-    };
-
-    // Handle contract selection
-    const handleContractSelect = async (contract: ContractDto) => {
-        // Fetch full contract details to get contractType
-        try {
-            const fullContract = await ContractApi.getContractById(contract.contractId);
-            onFormDataChange({
-                contractId: contract.contractId,
-                contractName: contract.contractName,
-                contractNo: contract.contractNo,
-                // Note: contractType is not stored in PaymentDto, but will be fetched in PaymentInvoiceDetailsTab
-                // This fetch ensures we have the latest contract data
-            });
-        } catch (error) {
-            console.error('Error fetching contract details:', error);
-            // Still update with basic contract info even if fetch fails
-            onFormDataChange({
-                contractId: contract.contractId,
-                contractName: contract.contractName,
-                contractNo: contract.contractNo,
-            });
         }
     };
 
@@ -357,6 +330,10 @@ export default function RecordDetailsTab({
                                                 customerCreditPayment: false,
                                                 paymentDetails: [],
                                                 paymentInvoiceDetails: [],
+                                                contractId: '',
+                                                contractName: '',
+                                                contractNo: '',
+                                                paymentContractDetails: [],
                                             });
                                         } else {
                                             onFormDataChange({
@@ -364,6 +341,7 @@ export default function RecordDetailsTab({
                                                 contractId: '',
                                                 contractName: '',
                                                 contractNo: '',
+                                                paymentContractDetails: [],
                                             });
                                         }
                                     }}
@@ -465,78 +443,6 @@ export default function RecordDetailsTab({
                                 </div>
                             </div>
                         )}
-
-                        {/* Contract Selection (only if contract payment is enabled) */}
-                        {formData.contractPayment && (
-                            <div className="col-span-1 md:col-span-2 group">
-                                <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">
-                                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                                    Contract Name
-                                </label>
-                                <div className="relative">
-                                    <input
-                                        type="text"
-                                        value={formData.contractName || ''}
-                                        readOnly
-                                        onClick={() => {
-                                            const isEnabled =
-                                                formData.customerId &&
-                                                formData.contractPayment &&
-                                                isCreateMode &&
-                                                !isReadOnly;
-                                            if (isEnabled) {
-                                                setShowContractModal(true);
-                                            }
-                                        }}
-                                        disabled={
-                                            !formData.customerId ||
-                                            !formData.contractPayment ||
-                                            !isCreateMode ||
-                                            isReadOnly
-                                        }
-                                        className={`w-full rounded-xl border-2 px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 ${
-                                            !formData.customerId ||
-                                            !formData.contractPayment ||
-                                            !isCreateMode ||
-                                            isReadOnly
-                                                ? 'cursor-not-allowed border-gray-200 bg-gray-50 text-gray-500 pr-4'
-                                                : 'border-gray-200 bg-white text-gray-700 group-hover:border-blue-300 group-hover:shadow-md focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 pr-10'
-                                        }`}
-                                        placeholder={
-                                            !formData.customerId
-                                                ? 'Select customer first'
-                                                : !formData.contractPayment
-                                                ? 'Enable contract payment first'
-                                                : !isCreateMode || isReadOnly
-                                                ? 'Contract cannot be changed'
-                                                : 'Click to select contract'
-                                        }
-                                    />
-
-                                    {formData.contractName &&
-                                        formData.customerId &&
-                                        formData.contractPayment &&
-                                        isCreateMode &&
-                                        !isReadOnly && (
-                                            <button
-                                                type="button"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onFormDataChange({
-                                                        contractId: '',
-                                                        contractName: '',
-                                                        contractNo: '',
-                                                    });
-                                                }}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 bg-transparent border-none cursor-pointer flex items-center justify-center text-gray-600 text-base font-bold z-10 transition-colors duration-200 hover:text-red-600"
-                                                title="Clear contract selection"
-                                            >
-                                                ×
-                                            </button>
-                                        )}
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
             </div>
@@ -548,16 +454,6 @@ export default function RecordDetailsTab({
                 selectedValue={formData.customerId || null}
                 onSelect={handleCustomerSelect}
                 onClose={() => setShowCustomerModal(false)}
-            />
-
-            {/* Contract Selection Modal */}
-            <ContractSearchableSelectionModal
-                show={showContractModal}
-                title="Select Contract"
-                selectedValue={formData.contractId || null}
-                customerId={formData.customerId}
-                onSelect={handleContractSelect}
-                onClose={() => setShowContractModal(false)}
             />
         </div>
     );

@@ -7,6 +7,8 @@ export * from './lib/invoice-database-service-abstract-class';
 export * from './lib/invoicing-database-service.module';
 export * from './lib/over-payment-database-service';
 export * from './lib/over-payment-database-service-abstract-class';
+export * from './lib/payment-contract-database-service';
+export * from './lib/payment-contract-database-service-abstract-class';
 export * from './lib/payment-database-service';
 export * from './lib/payment-database-service-abstract-class';
 export * from './lib/payment-invoice-database-service';

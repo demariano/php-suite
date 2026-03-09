@@ -239,6 +239,21 @@ export const InvoicingSchema = {
             GSI3PK: { type: String, value: 'PAYMENTINVOICE', hidden: false },
             GSI3SK: { type: String, value: '${docno}', hidden: false },
         },
+        PaymentContract: {
+            PK: { type: String, value: 'PAYMENTCONTRACT', hidden: false },
+            SK: { type: String, value: '${paymentId}', hidden: false },
+            paymentContractId: { type: String, generate: 'ulid' },
+            paymentId: { type: String },
+            contractId: { type: String },
+            contractNo: { type: String },
+            contractName: { type: String },
+            amountApplied: { type: Number },
+            dateCreated: { type: String },
+            GSI1PK: { type: String, value: 'PAYMENTCONTRACT', hidden: false },
+            GSI1SK: { type: String, value: '${paymentId}', hidden: false },
+            GSI2PK: { type: String, value: 'PAYMENTCONTRACT', hidden: false },
+            GSI2SK: { type: String, value: '${contractId}', hidden: false },
+        },
         OverPayment: {
             PK: { type: String, value: 'OVERPAYMENT', hidden: false },
             SK: { type: String, value: '${overPaymentId}', hidden: false },
@@ -340,3 +355,4 @@ export type ReturnGoodSoldDataType = Entity<typeof InvoicingSchema.models.Return
 export type CollectionReceiptRangeDataType = Entity<typeof InvoicingSchema.models.CollectionReceiptRange>;
 export type OverPaymentDataType = Entity<typeof InvoicingSchema.models.OverPayment>;
 export type PaymentInvoiceDataType = Entity<typeof InvoicingSchema.models.PaymentInvoice>;
+export type PaymentContractDataType = Entity<typeof InvoicingSchema.models.PaymentContract>;

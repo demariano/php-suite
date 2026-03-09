@@ -49,6 +49,7 @@ export default function CreatePaymentPage() {
                     chequeClearStatus: payment.chequeClearStatus,
                     paymentDetails: payment.paymentDetails,
                     paymentInvoiceDetails: payment.paymentInvoiceDetails,
+                    paymentContractDetails: payment.paymentContractDetails,
                 } as any,
                 userRole
             );

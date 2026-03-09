@@ -4,10 +4,12 @@ import {
     ChequeClearStatusEnum,
     ContractPaymentDto,
     ContractPaymentEventEnum,
+    CreatePaymentContractDetailsDto,
     CreatePaymentInvoiceDetailsDto,
     ErrorResponseDto,
     InvoicePaymentEventDto,
     InvoicePaymentEventEnum,
+    PaymentContractDetailsDto,
     PaymentDetailsDto,
     PaymentDto,
     PaymentInvoiceDetailsDto,
@@ -18,6 +20,7 @@ import {
 } from '@dto';
 import { reduceArrayContents } from '@dynamo-db-lib';
 import {
+    PaymentContractDatabaseServiceAbstractClass,
     PaymentDatabaseServiceAbstractClass,
     PaymentInvoiceDatabaseServiceAbstractClass,
 } from '@invoicing-database-service';
@@ -44,7 +47,9 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         @Inject('PaymentInvoiceDatabaseService')
         private readonly paymentInvoiceDatabaseService: PaymentInvoiceDatabaseServiceAbstractClass,
         @Inject('CustomerDatabaseService')
-        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract
+        private readonly customerDatabaseService: CustomerDatabaseServiceAbstract,
+        @Inject('PaymentContractDatabaseService')
+        private readonly paymentContractDatabaseService: PaymentContractDatabaseServiceAbstractClass
     ) {}
 
     async execute(command: ApprovePaymentCommand): Promise<ResponseDto<PaymentDto | ErrorResponseDto>> {
@@ -260,9 +265,38 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
 
         await this.sendInvoicePaymentEvent(paymentInvoicePayloads);
 
-        // Send contract payment event if this is a contract payment
-        if (updatedRecord.contractPayment && updatedRecord.contractId) {
-            await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_ADDED, updatedRecord);
+        // Handle payment-contract records: delete old, create new from forApprovalVersion
+        const oldPaymentContracts = await this.paymentContractDatabaseService.findRecordByPaymentId(
+            updatedRecord.paymentId
+        );
+        for (const pc of oldPaymentContracts) {
+            await this.paymentContractDatabaseService.deleteRecord(pc);
+            await this.sendSingleContractPaymentEvent(
+                ContractPaymentEventEnum.PAYMENT_DELETED,
+                pc.contractId,
+                pc.amountApplied,
+                updatedRecord
+            );
+        }
+
+        const forApprovalContractDetails = (forApprovalVersion.paymentContractDetails ||
+            []) as PaymentContractDetailsDto[];
+        for (const detail of forApprovalContractDetails) {
+            const newPaymentContractDetail: CreatePaymentContractDetailsDto = {
+                paymentId: updatedRecord.paymentId,
+                contractId: detail.contractId,
+                contractNo: detail.contractNo,
+                contractName: detail.contractName,
+                amountApplied: detail.amountApplied,
+                dateCreated: new Date().toISOString(),
+            };
+            await this.paymentContractDatabaseService.createRecord(newPaymentContractDetail);
+            await this.sendSingleContractPaymentEvent(
+                ContractPaymentEventEnum.PAYMENT_ADDED,
+                detail.contractId,
+                detail.amountApplied,
+                updatedRecord
+            );
         }
 
         this.logger.log(`Payment approved successfully: ${existingRecord.paymentId}`);
@@ -298,7 +332,21 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
         }
 
         await this.sendInvoicePaymentEvent(invoicePaymentPayloads);
-        await this.sendContractPaymentEvent(ContractPaymentEventEnum.PAYMENT_DELETED, existingRecord);
+
+        // Delete payment-contract records and send PAYMENT_DELETED events
+        const paymentContractDetails = await this.paymentContractDatabaseService.findRecordByPaymentId(
+            existingRecord.paymentId
+        );
+        for (const pc of paymentContractDetails) {
+            await this.paymentContractDatabaseService.deleteRecord(pc);
+            await this.sendSingleContractPaymentEvent(
+                ContractPaymentEventEnum.PAYMENT_DELETED,
+                pc.contractId,
+                pc.amountApplied,
+                existingRecord
+            );
+        }
+
         await this.paymentDatabaseService.deleteRecord(existingRecord);
 
         this.logger.log(`Payment deletion approved: ${existingRecord.paymentId}`);
@@ -352,14 +400,19 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
     }
 
     /**
-     * Sends contract payment event to SQS queue
+     * Sends a single contract payment event to SQS queue
      */
-    private async sendContractPaymentEvent(eventType: ContractPaymentEventEnum, payment: PaymentDto): Promise<void> {
+    private async sendSingleContractPaymentEvent(
+        eventType: ContractPaymentEventEnum,
+        contractId: string,
+        amountApplied: number,
+        payment: PaymentDto
+    ): Promise<void> {
         const contractPaymentDto: ContractPaymentDto = {
-            contractId: payment.contractId,
+            contractId,
             receiptNo: payment.receiptNo,
             paymentDate: payment.paymentDate,
-            paymentAmount: payment.paymentAmount,
+            paymentAmount: amountApplied,
             contractPayment: payment.contractPayment,
             paymentId: payment.paymentId,
         };
@@ -373,6 +426,6 @@ export class ApprovePaymentHandler implements ICommandHandler<ApprovePaymentComm
 
         await this.messageQueueService.sendMessageToSQS(invoicingEventSQSUrl, JSON.stringify(eventPayload));
 
-        this.logger.log(`Sent ${eventType} event for contract ${payment.contractId}, payment ${payment.paymentId}`);
+        this.logger.log(`Sent ${eventType} event for contract ${contractId}, payment ${payment.paymentId}`);
     }
 }
