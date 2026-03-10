@@ -22,10 +22,17 @@ module "environment-initializer-api-service-lambda" {
   timeout            = 900
   memory_size        = 128
   environment_variables = {
-    DYNAMO_DB_USER_TABLE   = "${var.project}-${var.environment}-users"
-    AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
-    DEFAULT_REGION         = "${var.aws_region}"
+    AWS_SECRET_ID                 = "${module.secret_manager.secret_name}"
+    DEFAULT_REGION                = "${var.aws_region}"
     DYNAMO_DB_CONFIGURATION_TABLE = "${var.project}-${var.environment}-configuration"
+    DYNAMO_DB_PRODUCT_TABLE       = "${var.project}-${var.environment}-product"
+    DYNAMO_DB_CUSTOMER_TABLE      = "${var.project}-${var.environment}-customer"
+    DYNAMO_DB_INVENTORY_TABLE     = "${var.project}-${var.environment}-inventory"
+    DYNAMO_DB_INVOICING_TABLE     = "${var.project}-${var.environment}-invoicing"
+    DYNAMO_DB_ACCOUNTING_TABLE    = "${var.project}-${var.environment}-accounting"
+    AWS_COGNITO_AUTHORITY         = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
+    AWS_COGNITO_USER_POOL_ID      = "${module.cognito_user_pool.cognito_user_pool_id}"
+    AWS_COGNITO_CLIENT_ID         = "${module.cognito_user_pool.cognito_user_pool_client_id}"
   }
   depends_on = [ null_resource.environment-initializer-api-service-docker_image ]
 }

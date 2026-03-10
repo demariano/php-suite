@@ -22,9 +22,13 @@ module "customer-api-service-lambda" {
   timeout            = 900
   memory_size        = 128
   environment_variables = {
-    DYNAMO_DB_USER_TABLE   = "${var.project}-${var.environment}-users"
-    AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
-    DEFAULT_REGION         = "${var.aws_region}"
+    AWS_SECRET_ID            = "${module.secret_manager.secret_name}"
+    DEFAULT_REGION           = "${var.aws_region}"
+    DYNAMO_DB_CUSTOMER_TABLE = "${var.project}-${var.environment}-customer"
+    CUSTOMER_EVENT_SQS       = "${module.customer-event-handler-service_sqs_queue.queue_url}"
+    INVOICE_EVENT_SQS        = "${module.invoicing-event-handler-service_sqs_queue.queue_url}"
+    ACCOUNTING_EVENT_SQS     = "${module.accounting-event-handler-service_sqs_queue.queue_url}"
+    AWS_COGNITO_AUTHORITY    = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
   }
   depends_on = [ null_resource.customer-api-service-docker_image ]
 }

@@ -32,9 +32,16 @@ module "report-event-handler-service-lambda" {
   timeout            = 900
   memory_size        = 128
   environment_variables = {
-    DYNAMO_DB_USER_TABLE   = "${var.project}-${var.environment}-users"
-    AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
-    DEFAULT_REGION         = "${var.aws_region}"
+    AWS_SECRET_ID              = "${module.secret_manager.secret_name}"
+    DEFAULT_REGION             = "${var.aws_region}"
+    DYNAMO_DB_REPORT_TABLE     = "${var.project}-${var.environment}-report"
+    DYNAMO_DB_ACCOUNTING_TABLE = "${var.project}-${var.environment}-accounting"
+    DYNAMO_DB_CUSTOMER_TABLE   = "${var.project}-${var.environment}-customer"
+    DYNAMO_DB_INVENTORY_TABLE  = "${var.project}-${var.environment}-inventory"
+    DYNAMO_DB_INVOICING_TABLE  = "${var.project}-${var.environment}-invoicing"
+    DYNAMO_DB_PRODUCT_TABLE    = "${var.project}-${var.environment}-product"
+    REPORT_EVENT_SQS           = "${module.report-event-handler-service_sqs_queue.queue_url}"
+    REPORT_S3_BUCKET           = "${module.report_s3_bucket.bucket_name}"
   }
   
   depends_on = [ null_resource.report-event-handler-service-docker_image ]

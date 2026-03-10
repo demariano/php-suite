@@ -22,9 +22,13 @@ module "product-api-service-lambda" {
   timeout            = 900
   memory_size        = 128
   environment_variables = {
-    DYNAMO_DB_USER_TABLE   = "${var.project}-${var.environment}-users"
-    AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
-    DEFAULT_REGION         = "${var.aws_region}"
+    AWS_SECRET_ID             = "${module.secret_manager.secret_name}"
+    DEFAULT_REGION            = "${var.aws_region}"
+    DYNAMO_DB_PRODUCT_TABLE   = "${var.project}-${var.environment}-product"
+    PRODUCT_EVENT_SQS         = "${module.product-event-handler-service_sqs_queue.queue_url}"
+    INVENTORY_EVENT_SQS       = "${module.inventory-event-handler-service_sqs_queue.queue_url}"
+    INVOICE_EVENT_SQS         = "${module.invoicing-event-handler-service_sqs_queue.queue_url}"
+    AWS_COGNITO_AUTHORITY     = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
   }
   depends_on = [ null_resource.product-api-service-docker_image ]
 }

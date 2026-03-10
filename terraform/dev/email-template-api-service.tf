@@ -22,12 +22,11 @@ module "email-template-api-service-lambda" {
   timeout            = 900
   memory_size        = 128
   environment_variables = {
-    DYNAMO_DB_USER_TABLE   = "${var.project}-${var.environment}-email-template"
-    AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
-    DEFAULT_REGION         = "${var.aws_region}"
-    AWS_COGNITO_AUTHORITY   = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
-    AWS_COGNITO_USER_POOL_ID = "${module.cognito_user_pool.cognito_user_pool_id}"
-    AWS_COGNITO_CLIENT_ID = "${module.cognito_user_pool.cognito_user_pool_client_id}"    
+    AWS_SECRET_ID                  = "${module.secret_manager.secret_name}"
+    DEFAULT_REGION                 = "${var.aws_region}"
+    AWS_COGNITO_AUTHORITY          = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
+    AWS_COGNITO_USER_POOL_ID       = "${module.cognito_user_pool.cognito_user_pool_id}"
+    AWS_COGNITO_CLIENT_ID          = "${module.cognito_user_pool.cognito_user_pool_client_id}"    
     DYNAMO_DB_EMAIL_TEMPLATE_TABLE = "${var.project}-${var.environment}-email-template"
   }
   depends_on = [ null_resource.email-template-api-service-docker_image ]

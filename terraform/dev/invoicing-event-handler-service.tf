@@ -32,9 +32,11 @@ module "invoicing-event-handler-service-lambda" {
   timeout            = 900
   memory_size        = 128
   environment_variables = {
-    DYNAMO_DB_USER_TABLE   = "${var.project}-${var.environment}-users"
-    AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
-    DEFAULT_REGION         = "${var.aws_region}"
+    AWS_SECRET_ID             = "${module.secret_manager.secret_name}"
+    DEFAULT_REGION            = "${var.aws_region}"
+    DYNAMO_DB_INVOICING_TABLE = "${var.project}-${var.environment}-invoicing"
+    INVOICE_EVENT_SQS         = "${module.invoicing-event-handler-service_sqs_queue.queue_url}"
+    CUSTOMER_EVENT_SQS        = "${module.customer-event-handler-service_sqs_queue.queue_url}"
   }
   
   depends_on = [ null_resource.invoicing-event-handler-service-docker_image ]

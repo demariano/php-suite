@@ -22,9 +22,11 @@ module "report-api-service-lambda" {
   timeout            = 900
   memory_size        = 128
   environment_variables = {
-    DYNAMO_DB_USER_TABLE   = "${var.project}-${var.environment}-users"
-    AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
-    DEFAULT_REGION         = "${var.aws_region}"
+    AWS_SECRET_ID            = "${module.secret_manager.secret_name}"
+    DEFAULT_REGION           = "${var.aws_region}"
+    DYNAMO_DB_REPORT_TABLE   = "${var.project}-${var.environment}-report"
+    REPORT_EVENT_SQS         = "${module.report-event-handler-service_sqs_queue.queue_url}"
+    AWS_COGNITO_AUTHORITY    = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
   }
   depends_on = [ null_resource.report-api-service-docker_image ]
 }
