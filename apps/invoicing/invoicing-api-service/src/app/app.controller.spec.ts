@@ -13,10 +13,22 @@ describe('AppController', () => {
         }).compile();
     });
 
-    describe('getData', () => {
-        it('should return "Hello API"', () => {
+    describe('healthCheck', () => {
+        it('should return health status with version', () => {
             const appController = app.get<AppController>(AppController);
-            expect(appController.getData()).toEqual({ message: 'Hello API' });
+            const result = appController.healthCheck();
+            expect(result).toHaveProperty('status');
+            expect(result).toHaveProperty('version');
+            expect(result.status).toBe('ok');
+        });
+    });
+
+    describe('getVersion', () => {
+        it('should return version info', () => {
+            const appController = app.get<AppController>(AppController);
+            const result = appController.getVersion();
+            expect(result).toHaveProperty('version');
+            expect(typeof result.version).toBe('string');
         });
     });
 });

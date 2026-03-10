@@ -7,6 +7,18 @@ describe('AppService', () => {
     let service: AppService;
     let configurationDatabaseService: jest.Mocked<ConfigurationDatabaseServiceAbstract>;
 
+    const mockDatabaseService = () => ({
+        useValue: {
+            createRecord: jest.fn().mockImplementation((dto) => Promise.resolve({ ...dto, id: 'mock-id' })),
+            updateRecord: jest.fn().mockResolvedValue({}),
+            deleteAllRecords: jest.fn().mockResolvedValue(undefined),
+            addPaymentToInvoice: jest.fn().mockResolvedValue(undefined),
+            addPaymentToContract: jest.fn().mockResolvedValue(undefined),
+            updateBalance: jest.fn().mockResolvedValue(undefined),
+            updateInvoicedAmount: jest.fn().mockResolvedValue(undefined),
+        },
+    });
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -15,13 +27,47 @@ describe('AppService', () => {
                     provide: 'ConfigurationDatabaseService',
                     useValue: {
                         createRecord: jest.fn(),
+                        updateRecord: jest.fn().mockResolvedValue({}),
+                        deleteAllRecords: jest.fn().mockResolvedValue(undefined),
                     },
                 },
+                { provide: 'ProductCategoryDatabaseService', ...mockDatabaseService() },
+                { provide: 'ProductClassDatabaseService', ...mockDatabaseService() },
+                { provide: 'ProductDatabaseService', ...mockDatabaseService() },
+                { provide: 'ProductDealDatabaseService', ...mockDatabaseService() },
+                { provide: 'ProductPriceTypeDatabaseService', ...mockDatabaseService() },
+                { provide: 'ProductUnitDatabaseService', ...mockDatabaseService() },
+                { provide: 'CustomerDatabaseService', ...mockDatabaseService() },
+                { provide: 'CustomerClassificationDatabaseService', ...mockDatabaseService() },
+                { provide: 'CustomerTypeDatabaseService', ...mockDatabaseService() },
+                { provide: 'AreaDatabaseService', ...mockDatabaseService() },
+                { provide: 'TermsDatabaseService', ...mockDatabaseService() },
+                { provide: 'StockTypeDatabaseService', ...mockDatabaseService() },
+                { provide: 'StockDatabaseService', ...mockDatabaseService() },
+                { provide: 'SalesTypeDatabaseService', ...mockDatabaseService() },
+                { provide: 'TerritoryManagerDatabaseService', ...mockDatabaseService() },
+                { provide: 'InvoiceDatabaseService', ...mockDatabaseService() },
+                { provide: 'ContractDatabaseService', ...mockDatabaseService() },
+                { provide: 'AccountsDatabaseService', ...mockDatabaseService() },
+                { provide: 'SupplierDatabaseService', ...mockDatabaseService() },
+                { provide: 'RawMaterialDatabaseService', ...mockDatabaseService() },
+                { provide: 'RawMaterialUnitDatabaseService', ...mockDatabaseService() },
+                { provide: 'RawMaterialsLocationDatabaseService', ...mockDatabaseService() },
+                { provide: 'RawMaterialSupplierDatabaseService', ...mockDatabaseService() },
+                { provide: 'RawMaterialsStockDatabaseService', ...mockDatabaseService() },
+                { provide: 'CollectionReceiptRangeDatabaseService', ...mockDatabaseService() },
+                { provide: 'VoucherDatabaseService', ...mockDatabaseService() },
+                { provide: 'PaymentDatabaseService', ...mockDatabaseService() },
+                { provide: 'PaymentInvoiceDatabaseService', ...mockDatabaseService() },
+                { provide: 'OverPaymentDatabaseService', ...mockDatabaseService() },
+                { provide: 'ReturnGoodSoldDatabaseService', ...mockDatabaseService() },
             ],
         }).compile();
 
         service = module.get<AppService>(AppService);
-        configurationDatabaseService = module.get('ConfigurationDatabaseService') as jest.Mocked<ConfigurationDatabaseServiceAbstract>;
+        configurationDatabaseService = module.get(
+            'ConfigurationDatabaseService'
+        ) as jest.Mocked<ConfigurationDatabaseServiceAbstract>;
 
         // Mock console.error to avoid noise in tests
         jest.spyOn(console, 'error').mockImplementation(() => {});
@@ -58,7 +104,7 @@ describe('AppService', () => {
     describe('initializeEnvironment', () => {
         it('should create default sender email configuration successfully', async () => {
             const initializeEnvironmentDto: InitializeEnvironmentDto = {
-                defaultSenderEmail: 'test@company.com'
+                defaultSenderEmail: 'test@company.com',
             };
 
             const expectedConfigurationDto = new ConfigurationDto();
@@ -68,7 +114,7 @@ describe('AppService', () => {
             const mockConfigDto = new ConfigurationDto();
             mockConfigDto.configurationName = 'DEFAULT_SENDER_EMAIL';
             mockConfigDto.configurationValue = 'test@company.com';
-            
+
             configurationDatabaseService.createRecord.mockResolvedValue(mockConfigDto);
 
             await service.initializeEnvironment(initializeEnvironmentDto);
@@ -76,7 +122,7 @@ describe('AppService', () => {
             expect(configurationDatabaseService.createRecord).toHaveBeenCalledWith(
                 expect.objectContaining({
                     configurationName: 'DEFAULT_SENDER_EMAIL',
-                    configurationValue: 'test@company.com'
+                    configurationValue: 'test@company.com',
                 })
             );
         });
@@ -86,18 +132,18 @@ describe('AppService', () => {
                 'admin@example.com',
                 'support@company.org',
                 'noreply@service.net',
-                'notifications@platform.io'
+                'notifications@platform.io',
             ];
 
             for (const email of emailFormats) {
                 const initializeEnvironmentDto: InitializeEnvironmentDto = {
-                    defaultSenderEmail: email
+                    defaultSenderEmail: email,
                 };
 
                 const mockConfigDto = new ConfigurationDto();
                 mockConfigDto.configurationName = 'DEFAULT_SENDER_EMAIL';
                 mockConfigDto.configurationValue = email;
-                
+
                 configurationDatabaseService.createRecord.mockResolvedValue(mockConfigDto);
 
                 await service.initializeEnvironment(initializeEnvironmentDto);
@@ -105,7 +151,7 @@ describe('AppService', () => {
                 expect(configurationDatabaseService.createRecord).toHaveBeenCalledWith(
                     expect.objectContaining({
                         configurationName: 'DEFAULT_SENDER_EMAIL',
-                        configurationValue: email
+                        configurationValue: email,
                     })
                 );
 
@@ -116,7 +162,7 @@ describe('AppService', () => {
 
         it('should handle database creation errors gracefully', async () => {
             const initializeEnvironmentDto: InitializeEnvironmentDto = {
-                defaultSenderEmail: 'test@company.com'
+                defaultSenderEmail: 'test@company.com',
             };
 
             const error = new Error('Database connection failed');
@@ -130,7 +176,7 @@ describe('AppService', () => {
             expect(configurationDatabaseService.createRecord).toHaveBeenCalledWith(
                 expect.objectContaining({
                     configurationName: 'DEFAULT_SENDER_EMAIL',
-                    configurationValue: 'test@company.com'
+                    configurationValue: 'test@company.com',
                 })
             );
 
@@ -139,13 +185,13 @@ describe('AppService', () => {
 
         it('should handle complex domain names', async () => {
             const initializeEnvironmentDto: InitializeEnvironmentDto = {
-                defaultSenderEmail: 'admin@very-long-company-name.co.uk'
+                defaultSenderEmail: 'admin@very-long-company-name.co.uk',
             };
 
             const mockConfigDto = new ConfigurationDto();
             mockConfigDto.configurationName = 'DEFAULT_SENDER_EMAIL';
             mockConfigDto.configurationValue = 'admin@very-long-company-name.co.uk';
-            
+
             configurationDatabaseService.createRecord.mockResolvedValue(mockConfigDto);
 
             await service.initializeEnvironment(initializeEnvironmentDto);
@@ -153,20 +199,20 @@ describe('AppService', () => {
             expect(configurationDatabaseService.createRecord).toHaveBeenCalledWith(
                 expect.objectContaining({
                     configurationName: 'DEFAULT_SENDER_EMAIL',
-                    configurationValue: 'admin@very-long-company-name.co.uk'
+                    configurationValue: 'admin@very-long-company-name.co.uk',
                 })
             );
         });
 
         it('should create ConfigurationDto with correct structure', async () => {
             const initializeEnvironmentDto: InitializeEnvironmentDto = {
-                defaultSenderEmail: 'structure@test.com'
+                defaultSenderEmail: 'structure@test.com',
             };
 
             const mockConfigDto = new ConfigurationDto();
             mockConfigDto.configurationName = 'DEFAULT_SENDER_EMAIL';
             mockConfigDto.configurationValue = 'structure@test.com';
-            
+
             configurationDatabaseService.createRecord.mockResolvedValue(mockConfigDto);
 
             await service.initializeEnvironment(initializeEnvironmentDto);
@@ -179,13 +225,13 @@ describe('AppService', () => {
 
         it('should handle empty email gracefully', async () => {
             const initializeEnvironmentDto: InitializeEnvironmentDto = {
-                defaultSenderEmail: ''
+                defaultSenderEmail: '',
             };
 
             const mockConfigDto = new ConfigurationDto();
             mockConfigDto.configurationName = 'DEFAULT_SENDER_EMAIL';
             mockConfigDto.configurationValue = '';
-            
+
             configurationDatabaseService.createRecord.mockResolvedValue(mockConfigDto);
 
             await service.initializeEnvironment(initializeEnvironmentDto);
@@ -193,14 +239,14 @@ describe('AppService', () => {
             expect(configurationDatabaseService.createRecord).toHaveBeenCalledWith(
                 expect.objectContaining({
                     configurationName: 'DEFAULT_SENDER_EMAIL',
-                    configurationValue: ''
+                    configurationValue: '',
                 })
             );
         });
 
         it('should handle database timeout errors', async () => {
             const initializeEnvironmentDto: InitializeEnvironmentDto = {
-                defaultSenderEmail: 'timeout@test.com'
+                defaultSenderEmail: 'timeout@test.com',
             };
 
             const timeoutError = new Error('Connection timeout');

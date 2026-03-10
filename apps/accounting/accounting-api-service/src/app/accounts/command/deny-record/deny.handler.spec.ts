@@ -35,7 +35,7 @@ describe('DenyAccountsHandler', () => {
         databaseService.findRecordById.mockResolvedValue(pendingRecord);
         databaseService.updateRecord.mockImplementation(async (record) => record);
 
-        const response = await handler.execute(new DenyAccountsCommand('acc-10', user));
+        const response = await handler.execute(new DenyAccountsCommand('acc-10', user, 'Denied for review'));
 
         expect(databaseService.updateRecord).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -48,21 +48,21 @@ describe('DenyAccountsHandler', () => {
         expect(payload.status).toBe(StatusEnum.ACTIVE);
     });
 
-    it('reverts FOR_DELETION records back to ACTIVE', async () => {
-        const deletionRecord: AccountsDto = {
+    it('reverts FOR_DEACTIVATION records back to ACTIVE', async () => {
+        const deactivationRecord: AccountsDto = {
             accountingId: 'acc-20',
-            accountName: 'Deletion Candidate',
+            accountName: 'Deactivation Candidate',
             accountType: AccountTypeEnum.AREA,
-            status: StatusEnum.FOR_DELETION,
+            status: StatusEnum.FOR_DEACTIVATION,
             activityLogs: [],
             subAccounts: [],
-            changeReason: 'Delete please',
+            changeReason: 'Deactivate please',
         };
 
-        databaseService.findRecordById.mockResolvedValue(deletionRecord);
+        databaseService.findRecordById.mockResolvedValue(deactivationRecord);
         databaseService.updateRecord.mockImplementation(async (record) => record);
 
-        await handler.execute(new DenyAccountsCommand('acc-20', user));
+        await handler.execute(new DenyAccountsCommand('acc-20', user, 'Denied deactivation'));
 
         expect(databaseService.updateRecord).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -72,4 +72,3 @@ describe('DenyAccountsHandler', () => {
         );
     });
 });
-

@@ -1,11 +1,15 @@
 import { AccountsDatabaseServiceAbstract } from '@accounting-database-service';
 import { AccountTypeEnum, AccountsDto, StatusEnum } from '@dto';
+import { MessageQueueServiceAbstract } from '@message-queue-lib';
+import { ConfigService } from '@nestjs/config';
 import { ApproveAccountsCommand } from './approve.command';
 import { ApproveAccountsHandler } from './approve.handler';
 
 describe('ApproveAccountsHandler', () => {
     let handler: ApproveAccountsHandler;
     let databaseService: jest.Mocked<AccountsDatabaseServiceAbstract>;
+    let messageQueueService: jest.Mocked<MessageQueueServiceAbstract>;
+    let configService: jest.Mocked<ConfigService>;
 
     const user = { username: 'admin', roles: ['ADMIN'] } as any;
 
@@ -16,7 +20,15 @@ describe('ApproveAccountsHandler', () => {
             deleteRecord: jest.fn(),
         } as unknown as jest.Mocked<AccountsDatabaseServiceAbstract>;
 
-        handler = new ApproveAccountsHandler(databaseService);
+        messageQueueService = {
+            sendMessageToSQS: jest.fn().mockResolvedValue(undefined),
+        } as unknown as jest.Mocked<MessageQueueServiceAbstract>;
+
+        configService = {
+            get: jest.fn().mockReturnValue('http://localhost:4566/queue/ACCOUNTING_EVENT_SQS'),
+        } as unknown as jest.Mocked<ConfigService>;
+
+        handler = new ApproveAccountsHandler(databaseService, messageQueueService, configService);
     });
 
     it('applies forApprovalVersion, resets changeReason, and persists the record', async () => {
@@ -53,27 +65,29 @@ describe('ApproveAccountsHandler', () => {
         expect(payload.status).toBe(StatusEnum.ACTIVE);
     });
 
-    it('resets changeReason and hard deletes when status is FOR_DELETION', async () => {
-        const deletionRecord: AccountsDto = {
+    it('approves deactivation when status is FOR_DEACTIVATION', async () => {
+        const deactivationRecord: AccountsDto = {
             accountingId: 'acc-2',
-            accountName: 'Delete Me',
+            accountName: 'Deactivate Me',
             accountType: AccountTypeEnum.AREA,
-            status: StatusEnum.FOR_DELETION,
+            status: StatusEnum.FOR_DEACTIVATION,
             activityLogs: [],
             subAccounts: [],
-            changeReason: 'User requested deletion',
+            changeReason: 'User requested deactivation',
         };
 
-        databaseService.findRecordById.mockResolvedValue(deletionRecord);
-        databaseService.deleteRecord.mockImplementation(async (record) => record);
+        databaseService.findRecordById.mockResolvedValue(deactivationRecord);
+        databaseService.updateRecord.mockImplementation(async (record) => record);
 
-        await handler.execute(new ApproveAccountsCommand('acc-2', user));
+        const response = await handler.execute(new ApproveAccountsCommand('acc-2', user));
 
-        expect(databaseService.deleteRecord).toHaveBeenCalledWith(
+        expect(databaseService.updateRecord).toHaveBeenCalledWith(
             expect.objectContaining({
+                status: StatusEnum.INACTIVE,
                 changeReason: null,
             })
         );
+        const payload = response.body as AccountsDto;
+        expect(payload.status).toBe(StatusEnum.INACTIVE);
     });
 });
-

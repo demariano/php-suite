@@ -13,9 +13,20 @@ describe('AppService', () => {
         service = app.get<AppService>(AppService);
     });
 
-    describe('getData', () => {
-        it('should return "Hello API"', () => {
-            expect(service.getData()).toEqual({ message: 'Hello API' });
+    describe('healthCheck', () => {
+        it('should return health status with version', () => {
+            const result = service.healthCheck();
+            expect(result).toHaveProperty('status');
+            expect(result).toHaveProperty('version');
+            expect(result.status).toBe('ok');
+        });
+    });
+
+    describe('getVersion', () => {
+        it('should return version info', () => {
+            const result = service.getVersion();
+            expect(result).toHaveProperty('version');
+            expect(typeof result.version).toBe('string');
         });
     });
 });

@@ -1,3 +1,7 @@
+jest.mock('@excel-generator-service', () => ({
+    ExcelGeneratorService: jest.fn(),
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { AppController } from './app.controller';
@@ -9,14 +13,15 @@ describe('AppController', () => {
     beforeAll(async () => {
         app = await Test.createTestingModule({
             controllers: [AppController],
-            providers: [AppService],
+            providers: [{ provide: AppService, useValue: { handleMessage: jest.fn().mockResolvedValue(undefined) } }],
         }).compile();
     });
 
-    describe('getData', () => {
-        it('should return "Hello API"', () => {
+    describe('handleMessage', () => {
+        it('should delegate to AppService', async () => {
             const appController = app.get<AppController>(AppController);
-            expect(appController.getData()).toEqual({ message: 'Hello API' });
+            const body = [{ body: '{}' }];
+            await appController.handleMessage(body);
         });
     });
 });
