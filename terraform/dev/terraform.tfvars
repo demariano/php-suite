@@ -1,9 +1,9 @@
-aws_profile = "php-dev"
+aws_profile = "php"
 aws_region = "ap-southeast-1"
 environment= "dev"
 project = "php"
 health_check_path = "/api/health"
-s3_bucket_name = "php-dev-tf-state"
+s3_bucket_name = "php-dev"
 
 repository-url = "https://github.com/demariano/php-suite.git"
 repository-name = "php"

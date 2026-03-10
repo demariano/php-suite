@@ -26,7 +26,7 @@ provider "aws" {
 }
 
 resource "aws_s3_bucket" "terraform_state" {
-  bucket        = "haven-dev-tf-state" 
+  bucket        = "php-dev-tf-state" 
   force_destroy = true
 }
 
