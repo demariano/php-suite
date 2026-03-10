@@ -27,6 +27,8 @@ module "accounting-api-service-lambda" {
     DYNAMO_DB_ACCOUNTING_TABLE = "${var.project}-${var.environment}-accounting"
     ACCOUNTING_EVENT_SQS       = "${module.accounting-event-handler-service_sqs_queue.queue_url}"
     AWS_COGNITO_AUTHORITY      = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
+    BYPASS_AUTH                = "ENABLED"
+    BYPASS_AUTH_ROLES          = "SUPER_ADMIN"
   }
   depends_on = [ null_resource.accounting-api-service-docker_image ]
 }

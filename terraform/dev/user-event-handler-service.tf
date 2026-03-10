@@ -35,6 +35,8 @@ module "user-event-handler-service-lambda" {
     AWS_SECRET_ID  = "${module.secret_manager.secret_name}"
     DEFAULT_REGION = "${var.aws_region}"
     USER_EVENT_SQS = "${module.user-event-handler-service_sqs_queue.queue_url}"
+    BYPASS_AUTH    = "ENABLED"
+    BYPASS_AUTH_ROLES = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.user-event-handler-service-docker_image ]

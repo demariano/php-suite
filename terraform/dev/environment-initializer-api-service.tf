@@ -33,6 +33,8 @@ module "environment-initializer-api-service-lambda" {
     AWS_COGNITO_AUTHORITY         = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
     AWS_COGNITO_USER_POOL_ID      = "${module.cognito_user_pool.cognito_user_pool_id}"
     AWS_COGNITO_CLIENT_ID         = "${module.cognito_user_pool.cognito_user_pool_client_id}"
+    BYPASS_AUTH                   = "ENABLED"
+    BYPASS_AUTH_ROLES             = "SUPER_ADMIN"
   }
   depends_on = [ null_resource.environment-initializer-api-service-docker_image ]
 }

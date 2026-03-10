@@ -38,6 +38,8 @@ module "connect-service-lambda" {
     WEBSOCKET_MESSAGE_SQS   = "${module.broadcast-message-service_sqs_queue.queue_url}",
     AWS_COGNITO_AUTHORITY   = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
     DYNAMO_DB_WEBSOCKET_CONNECTION_TABLE = "${var.project}-${var.environment}-web-socket-connection"
+    BYPASS_AUTH                            = "ENABLED"
+    BYPASS_AUTH_ROLES                      = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.connect-service-docker_image ]

@@ -29,6 +29,8 @@ module "cognito-custom-message-service-lambda" {
     AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
     DEFAULT_REGION         = "${var.aws_region}"
     DYNAMO_DB_EMAIL_TEMPLATE_TABLE = "${var.project}-${var.environment}-email-template"
+    BYPASS_AUTH                    = "ENABLED"
+    BYPASS_AUTH_ROLES              = "SUPER_ADMIN"
   }
   depends_on = [ null_resource.cognito-custom-message-docker_image ]
 

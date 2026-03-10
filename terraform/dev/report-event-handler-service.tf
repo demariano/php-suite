@@ -42,6 +42,8 @@ module "report-event-handler-service-lambda" {
     DYNAMO_DB_PRODUCT_TABLE    = "${var.project}-${var.environment}-product"
     REPORT_EVENT_SQS           = "${module.report-event-handler-service_sqs_queue.queue_url}"
     REPORT_S3_BUCKET           = "${module.report_s3_bucket.bucket_name}"
+    BYPASS_AUTH                = "ENABLED"
+    BYPASS_AUTH_ROLES          = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.report-event-handler-service-docker_image ]

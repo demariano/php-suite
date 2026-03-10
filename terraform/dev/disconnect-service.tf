@@ -29,6 +29,8 @@ module "disconnect-service-lambda" {
     DEFAULT_REGION         = "${var.aws_region}"
     DYNAMO_DB_WEBSOCKET_CONNECTION_TABLE = "${var.project}-${var.environment}-web-socket-connection"
      AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
+    BYPASS_AUTH            = "ENABLED"
+    BYPASS_AUTH_ROLES      = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.disconnect-service-docker_image ]

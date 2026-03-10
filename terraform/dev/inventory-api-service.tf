@@ -27,6 +27,8 @@ module "inventory-api-service-lambda" {
     DYNAMO_DB_INVENTORY_TABLE  = "${var.project}-${var.environment}-inventory"
     INVENTORY_EVENT_SQS        = "${module.inventory-event-handler-service_sqs_queue.queue_url}"
     AWS_COGNITO_AUTHORITY      = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
+    BYPASS_AUTH                = "ENABLED"
+    BYPASS_AUTH_ROLES          = "SUPER_ADMIN"
   }
   depends_on = [ null_resource.inventory-api-service-docker_image ]
 }

@@ -37,6 +37,8 @@ module "invoicing-event-handler-service-lambda" {
     DYNAMO_DB_INVOICING_TABLE = "${var.project}-${var.environment}-invoicing"
     INVOICE_EVENT_SQS         = "${module.invoicing-event-handler-service_sqs_queue.queue_url}"
     CUSTOMER_EVENT_SQS        = "${module.customer-event-handler-service_sqs_queue.queue_url}"
+    BYPASS_AUTH               = "ENABLED"
+    BYPASS_AUTH_ROLES         = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.invoicing-event-handler-service-docker_image ]

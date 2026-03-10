@@ -36,6 +36,8 @@ module "accounting-event-handler-service-lambda" {
     DEFAULT_REGION             = "${var.aws_region}"
     DYNAMO_DB_ACCOUNTING_TABLE = "${var.project}-${var.environment}-accounting"
     ACCOUNTING_EVENT_SQS       = "${module.accounting-event-handler-service_sqs_queue.queue_url}"
+    BYPASS_AUTH                = "ENABLED"
+    BYPASS_AUTH_ROLES          = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.accounting-event-handler-service-docker_image ]

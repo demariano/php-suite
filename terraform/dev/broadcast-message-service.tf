@@ -37,6 +37,8 @@ module "broadcast-message-service-lambda" {
     DEFAULT_REGION         = "${var.aws_region}"
     WEBSOCKET_CONNECTION_URL = "${module.websocket-api-gateway.management_api_endpoint}"
     DYNAMO_DB_WEBSOCKET_CONNECTION_TABLE = "${var.project}-${var.environment}-web-socket-connection"
+    BYPASS_AUTH                            = "ENABLED"
+    BYPASS_AUTH_ROLES                      = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.broadcast-message-service-docker_image ]

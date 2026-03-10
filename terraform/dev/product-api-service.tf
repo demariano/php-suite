@@ -29,6 +29,8 @@ module "product-api-service-lambda" {
     INVENTORY_EVENT_SQS       = "${module.inventory-event-handler-service_sqs_queue.queue_url}"
     INVOICE_EVENT_SQS         = "${module.invoicing-event-handler-service_sqs_queue.queue_url}"
     AWS_COGNITO_AUTHORITY     = "${module.cognito_user_pool.cognito_user_pool_endpoint}"
+    BYPASS_AUTH               = "ENABLED"
+    BYPASS_AUTH_ROLES         = "SUPER_ADMIN"
   }
   depends_on = [ null_resource.product-api-service-docker_image ]
 }

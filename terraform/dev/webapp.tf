@@ -31,7 +31,13 @@ module "webapp_task_definition" {
     S3_BUCKET_NAME            = "${var.project}-${var.environment}-data"
     API_AUTHENTICATION_URL    = "${module.authentication-api-service-lambda.lambda_function_invoke_arn}api/authentication"
     API_USER_URL              = "${module.user-api-service-lambda.lambda_function_invoke_arn}api/user"
-    DEFAULT_REGION                = var.aws_region
+    API_PRODUCT_URL           = "${module.product-api-service-lambda.lambda_function_invoke_arn}api"
+    API_CUSTOMER_URL          = "${module.customer-api-service-lambda.lambda_function_invoke_arn}api"
+    API_INVOICING_URL         = "${module.invoicing-api-service-lambda.lambda_function_invoke_arn}api"
+    API_ACCOUNTING_URL        = "${module.accounting-api-service-lambda.lambda_function_invoke_arn}api"
+    API_INVENTORY_URL         = "${module.inventory-api-service-lambda.lambda_function_invoke_arn}api"
+    API_REPORT_URL            = "${module.report-api-service-lambda.lambda_function_invoke_arn}api"
+    DEFAULT_REGION            = var.aws_region
     WEBSOCKET_URL             = "${module.websocket-api-gateway.management_api_endpoint}"
     PING_INTERVAL             = "300"
   }

@@ -26,6 +26,8 @@ module "configuration-api-service-lambda" {
     AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
     DEFAULT_REGION         = "${var.aws_region}"
     DYNAMO_DB_CONFIGURATION_TABLE = "${var.project}-${var.environment}-configuration"
+    BYPASS_AUTH                    = "ENABLED"
+    BYPASS_AUTH_ROLES              = "SUPER_ADMIN"
   }
   depends_on = [ null_resource.configuration-api-service-docker_image ]
 }

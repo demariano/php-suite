@@ -30,6 +30,8 @@ module "client-message-processor-service-lambda" {
     DYNAMO_DB_USER_TABLE   = "${var.project}-${var.environment}-users"
     AWS_SECRET_ID          = "${module.secret_manager.secret_name}"
     DEFAULT_REGION         = "${var.aws_region}"
+    BYPASS_AUTH            = "ENABLED"
+    BYPASS_AUTH_ROLES      = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.client-message-processor-service-docker_image ]

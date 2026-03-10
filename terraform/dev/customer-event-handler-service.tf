@@ -36,6 +36,8 @@ module "customer-event-handler-service-lambda" {
     DEFAULT_REGION           = "${var.aws_region}"
     DYNAMO_DB_CUSTOMER_TABLE = "${var.project}-${var.environment}-customer"
     CUSTOMER_EVENT_SQS       = "${module.customer-event-handler-service_sqs_queue.queue_url}"
+    BYPASS_AUTH              = "ENABLED"
+    BYPASS_AUTH_ROLES        = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.customer-event-handler-service-docker_image ]

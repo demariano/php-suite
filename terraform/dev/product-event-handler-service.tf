@@ -36,6 +36,8 @@ module "product-event-handler-service-lambda" {
     DEFAULT_REGION          = "${var.aws_region}"
     DYNAMO_DB_PRODUCT_TABLE = "${var.project}-${var.environment}-product"
     PRODUCT_EVENT_SQS       = "${module.product-event-handler-service_sqs_queue.queue_url}"
+    BYPASS_AUTH             = "ENABLED"
+    BYPASS_AUTH_ROLES       = "SUPER_ADMIN"
   }
   
   depends_on = [ null_resource.product-event-handler-service-docker_image ]

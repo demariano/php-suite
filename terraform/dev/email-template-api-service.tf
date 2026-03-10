@@ -28,6 +28,8 @@ module "email-template-api-service-lambda" {
     AWS_COGNITO_USER_POOL_ID       = "${module.cognito_user_pool.cognito_user_pool_id}"
     AWS_COGNITO_CLIENT_ID          = "${module.cognito_user_pool.cognito_user_pool_client_id}"    
     DYNAMO_DB_EMAIL_TEMPLATE_TABLE = "${var.project}-${var.environment}-email-template"
+    BYPASS_AUTH                    = "ENABLED"
+    BYPASS_AUTH_ROLES              = "SUPER_ADMIN"
   }
   depends_on = [ null_resource.email-template-api-service-docker_image ]
 }
