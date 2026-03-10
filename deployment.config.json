@@ -1,5 +1,5 @@
 {
-  "deploy_terraform": false,
+  "deploy_terraform": true,
   "deploy_all_services": true,
   "data": [
     {

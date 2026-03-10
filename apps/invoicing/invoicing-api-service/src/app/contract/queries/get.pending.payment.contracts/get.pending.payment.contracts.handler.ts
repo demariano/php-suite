@@ -1,3 +1,4 @@
+import { ResponseDto } from '@dto';
 import { ContractDatabaseServiceAbstract } from '@invoicing-database-service';
 import { Inject, Logger } from '@nestjs/common';
 import { IQueryHandler, QueryHandler } from '@nestjs/cqrs';
@@ -14,9 +15,6 @@ export class GetPendingPaymentContractsHandler implements IQueryHandler<GetPendi
 
     async execute(query: GetPendingPaymentContractsQuery) {
         const contracts = await this.contractDatabaseService.findPendingPaymentContracts(query.customerId);
-        return {
-            statusCode: 200,
-            data: contracts || [],
-        };
+        return new ResponseDto(contracts || [], 200);
     }
 }

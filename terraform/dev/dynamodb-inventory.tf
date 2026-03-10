@@ -63,6 +63,14 @@ resource "aws_dynamodb_table" "dynamodb_table_inventory" {
     name = "GSI6SK"
     type = "S"
   }
+  attribute {
+    name = "GSI7PK"
+    type = "S"
+  }
+  attribute {
+    name = "GSI7SK"
+    type = "S"
+  }
   global_secondary_index {
     name            = "GSI1"
     hash_key        = "GSI1PK"
@@ -97,6 +105,12 @@ resource "aws_dynamodb_table" "dynamodb_table_inventory" {
     name            = "GSI6"
     hash_key        = "GSI6PK"
     range_key       = "GSI6SK"
+    projection_type = "ALL"
+  }
+  global_secondary_index {
+    name            = "GSI7"
+    hash_key        = "GSI7PK"
+    range_key       = "GSI7SK"
     projection_type = "ALL"
   }
 }

@@ -141,22 +141,27 @@ resource "aws_cognito_user_pool" "main" {
   mfa_configuration          = var.mfa_configuration
   sms_authentication_message = "Your code is {####}"
   
-  # NOW you can add email MFA configuration!
   dynamic "email_mfa_configuration" {
-    for_each = var.enable_email_mfa ? [1] : []
+    for_each = var.enable_email_mfa && var.mfa_configuration != "OFF" ? [1] : []
     content {
       message = var.email_mfa_message
       subject = var.email_mfa_subject
     }
   }
-  
-  software_token_mfa_configuration {
-    enabled = var.enable_software_token_mfa
+
+  dynamic "software_token_mfa_configuration" {
+    for_each = var.mfa_configuration != "OFF" ? [1] : []
+    content {
+      enabled = var.enable_software_token_mfa
+    }
   }
 
-  sms_configuration {
-    external_id = var.sms_external_id
-    sns_caller_arn = var.sms_iam_role
+  dynamic "sms_configuration" {
+    for_each = var.mfa_configuration != "OFF" ? [1] : []
+    content {
+      external_id    = var.sms_external_id
+      sns_caller_arn = var.sms_iam_role
+    }
   }
 
   auto_verified_attributes = ["email"]

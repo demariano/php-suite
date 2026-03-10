@@ -73,3 +73,5 @@ my-localstack-data/*
 e2e/.seed-data.json
 playwright-report/
 test-results/
+Invoice Per Date - 2026-02-27.xlsx
+nul

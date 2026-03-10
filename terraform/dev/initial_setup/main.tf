@@ -21,12 +21,12 @@ variable "github_token" {
 }
 
 provider "aws" {
-  region = "eu-west-2"
+  region = "ap-southeast-1"
   profile = var.aws_profile
 }
 
 resource "aws_s3_bucket" "terraform_state" {
-  bucket        = "php-dev-tf-state" 
+  bucket        = "php-dev-tf-state-v2" 
   force_destroy = true
 }
 
@@ -58,7 +58,7 @@ resource "aws_dynamodb_table" "terraform_locks" {
 }
 
 resource "aws_secretsmanager_secret" "terraform_config" {
-  name = "terraform_config"
+  name = "terraform_config_v2"
 }
 
 resource "aws_secretsmanager_secret_version" "github_token_version" {

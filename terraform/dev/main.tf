@@ -2,9 +2,9 @@ terraform {
   # Assumes s3 bucket and dynamo DB table already set up
   # See /code/03-basics/aws-backend
   backend "s3" {
-    bucket         = "nx-template-dev-tf-state"
+    bucket         = "php-dev-tf-state-v2"
     key            = "dev/network.tfstate"
-    region         = "eu-west-2"
+    region         = "ap-southeast-1"
     use_lockfile   = true
     encrypt        = true
   }
@@ -20,7 +20,7 @@ terraform {
 variable "aws_region" {
   description = "The AWS region"
   type        = string
-  default     = "eu-west-2"
+  default     = "ap-southeast-1"
 }
 
 variable "use_local_profile" {
@@ -38,7 +38,7 @@ variable "aws_profile" {
 variable "s3_bucket_name" {
   description = "The name of the S3 bucket to use for the Terraform state"
   type        = string
-  default     = "saxon-dev-tf-state"
+  default     = "php-dev-tf-state-v2"
 }
 
 provider "aws" {
@@ -75,7 +75,7 @@ variable "repository-name" {
 variable "ses_email_address" {
   description = "The email address for SES configuration"
   type        = string
-  default     = "dennis@old.st"
+  default     = "demariano@gmail.com"
 }
 
 variable "mfa_configuration" {
@@ -96,7 +96,7 @@ module "vpc" {
 
   name            = "${var.project}-${var.environment}-vpc"
   cidr            = "10.0.0.0/16"
-  azs             = ["eu-west-2a", "eu-west-2b", "eu-west-2c"]
+  azs             = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
   private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
   public_subnets  = ["10.0.3.0/24", "10.0.4.0/24"]
 }

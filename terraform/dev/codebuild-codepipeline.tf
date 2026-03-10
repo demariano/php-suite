@@ -47,6 +47,6 @@ module "backend-code-pipeline" {
   codebuild_project_name = module.code-build.codebuild_project_name
   iam_role_arn           = module.codebuild_iam_role.role_arn
   branch_name            = var.branch_name
-  github_owner           = "Old-St-Labs"
+  github_owner           = "demariano"
 
 }

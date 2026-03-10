@@ -28,4 +28,5 @@ module "cognito_user_pool" {
   from_email_address         = var.ses_email_address
   mfa_configuration          = var.mfa_configuration
   enable_software_token_mfa  = var.enable_software_token_mfa
+  enable_email_mfa           = var.mfa_configuration != "OFF"
 }

@@ -6,7 +6,7 @@ health_check_path = "/api/health"
 s3_bucket_name = "php-dev"
 
 repository-url = "https://github.com/demariano/php-suite.git"
-repository-name = "php"
+repository-name = "php-suite"
 branch_name = "development"
 aws_account_id = "836688626182"
 ses_email_address = "demariano@gmail.com"

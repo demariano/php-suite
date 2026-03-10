@@ -241,7 +241,7 @@ export const InvoicingSchema = {
         },
         PaymentContract: {
             PK: { type: String, value: 'PAYMENTCONTRACT', hidden: false },
-            SK: { type: String, value: '${paymentId}', hidden: false },
+            SK: { type: String, value: '${paymentContractId}', hidden: false },
             paymentContractId: { type: String, generate: 'ulid' },
             paymentId: { type: String },
             contractId: { type: String },
