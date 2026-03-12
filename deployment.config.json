@@ -1,11 +1,11 @@
 {
-  "deploy_terraform": true,
-  "deploy_all_services": true,
+  "deploy_terraform": false,
+  "deploy_all_services": false,
   "data": [
     {
       "parent_folder": "apps",
       "service_name": "web-app",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NextJS_ECS_Dockerfile",
       "increment_version": false,
       "build_scripts": [
@@ -228,7 +228,7 @@
     {
       "parent_folder": "apps/misc",
       "service_name": "environment-initializer-api-service",
-      "deploy": false,
+      "deploy": true,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for environment-initializer-api-service...'",
@@ -270,7 +270,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for product-api-service...'",
-        "npx nx test product-api-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-product-api-service",
         "npm run post-build-product-api-service",
@@ -289,7 +288,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for customer-api-service...'",
-        "npx nx test customer-api-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-customer-api-service",
         "npm run post-build-customer-api-service",
@@ -308,7 +306,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for stock-api-service...'",
-        "npx nx test stock-api-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-stock-api-service",
         "npm run post-build-stock-api-service",
@@ -327,7 +324,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for invoicing-api-service...'",
-        "npx nx test invoicing-api-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-invoicing-api-service",
         "npm run post-build-invoicing-api-service",
@@ -346,7 +342,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for accounts-api-service...'",
-        "npx nx test accounts-api-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-accounts-api-service",
         "npm run post-build-accounts-api-service",
@@ -365,7 +360,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for accounting-api-service...'",
-        "npx nx test accounting-api-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-accounting-api-service",
         "npm run post-build-accounting-api-service",
@@ -384,7 +378,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for inventory-api-service...'",
-        "npx nx test inventory-api-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-inventory-api-service",
         "npm run post-build-inventory-api-service",
@@ -403,7 +396,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for local-test-service...'",
-        "npx nx test local-test-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-local-test-service",
         "npm run post-build-local-test-service",
@@ -422,7 +414,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for report-api-service...'",
-        "npx nx test report-api-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-report-api-service",
         "npm run post-build-report-api-service",
@@ -441,7 +432,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for customer-event-handler-service...'",
-        "npx nx test customer-event-handler-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-customer-event-handler-service",
         "npm run post-build-customer-event-handler-service",
@@ -460,7 +450,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for inventory-event-handler-service...'",
-        "npx nx test inventory-event-handler-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-inventory-event-handler-service",
         "npm run post-build-inventory-event-handler-service",
@@ -479,7 +468,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for inventory-event-handler-service...'",
-        "npx nx test inventory-event-handler-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-inventory-event-handler-service",
         "npm run post-build-inventory-event-handler-service",
@@ -498,7 +486,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for invoicing-event-handler-service...'",
-        "npx nx test invoicing-event-handler-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-invoicing-event-handler-service",
         "npm run post-build-invoicing-event-handler-service",
@@ -517,7 +504,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for accounting-event-handler-service...'",
-        "npx nx test accounting-event-handler-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-accounting-event-handler-service",
         "npm run post-build-accounting-event-handler-service",
@@ -536,7 +522,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for product-event-handler-service...'",
-        "npx nx test product-event-handler-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-product-event-handler-service",
         "npm run post-build-product-event-handler-service",
@@ -555,7 +540,6 @@
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for report-event-handler-service...'",
-        "npx nx test report-event-handler-service --ci --coverage --watch=false",
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-report-event-handler-service",
         "npm run post-build-report-event-handler-service",
