@@ -1,5 +1,5 @@
 {
-  "deploy_terraform": true,
+  "deploy_terraform": false,
   "deploy_all_services": false,
   "data": [
     {
@@ -228,7 +228,7 @@
     {
       "parent_folder": "apps/misc",
       "service_name": "environment-initializer-api-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for environment-initializer-api-service...'",
@@ -266,7 +266,7 @@
     {
       "parent_folder": "apps/product",
       "service_name": "product-api-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for product-api-service...'",
@@ -284,7 +284,7 @@
     {
       "parent_folder": "apps/customer",
       "service_name": "customer-api-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for customer-api-service...'",
@@ -302,7 +302,7 @@
     {
       "parent_folder": "apps/invoicing",
       "service_name": "invoicing-api-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for invoicing-api-service...'",
@@ -320,7 +320,7 @@
     {
       "parent_folder": "apps/accounting",
       "service_name": "accounting-api-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for accounting-api-service...'",
@@ -338,7 +338,7 @@
     {
       "parent_folder": "apps/inventory",
       "service_name": "inventory-api-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for inventory-api-service...'",
@@ -356,7 +356,7 @@
     {
       "parent_folder": "apps/reports",
       "service_name": "report-api-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for report-api-service...'",
@@ -374,7 +374,7 @@
     {
       "parent_folder": "apps/customer",
       "service_name": "customer-event-handler-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for customer-event-handler-service...'",
@@ -392,7 +392,7 @@
     {
       "parent_folder": "apps/inventory",
       "service_name": "inventory-event-handler-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for inventory-event-handler-service...'",
@@ -410,7 +410,7 @@
     {
       "parent_folder": "apps/invoicing",
       "service_name": "invoicing-event-handler-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for invoicing-event-handler-service...'",
@@ -428,7 +428,7 @@
     {
       "parent_folder": "apps/accounting",
       "service_name": "accounting-event-handler-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for accounting-event-handler-service...'",
@@ -446,7 +446,7 @@
     {
       "parent_folder": "apps/product",
       "service_name": "product-event-handler-service",
-      "deploy": true,
+      "deploy": false,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
       "build_scripts": [
         "echo 'Running tests for product-event-handler-service...'",

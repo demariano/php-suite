@@ -2,9 +2,8 @@ import { AwsS3LibService } from '@aws-s3-lib';
 import { FileDetailsDto, ReportDto } from '@dto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import * as ExcelJS from 'exceljs';
-import { v4 as uuidv4 } from 'uuid';
-
 @Injectable()
 export class ExcelGeneratorService {
     constructor(private readonly configService: ConfigService, private readonly s3Service: AwsS3LibService) {}
@@ -45,7 +44,6 @@ export class ExcelGeneratorService {
         return await this.saveData(workbook, reportDto);
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private writeSheet(
         sheet: ExcelJS.Worksheet,
         headers: { description: string; metaData?: Record<string, unknown> }[],
@@ -117,7 +115,7 @@ export class ExcelGeneratorService {
 
         const arrayBuffer = await workbook.xlsx.writeBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        const id = uuidv4();
+        const id = crypto.randomUUID();
         reportDto.reportFilename = id + '-' + reportDto.reportFilename;
 
         await this.s3Service.uploadBuffer(
