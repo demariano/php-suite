@@ -26,7 +26,7 @@ module "webapp_task_definition" {
 
   // Add environment variables
   environment_variables = {
-    NODE_ENV                  = "dev"
+    NODE_ENV                  = "development"
     AWS_SECRET_ID             = module.secret_manager.secret_name
     S3_BUCKET_NAME            = "${var.project}-${var.environment}-data"
     API_AUTHENTICATION_URL    = "${module.authentication-api-service-lambda.lambda_function_invoke_arn}api/authentication"
@@ -40,6 +40,8 @@ module "webapp_task_definition" {
     DEFAULT_REGION            = var.aws_region
     WEBSOCKET_URL             = "${module.websocket-api-gateway.management_api_endpoint}"
     PING_INTERVAL             = "300"
+    BYPASS_AUTH               = "ENABLED"
+    BYPASS_AUTH_ROLES         = "SUPER_ADMIN"
   }
 }
 
