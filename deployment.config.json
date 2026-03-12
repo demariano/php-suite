@@ -462,7 +462,7 @@
       ]
     },
     {
-      "parent_folder": "apps/report",
+      "parent_folder": "apps/reports",
       "service_name": "report-event-handler-service",
       "deploy": true,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
