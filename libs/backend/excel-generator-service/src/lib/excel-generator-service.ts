@@ -110,8 +110,10 @@ export class ExcelGeneratorService {
             throw new Error('REPORT_S3_BUCKET is not defined in configuration');
         }
 
-        //for debnugging purposes only save to local file system
-        await workbook.xlsx.writeFile(`./${reportDto.reportFilename}`);
+        //for debugging purposes only save to local file system
+        if (process.env.SERVICE_TRIGGER === 'LOCALHOST') {
+            await workbook.xlsx.writeFile(`./${reportDto.reportFilename}`);
+        }
 
         const arrayBuffer = await workbook.xlsx.writeBuffer();
         const buffer = Buffer.from(arrayBuffer);
