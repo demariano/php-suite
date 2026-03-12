@@ -319,24 +319,6 @@
     },
     {
       "parent_folder": "apps/accounting",
-      "service_name": "accounts-api-service",
-      "deploy": true,
-      "dockerfile": "NestJS_AWSLambda_Dockerfile",
-      "build_scripts": [
-        "echo 'Running tests for accounts-api-service...'",
-        "echo 'Tests passed! Proceeding with build...'",
-        "npm run build-accounts-api-service",
-        "npm run post-build-accounts-api-service",
-        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
-        " cd ../../../..",
-        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
-        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
-        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
-        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
-      ]
-    },
-    {
-      "parent_folder": "apps/accounting",
       "service_name": "accounting-api-service",
       "deploy": true,
       "dockerfile": "NestJS_AWSLambda_Dockerfile",
@@ -363,24 +345,6 @@
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-inventory-api-service",
         "npm run post-build-inventory-api-service",
-        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
-        " cd ../../../..",
-        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
-        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
-        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
-        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
-      ]
-    },
-    {
-      "parent_folder": "apps/local-test",
-      "service_name": "local-test-service",
-      "deploy": true,
-      "dockerfile": "NestJS_AWSLambda_Dockerfile",
-      "build_scripts": [
-        "echo 'Running tests for local-test-service...'",
-        "echo 'Tests passed! Proceeding with build...'",
-        "npm run build-local-test-service",
-        "npm run post-build-local-test-service",
         "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
         " cd ../../../..",
         "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
@@ -417,24 +381,6 @@
         "echo 'Tests passed! Proceeding with build...'",
         "npm run build-customer-event-handler-service",
         "npm run post-build-customer-event-handler-service",
-        "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
-        " cd ../../../..",
-        "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
-        "docker tag ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
-        "docker push ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest",
-        "aws lambda update-function-code --function-name ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} --image-uri ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME}:latest"
-      ]
-    },
-    {
-      "parent_folder": "apps/customer",
-      "service_name": "inventory-event-handler-service",
-      "deploy": true,
-      "dockerfile": "NestJS_AWSLambda_Dockerfile",
-      "build_scripts": [
-        "echo 'Running tests for inventory-event-handler-service...'",
-        "echo 'Tests passed! Proceeding with build...'",
-        "npm run build-inventory-event-handler-service",
-        "npm run post-build-inventory-event-handler-service",
         "cd dist/${PARENT_FOLDER}/${SERVICE_NAME} && yarn install",
         " cd ../../../..",
         "docker build --no-cache --build-arg PARENT_FOLDER=${PARENT_FOLDER} --build-arg SERVICE_NAME=${SERVICE_NAME} -t ${PROJECT_NAME}-${ENVIRONMENT}-${SERVICE_NAME} -f ${DOCKERFILE} .",
